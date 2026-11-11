@@ -35,13 +35,20 @@ var engineImages = map[storage.Engine]string{
 	storage.Tiger:          "timescale/timescaledb-ha:pg18",
 }
 
-var indexBuildFlags = []string{"-c", "maintenance_work_mem=4GB", "-c", "max_parallel_maintenance_workers=4"}
+var serverFlags = []string{
+	"-c", "maintenance_work_mem=4GB", "-c", "max_parallel_maintenance_workers=4",
+	"-c", "shared_buffers=1GB", "-c", "effective_cache_size=4GB", "-c", "work_mem=16MB",
+	"-c", "random_page_cost=1.1", "-c", "effective_io_concurrency=200", "-c", "jit=off",
+	"-c", "max_parallel_workers_per_gather=2", "-c", "max_parallel_workers=8",
+	"-c", "wal_buffers=16MB", "-c", "min_wal_size=512MB",
+	"-c", "default_toast_compression=lz4", "-c", "autovacuum=off",
+}
 
 // engineServerFlags mirrors the server-start settings in docker-compose.yml.
 var engineServerFlags = map[storage.Engine][]string{
-	storage.PostgresNative: indexBuildFlags,
-	storage.ParadeDB:       indexBuildFlags,
-	storage.Tiger:          append(slices.Clone(indexBuildFlags), "-c", "pg_textsearch.memory_limit=2GB"),
+	storage.PostgresNative: serverFlags,
+	storage.ParadeDB:       serverFlags,
+	storage.Tiger:          append(slices.Clone(serverFlags), "-c", "pg_textsearch.memory_limit=2GB"),
 }
 
 func NewPGContainer(ctx context.Context, cfg PGConfig) (*PGContainer, error) {
