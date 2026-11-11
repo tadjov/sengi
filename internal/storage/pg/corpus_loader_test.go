@@ -365,9 +365,12 @@ func TestCorpusLoader(t *testing.T) {
 
 				present := indexDefinitions(t, db)
 				stages := map[string]int{}
+				var staged float64
 				for _, stage := range record.Stages {
 					stages[stage.Name]++
+					staged += stage.Seconds
 				}
+				assert.GreaterOrEqual(t, record.TotalSeconds, staged, "the total spans every stage")
 				for _, name := range declaredIndexes[engine] {
 					assert.Contains(t, present, name)
 					assert.Equal(t, 1, stages[name], "stages timing index %s", name)

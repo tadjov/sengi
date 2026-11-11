@@ -135,7 +135,7 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		return storage.LoadRecord{}, err
 	}
 
-	record.FinishedAt = now()
+	record.Finish(now())
 	// An unindexed corpus is not what a bench run measures, so corpus_load skips it.
 	if opts.SkipIndex {
 		return record, nil
