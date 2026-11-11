@@ -20,7 +20,7 @@ GOARCH ?= $(shell go env GOARCH)
 ARGS ?=
 
 # Build commands
-.PHONY: build build-all clean test fmt vet lint lint-fix install-lint schema-gen build-bench bench-validate bench-run bench-pool bench-judge-lexical bench-judge-cli bench-judge-api bench-qrels bench-show-spec bench-show-pool bench-show-judgments $(addprefix migrate-schema-,$(PG_ENGINES)) $(addprefix migrate-down-,$(PG_ENGINES)) migrate-schema-all migrate-down-all db-refresh-collation db-volumes run-datapipe-preprocess $(addprefix run-datapipe-load-,$(LOAD_ENGINES)) run-datapipe-load-all
+.PHONY: build build-all clean test fmt vet lint lint-fix install-lint schema-gen build-bench bench-validate bench-run bench-pool bench-judge-lexical bench-judge-cli bench-judge-api bench-qrels bench-show-spec bench-show-pool bench-show-judgments $(addprefix migrate-schema-,$(PG_ENGINES)) $(addprefix migrate-down-,$(PG_ENGINES)) migrate-schema-all migrate-down-all db-refresh-collation db-volumes run-datapipe-preprocess $(addprefix run-datapipe-load-,$(LOAD_ENGINES)) run-datapipe-load-es-text run-datapipe-load-all
 
 $(addprefix migrate-schema-,$(PG_ENGINES)): migrate-schema-%:
 	@echo "Migrating the schema ($*)..."
@@ -149,6 +149,11 @@ $(addprefix run-datapipe-load-,$(LOAD_ENGINES)): run-datapipe-load-%: build-data
 	@echo "Running datapipe load ($*)..."
 	@ENV_PATHS="$(ENGINE_ENV_$*)" ./$(BIN_DIR)/datapipe load --engine $* --canonical "$(CANONICAL)" \
 		$(if $(EMBEDDINGS),--embeddings "$(EMBEDDINGS)") $(LOAD_FLAGS)
+
+# ES keeps each vector inside its article, so its vector cost is a full load minus this one.
+run-datapipe-load-es-text: build-datapipe
+	@echo "Running datapipe load (es, without embeddings)..."
+	@ENV_PATHS="$(ENGINE_ENV_es)" ./$(BIN_DIR)/datapipe load --engine es --canonical "$(CANONICAL)" $(LOAD_FLAGS)
 
 # Every engine loads the same packages, one after another, so the corpora stay
 # identical and no load competes with another for the machine.
