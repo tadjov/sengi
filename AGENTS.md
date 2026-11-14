@@ -109,7 +109,7 @@ identity:
 ### Storage Layer
 Follows idiomatic Go patterns with sub-package organization:
 - **Interfaces**: Storage contracts define clear responsibilities
-    - `FTSSearcher`: Full-text search operations
+    - `FullTextBackend` plus one searcher per full-text paradigm: `StringQuerySearcher`, `FieldSearcher`, `MultiFieldSearcher`, `PhraseSearcher`, `BooleanSearcher`
     - `Indexer`: Document indexing operations
     - `Reader`: Document retrieval operations
 - **Factory Pattern**: `storage/factory` package provides centralized creation logic
@@ -201,7 +201,7 @@ Built with Echo framework providing:
 - **Simple API**: Application-optimized (QueryString)
 - **Explicit API**: User-controlled (Match, MultiMatch)
 - **DTO Layer**: Clean separation between API and domain
-- **Optional Interfaces**: Storage backends can optionally implement Match/MultiMatch
+- **Optional Interfaces**: A backend serves the paradigms whose searcher interfaces it implements; the API answers the rest with 404 (GET) or 400 (`_search`)
 - **Extensible**: Easy to add new query types in the future
 
 ## Development Commands

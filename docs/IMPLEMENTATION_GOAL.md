@@ -23,14 +23,29 @@ the searchers that are available and reports them through `/v1/capabilities`.
 Located in `internal/storage/` (`searcher.go`, `reader.go`, `indexer.go`, `vector.go`).
 
 ```go
-// FtsSearcher — lexical full-text search (searcher.go)
-type FtsSearcher interface {
+// FullTextBackend — a full-text engine and the stated params it honours (searcher.go)
+type FullTextBackend interface {
+    Capabilities() query.Capabilities
+}
+
+// One interface per lexical paradigm; a backend implements the ones it serves
+type StringQuerySearcher interface {
     SearchStringQuery(ctx, *query.String, *query.BaseOptions) (*SearchResult, error)
+}
+type FieldSearcher interface {
     SearchField(ctx, *query.Match, *query.BaseOptions) (*SearchResult, error)
+}
+type MultiFieldSearcher interface {
     SearchFields(ctx, *query.MultiMatch, *query.BaseOptions) (*SearchResult, error)
+}
+type PhraseSearcher interface {
     SearchPhrase(ctx, *query.Phrase, *query.BaseOptions) (*SearchResult, error)
+}
+type BooleanSearcher interface {
     SearchBoolean(ctx, *query.Boolean, *query.BaseOptions) (*SearchResult, error)
 }
+
+// FtsSearcher embeds all six, for the cross-engine parity suite
 
 // SemanticSearcher — vector similarity search
 type SemanticSearcher interface {
@@ -52,7 +67,7 @@ type VectorStore interface {
 // Reader — point lookup: GetByIDs(ctx, ids) ([]document.Article, error)
 ```
 
-There is no monolithic `Reader.Search`, no `VectorSearcher`/`BooleanSearcher`/`FuzzySearcher`/
+There is no monolithic `Reader.Search`, no `VectorSearcher`/`FuzzySearcher`/
 `FieldLevelSearcher`, and no `SearchQuery`/`QueryType` discriminated union — paradigms are
 expressed as distinct query types and distinct searcher interfaces.
 
@@ -139,8 +154,8 @@ Swap `match` for `multi_match`, `phrase`, `boolean`, or `hybrid`. Hybrid returns
 
 `GET /v1/capabilities` returns `query_types`, booleans for `query_string`, `match`,
 `multi_match`, `phrase`, `boolean`, `semantic` and `hybrid`, and `full_text`, the
-`query.Capabilities` the running FTS searcher declares. The FTS searcher is always wired, so the
-first five query types are always `true`; `semantic` and `hybrid` only when configured.
+`query.Capabilities` the running full-text backend declares. Each query type is `true` only when
+its searcher is wired.
 
 ```json
 { "query_types": { "query_string": true, "match": true, "multi_match": true,
