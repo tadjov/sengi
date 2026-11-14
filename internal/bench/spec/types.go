@@ -1,6 +1,10 @@
 package spec
 
-import "time"
+import (
+	"fmt"
+	"slices"
+	"time"
+)
 
 type BenchSpec struct {
 	SchemaVersion int               `yaml:"schema_version"`
@@ -73,11 +77,13 @@ const (
 	EnginePostgres      EngineType = "postgres"
 	EngineElasticsearch EngineType = "elasticsearch"
 	EngineAPI           EngineType = "api"
+	// EngineFusion merges the rankings of other declared engines on the client.
+	EngineFusion EngineType = "fusion"
 )
 
 func (t EngineType) Valid() bool {
 	switch t {
-	case EnginePostgres, EngineElasticsearch, EngineAPI:
+	case EnginePostgres, EngineElasticsearch, EngineAPI, EngineFusion:
 		return true
 	default:
 		return false
@@ -101,6 +107,31 @@ type Engine struct {
 	// QueriesFrom names the engine whose per-query engines: block this engine
 	// reuses, so an A/B arm cannot drift from the arm it is compared against.
 	QueriesFrom string `yaml:"queries_from,omitempty"`
+	// Fusion is set on, and only on, an engine of type fusion.
+	Fusion *Fusion `yaml:"fusion,omitempty"`
+}
+
+// FusionMethod is how a fusion engine merges its legs' rankings.
+type FusionMethod string
+
+// FusionRRF is Reciprocal Rank Fusion: a doc scores the sum of
+// 1 / (rank_constant + rank) over the legs that return it, rank counting from 1.
+const FusionRRF FusionMethod = "rrf"
+
+func ParseFusionMethod(s string) (FusionMethod, error) {
+	if FusionMethod(s) == FusionRRF {
+		return FusionRRF, nil
+	}
+	return "", fmt.Errorf("unknown fusion method %q (known: %s)", s, FusionRRF)
+}
+
+// Fusion runs each leg engine's own query for a suite query, one leg after the
+// other, cuts each ranking to Window and merges them by Method.
+type Fusion struct {
+	Method       FusionMethod `yaml:"method"`
+	RankConstant int          `yaml:"rank_constant"`
+	Window       int          `yaml:"window"`
+	Legs         []string     `yaml:"legs"`
 }
 
 // QueryBinding is how one engine reaches its queries: the engine whose
@@ -109,6 +140,9 @@ type Engine struct {
 type QueryBinding struct {
 	QuerySource string
 	Params      map[string]any
+	// Fusion is set for a fusion engine, which has no block of its own and
+	// reads its queries through its legs.
+	Fusion *Fusion
 }
 
 // QueryBinding resolves engine aliasing for the named engine. Aliasing is one
@@ -120,10 +154,34 @@ func (s *BenchSpec) QueryBinding(name string) QueryBinding {
 	if !ok {
 		return QueryBinding{QuerySource: name}
 	}
+	if eng.Fusion != nil {
+		return QueryBinding{Fusion: eng.Fusion}
+	}
 	if eng.QueriesFrom != "" {
 		return QueryBinding{QuerySource: eng.QueriesFrom, Params: eng.Params}
 	}
 	return QueryBinding{QuerySource: name, Params: eng.Params}
+}
+
+// EnginesRead are the engines whose query blocks job reads: its own, and the
+// legs of each fusion engine in it, in order and without repeats.
+func (s *BenchSpec) EnginesRead(job Job) []string {
+	var read []string
+	add := func(name string) {
+		if !slices.Contains(read, name) {
+			read = append(read, name)
+		}
+	}
+	for _, name := range job.Engines {
+		if fusion := s.Engines[name].Fusion; fusion != nil {
+			for _, leg := range fusion.Legs {
+				add(leg)
+			}
+			continue
+		}
+		add(name)
+	}
+	return read
 }
 
 type MetricsConfig struct {

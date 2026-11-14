@@ -42,9 +42,18 @@ func CreateFromSpec(ctx context.Context, engines map[string]spec.Engine) (map[st
 		case spec.EngineAPI:
 			executors[name] = NewAPIExecutor(name, eng.Connection)
 
+		case spec.EngineFusion:
+			// Built below, once every leg's executor exists.
+
 		default:
 			cleanup()
 			return nil, nil, fmt.Errorf("unsupported engine type %q for %q", eng.Type, name)
+		}
+	}
+
+	for name, eng := range engines {
+		if eng.Type == spec.EngineFusion {
+			executors[name] = NewFusionExecutor(name, *eng.Fusion, executors)
 		}
 	}
 

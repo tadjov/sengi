@@ -221,6 +221,37 @@ An arm has to exist before `bench pool`, not just before `bench run`. Each engin
 its own top-K to the pool; added afterwards, the documents only it ranks highly come back
 Unjudged and its NDCG reads low for a reason that has nothing to do with its ranking.
 
+#### Fusion engines
+
+An engine of type `fusion` answers a query by running each of its legs' own queries, one leg
+after the other, and merging their rankings on the client:
+
+```yaml
+engines:
+  es-rrf:
+    type: fusion
+    fusion:
+      method: rrf
+      rank_constant: 60
+      window: 100
+      legs: [elasticsearch, es-knn]
+```
+
+`rrf` is Reciprocal Rank Fusion: each leg's ranking is cut to `window`, and a doc scores the sum
+of `1 / (rank_constant + rank)` over the legs that return it, rank counting from 1. Equal scores
+order by id, as Postgres orders uuids, so a fusion engine and an SQL fusion over the same leg
+statements return the same ranking. Its latency is the wall time of every leg plus the merge.
+
+A fusion engine has no block of its own and takes no connection, params or `queries_from`. Its
+legs must be declared engines, two or more, none of them a fusion engine; they need not run in
+any job of their own, but every query needs a block for each. `validate`, `pool` and `run`
+check those blocks, store their templates and validate each leg on its own executor. The run
+records the merge settings with the legs' requests, so changing `rank_constant` or `window`
+changes the request digest.
+
+Elasticsearch 8.12 refuses its own RRF on the basic licence, so a fusion engine is how the
+hybrid track fuses Elasticsearch with the same RRF the Postgres engines run in SQL.
+
 #### `embedding_model`
 
 `embedding_model` is the param a vector track has to declare:

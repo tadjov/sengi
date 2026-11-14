@@ -121,10 +121,10 @@ queries:
 	row := validateOne(context.Background(), validateInput{
 		query:      loaded.Suite.Queries[0],
 		engineName: "pg",
-		binding:    spec.QueryBinding{QuerySource: "pg", Params: map[string]any{"rank_norm": "1"}},
+		bindings:   map[string]spec.QueryBinding{"pg": {QuerySource: "pg", Params: map[string]any{"rank_norm": "1"}}},
 		loaded:     loaded,
 		executor:   validator,
-		dialect:    dialect.Positional{},
+		dialects:   map[string]dialect.Dialect{"pg": dialect.Positional{}},
 	})
 
 	require.Equal(t, "OK", row.status, row.detail)
@@ -194,10 +194,10 @@ queries:
 	row := validateOne(context.Background(), validateInput{
 		query:        loaded.Suite.Queries[0],
 		engineName:   "pg",
-		binding:      spec.QueryBinding{QuerySource: "pg"},
+		bindings:     map[string]spec.QueryBinding{"pg": {QuerySource: "pg"}},
 		loaded:       loaded,
 		executor:     validator,
-		dialect:      dialect.Positional{},
+		dialects:     map[string]dialect.Dialect{"pg": dialect.Positional{}},
 		queryTimeout: queryTimeout,
 	})
 	after := time.Now()
@@ -259,11 +259,11 @@ queries:
 	row := validateOne(context.Background(), validateInput{
 		query:        loaded.Suite.Queries[0],
 		engineName:   "pg",
-		binding:      spec.QueryBinding{QuerySource: "pg"},
+		bindings:     map[string]spec.QueryBinding{"pg": {QuerySource: "pg"}},
 		loaded:       loaded,
 		executor:     validator,
 		store:        store,
-		dialect:      dialect.Positional{},
+		dialects:     map[string]dialect.Dialect{"pg": dialect.Positional{}},
 		queryTimeout: time.Minute,
 	})
 	return row, validator
