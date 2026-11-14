@@ -78,34 +78,58 @@ func TestCorpusLoader(t *testing.T) {
 				Unmigrated: true,
 			})
 
-			t.Run("loads every article with its vector", func(t *testing.T) {
+			t.Run("loads every article with its vector at any concurrency", func(t *testing.T) {
+				for _, concurrency := range []int{1, 4} {
+					t.Run(fmt.Sprintf("concurrency %d", concurrency), func(t *testing.T) {
+						db := newDatabase(t, server.ConnString)
+						articles, vectors := fixture(corpusSize)
+
+						record, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 100, Concurrency: concurrency})
+						require.NoError(t, err)
+
+						assert.Equal(t, int64(corpusSize), record.Articles)
+						assert.Equal(t, int64(corpusSize), record.Vectors)
+						fixtureIDs := make([]uuid.UUID, len(articles))
+						for i, a := range articles {
+							fixtureIDs[i] = a.ID
+						}
+						assert.ElementsMatch(t, fixtureIDs, storedIDs(t, db, "SELECT id FROM articles"))
+						assert.ElementsMatch(t, fixtureIDs, storedIDs(t, db, "SELECT article_id FROM article_embeddings"))
+						sample := []int{0, 1, 999, corpusSize - 1}
+						ids := make([]uuid.UUID, len(sample))
+						for i, at := range sample {
+							ids[i] = articles[at].ID
+						}
+						stored := readArticles(t, db, ids)
+						storedVectors := readVectors(t, db, ids)
+						for _, at := range sample {
+							want := articles[at]
+							assert.Equal(t, want, stored[want.ID], "article %d", at)
+							assert.Equal(t, vectors[at].Embedding, storedVectors[want.ID], "vector of article %d", at)
+						}
+					})
+				}
+			})
+
+			t.Run("a batch rejected mid-load at concurrency 4 fails the load and the next load is refused", func(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 				articles, vectors := fixture(corpusSize)
+				vectors[1_500].Embedding = vectors[1_500].Embedding[:3]
 
-				record, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500})
-				require.NoError(t, err)
+				_, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 100, Concurrency: 4})
 
-				assert.Equal(t, int64(corpusSize), record.Articles)
-				assert.Equal(t, int64(corpusSize), record.Vectors)
-				sample := []int{0, 1, 999, corpusSize - 1}
-				ids := make([]uuid.UUID, len(sample))
-				for i, at := range sample {
-					ids[i] = articles[at].ID
-				}
-				stored := readArticles(t, db, ids)
-				storedVectors := readVectors(t, db, ids)
-				for _, at := range sample {
-					want := articles[at]
-					assert.Equal(t, want, stored[want.ID], "article %d", at)
-					assert.Equal(t, vectors[at].Embedding, storedVectors[want.ID], "vector of article %d", at)
-				}
+				require.ErrorContains(t, err, "partial corpus")
+				assert.False(t, loadRecorded(t, db), "the failed load was recorded in corpus_load")
+				retry, _ := fixture(corpusSize)
+				_, err = load(t, db, engine, corpusOf(retry, nil), storage.LoadOptions{BatchSize: 100, Concurrency: 4})
+				require.ErrorContains(t, err, "already holds a corpus")
 			})
 
 			t.Run("loads a trial whose vectors cover the first articles only", func(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 				articles, vectors := fixture(corpusSize)
 
-				record, err := load(t, db, engine, corpusOf(articles, vectors[:100]), storage.LoadOptions{BatchSize: 500})
+				record, err := load(t, db, engine, corpusOf(articles, vectors[:100]), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
 				require.NoError(t, err)
 
 				assert.Equal(t, int64(corpusSize), record.Articles)
@@ -137,7 +161,7 @@ func TestCorpusLoader(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 				articles, vectors := fixture(corpusSize)
 
-				_, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500})
+				_, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
 				require.NoError(t, err)
 
 				present := indexDefinitions(t, db)
@@ -160,7 +184,7 @@ func TestCorpusLoader(t *testing.T) {
 							c.Language = "srp"
 							return c
 						},
-						opts: storage.LoadOptions{BatchSize: 500},
+						opts: storage.LoadOptions{BatchSize: 500, Concurrency: 1},
 					},
 					"vectors without a model tag": {
 						corpus: func() storage.Corpus {
@@ -168,11 +192,15 @@ func TestCorpusLoader(t *testing.T) {
 							c.ModelTag = ""
 							return c
 						},
-						opts: storage.LoadOptions{BatchSize: 500},
+						opts: storage.LoadOptions{BatchSize: 500, Concurrency: 1},
 					},
 					"no batch size": {
 						corpus: func() storage.Corpus { return corpusOf(articles, vectors) },
-						opts:   storage.LoadOptions{},
+						opts:   storage.LoadOptions{Concurrency: 1},
+					},
+					"no concurrency": {
+						corpus: func() storage.Corpus { return corpusOf(articles, vectors) },
+						opts:   storage.LoadOptions{BatchSize: 500},
 					},
 				}
 				for name, tc := range cases {
@@ -190,7 +218,7 @@ func TestCorpusLoader(t *testing.T) {
 			t.Run("refuses an empty corpus and leaves the database loadable", func(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 
-				_, err := load(t, db, engine, corpusOf([]document.Article{}, nil), storage.LoadOptions{BatchSize: 500})
+				_, err := load(t, db, engine, corpusOf([]document.Article{}, nil), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
 
 				require.ErrorContains(t, err, "corpus has no articles")
 				var recorded bool
@@ -204,30 +232,32 @@ func TestCorpusLoader(t *testing.T) {
 				}
 
 				articles, vectors := fixture(10)
-				_, err = load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500})
+				_, err = load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
 				require.NoError(t, err)
 			})
 
-			t.Run("refuses vectors out of step with the articles and writes nothing", func(t *testing.T) {
+			t.Run("refuses vectors out of step with the articles, records nothing and refuses the next load", func(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 				articles, vectors := fixture(corpusSize)
 				orphan, _ := fixture(corpusSize + 1)
 				vectors[corpusSize-1].ID = orphan[corpusSize].ID
 
-				_, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500})
+				_, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
 
 				require.ErrorContains(t, err, orphan[corpusSize].ID.String())
-				assert.Empty(t, readArticles(t, db, []uuid.UUID{articles[0].ID}), "articles of a refused load were kept")
+				assert.False(t, loadRecorded(t, db), "the refused load was recorded in corpus_load")
+				_, err = load(t, db, engine, corpusOf(articles, vectors[:corpusSize-1]), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
+				require.ErrorContains(t, err, "already holds a corpus")
 			})
 
 			t.Run("refuses a database that already holds a corpus", func(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 				articles, vectors := fixture(corpusSize)
-				first, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500})
+				first, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
 				require.NoError(t, err)
 
 				replacement, _ := fixture(corpusSize + 1)
-				_, err = load(t, db, engine, corpusOf(replacement[corpusSize:], nil), storage.LoadOptions{BatchSize: 500})
+				_, err = load(t, db, engine, corpusOf(replacement[corpusSize:], nil), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
 
 				require.Error(t, err)
 				assert.Empty(t, readArticles(t, db, []uuid.UUID{replacement[corpusSize].ID}))
@@ -246,13 +276,13 @@ func TestCorpusLoader(t *testing.T) {
 				})
 				articles, vectors := fixture(10)
 
-				_, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500})
+				_, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
 
 				require.Error(t, err)
 				assert.Empty(t, readArticles(t, db, []uuid.UUID{articles[0].ID}))
 			})
 
-			t.Run("stops on cancel and keeps nothing", func(t *testing.T) {
+			t.Run("stops on cancel and records nothing", func(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 				articles, vectors := fixture(corpusSize)
 				ctx, cancel := context.WithCancel(context.Background())
@@ -269,10 +299,10 @@ func TestCorpusLoader(t *testing.T) {
 					}
 				}
 
-				_, err := loadWithContext(ctx, t, db, engine, c, storage.LoadOptions{BatchSize: 100})
+				_, err := loadWithContext(ctx, t, db, engine, c, storage.LoadOptions{BatchSize: 100, Concurrency: 1})
 
 				require.ErrorIs(t, err, context.Canceled)
-				assert.Empty(t, readArticles(t, db, []uuid.UUID{articles[0].ID}))
+				assert.False(t, loadRecorded(t, db), "the cancelled load was recorded in corpus_load")
 			})
 
 			if engine == storage.ParadeDB {
@@ -285,7 +315,7 @@ func TestCorpusLoader(t *testing.T) {
 						articles[i].Content = strings.Repeat(articles[i].Content+" ", 25)
 					}
 
-					_, err := load(t, db, engine, corpusOf(articles, nil), storage.LoadOptions{BatchSize: 5_000})
+					_, err := load(t, db, engine, corpusOf(articles, nil), storage.LoadOptions{BatchSize: 5_000, Concurrency: 1})
 					require.NoError(t, err)
 
 					var segments, documents int
@@ -302,7 +332,7 @@ func TestCorpusLoader(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 				articles, vectors := fixture(corpusSize)
 
-				record, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500})
+				record, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 3})
 				require.NoError(t, err)
 
 				var stored storage.LoadRecord
@@ -318,6 +348,7 @@ func TestCorpusLoader(t *testing.T) {
 				assert.Equal(t, string(engine), stored.Engine)
 				assert.Contains(t, stored.EngineVersion, serverVersion)
 				assert.Equal(t, 500, stored.BatchSize)
+				assert.Equal(t, 3, stored.Concurrency)
 				assert.Equal(t, modelTag, stored.ModelTag)
 			})
 
@@ -325,7 +356,7 @@ func TestCorpusLoader(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 				articles, vectors := fixture(corpusSize)
 
-				record, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, SkipIndex: true})
+				record, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1, SkipIndex: true})
 				require.NoError(t, err)
 
 				assert.Equal(t, int64(corpusSize), record.Articles)
@@ -344,7 +375,7 @@ func TestCorpusLoader(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 				articles, vectors := fixture(corpusSize)
 
-				_, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, SkipIndex: true})
+				_, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1, SkipIndex: true})
 				require.NoError(t, err)
 
 				for _, table := range []string{"articles", "article_embeddings"} {
@@ -364,7 +395,7 @@ func TestCorpusLoader(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 				articles, vectors := fixture(corpusSize)
 
-				record, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500})
+				record, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
 				require.NoError(t, err)
 
 				present := indexDefinitions(t, db)
@@ -394,7 +425,7 @@ func TestCorpusLoader(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 				articles, vectors := fixture(corpusSize)
 
-				record, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500})
+				record, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
 				require.NoError(t, err)
 
 				words := map[string]int{}
@@ -535,6 +566,29 @@ func readArticles(t *testing.T, connString string, ids []uuid.UUID) map[uuid.UUI
 		byID[a.ID] = a
 	}
 	return byID
+}
+
+func storedIDs(t *testing.T, connString, sql string) []uuid.UUID {
+	t.Helper()
+	var ids []uuid.UUID
+	query(t, connString, func(conn *pgx.Conn) error {
+		rows, err := conn.Query(context.Background(), sql)
+		if err != nil {
+			return err
+		}
+		ids, err = pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+		return err
+	})
+	return ids
+}
+
+func loadRecorded(t *testing.T, connString string) bool {
+	t.Helper()
+	var recorded bool
+	query(t, connString, func(conn *pgx.Conn) error {
+		return conn.QueryRow(context.Background(), "SELECT EXISTS (SELECT 1 FROM corpus_load)").Scan(&recorded)
+	})
+	return recorded
 }
 
 func tableExists(t *testing.T, connString, table string) bool {
