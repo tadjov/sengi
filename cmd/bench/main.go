@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tadjov/tusker/internal/bench/judgment"
 	"github.com/tadjov/tusker/internal/bench/spec"
+	"github.com/tadjov/tusker/pkg/config/env"
 )
 
 func init() {
@@ -54,6 +56,10 @@ defaulting to the current directory.
 )
 
 func main() {
+	// Loaded before the flags are defined: --track-root defaults to BENCH_TRACK_ROOT.
+	if err := env.LoadDotEnv(os.Getenv("ENV"), "cmd/bench/.env"); err != nil {
+		slog.Info("Skipping .env environment variables", "error", err)
+	}
 	root := &cobra.Command{
 		Use:           cliName,
 		Short:         cliShort,
