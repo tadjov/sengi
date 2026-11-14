@@ -202,6 +202,49 @@ func TestJev_LeavesAQueryWithAnUnparsableBooleanUnjudged(t *testing.T) {
 	assert.Zero(t, fake.requests())
 }
 
+// The judge block names the pinned release, so a reply from any other model
+// leaves the doc unjudged instead of filing its grade under the wrong model.
+func TestJev_LeavesADocAnotherModelAnsweredUnjudged(t *testing.T) {
+	fake := newFakeJev(t, jevScoreReply("jev-1.15.0", `{"0":0.0,"1":0.0,"2":1.0,"3":0.0}`))
+
+	grade, err := newTestJev(t, fake.url).Grade(context.Background(), floodsQuery, floodsDoc())
+
+	require.Error(t, err)
+	assert.Equal(t, GradeUnjudged, grade)
+	assert.Contains(t, err.Error(), "jev-1.15.0")
+	assert.Contains(t, err.Error(), "jev-1.14.0")
+	assert.Contains(t, err.Error(), "req-200", "the request id traces the reply with TypeSafe")
+}
+
+// Only a probability for each of the levels 0 to 3, summing to 1 within 0.05,
+// is a grade; anything else leaves the doc unjudged.
+func TestJev_LeavesADocWithoutAUsableAnswerUnjudged(t *testing.T) {
+	traced := map[string]string{"x-typesafe-request-id": "req-200"}
+	tests := map[string]jevStubReply{
+		"a level missing":           jevScoreReply("jev-1.14.0", `{"0":0.2,"1":0.3,"2":0.5}`),
+		"an extra level":            jevScoreReply("jev-1.14.0", `{"0":0.2,"1":0.3,"2":0.5,"3":0.0,"4":0.0}`),
+		"a level named otherwise":   jevScoreReply("jev-1.14.0", `{"0":0.2,"1":0.3,"2":0.5,"03":0.0}`),
+		"a sum 0.1 short of 1":      jevScoreReply("jev-1.14.0", `{"0":0.2,"1":0.3,"2":0.4,"3":0.0}`),
+		"a sum 0.06 over 1":         jevScoreReply("jev-1.14.0", `{"0":0.0,"1":0.0,"2":0.53,"3":0.53}`),
+		"a probability outside 0-1": jevScoreReply("jev-1.14.0", `{"0":-0.5,"1":0.0,"2":0.0,"3":1.5}`),
+		"probabilities as words":    jevScoreReply("jev-1.14.0", `{"0":"low","1":"low","2":"high","3":"low"}`),
+		"no probabilities":          jevScoreReply("jev-1.14.0", `null`),
+		"no answer to the question": {status: http.StatusOK, header: traced, body: `{"model":"jev-1.14.0","answers":{},"usage":{"input_tokens":332,"output_tokens":0}}`},
+		"a body that is not JSON":   {status: http.StatusOK, header: traced, body: `<html>upstream reset</html>`},
+	}
+	for name, reply := range tests {
+		t.Run(name, func(t *testing.T) {
+			fake := newFakeJev(t, reply)
+
+			grade, err := newTestJev(t, fake.url).Grade(context.Background(), floodsQuery, floodsDoc())
+
+			require.Error(t, err)
+			assert.Equal(t, GradeUnjudged, grade)
+			assert.Contains(t, err.Error(), "req-200")
+		})
+	}
+}
+
 var floodsQuery = GradingQuery{ID: "q1", Text: "floods"}
 
 func floodsDoc() GradingDoc {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"regexp"
@@ -23,6 +24,10 @@ const (
 	jevAPIKeyEnv      = "TYPESAFE_API_KEY"
 	jevDefaultBaseURL = "https://api.typesafe.ai"
 	jevPath           = "/v1/systemone"
+	// jevRequestIDHeader traces a reply with TypeSafe.
+	jevRequestIDHeader = "x-typesafe-request-id"
+	// jevProbabilitySlack is how far from 1 the probabilities may sum.
+	jevProbabilitySlack = 0.05
 
 	jevGuidance = "Grade what the article is about, not whether the query words appear. " +
 		"A passing mention is the marginal level at most. When in doubt between two levels, pick the lower one."
@@ -87,27 +92,55 @@ func (s *JevStrategy) Grade(ctx context.Context, q GradingQuery, doc GradingDoc)
 	if err != nil {
 		return GradeUnjudged, fmt.Errorf("marshal jev request: %w", err)
 	}
-	body, err := s.send(ctx, payload)
+	reply, err := s.send(ctx, payload)
 	if err != nil {
 		return GradeUnjudged, err
 	}
+	grade, err := s.gradeOf(reply.body)
+	if err != nil {
+		return GradeUnjudged, fmt.Errorf("%w (request id %s)", err, reply.requestID)
+	}
+	return grade, nil
+}
+
+// gradeOf reads the grade from a 200 body. Describe names the pinned release,
+// so a reply from any other model is no grade.
+func (s *JevStrategy) gradeOf(body []byte) (int, error) {
 	var resp jevResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return GradeUnjudged, fmt.Errorf("parse jev response: %w", err)
+		return GradeUnjudged, fmt.Errorf("parse jev response: %w (body: %q)", err, body)
 	}
-	return mostProbableGrade(resp.Answers.Grade.Probabilities), nil
+	if resp.Model != s.model {
+		return GradeUnjudged, fmt.Errorf("jev answered with %q, not the pinned %s", resp.Model, s.model)
+	}
+	if resp.Answers.Grade == nil {
+		return GradeUnjudged, fmt.Errorf("jev's reply has no answer to the grade question (body: %q)", body)
+	}
+	return mostProbableGrade(resp.Answers.Grade.Probabilities)
 }
 
 // mostProbableGrade breaks a tie toward the lower grade, as the instructions
-// ask Jev to when in doubt between two levels.
-func mostProbableGrade(probabilities map[string]float64) int {
-	grade := GradeNotRelev
+// ask Jev to when in doubt between two levels. The API promises only that the
+// probabilities sum to about 1.
+func mostProbableGrade(probabilities map[string]float64) (int, error) {
+	if len(probabilities) != len(jevLevels) {
+		return GradeUnjudged, fmt.Errorf("jev's probabilities %v are not one per level 0 to 3", probabilities)
+	}
+	grade, sum := GradeNotRelev, 0.0
 	for level := range jevLevels {
-		if probabilities[strconv.Itoa(level)] > probabilities[strconv.Itoa(grade)] {
+		p, ok := probabilities[strconv.Itoa(level)]
+		if !ok || p < 0 || p > 1 {
+			return GradeUnjudged, fmt.Errorf("jev's probabilities %v are not one per level 0 to 3, each between 0 and 1", probabilities)
+		}
+		if p > probabilities[strconv.Itoa(grade)] {
 			grade = level
 		}
+		sum += p
 	}
-	return grade
+	if math.Abs(sum-1) > jevProbabilitySlack {
+		return GradeUnjudged, fmt.Errorf("jev's probabilities %v sum to %.3f, not 1", probabilities, sum)
+	}
+	return grade, nil
 }
 
 // request asks one Score question: the grades are ordered levels, and a Choice
@@ -128,23 +161,30 @@ func (s *JevStrategy) request(q GradingQuery, doc GradingDoc) jevRequest {
 	}
 }
 
-func (s *JevStrategy) send(ctx context.Context, payload []byte) ([]byte, error) {
+// jevReply is one HTTP exchange with the API, its body read and closed.
+type jevReply struct {
+	status    int
+	body      []byte
+	requestID string
+}
+
+func (s *JevStrategy) send(ctx context.Context, payload []byte) (jevReply, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.endpoint, bytes.NewReader(payload))
 	if err != nil {
-		return nil, fmt.Errorf("build jev request: %w", err)
+		return jevReply{}, fmt.Errorf("build jev request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("send jev request: %w", err)
+		return jevReply{}, fmt.Errorf("send jev request: %w", err)
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read jev response: %w", err)
+	reply := jevReply{status: resp.StatusCode, requestID: resp.Header.Get(jevRequestIDHeader)}
+	if reply.body, err = io.ReadAll(resp.Body); err != nil {
+		return jevReply{}, fmt.Errorf("read jev response (request id %s): %w", reply.requestID, err)
 	}
-	return body, nil
+	return reply, nil
 }
 
 type jevRequest struct {
@@ -160,7 +200,7 @@ type jevQuestions struct {
 type jevResponse struct {
 	Model   string `json:"model"`
 	Answers struct {
-		Grade struct {
+		Grade *struct {
 			Probabilities map[string]float64 `json:"probabilities"`
 		} `json:"grade"`
 	} `json:"answers"`
