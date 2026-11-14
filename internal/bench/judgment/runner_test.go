@@ -51,7 +51,6 @@ func (f *fakeStrategy) Grade(_ context.Context, _ GradingQuery, _ GradingDoc) (i
 // to drop docs (partial response) or fail outright.
 type fakeBatchStrategy struct {
 	name           string
-	batchSize      int
 	dropFirstN     int // number of docs in each batch to omit from the response
 	batchErr       error
 	perDocGrade    int
@@ -65,7 +64,7 @@ func (f *fakeBatchStrategy) Describe() meta.Judge {
 	return meta.Judge{Strategy: f.name}
 }
 
-func (f *fakeBatchStrategy) PreferredBatchSize() int { return f.batchSize }
+func (f *fakeBatchStrategy) BatchMaxOutputTokens() int { return 0 }
 func (f *fakeBatchStrategy) Grade(_ context.Context, _ GradingQuery, _ GradingDoc) (int, error) {
 	f.mu.Lock()
 	f.perDocCalls++
@@ -102,7 +101,7 @@ func (f *fakeBatchStrategy) GradeBatch(_ context.Context, _ GradingQuery, docs [
 func buildPool(t *testing.T, n int) (*pool.PoolFile, map[uuid.UUID]document.Article) {
 	t.Helper()
 	articles := make(map[uuid.UUID]document.Article, n)
-	pe := pool.PoolEntry{QueryID: "q1", QueryDesc: "test"}
+	pe := pool.PoolEntry{QueryID: "q1", QueryText: "test"}
 	for i := 0; i < n; i++ {
 		id := uuid.New()
 		articles[id] = document.Article{ID: id, Title: "title"}
@@ -113,11 +112,12 @@ func buildPool(t *testing.T, n int) (*pool.PoolFile, map[uuid.UUID]document.Arti
 
 func TestRunner_BatchedHappyPath(t *testing.T) {
 	pf, articles := buildPool(t, 25)
-	bs := &fakeBatchStrategy{name: "fake-batch", batchSize: 10}
+	bs := &fakeBatchStrategy{name: "fake-batch"}
 
 	r := NewRunner(RunnerConfig{
-		Strategy: bs,
-		Reader:   &stubStorageReader{articles: articles},
+		Strategy:  bs,
+		BatchSize: 10,
+		Reader:    &stubStorageReader{articles: articles},
 	})
 	jf, err := r.Run(context.Background(), pf)
 	require.NoError(t, err)
@@ -132,12 +132,13 @@ func TestRunner_BatchedPartialFallsBackPerDoc(t *testing.T) {
 	pf, articles := buildPool(t, 10)
 	// Drop the first 2 docs of each batch → 2 missing per call → 2 per-doc retries
 	bs := &fakeBatchStrategy{
-		name: "fake-batch", batchSize: 10, dropFirstN: 2, perDocGrade: 1,
+		name: "fake-batch", dropFirstN: 2, perDocGrade: 1,
 	}
 
 	r := NewRunner(RunnerConfig{
-		Strategy: bs,
-		Reader:   &stubStorageReader{articles: articles},
+		Strategy:  bs,
+		BatchSize: 10,
+		Reader:    &stubStorageReader{articles: articles},
 	})
 	jf, err := r.Run(context.Background(), pf)
 	require.NoError(t, err)
@@ -158,11 +159,10 @@ func TestRunner_BatchHardFailureFallsBackPerDoc(t *testing.T) {
 	pf, articles := buildPool(t, 5)
 	bs := &fakeBatchStrategy{
 		name:        "fake-batch",
-		batchSize:   10,
 		batchErr:    errors.New("kaboom"),
 		perDocGrade: 3,
 	}
-	r := NewRunner(RunnerConfig{Strategy: bs, Reader: &stubStorageReader{articles: articles}})
+	r := NewRunner(RunnerConfig{Strategy: bs, BatchSize: 10, Reader: &stubStorageReader{articles: articles}})
 	jf, err := r.Run(context.Background(), pf)
 	require.NoError(t, err)
 	assert.Equal(t, 5, bs.perDocCalls)
@@ -173,7 +173,7 @@ func TestRunner_BatchHardFailureFallsBackPerDoc(t *testing.T) {
 
 func TestRunner_ResumeSkipsAlreadyGraded(t *testing.T) {
 	pf, articles := buildPool(t, 5)
-	bs := &fakeBatchStrategy{name: "fake-batch", batchSize: 10}
+	bs := &fakeBatchStrategy{name: "fake-batch"}
 
 	// Pre-grade the first 3 docs
 	prior := &File{
@@ -191,9 +191,10 @@ func TestRunner_ResumeSkipsAlreadyGraded(t *testing.T) {
 	}
 
 	r := NewRunner(RunnerConfig{
-		Strategy: bs,
-		Reader:   &stubStorageReader{articles: articles},
-		Existing: prior,
+		Strategy:  bs,
+		BatchSize: 10,
+		Reader:    &stubStorageReader{articles: articles},
+		Existing:  prior,
 	})
 	jf, err := r.Run(context.Background(), pf)
 	require.NoError(t, err)
@@ -228,7 +229,7 @@ func TestRunner_MissingArticleStaysUnjudged(t *testing.T) {
 	delete(articles, missingID)
 
 	r := NewRunner(RunnerConfig{
-		Strategy: &fakeBatchStrategy{name: "fake-batch", batchSize: 10},
+		Strategy: &fakeBatchStrategy{name: "fake-batch"},
 		Reader:   &stubStorageReader{articles: articles},
 	})
 	jf, err := r.Run(context.Background(), pf)
@@ -243,7 +244,7 @@ func TestRunner_MissingArticleStaysUnjudged(t *testing.T) {
 
 func TestRunner_SinkCalledPerQuery(t *testing.T) {
 	pf, articles := buildPool(t, 2)
-	bs := &fakeBatchStrategy{name: "fake-batch", batchSize: 10}
+	bs := &fakeBatchStrategy{name: "fake-batch"}
 
 	calls := 0
 	r := NewRunner(RunnerConfig{
@@ -269,11 +270,11 @@ func TestRunner_NilStrategyErrors(t *testing.T) {
 // A query with no usable terms fails the run, but only after every other query
 // is graded, so the file still lands and names what is missing.
 func TestRunner_QueryWithoutTermsFailsTheRunAfterGradingTheRest(t *testing.T) {
-	for _, strategy := range []Strategy{NewLexicalStrategy(), NewBM25Strategy()} {
+	for _, strategy := range []Strategy{NewKeywordStrategy(), NewBM25Strategy()} {
 		t.Run(strategy.Name(), func(t *testing.T) {
 			pf, articles := buildPool(t, 3)
-			pf.Queries[0].QueryDesc = "the news"
-			usable := pool.PoolEntry{QueryID: "q2", QueryDesc: "title"}
+			pf.Queries[0].QueryText = "the of a"
+			usable := pool.PoolEntry{QueryID: "q2", QueryText: "title"}
 			for id := range articles {
 				usable.Docs = append(usable.Docs, pool.PooledDoc{DocID: id})
 			}
@@ -305,5 +306,55 @@ func TestRunner_QueryWithoutTermsFailsTheRunAfterGradingTheRest(t *testing.T) {
 			assert.Len(t, grades["q2"], 3)
 			assert.True(t, sunk["q1"] && sunk["q2"], "both queries reach the sink")
 		})
+	}
+}
+
+// Every judge bench judge runs through the runner grades the query's text, so
+// a pool entry without one fails the run before anything is graded.
+func TestRunner_PoolQueryWithoutTextFailsBeforeGrading(t *testing.T) {
+	pf, articles := buildPool(t, 3)
+	graded := pool.PoolEntry{QueryID: "q0", QueryText: "title", Docs: pf.Queries[0].Docs}
+	pf.Queries[0].QueryText = ""
+	pf.Queries[0].QueryDesc = "A query described but never written"
+	pf.Queries = append([]pool.PoolEntry{graded}, pf.Queries...)
+	sunk := false
+
+	_, err := NewRunner(RunnerConfig{
+		Strategy: &fakeBatchStrategy{name: "fake-batch"},
+		Reader:   &stubStorageReader{articles: articles},
+		Sink:     func(QueryProgress, Entry) error { sunk = true; return nil },
+	}).Run(context.Background(), pf)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `"q1"`)
+	assert.False(t, sunk, "no query may be graded once one has no text")
+}
+
+// A boolean text that does not parse is a property of its query, like one
+// without terms: that query stays unjudged and the others are graded.
+func TestRunner_UnparsableBooleanTextFailsTheRunAfterGradingTheRest(t *testing.T) {
+	pf, articles := buildPool(t, 3)
+	pf.Queries[0].QueryText = "title AND (unclosed"
+	pf.Queries[0].Category = "boolean"
+	usable := pool.PoolEntry{QueryID: "q2", QueryText: "title"}
+	for id := range articles {
+		usable.Docs = append(usable.Docs, pool.PooledDoc{DocID: id})
+	}
+	pf.Queries = append(pf.Queries, usable)
+
+	jf, err := NewRunner(RunnerConfig{Strategy: NewBM25Strategy(), Reader: &stubStorageReader{articles: articles}}).Run(context.Background(), pf)
+
+	var unparsed *BooleanTextError
+	require.ErrorAs(t, err, &unparsed)
+	assert.Equal(t, "q1", unparsed.QueryID)
+	require.NotNil(t, jf)
+	for _, qe := range jf.Queries {
+		for _, d := range qe.Docs {
+			if qe.QueryID == "q1" {
+				assert.Equal(t, GradeUnjudged, d.Grade)
+			} else {
+				assert.NotEqual(t, GradeUnjudged, d.Grade)
+			}
+		}
 	}
 }

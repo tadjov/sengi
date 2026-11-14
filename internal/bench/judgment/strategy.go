@@ -4,25 +4,33 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/tadjov/tusker/internal/bench/meta"
+	"github.com/tadjov/tusker/internal/bench/suite"
 	"github.com/tadjov/tusker/internal/storage"
 )
 
-// GradingQuery is the search intent the judge uses to grade.
+// GradingQuery is the query a judge grades against.
 type GradingQuery struct {
-	ID          string
+	ID string
+	// Text is the query as a user would type it. The deterministic judges grade
+	// it and look its vector up by it; Description only describes it.
+	Text        string
 	Description string
-	Category    string
+	Category    suite.Category
+	Filters     suite.Filters
 }
 
 // GradingDoc is a single article candidate to grade.
 type GradingDoc struct {
-	ID          uuid.UUID
-	Title       string
-	Description string
-	Content     string
+	ID              uuid.UUID
+	Title           string
+	Description     string
+	Content         string
+	PublishedAt     time.Time
+	PublisherDomain string
 }
 
 // Strategy names a grader. It grades through one of DocStrategy,
@@ -43,8 +51,8 @@ type DocStrategy interface {
 }
 
 // BatchStrategy is an optional capability: strategies that can grade N docs
-// in a single LLM call should implement it. The runner detects it via type
-// assertion and prefers GradeBatch over Grade when present.
+// in a single LLM call implement it. The runner calls GradeBatch only when
+// RunnerConfig.BatchSize asks for more than one doc per request.
 //
 // The pattern follows Anthropic's "LLM as judge — batched" cookbook:
 //   - one system prompt sets the rubric
@@ -56,7 +64,8 @@ type DocStrategy interface {
 // docs through Grade() as a fallback.
 type BatchStrategy interface {
 	DocStrategy
-	PreferredBatchSize() int
+	// BatchMaxOutputTokens is the output budget of one batch request.
+	BatchMaxOutputTokens() int
 	GradeBatch(ctx context.Context, q GradingQuery, docs []GradingDoc) ([]GradedDoc, error)
 }
 
@@ -75,8 +84,8 @@ type StrategyKind string
 // signals; LLM strategies call out to a model; manual is a placeholder for
 // human grading.
 const (
-	// StrategyLexical Heuristic.
-	StrategyLexical StrategyKind = "lexical" // token-overlap baseline
+	// StrategyKeyword Heuristic.
+	StrategyKeyword StrategyKind = "keyword" // token-overlap baseline
 	StrategyBM25    StrategyKind = "bm25"    // pool-local Okapi BM25
 	StrategyVector  StrategyKind = "vector"  // embedding cosine similarity
 	StrategyHybrid  StrategyKind = "hybrid"  // BM25 + vector fusion
@@ -95,10 +104,13 @@ type StrategyOptions struct {
 	// Provider selects the endpoint behind StrategyLLM. Empty means
 	// DefaultProvider.
 	Provider Provider
-	// Model is the judge model — a full id or a provider alias such as "haiku".
-	// Empty means the provider's default. The provider expands it, so the judge
-	// block always records a concrete id.
-	Model       string
+	// Model is the judge model — a full id or a provider alias such as "sonnet".
+	// An LLM judge needs one. The provider expands it, so the judge block always
+	// records a concrete id.
+	Model string
+	// Effort is the effort level an LLM judge's model grades at; an LLM judge
+	// needs one.
+	Effort      Effort
 	APIBaseURL  string
 	CLIBinary   string
 	Concurrency int
@@ -113,8 +125,8 @@ type StrategyOptions struct {
 
 func NewStrategy(kind StrategyKind, opts StrategyOptions) (Strategy, error) {
 	switch kind {
-	case StrategyLexical:
-		return NewLexicalStrategy(), nil
+	case StrategyKeyword:
+		return NewKeywordStrategy(), nil
 	case StrategyBM25:
 		return NewBM25Strategy(), nil
 	case StrategyVector:
@@ -130,7 +142,7 @@ func NewStrategy(kind StrategyKind, opts StrategyOptions) (Strategy, error) {
 	}
 }
 
-// NewStrategyFromSelector resolves a judgment-set name ("lexical",
+// NewStrategyFromSelector resolves a judgment-set name ("keyword",
 // "claude-cli", …) and constructs the strategy that produced it. Used on read
 // paths; bench judge builds strategies from explicit --strategy/--provider.
 func NewStrategyFromSelector(sel string, opts StrategyOptions) (Strategy, error) {
