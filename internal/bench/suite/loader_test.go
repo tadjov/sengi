@@ -325,7 +325,7 @@ func TestParse_RejectsAMisspeltFilter(t *testing.T) {
 }
 
 func TestParse_QueryCategory(t *testing.T) {
-	for _, category := range []string{"keyword", "phrase", "boolean", "multi-field", "single-field", "question", "descriptive"} {
+	for _, category := range []string{"keyword", "phrase", "boolean", "multi-field", "single-field", "question", "descriptive", "typo", "hard-typo"} {
 		t.Run(category, func(t *testing.T) {
 			loaded, err := Parse([]byte(validHeader + `queries:
   - id: q1

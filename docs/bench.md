@@ -39,9 +39,11 @@ for these kinds instead of stubbing a fake vector and reporting a misleading OK.
 ### Query categories
 
 A suite query may carry `category:`, one of `keyword`, `phrase`, `boolean`, `multi-field`,
-`single-field`, `question` or `descriptive`; any other value fails the suite load, naming the query.
-`question` is a query phrased as a question and `descriptive` one that describes its topic without
-the words articles about it usually use; the semantic and hybrid tracks use them. When a job's queries span more than one category, `bench run`
+`single-field`, `question`, `descriptive`, `typo` or `hard-typo`; any other value fails the suite
+load, naming the query. `question` is a query phrased as a question and `descriptive` one that
+describes its topic without the words articles about it usually use; the semantic and hybrid tracks
+use them. `typo` has one word misspelt by one insertion, deletion or substitution, and `hard-typo`
+two misspelt words, two swapped letters or two edits in one word; the fuzzy track uses them. When a job's queries span more than one category, `bench run`
 prints the aggregated table per category alongside the overall one.
 
 Result-list length is the reason. A strict phrase query legitimately matches two documents

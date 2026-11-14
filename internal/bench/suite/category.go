@@ -17,11 +17,13 @@ const (
 	CategorySingleField Category = "single-field"
 	CategoryQuestion    Category = "question"
 	CategoryDescriptive Category = "descriptive"
+	CategoryTypo        Category = "typo"
+	CategoryHardTypo    Category = "hard-typo"
 )
 
 var categories = []Category{
 	CategoryKeyword, CategoryPhrase, CategoryBoolean, CategoryMultiField, CategorySingleField,
-	CategoryQuestion, CategoryDescriptive,
+	CategoryQuestion, CategoryDescriptive, CategoryTypo, CategoryHardTypo,
 }
 
 func ParseCategory(s string) (Category, error) {
