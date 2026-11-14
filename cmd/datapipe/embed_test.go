@@ -10,10 +10,16 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/parquet-go/parquet-go"
+	"github.com/pgvector/pgvector-go"
+	pgxvec "github.com/pgvector/pgvector-go/pgx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/tusker/internal/datapackage"
+	"github.com/tadjov/tusker/internal/storage"
+	pkgtesting "github.com/tadjov/tusker/pkg/testing"
 )
 
 const (
@@ -345,5 +351,61 @@ func TestEmbed_RefusesBeforeAnyRequest(t *testing.T) {
 			assert.Empty(t, *calls)
 			assert.NoDirExists(t, filepath.Join(root, "datasets", "fixture", "embeddings"))
 		})
+	}
+}
+
+type storedEmbedding struct {
+	Model     string
+	Embedding []float32
+}
+
+func storedEmbeddings(t *testing.T, connString string) map[uuid.UUID]storedEmbedding {
+	t.Helper()
+	stored := map[uuid.UUID]storedEmbedding{}
+	withLoadConn(t, connString, func(conn *pgx.Conn) error {
+		if err := pgxvec.RegisterTypes(context.Background(), conn); err != nil {
+			return err
+		}
+		rows, err := conn.Query(context.Background(), "SELECT article_id, model_name, embedding FROM article_embeddings")
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var id uuid.UUID
+			var model string
+			var vector pgvector.Vector
+			if err := rows.Scan(&id, &model, &vector); err != nil {
+				return err
+			}
+			stored[id] = storedEmbedding{Model: model, Embedding: vector.Slice()}
+		}
+		return rows.Err()
+	})
+	return stored
+}
+
+func TestEmbed_LoadStoresTheVectorTheAPIReturnedForEachArticlesLead(t *testing.T) {
+	server := pkgtesting.NewPGContainerWithConfig(context.Background(), t, pkgtesting.PGConfig{
+		Engine:     storage.PostgresNative,
+		Unmigrated: true,
+	})
+	db := newLoadDatabase(t, server.ConnString)
+	root := t.TempDir()
+	articles := loadFixtureArticles(20)
+	canonical := writeCanonicalPackage(t, root, articles)
+	vectorOf := fixtureLeadVectors(len(articles), 0)
+	fakeEmbeddingAPI(t, vectorOf)
+	require.NoError(t, execDatapipe(t, "", "embed", "--canonical", canonical.location, "--version", "go-test", "--batch-size", "8"))
+
+	err := execDatapipe(t, db, "load", "--engine", string(storage.PostgresNative), "--canonical", canonical.location,
+		"--embeddings", filepath.Join(embeddingsVersionDir(root, "go-test"), datapackage.DescriptorName))
+	require.NoError(t, err)
+
+	stored := storedEmbeddings(t, db)
+	for i, article := range articles {
+		returned, ok := vectorOf(fmt.Sprintf("Storm number %d hits the coast Thousands without power", i))
+		require.True(t, ok)
+		assert.Equal(t, storedEmbedding{Model: "qwen3-embedding:0.6b@1024", Embedding: returned}, stored[article.ID], "article %d", i)
 	}
 }
