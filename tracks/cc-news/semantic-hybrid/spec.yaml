@@ -1,0 +1,150 @@
+schema_version: 1
+id: cc_news_semantic_hybrid
+kind: hybrid
+description: "Keyword, vector and hybrid search on cc-news across native Postgres, ParadeDB, pg_textsearch and Elasticsearch, judged on one pool"
+
+defaults:
+  pool_depth: 50
+  judgments: claude-cli
+
+# One policy on every engine: each leg returns its top 100, HNSW searches 200
+# candidates (hnsw.ef_search on Postgres, num_candidates on Elasticsearch), and
+# hybrid is Reciprocal Rank Fusion with k = 60 over the two legs' top 100.
+engines:
+  pg-gin:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54320/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+    params:
+      rank_norm: "0"
+  paradedb:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54321/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+  tiger:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54322/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+  elasticsearch:
+    type: elasticsearch
+    connection: "http://localhost:9200"
+    index: articles
+
+  pg-hnsw:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54320/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+      hnsw.ef_search: "200"
+    params:
+      embedding_model: "qwen3-embedding:0.6b@1024"
+  # Same query as pg-hnsw without the index: exact nearest neighbours, the
+  # reference for HNSW recall.
+  pg-exact:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54320/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+      enable_indexscan: "off"
+    queries_from: pg-hnsw
+    params:
+      embedding_model: "qwen3-embedding:0.6b@1024"
+  paradedb-hnsw:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54321/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+      hnsw.ef_search: "200"
+    params:
+      embedding_model: "qwen3-embedding:0.6b@1024"
+  tiger-hnsw:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54322/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+      hnsw.ef_search: "200"
+    params:
+      embedding_model: "qwen3-embedding:0.6b@1024"
+  es-knn:
+    type: elasticsearch
+    connection: "http://localhost:9200"
+    index: articles
+    params:
+      embedding_model: "qwen3-embedding:0.6b@1024"
+
+  pg-rrf:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54320/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+      hnsw.ef_search: "200"
+    params:
+      rank_norm: "0"
+      embedding_model: "qwen3-embedding:0.6b@1024"
+      window: "100"
+      rank_constant: "60"
+  paradedb-rrf:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54321/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+      hnsw.ef_search: "200"
+    params:
+      embedding_model: "qwen3-embedding:0.6b@1024"
+      window: "100"
+      rank_constant: "60"
+  tiger-rrf:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54322/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+      hnsw.ef_search: "200"
+    params:
+      embedding_model: "qwen3-embedding:0.6b@1024"
+      window: "100"
+      rank_constant: "60"
+  # Elasticsearch 8.12 refuses its own RRF on the basic licence, so the bench
+  # fuses its two legs with the same RRF.
+  es-rrf:
+    type: fusion
+    fusion: { method: rrf, rank_constant: 60, window: 100, legs: [elasticsearch, es-knn] }
+  es-linear:
+    type: elasticsearch
+    connection: "http://localhost:9200"
+    index: articles
+    params:
+      embedding_model: "qwen3-embedding:0.6b@1024"
+  # pg-rrf's fusion run on the client: same ranking as pg-rrf, so only the
+  # latency shows what fusing outside the engine costs.
+  pg-rrf-client:
+    type: fusion
+    fusion: { method: rrf, rank_constant: 60, window: 100, legs: [pg-gin, pg-hnsw] }
+
+metrics:
+  k_values: [3, 5, 10]
+  relevance_threshold: 2
+
+runs:
+  warmup: 1
+  iterations: 3
+  query_timeout: 30s
+
+jobs:
+  - name: "keyword-engines"
+    suite: suite.yaml
+    engines: [pg-gin, paradedb, tiger, elasticsearch]
+
+  - name: "vector-engines"
+    suite: suite.yaml
+    engines: [pg-hnsw, pg-exact, paradedb-hnsw, tiger-hnsw, es-knn]
+
+  - name: "hybrid-engines"
+    suite: suite.yaml
+    engines: [pg-rrf, paradedb-rrf, tiger-rrf, es-rrf, es-linear]
+
+  - name: "rrf-sql-vs-client"
+    suite: suite.yaml
+    engines: [pg-rrf, pg-rrf-client]

@@ -1,0 +1,1397 @@
+schema_version: 1
+id: cc_news_semantic_hybrid_v1
+name: "cc-news semantic and hybrid v1"
+description: "Keyword, vector and hybrid search over cc-news: 30 natural-language queries, 10 keyword, 10 question, 10 descriptive"
+version: "1.0.0"
+
+corpus:
+  name: cc-news-canonical@v1
+  source: "sha256:7cdf4c719dc70cd013a1eb76fa33688564dc99af03ddf8cc57d20952cd4c89a3 (datasets/cc-news/canonical/v1/datapackage.json)"
+
+templates:
+  - id: pg_multi_field
+    args: [terms, rank_norm, limit]
+    query: |
+      SELECT id FROM articles
+      WHERE search_vector @@ plainto_tsquery('english', $1)
+      ORDER BY ts_rank(search_vector, plainto_tsquery('english', $1), $2::int) DESC, id
+      LIMIT $3::int
+
+  - id: pdb_multi_field_boosted
+    args: [terms, limit]
+    query: |
+      SELECT id FROM articles
+      WHERE id @@@ paradedb.boolean(
+        should => ARRAY[
+          paradedb.boost(3.0, paradedb.match('title', $1)),
+          paradedb.boost(2.0, paradedb.match('description', $1)),
+          paradedb.match('content', $1)
+        ]
+      )
+      ORDER BY pdb.score(id) DESC
+      LIMIT $2::int
+
+  - id: tiger_multi_field
+    args: [terms, limit]
+    query: |
+      WITH matched AS MATERIALIZED (
+        SELECT id, search_text FROM articles WHERE search_text @@ plainto_tsquery('english', $1)
+      )
+      SELECT id FROM matched
+      ORDER BY search_text <@> to_bm25query($1, 'idx_articles_bm25'), id
+      LIMIT $2::int
+
+  - id: es_multi_match_boosted
+    args: [terms]
+    query: |
+      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "_source": false, "track_total_hits": false}
+
+  - id: pg_nearest
+    args: [embedding_model, query_vector, limit]
+    query: |
+      SELECT id FROM (
+        SELECT article_id AS id, embedding <=> $2::vector AS distance
+        FROM article_embeddings
+        WHERE model_name = $1
+        ORDER BY embedding <=> $2::vector
+        LIMIT $3::int
+      ) nearest
+      ORDER BY distance, id
+
+  - id: es_knn
+    args: [query_vector]
+    query: |
+      {"knn": {"field": "embedding", "query_vector": {{#toJson}}query_vector{{/toJson}}, "k": 100, "num_candidates": 200}, "size": 100, "_source": false, "track_total_hits": false}
+
+  # Elasticsearch's own one-request hybrid on the basic licence: the BM25 and kNN
+  # scores are summed with the default boosts.
+  - id: es_linear
+    args: [terms, query_vector]
+    query: |
+      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "knn": {"field": "embedding", "query_vector": {{#toJson}}query_vector{{/toJson}}, "k": 100, "num_candidates": 200}, "size": 100, "_source": false, "track_total_hits": false}
+
+  - id: pg_rrf
+    args: [terms, rank_norm, embedding_model, query_vector, window, rank_constant]
+    query: |
+      WITH lexical AS (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY score DESC, id) AS rank FROM (
+          SELECT id, ts_rank(search_vector, plainto_tsquery('english', $1), $2::int) AS score
+          FROM articles
+          WHERE search_vector @@ plainto_tsquery('english', $1)
+          ORDER BY score DESC, id
+          LIMIT $5::int
+        ) top
+      ),
+      vector AS (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY distance, id) AS rank FROM (
+          SELECT article_id AS id, embedding <=> $4::vector AS distance
+          FROM article_embeddings
+          WHERE model_name = $3
+          ORDER BY embedding <=> $4::vector
+          LIMIT $5::int
+        ) nearest
+      )
+      SELECT id FROM (
+        SELECT COALESCE(l.id, v.id) AS id,
+               COALESCE(1.0::float8 / ($6::int + l.rank), 0) + COALESCE(1.0::float8 / ($6::int + v.rank), 0) AS score
+        FROM lexical l FULL OUTER JOIN vector v ON l.id = v.id
+      ) fused
+      ORDER BY score DESC, id
+      LIMIT $5::int
+
+  - id: pdb_rrf
+    args: [terms, embedding_model, query_vector, window, rank_constant]
+    query: |
+      WITH lexical AS (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY score DESC, id) AS rank FROM (
+          SELECT id, pdb.score(id) AS score
+          FROM articles
+          WHERE id @@@ paradedb.boolean(
+            should => ARRAY[
+              paradedb.boost(3.0, paradedb.match('title', $1)),
+              paradedb.boost(2.0, paradedb.match('description', $1)),
+              paradedb.match('content', $1)
+            ]
+          )
+          ORDER BY pdb.score(id) DESC
+          LIMIT $4::int
+        ) top
+      ),
+      vector AS (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY distance, id) AS rank FROM (
+          SELECT article_id AS id, embedding <=> $3::vector AS distance
+          FROM article_embeddings
+          WHERE model_name = $2
+          ORDER BY embedding <=> $3::vector
+          LIMIT $4::int
+        ) nearest
+      )
+      SELECT id FROM (
+        SELECT COALESCE(l.id, v.id) AS id,
+               COALESCE(1.0::float8 / ($5::int + l.rank), 0) + COALESCE(1.0::float8 / ($5::int + v.rank), 0) AS score
+        FROM lexical l FULL OUTER JOIN vector v ON l.id = v.id
+      ) fused
+      ORDER BY score DESC, id
+      LIMIT $4::int
+
+  - id: tiger_rrf
+    args: [terms, embedding_model, query_vector, window, rank_constant]
+    query: |
+      WITH matched AS MATERIALIZED (
+        SELECT id, search_text FROM articles WHERE search_text @@ plainto_tsquery('english', $1)
+      ),
+      lexical AS (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY score, id) AS rank FROM (
+          SELECT id, search_text <@> to_bm25query($1, 'idx_articles_bm25') AS score
+          FROM matched
+          ORDER BY score, id
+          LIMIT $4::int
+        ) top
+      ),
+      vector AS (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY distance, id) AS rank FROM (
+          SELECT article_id AS id, embedding <=> $3::vector AS distance
+          FROM article_embeddings
+          WHERE model_name = $2
+          ORDER BY embedding <=> $3::vector
+          LIMIT $4::int
+        ) nearest
+      )
+      SELECT id FROM (
+        SELECT COALESCE(l.id, v.id) AS id,
+               COALESCE(1.0::float8 / ($5::int + l.rank), 0) + COALESCE(1.0::float8 / ($5::int + v.rank), 0) AS score
+        FROM lexical l FULL OUTER JOIN vector v ON l.id = v.id
+      ) fused
+      ORDER BY score DESC, id
+      LIMIT $4::int
+
+queries:
+  - id: kw-catalonia-referendum
+    text: "catalonia independence referendum"
+    description: "Articles about the Catalan independence referendum"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "catalonia independence referendum", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "catalonia independence referendum", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "catalonia independence referendum", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "catalonia independence referendum" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "catalonia independence referendum" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "catalonia independence referendum" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "catalonia independence referendum" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "catalonia independence referendum" }
+
+  - id: kw-rohingya-refugees
+    text: "rohingya refugees"
+    description: "Articles about Rohingya refugees"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "rohingya refugees", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "rohingya refugees", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "rohingya refugees", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "rohingya refugees" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "rohingya refugees" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "rohingya refugees" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "rohingya refugees" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "rohingya refugees" }
+
+  - id: kw-tax-reform-bill
+    text: "republican tax bill"
+    description: "Articles about the Republican tax bill"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "republican tax bill", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "republican tax bill", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "republican tax bill", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "republican tax bill" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "republican tax bill" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "republican tax bill" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "republican tax bill" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "republican tax bill" }
+
+  - id: kw-parkland-shooting
+    text: "parkland school shooting"
+    description: "Articles about the Parkland school shooting"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "parkland school shooting", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "parkland school shooting", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "parkland school shooting", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "parkland school shooting" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "parkland school shooting" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "parkland school shooting" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "parkland school shooting" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "parkland school shooting" }
+
+  - id: kw-royal-wedding
+    text: "royal wedding"
+    description: "Articles about the royal wedding of Prince Harry and Meghan Markle"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "royal wedding", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "royal wedding", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "royal wedding", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "royal wedding" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "royal wedding" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "royal wedding" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "royal wedding" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "royal wedding" }
+
+  - id: kw-world-cup-russia
+    text: "world cup russia"
+    description: "Articles about the 2018 World Cup in Russia"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "world cup russia", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "world cup russia", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "world cup russia", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "world cup russia" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "world cup russia" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "world cup russia" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "world cup russia" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "world cup russia" }
+
+  - id: kw-trump-kim-summit
+    text: "trump kim summit"
+    description: "Articles about the summit between Donald Trump and Kim Jong Un"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "trump kim summit", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "trump kim summit", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "trump kim summit", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "trump kim summit" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "trump kim summit" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "trump kim summit" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "trump kim summit" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "trump kim summit" }
+
+  - id: kw-amazon-hq2
+    text: "amazon second headquarters"
+    description: "Articles about Amazon's search for a second headquarters"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "amazon second headquarters", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "amazon second headquarters", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "amazon second headquarters", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "amazon second headquarters" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "amazon second headquarters" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "amazon second headquarters" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "amazon second headquarters" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "amazon second headquarters" }
+
+  - id: kw-hawaii-missile-alert
+    text: "hawaii missile alert"
+    description: "Articles about the false missile alert in Hawaii"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "hawaii missile alert", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "hawaii missile alert", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "hawaii missile alert", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "hawaii missile alert" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "hawaii missile alert" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "hawaii missile alert" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "hawaii missile alert" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "hawaii missile alert" }
+
+  - id: kw-weinstein-allegations
+    text: "harvey weinstein allegations"
+    description: "Articles about the allegations against Harvey Weinstein"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "harvey weinstein allegations", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "harvey weinstein allegations", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "harvey weinstein allegations", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "harvey weinstein allegations" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "harvey weinstein allegations" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "harvey weinstein allegations" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "harvey weinstein allegations" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "harvey weinstein allegations" }
+
+  - id: q-thai-cave-boys
+    text: "how were the boys trapped in the thai cave rescued"
+    description: "Articles about the rescue of the boys trapped in a Thai cave"
+    category: question
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "how were the boys trapped in the thai cave rescued", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "how were the boys trapped in the thai cave rescued", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "how were the boys trapped in the thai cave rescued", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "how were the boys trapped in the thai cave rescued" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "how were the boys trapped in the thai cave rescued" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "how were the boys trapped in the thai cave rescued" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "how were the boys trapped in the thai cave rescued" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "how were the boys trapped in the thai cave rescued" }
+
+  - id: q-bees-dying
+    text: "why are honeybees dying"
+    description: "Articles about why honeybees are dying"
+    category: question
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "why are honeybees dying", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "why are honeybees dying", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "why are honeybees dying", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "why are honeybees dying" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "why are honeybees dying" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "why are honeybees dying" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "why are honeybees dying" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "why are honeybees dying" }
+
+  - id: q-tariffs-farmers
+    text: "how do tariffs hurt american farmers"
+    description: "Articles about how tariffs hurt American farmers"
+    category: question
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "how do tariffs hurt american farmers", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "how do tariffs hurt american farmers", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "how do tariffs hurt american farmers", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "how do tariffs hurt american farmers" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "how do tariffs hurt american farmers" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "how do tariffs hurt american farmers" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "how do tariffs hurt american farmers" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "how do tariffs hurt american farmers" }
+
+  - id: q-government-shutdown
+    text: "why did the us government shut down"
+    description: "Articles about why the US government shut down"
+    category: question
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "why did the us government shut down", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "why did the us government shut down", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "why did the us government shut down", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "why did the us government shut down" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "why did the us government shut down" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "why did the us government shut down" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "why did the us government shut down" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "why did the us government shut down" }
+
+  - id: q-vaping-teens
+    text: "is vaping dangerous for teenagers"
+    description: "Articles about the dangers of vaping for teenagers"
+    category: question
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "is vaping dangerous for teenagers", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "is vaping dangerous for teenagers", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "is vaping dangerous for teenagers", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "is vaping dangerous for teenagers" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "is vaping dangerous for teenagers" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "is vaping dangerous for teenagers" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "is vaping dangerous for teenagers" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "is vaping dangerous for teenagers" }
+
+  - id: q-venezuela-economy
+    text: "why is venezuela's economy collapsing"
+    description: "Articles about the collapse of Venezuela's economy"
+    category: question
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "why is venezuela's economy collapsing", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "why is venezuela's economy collapsing", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "why is venezuela's economy collapsing", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "why is venezuela's economy collapsing" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "why is venezuela's economy collapsing" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "why is venezuela's economy collapsing" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "why is venezuela's economy collapsing" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "why is venezuela's economy collapsing" }
+
+  - id: q-electric-cars
+    text: "can electric cars replace petrol cars"
+    description: "Articles about whether electric cars can replace petrol cars"
+    category: question
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "can electric cars replace petrol cars", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "can electric cars replace petrol cars", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "can electric cars replace petrol cars", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "can electric cars replace petrol cars" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "can electric cars replace petrol cars" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "can electric cars replace petrol cars" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "can electric cars replace petrol cars" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "can electric cars replace petrol cars" }
+
+  - id: q-toys-r-us
+    text: "why did toys r us go out of business"
+    description: "Articles about why Toys R Us went out of business"
+    category: question
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "why did toys r us go out of business", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "why did toys r us go out of business", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "why did toys r us go out of business", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "why did toys r us go out of business" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "why did toys r us go out of business" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "why did toys r us go out of business" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "why did toys r us go out of business" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "why did toys r us go out of business" }
+
+  - id: q-irish-border
+    text: "how will brexit affect the irish border"
+    description: "Articles about how Brexit affects the Irish border"
+    category: question
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "how will brexit affect the irish border", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "how will brexit affect the irish border", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "how will brexit affect the irish border", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "how will brexit affect the irish border" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "how will brexit affect the irish border" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "how will brexit affect the irish border" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "how will brexit affect the irish border" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "how will brexit affect the irish border" }
+
+  - id: q-crispr-embryos
+    text: "is gene editing of human embryos safe"
+    description: "Articles about the safety of gene editing human embryos"
+    category: question
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "is gene editing of human embryos safe", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "is gene editing of human embryos safe", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "is gene editing of human embryos safe", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "is gene editing of human embryos safe" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "is gene editing of human embryos safe" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "is gene editing of human embryos safe" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "is gene editing of human embryos safe" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "is gene editing of human embryos safe" }
+
+  - id: desc-automation
+    text: "machines taking over work that people used to do"
+    description: "Articles about automation replacing human jobs"
+    category: descriptive
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "machines taking over work that people used to do", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "machines taking over work that people used to do", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "machines taking over work that people used to do", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "machines taking over work that people used to do" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "machines taking over work that people used to do" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "machines taking over work that people used to do" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "machines taking over work that people used to do" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "machines taking over work that people used to do" }
+
+  - id: desc-cord-cutting
+    text: "people cancelling their cable subscriptions for online streaming"
+    description: "Articles about cord-cutting: viewers leaving cable for streaming"
+    category: descriptive
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "people cancelling their cable subscriptions for online streaming", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "people cancelling their cable subscriptions for online streaming", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "people cancelling their cable subscriptions for online streaming", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "people cancelling their cable subscriptions for online streaming" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "people cancelling their cable subscriptions for online streaming" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "people cancelling their cable subscriptions for online streaming" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "people cancelling their cable subscriptions for online streaming" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "people cancelling their cable subscriptions for online streaming" }
+
+  - id: desc-flint-water
+    text: "a city whose drinking water was contaminated with lead from old pipes"
+    description: "Articles about the Flint water crisis"
+    category: descriptive
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "a city whose drinking water was contaminated with lead from old pipes", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "a city whose drinking water was contaminated with lead from old pipes", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "a city whose drinking water was contaminated with lead from old pipes", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "a city whose drinking water was contaminated with lead from old pipes" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "a city whose drinking water was contaminated with lead from old pipes" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "a city whose drinking water was contaminated with lead from old pipes" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "a city whose drinking water was contaminated with lead from old pipes" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "a city whose drinking water was contaminated with lead from old pipes" }
+
+  - id: desc-tech-taxes-europe
+    text: "big american technology companies paying too little tax in europe"
+    description: "Articles about US tech companies' taxes in Europe"
+    category: descriptive
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "big american technology companies paying too little tax in europe", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "big american technology companies paying too little tax in europe", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "big american technology companies paying too little tax in europe", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "big american technology companies paying too little tax in europe" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "big american technology companies paying too little tax in europe" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "big american technology companies paying too little tax in europe" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "big american technology companies paying too little tax in europe" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "big american technology companies paying too little tax in europe" }
+
+  - id: desc-plastic-oceans
+    text: "plastic waste ending up in the sea and harming marine life"
+    description: "Articles about plastic pollution in the oceans"
+    category: descriptive
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "plastic waste ending up in the sea and harming marine life", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "plastic waste ending up in the sea and harming marine life", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "plastic waste ending up in the sea and harming marine life", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "plastic waste ending up in the sea and harming marine life" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "plastic waste ending up in the sea and harming marine life" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "plastic waste ending up in the sea and harming marine life" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "plastic waste ending up in the sea and harming marine life" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "plastic waste ending up in the sea and harming marine life" }
+
+  - id: desc-arctic-ice
+    text: "ice melting at the north pole"
+    description: "Articles about the melting of Arctic sea ice"
+    category: descriptive
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "ice melting at the north pole", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "ice melting at the north pole", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "ice melting at the north pole", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "ice melting at the north pole" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "ice melting at the north pole" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "ice melting at the north pole" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "ice melting at the north pole" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "ice melting at the north pole" }
+
+  - id: desc-fake-news
+    text: "false stories spread online to influence voters"
+    description: "Articles about fake news and disinformation aimed at voters"
+    category: descriptive
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "false stories spread online to influence voters", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "false stories spread online to influence voters", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "false stories spread online to influence voters", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "false stories spread online to influence voters" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "false stories spread online to influence voters" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "false stories spread online to influence voters" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "false stories spread online to influence voters" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "false stories spread online to influence voters" }
+
+  - id: desc-gig-economy
+    text: "workers paid per task through apps without employee benefits"
+    description: "Articles about the gig economy"
+    category: descriptive
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "workers paid per task through apps without employee benefits", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "workers paid per task through apps without employee benefits", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "workers paid per task through apps without employee benefits", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "workers paid per task through apps without employee benefits" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "workers paid per task through apps without employee benefits" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "workers paid per task through apps without employee benefits" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "workers paid per task through apps without employee benefits" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "workers paid per task through apps without employee benefits" }
+
+  - id: desc-superbugs
+    text: "bacteria that medicines no longer kill"
+    description: "Articles about antibiotic resistance"
+    category: descriptive
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "bacteria that medicines no longer kill", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "bacteria that medicines no longer kill", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "bacteria that medicines no longer kill", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "bacteria that medicines no longer kill" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "bacteria that medicines no longer kill" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "bacteria that medicines no longer kill" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "bacteria that medicines no longer kill" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "bacteria that medicines no longer kill" }
+
+  - id: desc-wildfire-evacuations
+    text: "forest fires forcing thousands to flee their homes"
+    description: "Articles about wildfire evacuations"
+    category: descriptive
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "forest fires forcing thousands to flee their homes", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "forest fires forcing thousands to flee their homes", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "forest fires forcing thousands to flee their homes", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "forest fires forcing thousands to flee their homes" }
+      pg-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      paradedb-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      tiger-hnsw:
+        template: pg_nearest
+        params: { limit: 100 }
+      es-knn:
+        template: es_knn
+      es-linear:
+        template: es_linear
+        params: { terms: "forest fires forcing thousands to flee their homes" }
+      pg-rrf:
+        template: pg_rrf
+        params: { terms: "forest fires forcing thousands to flee their homes" }
+      paradedb-rrf:
+        template: pdb_rrf
+        params: { terms: "forest fires forcing thousands to flee their homes" }
+      tiger-rrf:
+        template: tiger_rrf
+        params: { terms: "forest fires forcing thousands to flee their homes" }
