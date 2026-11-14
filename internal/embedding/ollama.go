@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/tadjov/tusker/internal/apperr"
@@ -116,19 +117,26 @@ type OllamaBatchRequest struct {
 	Options map[string]any `json:"options,omitempty"`
 }
 
+// do sends no body when reqData is nil.
 func (oc *OllamaClient) do(ctx context.Context, method, path string, reqData, respData any) error {
-	reqDataBytes, err := json.Marshal(reqData)
-	if err != nil {
-		return err
+	var body io.Reader
+	if reqData != nil {
+		reqDataBytes, err := json.Marshal(reqData)
+		if err != nil {
+			return err
+		}
+		body = bytes.NewReader(reqDataBytes)
 	}
 
 	reqURL := oc.base.JoinPath(path)
-	request, err := http.NewRequestWithContext(ctx, method, reqURL.String(), bytes.NewReader(reqDataBytes))
+	request, err := http.NewRequestWithContext(ctx, method, reqURL.String(), body)
 	if err != nil {
 		return err
 	}
 
-	request.Header.Set("Content-Type", "application/json")
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.Header.Set("Accept", "application/json")
 
 	resp, err := oc.http.Do(request)
@@ -151,4 +159,44 @@ func (oc *OllamaClient) do(ctx context.Context, method, path string, reqData, re
 	}
 
 	return nil
+}
+
+type ollamaTagsResponse struct {
+	Models []ollamaListedModel `json:"models"`
+}
+
+type ollamaListedModel struct {
+	Name   string `json:"name"`
+	Model  string `json:"model"`
+	Digest string `json:"digest"`
+}
+
+type ollamaShowRequest struct {
+	Model string `json:"model"`
+}
+
+type ollamaShowResponse struct {
+	Details struct {
+		QuantizationLevel string `json:"quantization_level"`
+	} `json:"details"`
+}
+
+// DescribeModel reports the model's manifest digest from /api/tags and its quantization
+// level from /api/show. A model /api/tags doesn't list is an error.
+func (oc *OllamaClient) DescribeModel(ctx context.Context, model string) (ModelDescription, error) {
+	var tags ollamaTagsResponse
+	if err := oc.do(ctx, http.MethodGet, "/api/tags", nil, &tags); err != nil {
+		return ModelDescription{}, fmt.Errorf("list Ollama models: %w", err)
+	}
+	listed := slices.IndexFunc(tags.Models, func(m ollamaListedModel) bool {
+		return m.Name == model || m.Model == model
+	})
+	if listed < 0 {
+		return ModelDescription{}, fmt.Errorf("model %s is not in Ollama's /api/tags; pull it or name it as /api/tags does", model)
+	}
+	var show ollamaShowResponse
+	if err := oc.do(ctx, http.MethodPost, "/api/show", ollamaShowRequest{Model: model}, &show); err != nil {
+		return ModelDescription{}, fmt.Errorf("show Ollama model %s: %w", model, err)
+	}
+	return ModelDescription{Digest: tags.Models[listed].Digest, QuantizationLevel: show.Details.QuantizationLevel}, nil
 }
