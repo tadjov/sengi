@@ -67,14 +67,8 @@ jobs:
 
   - name: "all-engines"
     suite: suite.yaml
-    engines: [pg-gin, pg-gin-norm, paradedb, elasticsearch]
+    engines: [pg-gin, pg-gin-norm, paradedb, tiger, elasticsearch]
 
   - name: "bm25-engines"
     suite: suite.yaml
-    engines: [paradedb, elasticsearch]
-
-  # tiger cannot filter, so it always fills the LIMIT and its AP would compare
-  # list lengths against the filtering engines. NDCG@10 stays comparable.
-  - name: "tiger-rank-everything"
-    suite: suite.yaml
-    engines: [tiger]
+    engines: [paradedb, tiger, elasticsearch]

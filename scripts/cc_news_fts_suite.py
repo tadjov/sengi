@@ -125,14 +125,49 @@ TEMPLATES = """templates:
       ORDER BY pdb.score(id) DESC
       LIMIT $2::int
 
-  # pg_textsearch 1.1.0 has no match predicate, phrase, boolean or field operator: every
-  # query is one OR ranking over search_text (title, description and content), and it
-  # always fills the LIMIT. A bound parameter needs the index named explicitly.
-  - id: tiger_bm25
+  # pg_textsearch serves @@ from its bm25 index only when nothing orders by <@> in the
+  # same scan, so the CTE filters through the index and BM25 then ranks the matches.
+  # Tiger filters with the same tsquery as pg-gin, so the two differ only in the ranker.
+  # A bound parameter needs the index named explicitly.
+  - id: tiger_multi_field
     args: [terms, limit]
     query: |
-      SELECT id FROM articles
-      ORDER BY search_text <@> to_bm25query($1, 'idx_articles_bm25')
+      WITH matched AS MATERIALIZED (
+        SELECT id, search_text FROM articles WHERE search_text @@ plainto_tsquery('english', $1)
+      )
+      SELECT id FROM matched
+      ORDER BY search_text <@> to_bm25query($1, 'idx_articles_bm25'), id
+      LIMIT $2::int
+
+  - id: tiger_phrase
+    args: [terms, limit]
+    query: |
+      WITH matched AS MATERIALIZED (
+        SELECT id, search_text FROM articles WHERE search_text @@ phraseto_tsquery('english', $1)
+      )
+      SELECT id FROM matched
+      ORDER BY search_text <@> to_bm25query($1, 'idx_articles_bm25'), id
+      LIMIT $2::int
+
+  # The BM25 query takes plain words, so it ranks by the expression's positive terms.
+  - id: tiger_boolean
+    args: [tsquery_expr, terms, limit]
+    query: |
+      WITH matched AS MATERIALIZED (
+        SELECT id, search_text FROM articles WHERE search_text @@ to_tsquery('english', $1)
+      )
+      SELECT id FROM matched
+      ORDER BY search_text <@> to_bm25query($2, 'idx_articles_bm25'), id
+      LIMIT $3::int
+
+  - id: tiger_title
+    args: [terms, limit]
+    query: |
+      WITH matched AS MATERIALIZED (
+        SELECT id, title FROM articles WHERE title @@ plainto_tsquery('english', $1)
+      )
+      SELECT id FROM matched
+      ORDER BY title <@> to_bm25query($1, 'idx_articles_title_bm25'), id
       LIMIT $2::int
 
   - id: es_multi_match_boosted
@@ -155,7 +190,7 @@ HEADER = """schema_version: 1
 id: cc_news_fts_v1
 name: "cc-news FTS v1"
 description: "Full-text search over cc-news: 30 queries across keyword, phrase, boolean, multi-field and single-field search"
-version: "1.0.0"
+version: "1.1.0"
 
 corpus:
   name: cc-news-canonical@v1
@@ -178,11 +213,11 @@ def block(qid, category, text, description, engines):
     return "\n".join(lines)
 
 
-def standard(qid, category, description, terms, pg, pdb, es):
+def standard(qid, category, description, terms, pg, pdb, tiger, es):
     return block(qid, category, terms, description, [
         ("pg-gin", (pg, {"terms": terms, "limit": 100})),
         ("paradedb", (pdb, {"terms": terms, "limit": 100})),
-        ("tiger", ("tiger_bm25", {"terms": terms, "limit": 100})),
+        ("tiger", (tiger, {"terms": terms, "limit": 100})),
         ("elasticsearch", (es, {"terms": terms})),
     ])
 
@@ -230,17 +265,17 @@ def boolean(qid, description, spec):
     return block(qid, "boolean", boolean_text(spec), description, [
         ("pg-gin", ("pg_boolean", {"tsquery_expr": tsquery(spec), "limit": 100})),
         ("paradedb", pdb_boolean(spec)),
-        ("tiger", ("tiger_bm25", {"terms": positive, "limit": 100})),
+        ("tiger", ("tiger_boolean", {"tsquery_expr": tsquery(spec), "terms": positive, "limit": 100})),
         ("elasticsearch", es_boolean(spec)),
     ])
 
 
 blocks = []
-blocks += [standard(q, "keyword", d, t, "pg_multi_field", "pdb_multi_field_boosted", "es_multi_match_boosted") for q, d, t in KEYWORD]
-blocks += [standard(q, "phrase", d, t, "pg_phrase", "pdb_phrase_boosted", "es_phrase_boosted") for q, d, t in PHRASE]
+blocks += [standard(q, "keyword", d, t, "pg_multi_field", "pdb_multi_field_boosted", "tiger_multi_field", "es_multi_match_boosted") for q, d, t in KEYWORD]
+blocks += [standard(q, "phrase", d, t, "pg_phrase", "pdb_phrase_boosted", "tiger_phrase", "es_phrase_boosted") for q, d, t in PHRASE]
 blocks += [boolean(q, d, s) for q, d, s in BOOLEAN]
-blocks += [standard(q, "multi-field", d, t, "pg_multi_field", "pdb_multi_field_boosted", "es_multi_match_boosted") for q, d, t in MULTI_FIELD]
-blocks += [standard(q, "single-field", d, t, "pg_title", "pdb_title", "es_title") for q, d, t in TITLE]
+blocks += [standard(q, "multi-field", d, t, "pg_multi_field", "pdb_multi_field_boosted", "tiger_multi_field", "es_multi_match_boosted") for q, d, t in MULTI_FIELD]
+blocks += [standard(q, "single-field", d, t, "pg_title", "pdb_title", "tiger_title", "es_title") for q, d, t in TITLE]
 
 with open(OUT, "w") as out:
     out.write(HEADER + TEMPLATES + "\nqueries:\n" + "\n\n".join(blocks) + "\n")
