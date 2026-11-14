@@ -1,6 +1,7 @@
 package document
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,6 +19,17 @@ type Article struct {
 	Language        language.Code `json:"language"`
 	PublisherDomain string        `json:"publisherDomain,omitempty"`
 	Metadata        Metadata      `json:"metadata,omitzero"`
+}
+
+// Lead is the lead-v1 embedding text: the trimmed, non-empty title and description joined by one space.
+func (a Article) Lead() string {
+	parts := make([]string, 0, 2)
+	for _, part := range []string{a.Title, a.Description} {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			parts = append(parts, trimmed)
+		}
+	}
+	return strings.Join(parts, " ")
 }
 
 // Metadata is stored and returned, never searched.

@@ -81,3 +81,25 @@ func TestArticle_JSONOmitsUnsetOptionalFields(t *testing.T) {
 		"language": "eng"
 	}`, string(encoded))
 }
+
+func TestArticle_LeadIsTheTrimmedTitleAndDescriptionWithoutTheBody(t *testing.T) {
+	tests := []struct {
+		name        string
+		title       string
+		description string
+		want        string
+	}{
+		{name: "padded title and description", title: "  Storm hits the coast \n", description: "\tThousands without power  ", want: "Storm hits the coast Thousands without power"},
+		{name: "empty description", title: "Storm hits the coast", description: "   ", want: "Storm hits the coast"},
+		{name: "empty title", title: " ", description: "Thousands without power", want: "Thousands without power"},
+		{name: "inner whitespace is kept", title: "Storm  hits", description: "Thousands\nwithout power", want: "Storm  hits Thousands\nwithout power"},
+		{name: "neither", title: "", description: " ", want: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			article := Article{Title: tt.title, Description: tt.description, Content: "The storm made landfall overnight."}
+
+			assert.Equal(t, tt.want, article.Lead())
+		})
+	}
+}
