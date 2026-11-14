@@ -35,7 +35,7 @@ var fixtureNamespace = uuid.MustParse("3b1f6f0e-2a4c-4d3e-9b1a-7c2d5e8f9a10")
 var declaredIndexes = map[storage.Engine][]string{
 	storage.PostgresNative: {"idx_articles_search_vector", "idx_articles_title_trgm", "idx_articles_title_desc_trgm", "idx_article_embedding"},
 	storage.ParadeDB:       {"idx_articles_search", "idx_article_embedding"},
-	storage.Tiger:          {"idx_articles_bm25", "idx_article_embedding"},
+	storage.Tiger:          {"idx_articles_bm25", "idx_articles_title_bm25", "idx_article_embedding"},
 }
 
 var filterIndexes = map[storage.Engine][]string{
@@ -57,12 +57,12 @@ var declaredSettings = map[storage.Engine]map[string]string{
 		"idx_articles_search.segments":             "1",
 	},
 	storage.Tiger: {
-		"maintenance_work_mem":                   "4GB",
-		"max_parallel_maintenance_workers":       "4",
-		"pg_textsearch.memory_limit":             "2GB",
-		"pg_textsearch.segments_per_level":       "8",
-		"pg_textsearch.memtable_spill_threshold": "32000000",
-		"idx_articles_bm25.segments":             "1",
+		"maintenance_work_mem":             "4GB",
+		"max_parallel_maintenance_workers": "4",
+		"pg_textsearch.memory_limit":       "2GB",
+		"pg_textsearch.segments_per_level": "8",
+		"idx_articles_bm25.segments":       "1",
+		"idx_articles_title_bm25.segments": "1",
 	},
 }
 

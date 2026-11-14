@@ -32,7 +32,7 @@ type PGConfig struct {
 var engineImages = map[storage.Engine]string{
 	storage.PostgresNative: "pgvector/pgvector:pg18",
 	storage.ParadeDB:       "paradedb/paradedb:0.21.5-pg18",
-	storage.Tiger:          "timescale/timescaledb-ha:pg18",
+	storage.Tiger:          "timescale/timescaledb-ha:pg18.6-ts2.32.0-r599.1",
 }
 
 var serverFlags = []string{

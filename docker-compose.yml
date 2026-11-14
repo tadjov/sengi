@@ -42,7 +42,7 @@ services:
       - pg_news_parade_data:/var/lib/postgresql
 
   pg-news-tiger:
-    image: timescale/timescaledb-ha:pg18
+    image: timescale/timescaledb-ha:pg18.6-ts2.32.0-r599.1
     container_name: pg-tiger-news
     environment:
       POSTGRES_USER: news_user
