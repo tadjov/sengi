@@ -35,6 +35,7 @@ The project follows a layered architecture pattern:
 - **cmd/**: Entry points for different operations
     - `datapipe/`: Unified data-pipeline CLI. The core path is **preprocess → embed → load**; every stage after the first reads the canonical package, which is what keeps article IDs identical across engines.
         - `datapipe preprocess`: Maps a raw data package (`.csv`, `.jsonl`, `.parquet` resources) through `datasets/<ds>/mapping.yaml` into a canonical data package at `datasets/<ds>/canonical/<version>/` (`--version`, default `v1`), deduplicated by id; a rerun that yields the same articles is a no-op, and one that yields different articles under an existing version is refused
+        - `datapipe embed --canonical <descriptor> [--version v1] [--batch-size 64] [--max-tokens 512] [--limit N]`: Embeds each article's `lead-v1` text through Ollama (`EMBEDDING_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIM`) into an embeddings package at `datasets/<ds>/embeddings/<tag-dir>/<version>/`, the format `embed_corpus.py` writes on a GPU; `producedBy` tells the two apart, and an existing version is refused before anything is embedded
         - `datapipe load --engine <native|paradedb|tiger|es> --canonical <descriptor> [--embeddings <descriptor>]`: Verifies the canonical package and the embeddings package built from it, loads both into an empty engine, builds the indexes afterwards as timed stages, and writes the load record to the engine and to `datasets/<ds>/loads/<engine>/` — see [docs/embeddings.md](docs/embeddings.md)
     - `news_api/`: HTTP API server for search functionality
     - `schemagen/`: Schema generation utilities
@@ -215,7 +216,7 @@ docker-compose up -d
 # Build specific command
 go build -o bin/datapipe ./cmd/datapipe
 
-# Run with environment variables (stages: preprocess, load)
+# Run with environment variables (stages: preprocess, embed, load)
 ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load --engine native --canonical <descriptor>
 
 # Build other commands
