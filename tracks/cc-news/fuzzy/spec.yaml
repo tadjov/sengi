@@ -1,0 +1,88 @@
+schema_version: 1
+id: cc_news_fuzzy
+kind: fuzzy
+description: "Typo-tolerant search on cc-news across native Postgres, ParadeDB, pg_textsearch and Elasticsearch"
+
+defaults:
+  pool_depth: 50
+  judgments: claude-cli
+
+# One edit policy on every engine: Elasticsearch's fuzziness AUTO per query word
+# (no edit up to 2 letters, one up to 5, two above), at most 50 expansions a word.
+engines:
+  pg-fuzzy:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54320/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+    params:
+      rank_norm: "0"
+  tiger-fuzzy:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54322/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+  paradedb-fuzzy:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54321/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+  es-fuzzy:
+    type: elasticsearch
+    connection: "http://localhost:9200"
+    index: articles
+  pg-trgm:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54320/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+
+  # The same engines without fuzziness, the fts track's multi-field queries.
+  pg-gin:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54320/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+    params:
+      rank_norm: "0"
+  paradedb:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54321/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+  tiger:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54322/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+  elasticsearch:
+    type: elasticsearch
+    connection: "http://localhost:9200"
+    index: articles
+
+  # pg-gin given the query spelled correctly: the ceiling typo tolerance aims at.
+  pg-gin-spelled:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54320/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+    params:
+      rank_norm: "0"
+
+metrics:
+  k_values: [3, 5, 10]
+  relevance_threshold: 2
+
+runs:
+  warmup: 1
+  iterations: 3
+  query_timeout: 30s
+
+jobs:
+  - name: "fuzzy-engines"
+    suite: suite.yaml
+    engines: [pg-fuzzy, tiger-fuzzy, paradedb-fuzzy, es-fuzzy, pg-trgm, pg-gin-spelled]
+
+  - name: "exact-engines"
+    suite: suite.yaml
+    engines: [pg-gin, paradedb, tiger, elasticsearch]
