@@ -983,19 +983,42 @@ func TestJudge_JevRefusesAModelItCannotPin(t *testing.T) {
 	}
 }
 
-// jev grades one doc per request and refuses --batch, as bm25, vector and
-// hybrid do, rather than ignoring it.
-func TestJudge_JevRefusesBatch(t *testing.T) {
-	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
-	api := newJevAPI(t)
+// --batch and --provider shape only an llm judge; any other strategy refuses
+// them rather than grading as if they were never passed.
+func TestJudge_RefusesLLMFlagsOutsideLLM(t *testing.T) {
+	flags := []struct {
+		flag string
+		args []string
+	}{
+		{flag: "--batch", args: []string{"--batch", "2"}},
+		{flag: "--provider", args: []string{"--provider", "claude-api"}},
+	}
+	for _, strategy := range []string{"keyword", "bm25", "jev", "manual"} {
+		for _, tt := range flags {
+			t.Run(strategy+" "+tt.flag, func(t *testing.T) {
+				t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+				api := newJevAPI(t)
+				fx := newJudgeFixture(t, "climate change", "climate change summit")
+
+				err := fx.judge(t, append([]string{"--strategy", strategy, "--api-base", api.URL}, tt.args...)...)
+
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.flag)
+				assert.Empty(t, api.requests())
+				assert.NoFileExists(t, filepath.Join(fx.track, "trec", "annotations."+strategy+".yaml"))
+			})
+		}
+	}
+}
+
+// An llm judge with no --provider grades through the CLI transport and files
+// under its name, as the committed claude-cli judgments were.
+func TestJudge_LLMWithoutProviderUsesClaudeCLI(t *testing.T) {
 	fx := newJudgeFixture(t, "climate change", "climate change summit")
 
-	err := fx.judge(t, "--strategy", "jev", "--api-base", api.URL, "--batch", "2")
+	require.NoError(t, fx.judge(t, "--strategy", "llm", "--cli-binary", gradingClaudeCLI(t), "--model", "claude-haiku-5-5"))
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "--batch")
-	assert.Empty(t, api.requests())
-	assert.NoFileExists(t, filepath.Join(fx.track, "trec", "annotations.jev.yaml"))
+	assert.Equal(t, "claude-cli", fx.annotations(t, "claude-cli").Judge().Provider)
 }
 
 // Without TYPESAFE_API_KEY jev fails naming it before anything is graded,

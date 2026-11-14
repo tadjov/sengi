@@ -518,7 +518,8 @@ Key flags:
 - `--resume`: skip docs already graded (errors naming each field of the judge block that changed). `bm25`, `vector` and `hybrid` skip only fully graded queries and regrade any other query whole, since they grade the whole pool at once
 - `--model M`: the LLM judge's model, a full id or `haiku`, `sonnet`, `opus`, `fable` (default `claude-sonnet-5-5`; `haiku` for cheap trial runs). For `jev`, a pinned `jev-<major>.<minor>.<patch>` (default `jev-1.14.0`)
 - `--effort E`: the LLM judge's effort, `low` (default), `medium`, `high`, `xhigh` or `max`
-- `--batch N`: grade N LLM docs per request instead of one (`bm25`, `vector` and `hybrid` grade each query's whole pool at once and refuse it; `jev` grades one doc per request and refuses it too)
+- `--provider P`: the LLM judge's endpoint, `claude-cli` (default) or `claude-api`. Any other strategy refuses it
+- `--batch N`: grade N LLM docs per request instead of one. Any other strategy refuses it
 - `--seed S`: seed of the shuffle that forms `--batch` batches (default 1)
 - `--concurrency N`: parallel Grade calls (per-doc mode)
 - `--allow-unjudged`: exit 0 even when some pooled docs are left unjudged. A query with no usable terms still fails the run

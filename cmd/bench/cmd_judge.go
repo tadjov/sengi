@@ -109,14 +109,14 @@ Ctrl-C is safe.`,
 	cmd.Flags().StringVar(&f.strategy, "strategy", string(judgment.StrategyKeyword), "Judge strategy")
 	cmd.Flags().StringVar(&f.pg, "pg", "", "Postgres connection (or set PG_CONNECTION_STRING)")
 	cmd.Flags().IntVar(&f.concurrency, "concurrency", 4, "Parallel Grade calls (per-doc strategies)")
-	cmd.Flags().IntVar(&f.batchSize, "batch", 0, "LLM docs per request (default one); bm25, vector, hybrid and jev refuse it")
+	cmd.Flags().IntVar(&f.batchSize, "batch", 0, "LLM docs per request (default one); --strategy llm only")
 	cmd.Flags().Uint64Var(&f.batchSeed, "seed", 1, "Seed that shuffles each query's pool into --batch batches")
 	cmd.Flags().BoolVar(&f.resume, "resume", false, "Skip docs already graded in --output; bm25, vector and hybrid skip only fully graded queries")
 	cmd.Flags().BoolVar(&f.allowUnjudged, "allow-unjudged", false, "Exit 0 even when some pooled docs end unjudged; a query with no usable terms still fails")
 	cmd.Flags().BoolVar(&f.force, "force", false, "Manual only: discard existing hand grades and rewrite the placeholders")
 	cmd.Flags().StringVar(&f.apiKey, "api-key", "", "Anthropic API key (or set ANTHROPIC_API_KEY)")
-	cmd.Flags().StringVar(&f.provider, "provider", string(judgment.DefaultProvider),
-		"LLM endpoint for --strategy llm: "+strings.Join(judgment.KnownProviders(), " | "))
+	cmd.Flags().StringVar(&f.provider, "provider", "",
+		"LLM endpoint for --strategy llm (default "+string(judgment.DefaultProvider)+"): "+strings.Join(judgment.KnownProviders(), " | "))
 	cmd.Flags().StringVar(&f.model, "model", judgment.DefaultJudgeModel,
 		"LLM judge model id or alias ("+strings.Join(judgment.ClaudeModelAliases(), " | ")+"); haiku for cheap trial runs; "+
 			"jev takes a pinned jev-<major>.<minor>.<patch> and defaults to "+judgment.DefaultJevModel)
@@ -156,8 +156,8 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	if f.force && kind != judgment.StrategyManual {
 		return fmt.Errorf("--force applies only to --strategy manual; %s rewrites its file on every run without --resume", kind)
 	}
-	if kind == judgment.StrategyJev && f.batchSize > 0 {
-		return fmt.Errorf("jev grades one doc per request and takes no --batch")
+	if f.batchSize > 0 && kind != judgment.StrategyLLM {
+		return fmt.Errorf("--batch applies only to --strategy llm; %s grades without batches", kind)
 	}
 	// Heuristic judges file under their strategy; llm judges file under their
 	// provider, so two vendors can grade the same track side by side.
@@ -312,6 +312,9 @@ func resolveJudge(f judgeFlags) (judgment.StrategyKind, judgment.Provider, error
 		return kind, judgment.Provider(f.provider), nil
 	case judgment.StrategyKeyword, judgment.StrategyBM25, judgment.StrategyVector,
 		judgment.StrategyHybrid, judgment.StrategyJev, judgment.StrategyManual:
+		if f.provider != "" {
+			return "", "", fmt.Errorf("--provider applies only to --strategy llm, not %s", kind)
+		}
 		return kind, "", nil
 	}
 
