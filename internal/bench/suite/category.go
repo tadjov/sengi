@@ -15,9 +15,14 @@ const (
 	CategoryBoolean     Category = "boolean"
 	CategoryMultiField  Category = "multi-field"
 	CategorySingleField Category = "single-field"
+	CategoryQuestion    Category = "question"
+	CategoryDescriptive Category = "descriptive"
 )
 
-var categories = []Category{CategoryKeyword, CategoryPhrase, CategoryBoolean, CategoryMultiField, CategorySingleField}
+var categories = []Category{
+	CategoryKeyword, CategoryPhrase, CategoryBoolean, CategoryMultiField, CategorySingleField,
+	CategoryQuestion, CategoryDescriptive,
+}
 
 func ParseCategory(s string) (Category, error) {
 	if c := Category(s); slices.Contains(categories, c) {
