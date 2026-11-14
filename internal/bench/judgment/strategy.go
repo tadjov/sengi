@@ -78,7 +78,6 @@ const (
 )
 
 type StrategyOptions struct {
-	APIKey string
 	// Provider selects the endpoint behind StrategyLLM; empty means DefaultProvider.
 	Provider Provider
 	// Model is a full id or an alias such as "sonnet", which the provider expands.

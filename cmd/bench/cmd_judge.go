@@ -30,7 +30,6 @@ type judgeFlags struct {
 	resume         bool
 	allowUnjudged  bool
 	force          bool
-	apiKey         string
 	provider       string
 	model          string
 	effort         string
@@ -114,7 +113,6 @@ Ctrl-C is safe.`,
 	cmd.Flags().BoolVar(&f.resume, "resume", false, "Skip docs already graded in --output; bm25, vector and hybrid skip only fully graded queries")
 	cmd.Flags().BoolVar(&f.allowUnjudged, "allow-unjudged", false, "Exit 0 even when some pooled docs end unjudged; a query with no usable terms still fails")
 	cmd.Flags().BoolVar(&f.force, "force", false, "Manual only: discard existing hand grades and rewrite the placeholders")
-	cmd.Flags().StringVar(&f.apiKey, "api-key", "", "Anthropic API key (or set ANTHROPIC_API_KEY)")
 	cmd.Flags().StringVar(&f.provider, "provider", "",
 		"LLM endpoint for --strategy llm (default "+string(judgment.DefaultProvider)+"): "+strings.Join(judgment.KnownProviders(), " | "))
 	cmd.Flags().StringVar(&f.model, "model", judgment.DefaultJudgeModel,
@@ -186,7 +184,6 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	}
 
 	opts := judgment.StrategyOptions{
-		APIKey:      envOrFlag("ANTHROPIC_API_KEY", f.apiKey),
 		Provider:    provider,
 		Model:       f.model,
 		APIBaseURL:  f.apiBaseURL,

@@ -731,6 +731,7 @@ printf '{"type":"result","is_error":false,"result":"[%s]"}\n' "$entries"
 }
 
 func TestJudge_LLMWithoutModelGradesWithTheDefault(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	if runtime.GOOS == "windows" {
 		t.Skip("fake binary is a POSIX shell script")
 	}
@@ -761,7 +762,7 @@ func TestJudge_LLMWithoutModelGradesWithTheDefault(t *testing.T) {
 			fx := newJudgeFixture(t, "climate change", "climate change summit")
 
 			require.NoError(t, fx.judge(t, "--strategy", "llm", "--provider", provider,
-				"--api-key", "test-key", "--api-base", api.URL, "--cli-binary", cli))
+				"--api-base", api.URL, "--cli-binary", cli))
 
 			assert.Equal(t, "claude-sonnet-5-5", fx.annotations(t, provider).Judge().Model)
 		})
@@ -774,7 +775,7 @@ func TestJudge_LLMWithoutModelGradesWithTheDefault(t *testing.T) {
 			fx := newJudgeFixture(t, "climate change", "climate change summit")
 
 			err := fx.judge(t, "--strategy", "llm", "--provider", provider, "--model", "",
-				"--api-key", "test-key", "--api-base", api.URL, "--cli-binary", cli)
+				"--api-base", api.URL, "--cli-binary", cli)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "--model")
@@ -970,10 +971,11 @@ func TestJudge_LLMWithoutProviderUsesClaudeCLI(t *testing.T) {
 
 func TestJudge_JevWithoutItsKeyFailsNamingIt(t *testing.T) {
 	t.Setenv("TYPESAFE_API_KEY", "")
+	t.Setenv("ANTHROPIC_API_KEY", "sk-ant-meant-for-claude")
 	api := newJevAPI(t)
 	fx := newJudgeFixture(t, "climate change", "climate change summit")
 
-	err := fx.judge(t, "--strategy", "jev", "--api-base", api.URL, "--api-key", "sk-ant-meant-for-claude")
+	err := fx.judge(t, "--strategy", "jev", "--api-base", api.URL)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "TYPESAFE_API_KEY")

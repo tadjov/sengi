@@ -135,9 +135,10 @@ func TestResolveClaudeModelAliases(t *testing.T) {
 }
 
 func TestLLMRefusesAnEmptyModel(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	for _, provider := range []Provider{ProviderClaudeCLI, ProviderClaudeAPI} {
 		t.Run(string(provider), func(t *testing.T) {
-			_, err := NewLLMStrategy(StrategyOptions{Provider: provider, APIKey: "test-key", Effort: EffortLow})
+			_, err := NewLLMStrategy(StrategyOptions{Provider: provider, Effort: EffortLow})
 
 			if err == nil || !strings.Contains(err.Error(), "--model") {
 				t.Errorf("NewLLMStrategy with an empty model: err = %v, want one naming --model", err)
@@ -147,9 +148,10 @@ func TestLLMRefusesAnEmptyModel(t *testing.T) {
 }
 
 func TestLLMRequiresAnEffort(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	for _, provider := range []Provider{ProviderClaudeCLI, ProviderClaudeAPI} {
 		t.Run(string(provider), func(t *testing.T) {
-			_, err := NewLLMStrategy(StrategyOptions{Provider: provider, APIKey: "test-key", Model: "claude-sonnet-5-5"})
+			_, err := NewLLMStrategy(StrategyOptions{Provider: provider, Model: "claude-sonnet-5-5"})
 
 			if err == nil || !strings.Contains(err.Error(), "--effort") {
 				t.Errorf("NewLLMStrategy without an effort: err = %v, want one naming --effort", err)
@@ -172,9 +174,10 @@ func TestParseEffort(t *testing.T) {
 }
 
 func TestLLMDescribeNamesTheModelItWasGiven(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	for _, provider := range []Provider{ProviderClaudeCLI, ProviderClaudeAPI} {
 		t.Run(string(provider), func(t *testing.T) {
-			s, err := NewLLMStrategy(StrategyOptions{Provider: provider, APIKey: "test-key", CLIBinary: versionOnlyClaudeCLI(t), Model: "claude-haiku-5-5", Effort: EffortLow})
+			s, err := NewLLMStrategy(StrategyOptions{Provider: provider, CLIBinary: versionOnlyClaudeCLI(t), Model: "claude-haiku-5-5", Effort: EffortLow})
 			if err != nil {
 				t.Fatalf("NewLLMStrategy: %v", err)
 			}

@@ -40,11 +40,11 @@ func TestNewJev_TakesOnlyAPinnedJevRelease(t *testing.T) {
 	}
 }
 
-// The Anthropic key in --api-key never reaches TypeSafe.
 func TestNewJev_RefusesToStartWithoutTypeSafeAPIKey(t *testing.T) {
 	t.Setenv("TYPESAFE_API_KEY", "")
+	t.Setenv("ANTHROPIC_API_KEY", "sk-ant-meant-for-claude")
 
-	_, err := NewJevStrategy(StrategyOptions{Model: "jev-1.14.0", APIKey: "sk-ant-meant-for-claude"})
+	_, err := NewJevStrategy(StrategyOptions{Model: "jev-1.14.0"})
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "TYPESAFE_API_KEY")

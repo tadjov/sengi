@@ -59,7 +59,6 @@ type JevStrategy struct {
 	retry    resilience.Policy
 }
 
-// NewJevStrategy reads its key from TYPESAFE_API_KEY; opts.APIKey is Anthropic's.
 func NewJevStrategy(opts StrategyOptions) (*JevStrategy, error) {
 	if !jevRelease.MatchString(opts.Model) {
 		return nil, fmt.Errorf("jev needs --model to name a pinned release such as %s, not %q", DefaultJevModel, opts.Model)
