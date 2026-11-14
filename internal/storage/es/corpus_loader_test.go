@@ -103,134 +103,137 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 		}
 	})
 
-	t.Run("stores every article with its own vector and model tag", func(t *testing.T) {
-		index := "articles_loaded_test"
-		articles := testArticles(2000)
-		corpus := corpusOf(articles, testVectors(articles))
-		corpus.Articles = refreshingMidway(t, container.Address, index, articles)
-		record, err := loadCorpus(t, container.Address, index, corpus, 500)
-		if err != nil {
-			t.Fatalf("LoadCorpus: %v", err)
-		}
+	for _, concurrency := range []int{1, 4} {
+		t.Run(fmt.Sprintf("stores every article with its own vector and model tag at concurrency %d", concurrency), func(t *testing.T) {
+			index := fmt.Sprintf("articles_loaded_%d_test", concurrency)
+			articles := testArticles(2000)
+			corpus := corpusOf(articles, testVectors(articles))
+			corpus.Articles = refreshingMidway(t, container.Address, index, articles)
+			record, err := loadCorpusWith(t, container.Address, index, corpus, storage.LoadOptions{BatchSize: 500, Concurrency: concurrency})
+			if err != nil {
+				t.Fatalf("LoadCorpus: %v", err)
+			}
 
-		t.Run("merged into one segment", func(t *testing.T) {
-			var segments []map[string]any
-			getJSON(t, container.Address+"/_cat/segments/"+index+"?format=json", &segments)
-			if len(segments) != 1 {
-				t.Errorf("_cat/segments lists %d segments, want 1: %v", len(segments), segments)
-			}
-		})
+			t.Run("merged into one segment", func(t *testing.T) {
+				var segments []map[string]any
+				getJSON(t, container.Address+"/_cat/segments/"+index+"?format=json", &segments)
+				if len(segments) != 1 {
+					t.Errorf("_cat/segments lists %d segments, want 1: %v", len(segments), segments)
+				}
+			})
 
-		t.Run("stores the returned record under _meta.load", func(t *testing.T) {
-			var mappings map[string]struct {
-				Mappings struct {
-					Meta struct {
-						Load storage.LoadRecord `json:"load"`
-					} `json:"_meta"`
-				} `json:"mappings"`
-			}
-			getJSON(t, container.Address+"/"+index+"/_mapping", &mappings)
-			if stored := mappings[index].Mappings.Meta.Load; !reflect.DeepEqual(stored, record) {
-				t.Errorf("_meta.load = %+v, want the returned record %+v", stored, record)
-			}
-		})
+			t.Run("stores the returned record under _meta.load", func(t *testing.T) {
+				var mappings map[string]struct {
+					Mappings struct {
+						Meta struct {
+							Load storage.LoadRecord `json:"load"`
+						} `json:"_meta"`
+					} `json:"mappings"`
+				}
+				getJSON(t, container.Address+"/"+index+"/_mapping", &mappings)
+				if stored := mappings[index].Mappings.Meta.Load; !reflect.DeepEqual(stored, record) {
+					t.Errorf("_meta.load = %+v, want the returned record %+v", stored, record)
+				}
+			})
 
-		t.Run("records what was loaded and how", func(t *testing.T) {
-			if record.Engine != "es" || record.EngineVersion != "8.12.0" {
-				t.Errorf("engine = %q %q, want es 8.12.0", record.Engine, record.EngineVersion)
-			}
-			if record.Articles != 2000 || record.Vectors != 2000 {
-				t.Errorf("articles, vectors = %d, %d, want 2000, 2000", record.Articles, record.Vectors)
-			}
-			if record.Canonical != corpus.Canonical || record.Embeddings == nil || *record.Embeddings != *corpus.Embeddings {
-				t.Errorf("packages = %+v %+v, want %+v %+v", record.Canonical, record.Embeddings, corpus.Canonical, corpus.Embeddings)
-			}
-			if record.ModelTag != loadTestModelTag || record.BatchSize != 500 {
-				t.Errorf("model tag, batch size = %q, %d, want %q, 500", record.ModelTag, record.BatchSize, loadTestModelTag)
-			}
-			for key, want := range map[string]string{
-				"index.number_of_shards":                  "1",
-				"index.number_of_replicas":                "0",
-				"index.max_result_window":                 "10001",
-				"index.refresh_interval":                  "1s",
-				"embedding.index_options.type":            "hnsw",
-				"embedding.index_options.m":               "16",
-				"embedding.index_options.ef_construction": "64",
-				"segments":               "1",
-				"similarity.k1":          "1.2",
-				"similarity.b":           "0.75",
-				"title.similarity":       "article_bm25",
-				"description.similarity": "article_bm25",
-				"content.similarity":     "article_bm25",
-			} {
-				if got := record.Settings[key]; got != want {
-					t.Errorf("settings[%s] = %q, want %q", key, got, want)
+			t.Run("records what was loaded and how", func(t *testing.T) {
+				if record.Engine != "es" || record.EngineVersion != "8.12.0" {
+					t.Errorf("engine = %q %q, want es 8.12.0", record.Engine, record.EngineVersion)
+				}
+				if record.Articles != 2000 || record.Vectors != 2000 {
+					t.Errorf("articles, vectors = %d, %d, want 2000, 2000", record.Articles, record.Vectors)
+				}
+				if record.Canonical != corpus.Canonical || record.Embeddings == nil || *record.Embeddings != *corpus.Embeddings {
+					t.Errorf("packages = %+v %+v, want %+v %+v", record.Canonical, record.Embeddings, corpus.Canonical, corpus.Embeddings)
+				}
+				if record.ModelTag != loadTestModelTag || record.BatchSize != 500 || record.Concurrency != concurrency {
+					t.Errorf("model tag, batch size, concurrency = %q, %d, %d, want %q, 500, %d",
+						record.ModelTag, record.BatchSize, record.Concurrency, loadTestModelTag, concurrency)
+				}
+				for key, want := range map[string]string{
+					"index.number_of_shards":                  "1",
+					"index.number_of_replicas":                "0",
+					"index.max_result_window":                 "10001",
+					"index.refresh_interval":                  "1s",
+					"embedding.index_options.type":            "hnsw",
+					"embedding.index_options.m":               "16",
+					"embedding.index_options.ef_construction": "64",
+					"segments":               "1",
+					"similarity.k1":          "1.2",
+					"similarity.b":           "0.75",
+					"title.similarity":       "article_bm25",
+					"description.similarity": "article_bm25",
+					"content.similarity":     "article_bm25",
+				} {
+					if got := record.Settings[key]; got != want {
+						t.Errorf("settings[%s] = %q, want %q", key, got, want)
+					}
+				}
+				if record.FinishedAt.Before(record.StartedAt) {
+					t.Errorf("finished %v before it started %v", record.FinishedAt, record.StartedAt)
+				}
+				var stages []string
+				var staged float64
+				for _, stage := range record.Stages {
+					stages = append(stages, stage.Name)
+					staged += stage.Seconds
+				}
+				if record.TotalSeconds < staged {
+					t.Errorf("total %.3fs is shorter than its stages, %.3fs", record.TotalSeconds, staged)
+				}
+				if want := []string{"create_index", "bulk", "refresh", "force_merge"}; !slices.Equal(stages, want) {
+					t.Errorf("stages = %q, want %q", stages, want)
+				}
+			})
+
+			t.Run("search hits carry no embedding in _source", func(t *testing.T) {
+				proxy, sources := recordingProxy(t, container.Address)
+				searcher := NewSearcher(newTestClient(t, ClientConfig{Addresses: []string{proxy}, IndexName: index}))
+				for _, method := range searchMethods {
+					res, err := method.search(context.Background(), searcher, "headline", &dquery.BaseOptions{Size: 10})
+					if err != nil {
+						t.Fatalf("%s: %v", method.name, err)
+					}
+					if len(res.Hits) == 0 {
+						t.Errorf("%s found nothing in the loaded index", method.name)
+					}
+				}
+				if len(*sources) == 0 {
+					t.Fatal("no search hit passed through the proxy")
+				}
+				for _, source := range *sources {
+					if _, ok := source["embedding"]; ok {
+						t.Errorf("hit %v carries its embedding in _source", source["id"])
+					}
+				}
+			})
+
+			stored := fetchByID(t, container.Address, index, articles)
+			for i, a := range articles {
+				doc, ok := stored[a.ID.String()]
+				if !ok {
+					t.Errorf("article %s not stored", a.ID)
+					continue
+				}
+				want := storedDocument{
+					ID:              a.ID.String(),
+					URL:             a.URL,
+					Title:           a.Title,
+					Description:     a.Description,
+					Content:         a.Content,
+					PublishedAt:     a.PublishedAt.Format(time.RFC3339),
+					Language:        "eng",
+					PublisherDomain: a.PublisherDomain,
+					Metadata:        map[string]any{"publisherName": "Example News", "authors": []any{"A. Writer"}},
+					Embedding:       vectorFor(i),
+					EmbeddingModel:  loadTestModelTag,
+				}
+				if diff := cmpDocuments(doc, want); diff != "" {
+					t.Errorf("article %d (%s): %s", i, a.ID, diff)
 				}
 			}
-			if record.FinishedAt.Before(record.StartedAt) {
-				t.Errorf("finished %v before it started %v", record.FinishedAt, record.StartedAt)
-			}
-			var stages []string
-			var staged float64
-			for _, stage := range record.Stages {
-				stages = append(stages, stage.Name)
-				staged += stage.Seconds
-			}
-			if record.TotalSeconds < staged {
-				t.Errorf("total %.3fs is shorter than its stages, %.3fs", record.TotalSeconds, staged)
-			}
-			if want := []string{"create_index", "bulk", "refresh", "force_merge"}; !slices.Equal(stages, want) {
-				t.Errorf("stages = %q, want %q", stages, want)
-			}
 		})
-
-		t.Run("search hits carry no embedding in _source", func(t *testing.T) {
-			proxy, sources := recordingProxy(t, container.Address)
-			searcher := NewSearcher(newTestClient(t, ClientConfig{Addresses: []string{proxy}, IndexName: index}))
-			for _, method := range searchMethods {
-				res, err := method.search(context.Background(), searcher, "headline", &dquery.BaseOptions{Size: 10})
-				if err != nil {
-					t.Fatalf("%s: %v", method.name, err)
-				}
-				if len(res.Hits) == 0 {
-					t.Errorf("%s found nothing in the loaded index", method.name)
-				}
-			}
-			if len(*sources) == 0 {
-				t.Fatal("no search hit passed through the proxy")
-			}
-			for _, source := range *sources {
-				if _, ok := source["embedding"]; ok {
-					t.Errorf("hit %v carries its embedding in _source", source["id"])
-				}
-			}
-		})
-
-		stored := fetchByID(t, container.Address, index, articles)
-		for i, a := range articles {
-			doc, ok := stored[a.ID.String()]
-			if !ok {
-				t.Errorf("article %s not stored", a.ID)
-				continue
-			}
-			want := storedDocument{
-				ID:              a.ID.String(),
-				URL:             a.URL,
-				Title:           a.Title,
-				Description:     a.Description,
-				Content:         a.Content,
-				PublishedAt:     a.PublishedAt.Format(time.RFC3339),
-				Language:        "eng",
-				PublisherDomain: a.PublisherDomain,
-				Metadata:        map[string]any{"publisherName": "Example News", "authors": []any{"A. Writer"}},
-				Embedding:       vectorFor(i),
-				EmbeddingModel:  loadTestModelTag,
-			}
-			if diff := cmpDocuments(doc, want); diff != "" {
-				t.Errorf("article %d (%s): %s", i, a.ID, diff)
-			}
-		}
-	})
+	}
 
 	for _, tc := range []struct {
 		name    string
@@ -261,7 +264,7 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 			vecs := testVectors(articles)
 			tc.corrupt(articles, vecs)
 
-			_, err := loadCorpus(t, container.Address, index, corpusOf(articles, vecs), 2)
+			_, err := loadCorpusWith(t, container.Address, index, corpusOf(articles, vecs), storage.LoadOptions{BatchSize: 2, Concurrency: 4})
 			var failed *DocumentsFailedError
 			if !errors.As(err, &failed) {
 				t.Fatalf("LoadCorpus error = %v, want *DocumentsFailedError", err)
@@ -336,7 +339,7 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 		}
 
 		client := newTestClient(t, ClientConfig{Addresses: []string{container.Address}, IndexName: index})
-		_, err := NewCorpusLoader(client).LoadCorpus(ctx, corpus, storage.LoadOptions{BatchSize: 2})
+		_, err := NewCorpusLoader(client).LoadCorpus(ctx, corpus, storage.LoadOptions{BatchSize: 2, Concurrency: 1})
 		if !errors.Is(err, context.Canceled) {
 			t.Fatalf("LoadCorpus error = %v, want context.Canceled", err)
 		}
@@ -421,6 +424,14 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 		}
 		if !strings.Contains(err.Error(), articles[2].ID.String()) {
 			t.Errorf("error %q does not name article %s", err, articles[2].ID)
+		}
+		assertNoIndex(t, container.Address, index)
+	})
+
+	t.Run("refuses a load with no concurrency and creates no index", func(t *testing.T) {
+		index := "articles_no_concurrency_test"
+		if _, err := loadCorpusWith(t, container.Address, index, corpusOf(testArticles(2), nil), storage.LoadOptions{BatchSize: 100}); err == nil {
+			t.Fatal("LoadCorpus without a concurrency succeeded")
 		}
 		assertNoIndex(t, container.Address, index)
 	})
@@ -567,8 +578,13 @@ func assertNoIndex(t *testing.T, address, index string) {
 
 func loadCorpus(t *testing.T, address, index string, c storage.Corpus, batchSize int) (storage.LoadRecord, error) {
 	t.Helper()
+	return loadCorpusWith(t, address, index, c, storage.LoadOptions{BatchSize: batchSize, Concurrency: 1})
+}
+
+func loadCorpusWith(t *testing.T, address, index string, c storage.Corpus, opts storage.LoadOptions) (storage.LoadRecord, error) {
+	t.Helper()
 	client := newTestClient(t, ClientConfig{Addresses: []string{address}, IndexName: index})
-	return NewCorpusLoader(client).LoadCorpus(context.Background(), c, storage.LoadOptions{BatchSize: batchSize})
+	return NewCorpusLoader(client).LoadCorpus(context.Background(), c, opts)
 }
 
 func testArticles(n int) []document.Article {
