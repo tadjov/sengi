@@ -79,8 +79,8 @@ type SearcherConfig struct {
 	Embedder *embedding.Embedder
 }
 
-// NewSearcher creates a new storage.FtsSearcher based on the storage type
-func NewSearcher(cfg SearcherConfig) (storage.FtsSearcher, error) {
+// NewSearcher creates the full-text backend for the storage type.
+func NewSearcher(cfg SearcherConfig) (storage.FullTextBackend, error) {
 	switch cfg.Type {
 	case storage.PG:
 		if cfg.Pool == nil {

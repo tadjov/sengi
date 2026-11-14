@@ -225,7 +225,7 @@ func TestOpenSearchBackend_ElasticsearchSearchersShareOneClient(t *testing.T) {
 	if !backend.health.Healthy(ctx) {
 		t.Fatal("health check failed against the fake cluster")
 	}
-	if _, err := backend.fts.SearchStringQuery(ctx, dquery.NewQueryString("climate"), opts); err != nil {
+	if _, err := backend.fts.(storage.StringQuerySearcher).SearchStringQuery(ctx, dquery.NewQueryString("climate"), opts); err != nil {
 		t.Fatalf("full-text search: %v", err)
 	}
 	if _, err := backend.semantic.SearchSemantic(ctx, dquery.NewSemantic("climate"), opts); err != nil {
