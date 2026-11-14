@@ -1,4 +1,5 @@
 DROP TABLE IF EXISTS corpus_load;
+DROP TABLE IF EXISTS corpus_words;
 DROP TABLE IF EXISTS article_embeddings;
 DROP TABLE IF EXISTS articles;
 DROP EXTENSION IF EXISTS vector;

@@ -1,6 +1,8 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- The timescaledb-ha image preloads pg_textsearch, so CREATE EXTENSION is enough.
 CREATE EXTENSION IF NOT EXISTS pg_textsearch;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
 CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE articles
@@ -28,6 +30,14 @@ CREATE TABLE article_embeddings
     model_name text         NOT NULL,
     embedding  vector(1024) NOT NULL,
     PRIMARY KEY (article_id, model_name)
+);
+
+-- The fuzzy track expands each query word to the corpus words within its edit
+-- budget; indexes.sql fills this after the load.
+CREATE TABLE corpus_words
+(
+    word text    NOT NULL PRIMARY KEY,
+    ndoc integer NOT NULL
 );
 
 CREATE TABLE corpus_load
