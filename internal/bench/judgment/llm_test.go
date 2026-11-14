@@ -17,6 +17,7 @@ func TestParseSelector(t *testing.T) {
 		{sel: "vector", kind: StrategyVector},
 		{sel: "hybrid", kind: StrategyHybrid},
 		{sel: "manual", kind: StrategyManual},
+		{sel: "jev", kind: StrategyJev},
 		{sel: "claude-cli", kind: StrategyLLM, provider: ProviderClaudeCLI},
 		{sel: "claude-api", kind: StrategyLLM, provider: ProviderClaudeAPI},
 
@@ -57,7 +58,7 @@ func TestKnownStrategiesListsSetNames(t *testing.T) {
 	known := KnownStrategies()
 	joined := strings.Join(known, ",")
 
-	for _, want := range []string{"keyword", "bm25", "vector", "hybrid", "claude-cli", "claude-api", "manual"} {
+	for _, want := range []string{"keyword", "bm25", "vector", "hybrid", "claude-cli", "claude-api", "jev", "manual"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("KnownStrategies() = %v, missing %q", known, want)
 		}
@@ -77,6 +78,7 @@ func TestJudgmentSetName(t *testing.T) {
 	}{
 		{kind: StrategyKeyword, want: "keyword"},
 		{kind: StrategyManual, want: "manual"},
+		{kind: StrategyJev, want: "jev"},
 		{kind: StrategyLLM, provider: ProviderClaudeCLI, want: "claude-cli"},
 		{kind: StrategyLLM, provider: ProviderClaudeAPI, want: "claude-api"},
 		// An unset provider falls back to the default rather than producing an
@@ -103,6 +105,7 @@ func TestJudgmentSetNameRoundTrips(t *testing.T) {
 		{kind: StrategyVector},
 		{kind: StrategyHybrid},
 		{kind: StrategyManual},
+		{kind: StrategyJev},
 		{kind: StrategyLLM, provider: ProviderClaudeCLI},
 		{kind: StrategyLLM, provider: ProviderClaudeAPI},
 	}

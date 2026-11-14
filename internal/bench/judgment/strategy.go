@@ -95,6 +95,9 @@ const (
 	// codex-*, chatgpt-*), selected with --provider.
 	StrategyLLM StrategyKind = "llm"
 
+	// StrategyJev TypeSafe's Jev, a non-Anthropic cross-judge of the LLM judge.
+	StrategyJev StrategyKind = "jev"
+
 	// StrategyManual Human.
 	StrategyManual StrategyKind = "manual"
 )
@@ -135,6 +138,8 @@ func NewStrategy(kind StrategyKind, opts StrategyOptions) (Strategy, error) {
 		return NewHybridStrategy(opts)
 	case StrategyLLM:
 		return NewLLMStrategy(opts)
+	case StrategyJev:
+		return NewJevStrategy(opts)
 	case StrategyManual:
 		return NewManualStrategy(), nil
 	default:

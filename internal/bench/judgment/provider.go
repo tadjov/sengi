@@ -109,7 +109,7 @@ func KnownProviders() []string {
 // annotations.<name>.yaml, qrels.<name>.tsv, --judgments and
 // spec.defaults.judgments.
 //
-// Heuristic and manual judges name themselves. LLM judges are named by their
+// Heuristic, jev and manual judges name themselves. LLM judges are named by their
 // provider ("claude-cli"), not by the strategy — a single "llm" name would
 // collide the moment a second provider grades the same track.
 func JudgmentSetName(kind StrategyKind, provider Provider) string {
@@ -131,7 +131,7 @@ func JudgmentSetName(kind StrategyKind, provider Provider) string {
 // --provider claude-cli.
 func ParseSelector(name string) (StrategyKind, Provider, error) {
 	switch kind := StrategyKind(name); kind {
-	case StrategyKeyword, StrategyBM25, StrategyVector, StrategyHybrid, StrategyManual:
+	case StrategyKeyword, StrategyBM25, StrategyVector, StrategyHybrid, StrategyJev, StrategyManual:
 		return kind, "", nil
 	case StrategyLLM:
 		// "llm" alone does not name a judgment set — every LLM set is filed
@@ -158,6 +158,7 @@ func KnownJudgeStrategies() []string {
 		string(StrategyVector),
 		string(StrategyHybrid),
 		string(StrategyLLM),
+		string(StrategyJev),
 		string(StrategyManual),
 	}
 }
@@ -173,5 +174,5 @@ func KnownStrategies() []string {
 		string(StrategyHybrid),
 	}
 	out = append(out, KnownProviders()...)
-	return append(out, string(StrategyManual))
+	return append(out, string(StrategyJev), string(StrategyManual))
 }

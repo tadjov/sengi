@@ -34,6 +34,10 @@ const (
 
 	jevAttemptTimeout = 30 * time.Second
 
+	// jevRubricVersion versions the question's wording and the grade rule:
+	// bump it when either changes.
+	jevRubricVersion = "v1"
+
 	jevGuidance = "Grade what the article is about, not whether the query words appear. " +
 		"A passing mention is the marginal level at most. When in doubt between two levels, pick the lower one."
 )
@@ -83,7 +87,19 @@ func NewJevStrategy(opts StrategyOptions) (*JevStrategy, error) {
 	}, nil
 }
 
-func (s *JevStrategy) Describe() meta.Judge { return meta.Judge{Model: s.model} }
+func (s *JevStrategy) Name() string { return string(StrategyJev) }
+
+// Describe has no prompt version, effort or output budget to record: Jev takes
+// none of them.
+func (s *JevStrategy) Describe() meta.Judge {
+	return meta.Judge{
+		Strategy:      string(StrategyJev),
+		Model:         s.model,
+		RubricVersion: jevRubricVersion,
+		GateVersion:   gateVersion,
+		Invocation:    "POST " + s.endpoint + ", model " + s.model,
+	}
+}
 
 // Grade gives 0 without a request to a doc the query's filters or category
 // gate refuse; Jev grades only how well the rest answer the query.

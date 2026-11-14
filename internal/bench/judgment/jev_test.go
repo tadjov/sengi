@@ -53,6 +53,40 @@ func TestNewJev_RefusesToStartWithoutTypeSafeAPIKey(t *testing.T) {
 	assert.Contains(t, err.Error(), "TYPESAFE_API_KEY")
 }
 
+// The judge block names the pinned release, the rubric and gates it grades
+// under and the endpoint, and none of an LLM judge's prompt, effort or budget.
+func TestJev_DescribeNamesTheReleaseTheRubricAndTheEndpoint(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", testJevKey)
+	s, err := NewStrategy(StrategyJev, StrategyOptions{Model: "jev-1.14.0"})
+	require.NoError(t, err)
+
+	got := s.Describe()
+
+	assert.Equal(t, "jev", s.Name())
+	assert.Equal(t, "jev", got.Strategy)
+	assert.Equal(t, "jev-1.14.0", got.Model)
+	assert.NotEmpty(t, got.RubricVersion)
+	assert.Equal(t, gateVersion, got.GateVersion)
+	assert.Contains(t, got.Invocation, "https://api.typesafe.ai/v1/systemone")
+	assert.Contains(t, got.Invocation, "jev-1.14.0")
+	assert.Empty(t, got.Provider)
+	assert.Empty(t, got.PromptVersion)
+	assert.Empty(t, got.Effort)
+	assert.Zero(t, got.MaxOutputTokens)
+}
+
+// Jev grades one doc per request, so the runner never batches it.
+func TestJev_GradesOneDocPerRequest(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", testJevKey)
+	s, err := NewStrategy(StrategyJev, StrategyOptions{Model: "jev-1.14.0"})
+	require.NoError(t, err)
+
+	_, perDoc := s.(DocStrategy)
+	_, batches := s.(BatchStrategy)
+	assert.True(t, perDoc)
+	assert.False(t, batches)
+}
+
 // Jev reads the article as the LLM judge shows it, content cut included, and
 // the query text under the instructions and levels probed against the API.
 func TestJev_AsksAboutTheArticleTheLLMJudgeSees(t *testing.T) {
