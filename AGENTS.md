@@ -254,7 +254,7 @@ Commands expect environment variables (typically in `.env` files):
 - `ES_INDEX_NAME`: Elasticsearch index name
 - `ES_DIAL_TIMEOUT`, `ES_RESPONSE_HEADER_TIMEOUT`: Go durations bounding each Elasticsearch request, bulk flushes included (default 5s, 30s); a timed-out request is not retried
 
-**Bench (`cmd/bench/.env`)**, loaded at startup; copy `cmd/bench/.env.example`:
+**Bench (`cmd/bench/.env`)**, loaded at startup from the repo root, or name it in `ENV_PATHS`; copy `cmd/bench/.env.example`:
 - `TYPESAFE_API_KEY`: TypeSafe key for `bench judge --strategy jev`
 - `PG_CONNECTION_STRING`: Postgres the judges read pooled articles and document vectors from
 - `EMBEDDING_BASE_URL`: Ollama endpoint for query vectors when a track has no `trec/query-vectors/`
