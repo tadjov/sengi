@@ -32,6 +32,7 @@ const (
 	// jevProbabilitySlack is how far from 1 the probabilities may sum.
 	jevProbabilitySlack = 0.05
 
+	// jevAttemptTimeout bounds one attempt; resilience retries one that times out.
 	jevAttemptTimeout = 30 * time.Second
 
 	// jevRubricVersion versions the question's wording and the grade rule:

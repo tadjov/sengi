@@ -84,7 +84,8 @@ type Judge struct {
 	// GateVersion names the phrase, boolean and filter gates the keyword, bm25
 	// and LLM judges' zeros come from.
 	GateVersion string `yaml:"gate_version,omitempty" json:"gate_version,omitempty"`
-	// RubricVersion names the grading rules of a heuristic judge, which has no prompt.
+	// RubricVersion names the grading rules of a judge without a prompt: a
+	// heuristic judge's, or the question wording and grade rule jev sends.
 	RubricVersion string `yaml:"rubric_version,omitempty" json:"rubric_version,omitempty"`
 }
 
