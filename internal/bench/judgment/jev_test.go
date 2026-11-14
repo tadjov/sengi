@@ -126,6 +126,38 @@ func TestJev_SendsTheSameBytesForTheSameDoc(t *testing.T) {
 	assert.Equal(t, string(fake.body(t, 0)), string(fake.body(t, 1)))
 }
 
+// The grade is Jev's most probable level, a tie going to the lower one as
+// the instructions ask, never the expected score rounded.
+func TestJev_GradesTheMostProbableLevel(t *testing.T) {
+	tests := []struct {
+		name          string
+		probabilities string
+		want          int
+	}{
+		{name: "the probe's reply", probabilities: `{"0":0.0,"1":0.57,"2":0.43,"3":0.0}`, want: 1},
+		{name: "a peak the rounded score misses", probabilities: `{"0":0.4,"1":0.0,"2":0.0,"3":0.6}`, want: 3},
+		{name: "a tie between neighbours", probabilities: `{"0":0.0,"1":0.5,"2":0.5,"3":0.0}`, want: 1},
+		{name: "a tie between the ends", probabilities: `{"0":0.45,"1":0.05,"2":0.05,"3":0.45}`, want: 0},
+		{name: "a sum 0.04 over 1", probabilities: `{"0":0.0,"1":0.0,"2":0.53,"3":0.51}`, want: 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fake := newFakeJev(t, jevScoreReply("jev-1.14.0", tt.probabilities))
+
+			grade, err := newTestJev(t, fake.url).Grade(context.Background(), floodsQuery, floodsDoc())
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, grade)
+		})
+	}
+}
+
+var floodsQuery = GradingQuery{ID: "q1", Text: "floods"}
+
+func floodsDoc() GradingDoc {
+	return GradingDoc{ID: uuid.New(), Title: "Sava floods reach Belgrade", Description: "The river broke its banks.", Content: "Water rose overnight."}
+}
+
 func newTestJev(t *testing.T, baseURL string) *JevStrategy {
 	t.Helper()
 	t.Setenv("TYPESAFE_API_KEY", testJevKey)

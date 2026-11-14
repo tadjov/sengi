@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/tadjov/tusker/internal/bench/meta"
@@ -77,10 +78,27 @@ func (s *JevStrategy) Grade(ctx context.Context, q GradingQuery, doc GradingDoc)
 	if err != nil {
 		return GradeUnjudged, fmt.Errorf("marshal jev request: %w", err)
 	}
-	if _, err := s.send(ctx, payload); err != nil {
+	body, err := s.send(ctx, payload)
+	if err != nil {
 		return GradeUnjudged, err
 	}
-	return GradeUnjudged, nil
+	var resp jevResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return GradeUnjudged, fmt.Errorf("parse jev response: %w", err)
+	}
+	return mostProbableGrade(resp.Answers.Grade.Probabilities), nil
+}
+
+// mostProbableGrade breaks a tie toward the lower grade, as the instructions
+// ask Jev to when in doubt between two levels.
+func mostProbableGrade(probabilities map[string]float64) int {
+	grade := GradeNotRelev
+	for level := range jevLevels {
+		if probabilities[strconv.Itoa(level)] > probabilities[strconv.Itoa(grade)] {
+			grade = level
+		}
+	}
+	return grade
 }
 
 // request asks one Score question: the grades are ordered levels, and a Choice
@@ -128,6 +146,15 @@ type jevRequest struct {
 
 type jevQuestions struct {
 	Grade jevScoreQuestion `json:"grade"`
+}
+
+type jevResponse struct {
+	Model   string `json:"model"`
+	Answers struct {
+		Grade struct {
+			Probabilities map[string]float64 `json:"probabilities"`
+		} `json:"grade"`
+	} `json:"answers"`
 }
 
 type jevScoreQuestion struct {
