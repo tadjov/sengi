@@ -488,7 +488,7 @@ File convention: `trec/annotations.<strategy>.yaml`, `trec/qrels.<strategy>.tsv`
 
 ## Schema v1
 
-Every produced artifact carries `schema_version: 1` and a `meta:` block. The meta block records `run_id`, `tool` (with git sha), `generated_at`, and artifact-specific provenance (spec_id, strategy, judge_model, judge_prompt_version, sources).
+Every produced artifact carries `schema_version: 1` and a `meta:` block. The meta block records `run_id`, `tool`, `generated_at`, and artifact-specific provenance (spec_id, strategy, judge_model, judge_prompt_version, sources).
 
 Loading any artifact without `schema_version: 1` is a hard error — there is no silent tolerance.
 
