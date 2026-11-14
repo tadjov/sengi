@@ -1,8 +1,8 @@
 schema_version: 1
 meta:
-    run_id: 2026-11-14T19-02-01-pool-7bed7a
+    run_id: 2026-11-14T20-05-34-pool-a6c70f
     tool: bench/1.0.0
-    generated_at: 2026-11-14T19:02:01.347399Z
+    generated_at: 2026-11-14T20:05:34.290231Z
     spec_id: cc_news_fts
     pool_depth: 50
     engines:
@@ -10,9 +10,9 @@ meta:
         - pg-gin
         - pg-gin-norm
         - paradedb
-        - elasticsearch
         - tiger
-suite_name: index-ab,all-engines,bm25-engines,tiger-rank-everything
+        - elasticsearch
+suite_name: index-ab,all-engines,bm25-engines
 queries:
     - query_id: kw-net-neutrality
       query_text: net neutrality
@@ -535,7 +535,7 @@ queries:
         pg-gin: 6443df6ccf01cce02145999c1e1dc33d3b6419a9d244f6c0b6b33395ed543eb4
         pg-gin-norm: a916499d482e949dd128fd5acb78072da14fe121eb297b801b35a31531d0fcc4
         pg-noindex: 6443df6ccf01cce02145999c1e1dc33d3b6419a9d244f6c0b6b33395ed543eb4
-        tiger: 6125f9ddf0cedee13cdaba823191092450ac4e00428431f4b7b9a5dfde68a214
+        tiger: 7b5b016634bc63e86d9c9e10b868e8385af49fd853bd01fb743568b72e98db77
     - query_id: kw-bitcoin-price
       query_text: bitcoin price
       query_desc: Articles about the price of bitcoin
@@ -1003,10 +1003,10 @@ queries:
         - doc_id: b26c7497-67cc-5f74-855f-91f6ee6d4aa5
           sources:
             - tiger
-        - doc_id: b82e5644-9da7-5c26-8c4b-937ac7c27440
+        - doc_id: a1e2756a-ce39-5dca-af61-3d48db0fe2c2
           sources:
             - tiger
-        - doc_id: a1e2756a-ce39-5dca-af61-3d48db0fe2c2
+        - doc_id: b82e5644-9da7-5c26-8c4b-937ac7c27440
           sources:
             - tiger
         - doc_id: ee33fdcc-ebd2-587a-b630-4f4be1dbed7b
@@ -1036,31 +1036,31 @@ queries:
         - doc_id: 81e85554-9d20-5384-9b55-fd9fbafbe97c
           sources:
             - tiger
-        - doc_id: a6b07171-477a-5106-91b1-566109a65d42
-          sources:
-            - tiger
-        - doc_id: eb48285c-24e7-535d-ac99-daf2b1c92f5c
-          sources:
-            - tiger
-        - doc_id: ea6bb608-b7c1-5951-8218-d6d12b6d0598
-          sources:
-            - tiger
-        - doc_id: 93f5dbee-d208-53d8-b70c-14d1af2468c9
-          sources:
-            - tiger
         - doc_id: 54a2f346-8d5e-5b24-9ad2-6e402decfc4c
           sources:
             - tiger
         - doc_id: 8405d95b-a70c-5807-822f-cba0ffbf908e
           sources:
             - tiger
+        - doc_id: 93f5dbee-d208-53d8-b70c-14d1af2468c9
+          sources:
+            - tiger
+        - doc_id: a6b07171-477a-5106-91b1-566109a65d42
+          sources:
+            - tiger
         - doc_id: e660beb5-b536-52e1-abe2-9f217813032e
           sources:
             - tiger
-        - doc_id: d8b93412-35ac-578d-a414-349311f10d6c
+        - doc_id: ea6bb608-b7c1-5951-8218-d6d12b6d0598
+          sources:
+            - tiger
+        - doc_id: eb48285c-24e7-535d-ac99-daf2b1c92f5c
           sources:
             - tiger
         - doc_id: 81e9ce24-a271-556c-8197-d22d40e129bf
+          sources:
+            - tiger
+        - doc_id: d8b93412-35ac-578d-a414-349311f10d6c
           sources:
             - tiger
         - doc_id: 44bdf60f-3919-594f-81c0-85fc6e12894d
@@ -1093,7 +1093,7 @@ queries:
         pg-gin: 1ae893644419af3f1303e4ca20643b1704c7f4d4ae519a244d1beec04fb02cb5
         pg-gin-norm: c13a7b0a4d8fc7f3d9688e2449cca2e8c0661d18c2d28309da278efe293859f8
         pg-noindex: 1ae893644419af3f1303e4ca20643b1704c7f4d4ae519a244d1beec04fb02cb5
-        tiger: d188928c8aa67c65a0ded168192b12671de944db9394aa515c3c508168fcbe29
+        tiger: 743dc65d492d23747f2672cc465e503d1ab3d94f0dfeb275e98893d244d2543a
     - query_id: kw-climate-change
       query_text: climate change
       query_desc: Articles about climate change
@@ -1767,7 +1767,7 @@ queries:
         pg-gin: 4ae5a8afc61addcbe870475c31b9d112c801f09df7c617425645862c7c730535
         pg-gin-norm: 4e9a870b7ede61076a4a5ad1c3624f976c63247c2bfd29eccfa401438bf12151
         pg-noindex: 4ae5a8afc61addcbe870475c31b9d112c801f09df7c617425645862c7c730535
-        tiger: 32a37199042f1df1fc2465686603a892be22d5be8069fa89dd0452efc4d1ae3d
+        tiger: 76f9bc37060c4ddc5a5b27cf83ff45dc623c3dd346813636b2b1868bf7a6632f
     - query_id: kw-opioid-epidemic
       query_text: opioid epidemic
       query_desc: Articles about the opioid epidemic
@@ -2252,10 +2252,10 @@ queries:
         - doc_id: ba131640-a6fa-563f-99f7-6dbabee4a437
           sources:
             - tiger
-        - doc_id: f8e236de-0ddd-583d-aa73-6ebbb115a80d
+        - doc_id: 6177f212-4e9c-5a5e-b551-93abf8266942
           sources:
             - tiger
-        - doc_id: 6177f212-4e9c-5a5e-b551-93abf8266942
+        - doc_id: f8e236de-0ddd-583d-aa73-6ebbb115a80d
           sources:
             - tiger
         - doc_id: fe61eba8-b624-5e05-9469-b16edd431655
@@ -2276,34 +2276,34 @@ queries:
         - doc_id: 364f17a4-6ac8-5deb-9fdc-4e220bf7f3b2
           sources:
             - tiger
-        - doc_id: fb90b2a9-f44e-5789-8db1-e5972e9c8f42
+        - doc_id: 3132fc0f-4960-5bd2-8284-fb1b5b1d06e2
           sources:
             - tiger
         - doc_id: 406b6bb7-e8e0-5740-994c-ffcf0b2c870b
           sources:
             - tiger
-        - doc_id: 725ac12b-3ad1-51be-819a-1d7b839b88ec
-          sources:
-            - tiger
-        - doc_id: b3aa47a6-80b2-59be-a572-e1003f43b194
-          sources:
-            - tiger
-        - doc_id: a99c8331-ac9a-5496-92ca-fb1847d80f55
-          sources:
-            - tiger
-        - doc_id: e76130aa-6710-5bdd-a440-7486c81bbb5c
-          sources:
-            - tiger
         - doc_id: 62380ef4-afed-523e-a488-44b47d1dcabf
-          sources:
-            - tiger
-        - doc_id: 3132fc0f-4960-5bd2-8284-fb1b5b1d06e2
           sources:
             - tiger
         - doc_id: 64b21a48-cc5d-5c46-b10a-0674a764b3b0
           sources:
             - tiger
+        - doc_id: 725ac12b-3ad1-51be-819a-1d7b839b88ec
+          sources:
+            - tiger
+        - doc_id: a99c8331-ac9a-5496-92ca-fb1847d80f55
+          sources:
+            - tiger
         - doc_id: b30ad7ab-3aee-5669-81c1-d21303354b15
+          sources:
+            - tiger
+        - doc_id: b3aa47a6-80b2-59be-a572-e1003f43b194
+          sources:
+            - tiger
+        - doc_id: e76130aa-6710-5bdd-a440-7486c81bbb5c
+          sources:
+            - tiger
+        - doc_id: fb90b2a9-f44e-5789-8db1-e5972e9c8f42
           sources:
             - tiger
         - doc_id: a4fc1a8a-c131-5351-9c7f-68b0829a4d58
@@ -2312,10 +2312,10 @@ queries:
         - doc_id: 7cff3c3d-025d-5c0f-86cb-7ead1ea89df9
           sources:
             - tiger
-        - doc_id: 8c8e18dc-7150-5153-ac07-98f1869f2b9e
+        - doc_id: 65647189-5998-59dd-98bc-e7ee93222c26
           sources:
             - tiger
-        - doc_id: 65647189-5998-59dd-98bc-e7ee93222c26
+        - doc_id: 8c8e18dc-7150-5153-ac07-98f1869f2b9e
           sources:
             - tiger
         - doc_id: 2dd0b461-bc18-5439-b663-9e446174f173
@@ -2324,10 +2324,10 @@ queries:
         - doc_id: 6e1b80f5-d2ad-5761-b46e-0b55e3391983
           sources:
             - tiger
-        - doc_id: d113dea7-b9b7-5548-a62c-6549039551fb
+        - doc_id: cc681254-94df-5d08-a6d9-23e72822ee22
           sources:
             - tiger
-        - doc_id: cc681254-94df-5d08-a6d9-23e72822ee22
+        - doc_id: d113dea7-b9b7-5548-a62c-6549039551fb
           sources:
             - tiger
         - doc_id: 03ef4637-b133-5069-afc5-67b0201953ae
@@ -2339,7 +2339,7 @@ queries:
         pg-gin: 4fa8dfb0e3a42d26e7a493601e6ed52b7a37ed981ef141d367aa4570aa216380
         pg-gin-norm: 70cd4303a76c2dac953ea1c8f6ed256b70d2ec99db87efaa465c3e246a6b3656
         pg-noindex: 4fa8dfb0e3a42d26e7a493601e6ed52b7a37ed981ef141d367aa4570aa216380
-        tiger: 97398e7c8bb30e333ae2006a7a360317aa0522d47b65099694daff7ee3a029fd
+        tiger: 3b90839f44b6aeae511d069c49baa85ebdd7f181d536ace65144001fdc0ca9ad
     - query_id: kw-equifax-breach
       query_text: equifax breach
       query_desc: Articles about the Equifax data breach
@@ -2811,7 +2811,7 @@ queries:
         pg-gin: e24fac40187d6a2589b8ae1d22d316d129eca958883f62195ef0688eb0eb0beb
         pg-gin-norm: cedb719978a516063acdfd98488ced02439e1478347cfab37255c2abdfd6389b
         pg-noindex: e24fac40187d6a2589b8ae1d22d316d129eca958883f62195ef0688eb0eb0beb
-        tiger: e2d0dc3bd71893756175b12ee7d7d184f717c44d21fdd92501110da4c91956af
+        tiger: b9499ff6688114c2c17948eec6365530dea6d5d9764723a4eabbfad593e6635f
     - query_id: kw-north-korea-missile
       query_text: north korea missile
       query_desc: Articles about North Korea's missile programme and tests
@@ -3455,7 +3455,7 @@ queries:
         pg-gin: ac24016754af00357da18ef4d8ca55232dda9db405e682e83d7f0dfd8a7788e8
         pg-gin-norm: ab372329c4245a849a5db59ec7399934403d5e2a352c5ee97548796bcc88891e
         pg-noindex: ac24016754af00357da18ef4d8ca55232dda9db405e682e83d7f0dfd8a7788e8
-        tiger: 9548b639832144ef938121a33e1bd596d719c5dafb3aeab5e17948a31820cdec
+        tiger: ae7b71f579964d32145e288b82ab3d56dc3d2eba1cd7870e7d0b978a199724cc
     - query_id: kw-cambridge-analytica
       query_text: cambridge analytica
       query_desc: Articles about Cambridge Analytica
@@ -4051,10 +4051,10 @@ queries:
         - doc_id: a3ad191e-dd7a-500e-b1f1-49060fe735be
           sources:
             - tiger
-        - doc_id: a0507ea9-38c1-53fb-9d02-380889889157
+        - doc_id: 6cf7957d-3c0c-5cf9-b4fd-07cd0df6583b
           sources:
             - tiger
-        - doc_id: 6cf7957d-3c0c-5cf9-b4fd-07cd0df6583b
+        - doc_id: a0507ea9-38c1-53fb-9d02-380889889157
           sources:
             - tiger
         - doc_id: 2d2a43f0-eafa-5363-acdf-801a297392b4
@@ -4099,7 +4099,7 @@ queries:
         pg-gin: 96946279901f4f502ecb5bc971f08037c1da78a5e22cca4615f5412e447a0513
         pg-gin-norm: 3be6489de2451d9503cc26274ac82c46dfad36eecce74bbfffe206d92e3d4722
         pg-noindex: 96946279901f4f502ecb5bc971f08037c1da78a5e22cca4615f5412e447a0513
-        tiger: 3c0a34c45e97b973b4510f3e34f62e22f6b7b7737f9ca69b90a7437f702f79f9
+        tiger: 81b681e45269a5b5c44bb0710f2d99a9f3d4d2e343b85f4e872f7d9a42058401
     - query_id: kw-hurricane-harvey
       query_text: hurricane harvey
       query_desc: Articles about Hurricane Harvey
@@ -4556,49 +4556,49 @@ queries:
         - doc_id: e1e4bd5a-efd0-570d-916d-20ddabf6ef4d
           sources:
             - tiger
-        - doc_id: c98fd2f4-5a40-577c-8eb3-9601af6fc02d
+        - doc_id: 68b218df-1cf5-594c-9180-860e9e22291a
           sources:
             - tiger
-        - doc_id: 68b218df-1cf5-594c-9180-860e9e22291a
+        - doc_id: c98fd2f4-5a40-577c-8eb3-9601af6fc02d
           sources:
             - tiger
         - doc_id: ec9fe4c2-6f7c-529a-b025-4cd713287772
           sources:
             - tiger
-        - doc_id: ba8367e1-9eba-532f-87b6-facd7d667e86
-          sources:
-            - tiger
-        - doc_id: a54abc3a-59f1-58f7-bb17-a0e994a77d9f
-          sources:
-            - tiger
-        - doc_id: d97b50a1-44aa-5f97-8831-b1aa0ef525ee
+        - doc_id: 58a594f8-9060-52ab-9ee1-8d813fda9c2f
           sources:
             - tiger
         - doc_id: 899532fe-1fb8-598a-886b-1f54e82490d0
           sources:
             - tiger
-        - doc_id: 58a594f8-9060-52ab-9ee1-8d813fda9c2f
+        - doc_id: a54abc3a-59f1-58f7-bb17-a0e994a77d9f
+          sources:
+            - tiger
+        - doc_id: ba8367e1-9eba-532f-87b6-facd7d667e86
+          sources:
+            - tiger
+        - doc_id: d97b50a1-44aa-5f97-8831-b1aa0ef525ee
           sources:
             - tiger
         - doc_id: ff51c6ce-59e3-5c41-8471-b1fe51a68dd5
           sources:
             - tiger
-        - doc_id: 69e72a8f-773f-5c58-917b-9d2b012ebb0a
-          sources:
-            - tiger
-        - doc_id: df10758f-a05c-5028-8a34-ef6e9bce8f91
-          sources:
-            - tiger
-        - doc_id: dcf46ea0-f8aa-5a2e-9f0c-f829fa81c7fa
-          sources:
-            - tiger
         - doc_id: 08c1488b-1329-5bc3-a31b-7f06a0e3d802
+          sources:
+            - tiger
+        - doc_id: 2ac72849-0079-51f9-8c52-d63d91a2e4de
+          sources:
+            - tiger
+        - doc_id: 69e72a8f-773f-5c58-917b-9d2b012ebb0a
           sources:
             - tiger
         - doc_id: c170130e-6daa-56ea-895a-2c2fe434eef7
           sources:
             - tiger
-        - doc_id: 2ac72849-0079-51f9-8c52-d63d91a2e4de
+        - doc_id: dcf46ea0-f8aa-5a2e-9f0c-f829fa81c7fa
+          sources:
+            - tiger
+        - doc_id: df10758f-a05c-5028-8a34-ef6e9bce8f91
           sources:
             - tiger
         - doc_id: 4c3893fa-37cf-5f62-b670-16f4efa7c139
@@ -4619,7 +4619,7 @@ queries:
         pg-gin: 517d5cfb2aa1475dc91da9a5280943d10d3704744b34ba75be1cd9f0cbba7b98
         pg-gin-norm: 5c0e97b07bd97bc61916835016285ab50d230b97ca35e6873c3998c6089bb253
         pg-noindex: 517d5cfb2aa1475dc91da9a5280943d10d3704744b34ba75be1cd9f0cbba7b98
-        tiger: 17c4e38594576229aa632189efd4f4c223e760cca0233191e3ee884f971496f2
+        tiger: 053a4fb954f7dfdec7ab4ecafd899e0aaa94c4774cb95aa216cadccce03ba9e3
     - query_id: kw-grenfell-tower
       query_text: grenfell tower
       query_desc: Articles about the Grenfell Tower fire
@@ -5255,7 +5255,7 @@ queries:
         pg-gin: 5b5fe931ac7e4c1a3431c90b52b1ac21c06afeef024cbf60e442a152d58f13f1
         pg-gin-norm: b04815a99dd06e61bc0744428986a00795b991c27d811e1050df42ef2230a612
         pg-noindex: 5b5fe931ac7e4c1a3431c90b52b1ac21c06afeef024cbf60e442a152d58f13f1
-        tiger: c6b8792a9fef1192d3a8d8cf046e9660b426acce5af1c577229f6025ceb7d55d
+        tiger: 619644aa0fb6a4d63b4d8cbf058855e13a2e454632f3497a5972a4a08d26b578
     - query_id: kw-fidget-spinner
       query_text: fidget spinner
       query_desc: Articles about fidget spinners
@@ -5783,7 +5783,7 @@ queries:
         pg-gin: d1304c5587e0ffbd9525e96f7a9858799f6fbe153d5ed8ccd939fae75aad8bef
         pg-gin-norm: ccf4aeb2083749df19cfcd2c748a65ca44b7923ae94543bbf34ad8c99587bca0
         pg-noindex: d1304c5587e0ffbd9525e96f7a9858799f6fbe153d5ed8ccd939fae75aad8bef
-        tiger: 6acc4e83512e1131d144dc672f2078f435af6b6fb22019f968f53c9e951a022b
+        tiger: 9fc9ffd47f7c906869581455f208ac2bfa9533171f78beb2f2b6ae2a9ab7a01c
     - query_id: ph-travel-ban
       query_text: travel ban
       query_desc: Articles about the US travel ban
@@ -6353,7 +6353,7 @@ queries:
         pg-gin: 959e659dc8ba3ce4517e04c6b2484169f747056c7c000bca2f51a2690b413cd0
         pg-gin-norm: 9d2db5c32e1a0f7aba1ccc78b196082b6507ec3bc6e00c9b274c17c44c413553
         pg-noindex: 959e659dc8ba3ce4517e04c6b2484169f747056c7c000bca2f51a2690b413cd0
-        tiger: d12285d18797154e4d5b46adb82d8208c7d71ba810a1bacd55be96907bb13f69
+        tiger: e49d56a7aa734eeb213bdd4017d47e71deff2d41df68dfcc36a2dee3bb280e31
     - query_id: ph-paris-climate-agreement
       query_text: paris climate agreement
       query_desc: Articles about the Paris climate agreement
@@ -6366,6 +6366,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 85444268-8548-54f3-8298-7d5f2f594cfc
           sources:
             - elasticsearch
@@ -6427,6 +6428,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 75021830-98e9-50a9-b33a-a5022fff1c5f
           sources:
             - elasticsearch
@@ -6449,6 +6451,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 20ec5ecb-7d69-5d6a-99bf-245f88195a6f
           sources:
             - elasticsearch
@@ -6456,6 +6459,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: ad5e9595-f0e0-5f41-9343-388766bcdb97
           sources:
             - elasticsearch
@@ -6471,6 +6475,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 6ed8ca8e-e4f2-5c63-bc70-a4b6a3383b94
           sources:
             - elasticsearch
@@ -6562,6 +6567,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 1b51a190-65cd-553f-9841-0fbb7ae3e175
           sources:
             - elasticsearch
@@ -6569,6 +6575,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 902ffa96-413b-5be3-b2e1-3ff768cd3b37
           sources:
             - elasticsearch
@@ -6592,6 +6599,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: d6a2faad-6a64-5f0f-bc99-896002761c1d
           sources:
             - elasticsearch
@@ -6599,6 +6607,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 22144b70-7167-53ed-a7fe-b8262bff7fbe
           sources:
             - elasticsearch
@@ -6622,6 +6631,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 5b21ea86-34fe-5653-8e09-cb013f32ff9f
           sources:
             - elasticsearch
@@ -6668,6 +6678,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 2b25ac76-1c23-565b-980f-f42b9e0cbe36
           sources:
             - elasticsearch
@@ -6675,12 +6686,14 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 7b9fa6c1-174b-5d14-bbde-922cab45c1ff
           sources:
             - elasticsearch
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 6fa2ba41-65eb-5256-a551-91ad87b82c90
           sources:
             - elasticsearch
@@ -6729,6 +6742,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 67a946df-c617-5ac5-a47e-fb68aca804cd
           sources:
             - pg-gin
@@ -6744,6 +6758,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 5a0e04ee-de59-5372-8019-635c270d704b
           sources:
             - pg-gin
@@ -6754,6 +6769,7 @@ queries:
           sources:
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 1e784bd1-558c-56f7-9c18-8f1a5cc742f8
           sources:
             - pg-gin-norm
@@ -6765,82 +6781,34 @@ queries:
         - doc_id: 2afa813f-7ecc-526e-b1a8-e0b2334106f8
           sources:
             - pg-gin-norm
-        - doc_id: 6718219e-12a6-5071-aa19-0420c9dfaffc
-          sources:
-            - tiger
-        - doc_id: 0cc5bf6f-d3ba-5554-b1a0-f55e006a7f9c
-          sources:
-            - tiger
-        - doc_id: d31bf222-6690-536b-baaa-b35bd037f94b
-          sources:
-            - tiger
-        - doc_id: 4c0506fe-f810-534f-8c25-e464e67179f6
-          sources:
-            - tiger
-        - doc_id: f6ae8028-d28c-5c8c-8383-51c3324afd30
-          sources:
-            - tiger
-        - doc_id: 5c935219-82ff-5136-9909-b02756a67656
-          sources:
-            - tiger
-        - doc_id: 62f5e179-220d-57a4-92ce-dc556e437e59
-          sources:
-            - tiger
-        - doc_id: 98f52b5a-e5c2-5be2-8475-fdd4f4288ae9
-          sources:
-            - tiger
-        - doc_id: 81d151ec-57ec-5581-a78f-ff2bc63758d3
-          sources:
-            - tiger
-        - doc_id: 5db3c2ae-552d-5890-a0fd-c37291299e7f
-          sources:
-            - tiger
-        - doc_id: 006328f8-2964-5061-bca0-809e8c31d38c
-          sources:
-            - tiger
-        - doc_id: 7c3e1ae2-3536-5c63-bfed-94abfb6a892d
-          sources:
-            - tiger
-        - doc_id: 30af6776-af8b-576d-985e-88045e3798c1
-          sources:
-            - tiger
-        - doc_id: 9d9aa631-e206-5614-9e4d-cd4ff6a41e9c
-          sources:
-            - tiger
-        - doc_id: 589f62e0-a287-5e76-bad2-48050b3fa835
-          sources:
-            - tiger
         - doc_id: dbfbce44-d895-5e63-85bb-a444cd7076d6
           sources:
             - tiger
-        - doc_id: 10f3ed05-0a00-5181-9ef7-63dec760301c
+        - doc_id: 31338662-c185-54c6-a2be-4c237c2eca2d
           sources:
             - tiger
-        - doc_id: b9566533-f6c3-5bec-a29d-00b64ee4a020
+        - doc_id: 8c6e0f06-880c-5a44-888b-da7d2517f87e
           sources:
             - tiger
-        - doc_id: 32c508d9-9a5c-56cf-b86c-2fc6cb21493b
+        - doc_id: ea8e387b-d796-5238-8d44-1bcf259e2a8a
           sources:
             - tiger
-        - doc_id: a1bb271b-4827-5d2b-967a-96f7b140509f
+        - doc_id: 3af3d586-1bc0-5450-b87e-a92558bde086
           sources:
             - tiger
-        - doc_id: 197b80d0-ea53-5a36-950b-a51faad35894
+        - doc_id: 78ca9dd6-10d4-52c4-b528-9018331acb87
           sources:
             - tiger
-        - doc_id: 952a1d36-0fdc-5468-9ada-1a0a2231c5d3
+        - doc_id: 0a03eb86-e323-5564-b8a8-bfe57774d10c
           sources:
             - tiger
-        - doc_id: e6e9db27-cda2-58dd-97cb-5859579c18a8
+        - doc_id: 7c07c967-e4cb-542b-bd08-66513ccc2c25
           sources:
             - tiger
-        - doc_id: 64fb6850-6c92-5e59-b9c0-17b7032a868f
+        - doc_id: 6ac8a035-bdd3-5fe0-abbe-4f6134b34676
           sources:
             - tiger
-        - doc_id: d7ecd3a8-4e61-50a4-b940-2df7a594ac56
-          sources:
-            - tiger
-        - doc_id: c3e7f8f2-b94e-574e-bb34-59ae5d15f331
+        - doc_id: ec5e2f8c-6ca5-5fb9-9d94-6fa706f1d608
           sources:
             - tiger
       request_digests:
@@ -6849,7 +6817,7 @@ queries:
         pg-gin: aa473dd1381b6da78397885c11e4b8d3449f7ae4ce42f5a6a4c48717bbe95f70
         pg-gin-norm: 96a7957748fc36581cc20281ad81d19eefcfb9abb369e0072d92ce3a29decc70
         pg-noindex: aa473dd1381b6da78397885c11e4b8d3449f7ae4ce42f5a6a4c48717bbe95f70
-        tiger: 9349d6dc1327498acda1f500fbdea0d6b4d9a0e565fa384a40cdd55b73256170
+        tiger: bc308ddf3c60e8f8922f4536ea52a07f141f91f1d13e39cbc13e5184ff528398
     - query_id: ph-supreme-court-nominee
       query_text: supreme court nominee
       query_desc: Articles about a Supreme Court nominee
@@ -6870,6 +6838,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 756a9b9e-971a-5c1e-a505-dee4a07b5534
           sources:
             - elasticsearch
@@ -6877,6 +6846,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: f65cc9c2-b052-5d51-865b-90f3794854fd
           sources:
             - elasticsearch
@@ -6931,6 +6901,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 1de75ac9-71ad-50c7-93d4-78f0c83cd5ec
           sources:
             - elasticsearch
@@ -6999,6 +6970,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 236c1238-f41f-5290-910b-8a0f2b653c4f
           sources:
             - elasticsearch
@@ -7006,6 +6978,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: ad35fd85-3479-5f93-bb15-23c80fcf872d
           sources:
             - elasticsearch
@@ -7044,6 +7017,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 61cf4071-0efd-562e-a896-fdaa2057592f
           sources:
             - elasticsearch
@@ -7059,6 +7033,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: b5d81c91-4f4f-52b6-80e1-4e95ee27c21f
           sources:
             - elasticsearch
@@ -7089,6 +7064,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 2f1816e5-b321-5eb9-9baf-9f5ebfcacadb
           sources:
             - elasticsearch
@@ -7105,6 +7081,7 @@ queries:
           sources:
             - elasticsearch
             - paradedb
+            - tiger
         - doc_id: 8e8148ef-9e7c-50ee-b4f0-1edc585cf7c4
           sources:
             - elasticsearch
@@ -7195,17 +7172,20 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: e350a140-f8bb-53bf-b04f-832b1dcdb7a1
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 28663e6c-41b3-54d4-a604-55bb309344af
           sources:
             - paradedb
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 119d1f17-2aaa-52ea-aa38-6de63aedf839
           sources:
             - pg-gin
@@ -7264,55 +7244,17 @@ queries:
         - doc_id: c9ea5350-65dd-517e-83d0-65cf8bb6d777
           sources:
             - pg-gin-norm
-        - doc_id: 617121bc-db13-5bd7-b74e-f5e839302bd8
-          sources:
-            - tiger
-        - doc_id: f8dcf9ad-5e23-5c29-af4f-275f0bc0d2a5
-          sources:
-            - tiger
-        - doc_id: eea92e27-5b66-58ec-9ca8-4f0b4d3599ba
-          sources:
             - tiger
         - doc_id: e5bce585-4c19-5d49-a455-3742729790fa
           sources:
             - tiger
-        - doc_id: 994be277-f44f-5d08-be12-04677a36a32f
+        - doc_id: c1f3c602-17e0-58af-862e-e711431089b8
           sources:
             - tiger
-        - doc_id: d60abe0a-a4cd-5d15-8faf-a515cf15359a
+        - doc_id: 70987f73-2480-5ddd-8a04-67405d37882e
           sources:
             - tiger
-        - doc_id: 6709c258-448d-53fa-a409-8d2458574d94
-          sources:
-            - tiger
-        - doc_id: 98790172-0282-51a0-8a06-1b703ca04680
-          sources:
-            - tiger
-        - doc_id: e60692cf-3386-52e7-877d-6b317ee4b71c
-          sources:
-            - tiger
-        - doc_id: f1c11d49-f0fa-5225-abb4-ff5c360d1bb3
-          sources:
-            - tiger
-        - doc_id: 9b6a0c35-47e7-500c-be39-9642b742a429
-          sources:
-            - tiger
-        - doc_id: 5048f052-6af9-50cb-bad0-3e93abeffdd9
-          sources:
-            - tiger
-        - doc_id: dee00be1-7ead-5831-a3e5-cea9adfb294c
-          sources:
-            - tiger
-        - doc_id: 70b4c8a7-aab8-5229-9162-a52cd746dba3
-          sources:
-            - tiger
-        - doc_id: 898aec6c-32ee-523c-8898-e3d5bb959c52
-          sources:
-            - tiger
-        - doc_id: ee29da18-504f-54f1-9d6b-d501a14644af
-          sources:
-            - tiger
-        - doc_id: 7a4e68b8-7889-5c62-beee-a553121059cf
+        - doc_id: 83463ce2-7fdb-5ce4-948f-fb0d49392c16
           sources:
             - tiger
       request_digests:
@@ -7321,7 +7263,7 @@ queries:
         pg-gin: 89bb6d50e90ea356d1f4e9c6b4152b2b17b926a5ccf0f003605753850105f58e
         pg-gin-norm: ec2a97bc548bc175e064887c47604e290dfa1632984b6c862339b00e962f0cc7
         pg-noindex: 89bb6d50e90ea356d1f4e9c6b4152b2b17b926a5ccf0f003605753850105f58e
-        tiger: cfdb06e9e4fba7b5de5e1961918b732b26b0914a50e9104c8b8cf32ca85e8b6a
+        tiger: 3cdd3eb39242a76c6af4cd0511753aa863ffa975ee005b0fae29ca0ccc310ad6
     - query_id: ph-las-vegas-shooting
       query_text: las vegas shooting
       query_desc: Articles about the Las Vegas shooting
@@ -7627,6 +7569,7 @@ queries:
             - paradedb
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 1777ab4c-166c-577c-b691-b2b47bf5a4d0
           sources:
             - paradedb
@@ -7659,6 +7602,7 @@ queries:
             - paradedb
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 961d1c64-d117-5bd7-b0f5-6edf656fe028
           sources:
             - paradedb
@@ -7669,10 +7613,12 @@ queries:
           sources:
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 00814cac-444e-57b5-805b-74cfc39787b6
           sources:
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 038f2ab1-fbe7-5a91-868b-47db33b3a3a2
           sources:
             - pg-gin
@@ -7785,6 +7731,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: f9d491fe-86d1-5533-83ef-25346d804951
           sources:
             - pg-gin
@@ -7904,70 +7851,13 @@ queries:
         - doc_id: 4af751a1-6f21-52dd-bb00-b2144a8e47a5
           sources:
             - tiger
-        - doc_id: 25e074c3-df14-50f1-981c-ac595ae10700
-          sources:
-            - tiger
-        - doc_id: 8183acbc-dbbf-57eb-b5ea-d91516be30a4
-          sources:
-            - tiger
-        - doc_id: 62de3fce-679d-5faa-8a00-8398c3f4cf1f
-          sources:
-            - tiger
-        - doc_id: 57bae376-c90c-5405-a276-8eee241bee53
-          sources:
-            - tiger
-        - doc_id: 8983ae86-5c83-5c48-97c5-f0a9fb81d30c
-          sources:
-            - tiger
         - doc_id: 9a886bbc-c607-5216-866c-9653482fff9b
-          sources:
-            - tiger
-        - doc_id: 0bc8c4a4-d7b2-5470-abdc-102178436c31
-          sources:
-            - tiger
-        - doc_id: 27947b44-5c9b-5b1c-aaa9-9fe59153ea31
           sources:
             - tiger
         - doc_id: 1831a811-adea-5a0f-841e-c8cf249b76aa
           sources:
             - tiger
-        - doc_id: 93cfa3cb-d1f7-51ab-bee3-2d62f5d57418
-          sources:
-            - tiger
-        - doc_id: 897a4137-2ef3-5036-8788-85623e20724c
-          sources:
-            - tiger
         - doc_id: 5792208c-5c55-57c5-af09-85414d8c019b
-          sources:
-            - tiger
-        - doc_id: f20953d5-f398-5a61-88d1-259b6480a8cf
-          sources:
-            - tiger
-        - doc_id: 67c6a69d-6ec7-529f-a442-b9563e63e873
-          sources:
-            - tiger
-        - doc_id: dea15023-1003-5d36-a857-33e14b5cedd3
-          sources:
-            - tiger
-        - doc_id: 9eb146ec-1a22-579f-88b2-10a78d3b2c7c
-          sources:
-            - tiger
-        - doc_id: 275d873a-676f-5546-8cca-892a9b556a7b
-          sources:
-            - tiger
-        - doc_id: 9a5f11b2-305b-5e0a-8531-67f7ec3c60ed
-          sources:
-            - tiger
-        - doc_id: 20c83963-f615-5bba-8712-604c12771127
-          sources:
-            - tiger
-        - doc_id: fe96ea4d-fb4a-50a6-9ed0-23035f5c58a3
-          sources:
-            - tiger
-        - doc_id: 65cd95af-917b-5516-a8ac-a08302f6436a
-          sources:
-            - tiger
-        - doc_id: e9606f33-84ff-5858-9df7-3481af4e104b
           sources:
             - tiger
         - doc_id: 2392cc14-2d96-5bb4-b63e-4591f49083c1
@@ -7979,16 +7869,58 @@ queries:
         - doc_id: 6b32f9d4-fc77-562e-8be7-80b96f567f33
           sources:
             - tiger
-        - doc_id: f31e5a33-29f2-54d9-adff-df39c4dedeb2
-          sources:
-            - tiger
-        - doc_id: 8a17bf04-e5d6-578c-8f18-2fed6c6db10e
-          sources:
-            - tiger
         - doc_id: 08214f84-ffd0-5288-b0f0-a1cd1f3b9a32
           sources:
             - tiger
-        - doc_id: 256c0f58-54ff-50d6-9e17-5101dc510c06
+        - doc_id: 50bcc95d-1b74-5719-b155-04d0d98a7765
+          sources:
+            - tiger
+        - doc_id: cf9157d6-5657-59bd-8278-ce0a632edbf8
+          sources:
+            - tiger
+        - doc_id: fca241fc-87e5-59aa-bd96-019b8e8d4317
+          sources:
+            - tiger
+        - doc_id: 36ed1d55-3981-559b-b18f-332113f68991
+          sources:
+            - tiger
+        - doc_id: cb40ff1b-be6f-5284-b48b-954fa2ab0548
+          sources:
+            - tiger
+        - doc_id: 5f64c1bb-4fbc-504a-9778-25f0b76ebc7b
+          sources:
+            - tiger
+        - doc_id: 06ae348f-b00c-5697-9eeb-9697fce1cf00
+          sources:
+            - tiger
+        - doc_id: cde456e3-3c91-5d58-a47b-b7eadf6e2580
+          sources:
+            - tiger
+        - doc_id: 541e4503-7eaf-524c-a41b-53013748b527
+          sources:
+            - tiger
+        - doc_id: 6adc5532-9fa8-5d8d-990f-ab58619a068d
+          sources:
+            - tiger
+        - doc_id: 08ef4d67-c0c9-59ea-ba46-0d573c047511
+          sources:
+            - tiger
+        - doc_id: 7b8ac623-f79f-595c-82fd-03b2fda2aed8
+          sources:
+            - tiger
+        - doc_id: c898bdec-317f-566e-832d-62fcd5fcd09b
+          sources:
+            - tiger
+        - doc_id: 2af22e2b-7a53-575a-9d80-6e555aa4bec8
+          sources:
+            - tiger
+        - doc_id: 65d3449e-6c3e-5150-8f1a-3836474d5675
+          sources:
+            - tiger
+        - doc_id: 266acedb-5597-5ab2-b016-23fe41adfd64
+          sources:
+            - tiger
+        - doc_id: d3ed022c-3d99-5ea2-a3b1-7029b227931b
           sources:
             - tiger
       request_digests:
@@ -7997,7 +7929,7 @@ queries:
         pg-gin: 64f9a002f5fb4ebabb088212eaf0c29994dd39bf092ce26b82d3d4515df5b3d8
         pg-gin-norm: ab8658f3f6888b2109c6d40661773110c021d5e67e6e3a0c7bcd6309480c881d
         pg-noindex: 64f9a002f5fb4ebabb088212eaf0c29994dd39bf092ce26b82d3d4515df5b3d8
-        tiger: 69b42bd0817864a41c830ce22979ec2414d60ce4741ef0621a7893c9ea2e5c52
+        tiger: 13f350d510e0d8d2782952b8b5a8588745af616e1219189795f397617ba32853
     - query_id: ph-universal-basic-income
       query_text: universal basic income
       query_desc: Articles about universal basic income
@@ -8042,6 +7974,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 39237be9-1f1e-5e50-804b-a6d91c3757a3
           sources:
             - elasticsearch
@@ -8120,6 +8053,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: a7bed865-ed96-58b3-9671-b627811c8da1
           sources:
             - elasticsearch
@@ -8135,6 +8069,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: b1d77897-cb01-5e19-964e-4370e135475b
           sources:
             - elasticsearch
@@ -8268,6 +8203,7 @@ queries:
           sources:
             - elasticsearch
             - paradedb
+            - tiger
         - doc_id: 0acb8c1d-5f7d-5f27-ae23-ffe9723c4c82
           sources:
             - elasticsearch
@@ -8406,18 +8342,6 @@ queries:
             - pg-gin
             - pg-noindex
             - tiger
-        - doc_id: e7d9eba0-2fc6-561b-b1a7-dfd474e585ad
-          sources:
-            - tiger
-        - doc_id: 09306d6a-c198-5527-b092-93a696d710fb
-          sources:
-            - tiger
-        - doc_id: 847e66fd-c3c5-5445-9fe3-8588997d4eb5
-          sources:
-            - tiger
-        - doc_id: 8e29dfaa-415d-566e-b387-f2eb06302d50
-          sources:
-            - tiger
         - doc_id: 328ee575-1be3-517c-80b6-512542499bf5
           sources:
             - tiger
@@ -8427,7 +8351,7 @@ queries:
         pg-gin: a244d0cd6eb3ccc69b4ccef4dfc8cbc7e9be55fa2713342d07205ed7154b4421
         pg-gin-norm: 09664af0d149dd6263434760640f68136b85c4b88ccd3b26704e76ca2daba8b6
         pg-noindex: a244d0cd6eb3ccc69b4ccef4dfc8cbc7e9be55fa2713342d07205ed7154b4421
-        tiger: 876f83e946a840bdd6c9a6ee84d7577559488a3c0c188029f33f9c3b1ad41ad1
+        tiger: f6b19fd25f69f3ade970f43c2dc4510a883704b22e92575514f518be0a476cbf
     - query_id: bool-tesla-musk-or-model
       query_text: tesla AND (musk OR model)
       query_desc: Articles about Tesla that mention Musk or a Tesla model
@@ -9009,7 +8933,7 @@ queries:
         pg-gin: 2d206dc90ea0a0f5318ed14a8b5781b8f1b245e9245b19bd4c5591ab70da5875
         pg-gin-norm: 396e4d9fbee7171174d083eae9e0137c22d8e4877872da17b98a107fa40aa434
         pg-noindex: 2d206dc90ea0a0f5318ed14a8b5781b8f1b245e9245b19bd4c5591ab70da5875
-        tiger: 8fd73789e0199418e6b82241c1479cfb2f0d4ba645ed1dbdc15671b8cdb26729
+        tiger: 4ada5ad46ccf414cb430356f753b8da5f6bb9305eacc12c894de04d5f7179f54
     - query_id: bool-facebook-privacy-not-instagram
       query_text: facebook AND privacy AND NOT instagram
       query_desc: Articles about Facebook and privacy that do not mention Instagram
@@ -9028,6 +8952,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: fed9a254-e4ca-51ef-a666-139a6b898777
           sources:
             - elasticsearch
@@ -9054,14 +8979,12 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
-            - tiger
         - doc_id: ba9b3857-9594-5adf-864d-05e7f3b3028f
           sources:
             - elasticsearch
             - pg-gin
             - pg-gin-norm
             - pg-noindex
-            - tiger
         - doc_id: 61213829-1cca-5a2e-bcae-520d7b187d98
           sources:
             - elasticsearch
@@ -9075,12 +8998,14 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 273c36be-5930-5009-9700-997849b8654c
           sources:
             - elasticsearch
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: e67cdcce-e6f8-5530-a484-cc6f1109c819
           sources:
             - elasticsearch
@@ -9093,6 +9018,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 00c71ef7-ac5f-5f3e-b93c-5dfc93ac9522
           sources:
             - elasticsearch
@@ -9128,7 +9054,6 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
-            - tiger
         - doc_id: 6a0044db-944d-5446-9eb0-82ee3c0bf3eb
           sources:
             - elasticsearch
@@ -9143,7 +9068,6 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
-            - tiger
         - doc_id: 28d63047-64ad-5b0a-b475-3b447b8e20d3
           sources:
             - elasticsearch
@@ -9195,6 +9119,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: aeeef261-a7ae-5b59-a291-78b41502c943
           sources:
             - elasticsearch
@@ -9493,9 +9418,6 @@ queries:
         - doc_id: 4cbbb8aa-8a76-5fbf-aa63-a2c5c49052ee
           sources:
             - tiger
-        - doc_id: 075cfbd8-8dfa-5a78-801c-257123f092bb
-          sources:
-            - tiger
         - doc_id: c24dec4d-e5ff-5aee-9a28-6343b6973224
           sources:
             - tiger
@@ -9523,7 +9445,7 @@ queries:
         pg-gin: 54158f41b01ad454313e220c48c3f12bd0f9c71dc1f2830bd7daa2b41f5c548e
         pg-gin-norm: da2b84a78bf2f8933eb662bfbb14103084610136b4b698909ce404c9db692a1b
         pg-noindex: 54158f41b01ad454313e220c48c3f12bd0f9c71dc1f2830bd7daa2b41f5c548e
-        tiger: 568604cade54a8425cdf7151d03de593f3d97bac2df48cc68478744f5d5538af
+        tiger: f251f14c75f469ecb03d3b67c835c21f8132b6d7e31ce2c0b8b791e5a2445d0e
     - query_id: bool-storm-puerto-rico
       query_text: (hurricane OR storm) AND puerto AND rico
       query_desc: Articles about a hurricane or storm in Puerto Rico
@@ -10136,7 +10058,7 @@ queries:
         - doc_id: 0c1bba06-509c-5fee-aedc-2a3e538decf5
           sources:
             - tiger
-        - doc_id: 5be669c2-6b99-58a4-89ac-19bf3fcfff65
+        - doc_id: 09e57dea-5e2a-56eb-b32c-3e0c6d8c04af
           sources:
             - tiger
       request_digests:
@@ -10145,7 +10067,7 @@ queries:
         pg-gin: 7885d5f1ccc0fa5f01975173265c83cc1bd59a9c21fbc7ece0485bd31a43f3bb
         pg-gin-norm: b46fdaeb112edd6136e80ece9fb3921eaa3ea94d42012d0a2bb66afca2974478
         pg-noindex: 7885d5f1ccc0fa5f01975173265c83cc1bd59a9c21fbc7ece0485bd31a43f3bb
-        tiger: dff2d4e4694208ae6776ff0b0e605c28d34d7fc8de42c105a9036101befa5344
+        tiger: f3ccf69248306b33f3d7d54d5c44c17a5ce30c69067907121681717a6e182c4e
     - query_id: bool-uber-lyft-driver-not-taxi
       query_text: (uber OR lyft) AND driver AND NOT taxi
       query_desc: Articles about Uber or Lyft drivers that do not mention taxis
@@ -10297,12 +10219,15 @@ queries:
         - doc_id: 2abb062b-0ad4-5729-a0dc-79e1377607f1
           sources:
             - elasticsearch
+            - tiger
         - doc_id: 63d5dc08-57e1-53b7-9c35-964768b6efac
           sources:
             - elasticsearch
+            - tiger
         - doc_id: d66c49cf-eacf-5c9e-9fa8-0ecd4d41f2eb
           sources:
             - elasticsearch
+            - tiger
         - doc_id: 0f7825c2-9f5d-53c5-93e0-9c9fb2c44883
           sources:
             - elasticsearch
@@ -10311,17 +10236,21 @@ queries:
           sources:
             - elasticsearch
             - paradedb
+            - tiger
         - doc_id: 47fe34b3-1c00-51f3-9728-99da2f989146
           sources:
             - elasticsearch
+            - tiger
         - doc_id: 0327fccf-42ae-5e33-817f-9b8ff0ad1a79
           sources:
             - elasticsearch
             - paradedb
+            - tiger
         - doc_id: 40950e5c-9230-549c-8f56-209e87d930b6
           sources:
             - elasticsearch
             - paradedb
+            - tiger
         - doc_id: 633be309-5210-5fd0-879a-31d26828a23d
           sources:
             - elasticsearch
@@ -10332,47 +10261,57 @@ queries:
           sources:
             - elasticsearch
             - paradedb
+            - tiger
         - doc_id: a76a9b5d-4b83-50ec-b92f-676f50958de4
           sources:
             - elasticsearch
+            - tiger
         - doc_id: 04cc180e-b03e-5d2a-96d0-e311356b4f76
           sources:
             - elasticsearch
+            - tiger
         - doc_id: e17370bb-629b-54d0-acb2-9effca7ac312
           sources:
             - elasticsearch
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 1f3b6c8b-c130-532f-b2ef-ce05890369d1
           sources:
             - elasticsearch
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: acc1bb0a-a1c8-589a-90aa-d22e6aacb644
           sources:
             - elasticsearch
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: dd08e733-e0c9-5306-91c5-b15dbb76bfd4
           sources:
             - elasticsearch
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 32297f10-53d0-5eda-928e-0713fd4fe0e4
           sources:
             - elasticsearch
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: ac22c83f-319a-5287-8628-49a1a73c3442
           sources:
             - elasticsearch
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: c2a1ab44-66e0-5467-b0b2-1fbdd1f1ff2f
           sources:
             - elasticsearch
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: faa6b19f-dce3-5800-b9b0-01ff4a5fc5e8
           sources:
             - elasticsearch
@@ -10384,21 +10323,26 @@ queries:
             - paradedb
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 0bb53eee-35d4-5dc2-8f6f-73691aecd11f
           sources:
             - elasticsearch
             - paradedb
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 617888d3-9332-5b07-b746-0b5532a38e43
           sources:
             - elasticsearch
+            - tiger
         - doc_id: 25a091c7-c899-51f7-b53d-1a097936e521
           sources:
             - elasticsearch
+            - tiger
         - doc_id: 68c8f684-81c2-5275-99c8-ecdfc9307650
           sources:
             - elasticsearch
+            - tiger
         - doc_id: 566a186d-6796-5b51-a931-54203a30541c
           sources:
             - elasticsearch
@@ -10407,6 +10351,7 @@ queries:
             - elasticsearch
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: e44c1803-d7bb-53c1-9154-7a0e1e4e0da7
           sources:
             - paradedb
@@ -10610,6 +10555,7 @@ queries:
         - doc_id: 2263b1a7-2f12-55c6-8ddf-e6c736369c63
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 019ca488-15dd-599a-a070-890d958f3221
           sources:
             - pg-gin-norm
@@ -10703,85 +10649,13 @@ queries:
         - doc_id: fc8192b9-a581-558e-b233-dac56f9a1732
           sources:
             - pg-gin-norm
-        - doc_id: e7db27c0-7625-5020-9f40-d16a75cd6b45
-          sources:
-            - tiger
-        - doc_id: f4bcf744-a461-5dca-82f6-66f60b223db0
-          sources:
-            - tiger
-        - doc_id: 85ceb8b1-9b3f-5644-bb7d-25ee37f85b41
-          sources:
-            - tiger
-        - doc_id: 0176bfb2-4f7f-56f8-baf4-75ba8ffd86c8
-          sources:
-            - tiger
-        - doc_id: 20e6c8d6-3cd6-5ca5-afbf-9edbd987d090
-          sources:
-            - tiger
-        - doc_id: 9653a545-7ba5-55a7-bdda-7c4ea448bc92
-          sources:
-            - tiger
-        - doc_id: caab0d09-4839-511b-a005-ec6d1f1b8535
-          sources:
-            - tiger
-        - doc_id: bf360ec3-ed67-5bde-a414-735b2fe9a5bb
-          sources:
-            - tiger
-        - doc_id: a5fcca1b-e1ef-5769-93a9-803596c58f67
-          sources:
-            - tiger
-        - doc_id: 18a2596b-c127-58b2-b059-61de54fdc6a1
-          sources:
-            - tiger
-        - doc_id: 3b2caca8-e18d-5c7a-b5c2-650ac2bc0ada
-          sources:
-            - tiger
-        - doc_id: 3ff45fc9-0f16-55bf-a6b6-8d480482dc33
-          sources:
-            - tiger
-        - doc_id: 8992e986-da17-566d-a4a6-918ebd4b1a70
-          sources:
-            - tiger
-        - doc_id: 81ee16df-4b3a-56d1-bb9c-8c7baa81366a
-          sources:
-            - tiger
-        - doc_id: dd01f310-5bce-5c0d-b3de-762d59cfbe9f
-          sources:
-            - tiger
-        - doc_id: f419b13e-7abb-59a1-b88b-28713b0b1dcd
-          sources:
-            - tiger
-        - doc_id: 354e19d7-381a-567e-bb49-39f10c286c7f
-          sources:
-            - tiger
-        - doc_id: b0f7a052-1b45-5634-b58e-6c8350026c0e
-          sources:
-            - tiger
-        - doc_id: 0ab08b96-7d73-5fec-b159-72085c88649b
-          sources:
-            - tiger
-        - doc_id: 429cf6a1-ca62-56d1-a85f-86affa918007
-          sources:
-            - tiger
-        - doc_id: 3792ee5a-03a1-55e0-9469-88e7379915ec
-          sources:
-            - tiger
-        - doc_id: 54c7551c-f420-5dea-8fa8-5ae44f3d25da
-          sources:
-            - tiger
-        - doc_id: 358fdaca-2c19-5e52-91a4-50a2ca06a7a3
-          sources:
-            - tiger
-        - doc_id: 92ed7aaa-4495-51d9-befb-5aeef374b0ed
-          sources:
-            - tiger
       request_digests:
         elasticsearch: ecac1e746d84f5f29e14618a98c753ef0e332ae56b259c7b0d5db3e6496a97bb
         paradedb: 8854b3c558a95f2a3c416f93e7d88b48d3ca5e2bb7cde1c6e9e8af24b007853f
         pg-gin: a767ff1023e0cfb101b9d7c0b3d5ff04abf23ecde83020ac36dfc859297069bb
         pg-gin-norm: 92c9a10c92e7aee1fc13873a9fd1fa16d13082cff4e4364544059ea770a7af32
         pg-noindex: a767ff1023e0cfb101b9d7c0b3d5ff04abf23ecde83020ac36dfc859297069bb
-        tiger: d704c4a9a6bfd4ef7ea443f83fa3cc40c1461cd443f3bfa13511caee651ec72d
+        tiger: 1627f243a728c6e249e5baad8551adab35f72594cde90cb3cba24ea5c36b603e
     - query_id: bool-flu-vaccine
       query_text: (flu OR influenza) AND vaccine
       query_desc: Articles about flu or influenza vaccines
@@ -11301,7 +11175,7 @@ queries:
         pg-gin: d70dd8ba1a658e637685ed4ae3c57b0737797dd9af0147211d7009d1a9030713
         pg-gin-norm: cb79cd470e6acf63231b07bc6bcebbef1f914052104874d583dff7e413196d2a
         pg-noindex: d70dd8ba1a658e637685ed4ae3c57b0737797dd9af0147211d7009d1a9030713
-        tiger: 1598e4ff26df39dd261bca1e58a33e8105ff5a56a27414c1b65c94040caa60e1
+        tiger: 27f07a75f22dccd1ba4b76f8805481ab074a28b5dfac5d35f562bcea122930ed
     - query_id: mf-solar-power-cost
       query_text: solar power cost
       query_desc: Articles about the cost of solar power
@@ -11855,7 +11729,7 @@ queries:
         pg-gin: c6aa640765d05d02348b0ac665f997d793fc2fd67ee999a961682254024b9608
         pg-gin-norm: b508147c2601f298b2952678b350ffa0c27b4721f6b8cf550d315e9c5fcf44ec
         pg-noindex: c6aa640765d05d02348b0ac665f997d793fc2fd67ee999a961682254024b9608
-        tiger: 766688678e4a925da2e7b9c8a451e915ed4b4f594e1c59558ee27988fd2a23db
+        tiger: c646613200b2e3f59323d117a870a5f379053909239e086aa661fdf16353bd9a
     - query_id: mf-ai-jobs
       query_text: artificial intelligence jobs
       query_desc: Articles about artificial intelligence and jobs
@@ -12093,7 +11967,6 @@ queries:
         - doc_id: cb915cdf-75d5-5da5-817c-1f0671e053b3
           sources:
             - paradedb
-            - tiger
         - doc_id: f96798bc-33f0-5666-bea8-f07610dbe2d9
           sources:
             - paradedb
@@ -12122,7 +11995,6 @@ queries:
         - doc_id: 39fe7a95-44c7-5a74-ae69-d9437a7f3832
           sources:
             - paradedb
-            - tiger
         - doc_id: 217abcfa-bd06-568a-842f-4579075ef0f7
           sources:
             - paradedb
@@ -12371,16 +12243,10 @@ queries:
         - doc_id: 8cd3c5bf-5117-59a6-9ed1-6fdc1a88ba77
           sources:
             - tiger
-        - doc_id: 456043e7-3fef-50f9-80ba-28ff51483921
-          sources:
-            - tiger
-        - doc_id: 605c0eab-1b7b-59e6-bced-a433dbe38fac
+        - doc_id: 48293bb8-6d43-594a-9e3b-723600d5d99d
           sources:
             - tiger
         - doc_id: 935b6167-330d-5fc9-b304-6cac974645c8
-          sources:
-            - tiger
-        - doc_id: 48293bb8-6d43-594a-9e3b-723600d5d99d
           sources:
             - tiger
         - doc_id: 5ec44ce6-a894-5ebf-80a1-e05c8f8071fd
@@ -12401,10 +12267,10 @@ queries:
         - doc_id: 16b18e98-960c-5be1-934c-5c03355a14e1
           sources:
             - tiger
-        - doc_id: bb112350-e4bc-5a0f-91a3-2c4fac9729bb
+        - doc_id: 9fb0ff74-cda2-5327-9f98-ddb0a0583af3
           sources:
             - tiger
-        - doc_id: 9fb0ff74-cda2-5327-9f98-ddb0a0583af3
+        - doc_id: bb112350-e4bc-5a0f-91a3-2c4fac9729bb
           sources:
             - tiger
         - doc_id: 358e66ad-bedf-524a-9e40-31d523ca4b20
@@ -12416,13 +12282,10 @@ queries:
         - doc_id: f58a980b-e199-5f5b-b93a-891ff86d9e0e
           sources:
             - tiger
-        - doc_id: d33aa728-8ec4-5f2f-bb33-4d353019e57f
-          sources:
-            - tiger
         - doc_id: cc3619a0-5b5f-5e7a-a021-e40440b859ee
           sources:
             - tiger
-        - doc_id: 97737d93-50ac-5e84-b21a-d824aef1fb64
+        - doc_id: d33aa728-8ec4-5f2f-bb33-4d353019e57f
           sources:
             - tiger
         - doc_id: 89b13ac3-c828-51bf-bbac-f72a67681e1a
@@ -12437,13 +12300,28 @@ queries:
         - doc_id: 5200a800-e608-52d4-a356-b928b8b10976
           sources:
             - tiger
+        - doc_id: c371d663-64c3-5049-8957-afc0e8fb516e
+          sources:
+            - tiger
+        - doc_id: 70cc4a9c-c567-5eb5-8f1e-2656597465cb
+          sources:
+            - tiger
+        - doc_id: 75db1100-5f3f-5440-b0c8-396b8bff9ac4
+          sources:
+            - tiger
+        - doc_id: 206f2213-7a46-5505-a345-74e37b18e5e7
+          sources:
+            - tiger
+        - doc_id: 5575d234-ffbb-58be-b1ce-b5759814cfb1
+          sources:
+            - tiger
       request_digests:
         elasticsearch: e3a31cd1c27dff953e668f82c8b9e8308a536021edb48a5f46d6beee7de56875
         paradedb: c58c8eb41d976c8b58b61b4f0369946866fcccb8b739d10df535783643cdf871
         pg-gin: cf0443028bc364354469c28f814dcbafb91e58f25f54352b7aeabaa1bbd0e7b2
         pg-gin-norm: 58a859c60150c4ac57566de0bc460d520dc0dc0fe9fbfe2edbc3654a835d08ec
         pg-noindex: cf0443028bc364354469c28f814dcbafb91e58f25f54352b7aeabaa1bbd0e7b2
-        tiger: 78238a9c02ce0a9e56301d6f204d80ae888e66775f6894d25702831e6a2e6a52
+        tiger: 54ab123f92f7014b4c50f747b114f646b6fa72310afa1c44afa27d6947b282f8
     - query_id: mf-student-loan-debt
       query_text: student loan debt
       query_desc: Articles about student loan debt
@@ -12761,11 +12639,11 @@ queries:
           sources:
             - paradedb
             - pg-gin-norm
-            - tiger
         - doc_id: 11bdec07-9c10-5a88-9aab-93a652ad0b5c
           sources:
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 3f2d90c7-cf70-5d97-93e3-18a2639e7d49
           sources:
             - paradedb
@@ -12969,7 +12847,7 @@ queries:
         pg-gin: 3fa5178cd9db19e9f1fadb5ba0920c8a87988a711ff7a7fffaeacb737a10b77c
         pg-gin-norm: 71708f2ceee1c1306ff0157c7c56ecd826e2d72cc153ec55788183e6486db676
         pg-noindex: 3fa5178cd9db19e9f1fadb5ba0920c8a87988a711ff7a7fffaeacb737a10b77c
-        tiger: 67cb75795e1ba4c7d7cba75a15e4a46a258aed587da4dcb1b9102c7eeb2691be
+        tiger: 7a4f4287c25104a80aaf5f34a9e89ca2114274201f113a63cca9f38ce3a48b60
     - query_id: mf-minimum-wage-increase
       query_text: minimum wage increase
       query_desc: Articles about minimum wage increases
@@ -13513,7 +13391,7 @@ queries:
         pg-gin: 4a586d669cdaa8a8b6a1433faebfd9d10eb4357379656dd0e33a61523a9de5c8
         pg-gin-norm: 6c5752947cd26e26222ae3acba8c5854d470071c7498d2fd5e6d7962c9be7b32
         pg-noindex: 4a586d669cdaa8a8b6a1433faebfd9d10eb4357379656dd0e33a61523a9de5c8
-        tiger: f0d808af5a69e7128a3e2f3a669692596c2639f693dab5811dc1c320e6e33592
+        tiger: de97b156b238cea39a8a62ede0dba7380798d300f529c1b7a165a27c99b407d3
     - query_id: mf-iran-nuclear-deal
       query_text: iran nuclear deal
       query_desc: Articles about the Iran nuclear deal
@@ -14104,10 +13982,10 @@ queries:
         - doc_id: 74e1d4ac-e69d-5b1f-b102-db3c3229e638
           sources:
             - tiger
-        - doc_id: ce2ba515-1774-5a76-9140-800f9028188e
+        - doc_id: caa56d86-57ef-53ef-b3b7-4740f0702e49
           sources:
             - tiger
-        - doc_id: caa56d86-57ef-53ef-b3b7-4740f0702e49
+        - doc_id: ce2ba515-1774-5a76-9140-800f9028188e
           sources:
             - tiger
         - doc_id: 5d12738e-414b-57b6-b025-3656df8befca
@@ -14128,19 +14006,19 @@ queries:
         - doc_id: ca015299-5fe7-5a8b-ac81-f8c497a58629
           sources:
             - tiger
-        - doc_id: ee95f5f8-2792-545a-8bc0-c385a06616d8
+        - doc_id: 3243953a-4e2e-5461-8110-9ccdd2d46cb2
           sources:
             - tiger
-        - doc_id: 3243953a-4e2e-5461-8110-9ccdd2d46cb2
+        - doc_id: ee95f5f8-2792-545a-8bc0-c385a06616d8
           sources:
             - tiger
         - doc_id: e9ff437b-35a1-5a75-95c4-c49dacaa152e
           sources:
             - tiger
-        - doc_id: a6ece240-fc9a-5cc9-bc80-8404f33f9560
+        - doc_id: 10200d8f-2ed6-546c-b21d-ad2d16c190bd
           sources:
             - tiger
-        - doc_id: 10200d8f-2ed6-546c-b21d-ad2d16c190bd
+        - doc_id: a6ece240-fc9a-5cc9-bc80-8404f33f9560
           sources:
             - tiger
         - doc_id: 76ee4be7-9f1c-5e49-abb4-8db0eaf99190
@@ -14149,10 +14027,10 @@ queries:
         - doc_id: 5d987f13-fc16-5da4-91be-aafa7938163b
           sources:
             - tiger
-        - doc_id: e1bac1cd-f92c-5691-bbd5-803dc068327a
+        - doc_id: 90468590-e6f2-5472-ae3b-8db173c995a4
           sources:
             - tiger
-        - doc_id: 90468590-e6f2-5472-ae3b-8db173c995a4
+        - doc_id: e1bac1cd-f92c-5691-bbd5-803dc068327a
           sources:
             - tiger
       request_digests:
@@ -14161,7 +14039,7 @@ queries:
         pg-gin: 1b93a09766e1c117237c56d8a6940e07408f7994cf3752f26ae0367b7469e713
         pg-gin-norm: 56a113d1e307b3c1fbe071d3dbea9ecf2581184be6a2b867eb6d4b81249c62c2
         pg-noindex: 1b93a09766e1c117237c56d8a6940e07408f7994cf3752f26ae0367b7469e713
-        tiger: 460fe55766c31b1b13a38eef699457e26e3c3314c589b2c2538a2c1228f78e28
+        tiger: 76c27634a864742732eaa33ef9e9ca4e19a2b5f2979b61fe16b39f932b5e0a18
     - query_id: mf-housing-market-prices
       query_text: housing market prices
       query_desc: Articles about housing market prices
@@ -14759,7 +14637,7 @@ queries:
         pg-gin: 5ece05e6c8be44ae5263818ae72594a900d5ee3e176adef3df98e5b985ef421d
         pg-gin-norm: 3e97040315561f5f189355ed575b7369e4104baf0e0ae7b4ee13f05ce0276790
         pg-noindex: 5ece05e6c8be44ae5263818ae72594a900d5ee3e176adef3df98e5b985ef421d
-        tiger: 04677106c233f252e275674343670439434df7c7e4904cf8b5d198ad1119c345
+        tiger: fa6f702956d883015f30d73bfcedacad30562e6620eed56f0cc55458803e127a
     - query_id: title-self-driving
       query_text: self-driving
       query_desc: Articles whose title is about self-driving vehicles
@@ -14771,43 +14649,51 @@ queries:
             - paradedb
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: f63dbd81-97bf-5b7b-b4ca-ef1e8d2fda2b
           sources:
             - elasticsearch
             - paradedb
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 2df86eba-99fb-53c1-ad20-4c196fb4b509
           sources:
             - elasticsearch
             - paradedb
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 70293aa1-eebe-5101-957d-8e8417d2eb89
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 2ad5b08b-ea65-54f9-9466-66f0e0e6f3e0
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 4e13a78e-2f15-5377-a673-2ee177971cbb
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: b4c68d0d-abc3-594e-a876-0c52431f8b3c
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 4f6e64be-ceba-5c9f-8c22-a1fc8807b029
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 00895fa2-5262-51ec-a813-783245ad8b4a
           sources:
             - elasticsearch
@@ -14817,6 +14703,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 06429e34-e537-5eaa-879a-7c65f4f8e106
           sources:
             - elasticsearch
@@ -14824,21 +14711,25 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 7ddf2891-cb5d-5c8f-8f4c-80517500a5a1
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 5b626c05-b7d9-5a8b-b117-1bcdd1432908
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: fff152a3-7f70-5402-ba58-b72d55a5ec36
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 2e6d8662-93c9-577d-8dcd-29d5586b8f4f
           sources:
             - elasticsearch
@@ -14854,21 +14745,25 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 3c27a76d-8c6d-5199-ae48-94973b8dee5a
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 54a1d6ac-8027-5fd8-bc84-f26cffd40897
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 9ca94f72-eb65-5e6c-8234-f9f9c532632f
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 888f2c06-bd22-57dd-8d64-b25bfa374bcb
           sources:
             - elasticsearch
@@ -14882,11 +14777,11 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
-            - tiger
         - doc_id: 3e05fd32-c975-53f6-8c78-ebfcbe748cb6
           sources:
             - elasticsearch
             - pg-gin-norm
+            - tiger
         - doc_id: bd991651-ae1a-50c1-b01d-7e2a8345b627
           sources:
             - elasticsearch
@@ -14898,41 +14793,49 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 79cd6078-2234-557f-8b22-d9e4ccc6258d
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: b16ca797-cf9e-54cd-8a78-f560111224ce
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 31f2eee6-a75d-572a-84eb-c4157dea04fe
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: c339fd96-295d-59ff-8db8-94c86640050e
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: bba36ae1-1838-5a7b-a9cc-116bc6ace873
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: a8baa809-c7b0-5a6e-a18a-719aa061df15
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: de3fd8fc-438c-5868-bfe9-e0b1d7197c87
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 98d384e9-723e-522d-b45f-20ffd1130767
           sources:
             - elasticsearch
@@ -14953,6 +14856,7 @@ queries:
           sources:
             - elasticsearch
             - pg-gin-norm
+            - tiger
         - doc_id: ca589c6a-48fd-5c94-8c7c-33a9023a725a
           sources:
             - elasticsearch
@@ -14969,6 +14873,7 @@ queries:
           sources:
             - elasticsearch
             - pg-gin-norm
+            - tiger
         - doc_id: b9396d37-d637-5a45-94e6-6a0bf95985b4
           sources:
             - elasticsearch
@@ -14994,10 +14899,12 @@ queries:
           sources:
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 5356ffef-6032-58b3-9034-734031deebf7
           sources:
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: ca0e09e1-ea63-5b4b-871c-81d788f6f1fb
           sources:
             - paradedb
@@ -15016,7 +14923,6 @@ queries:
         - doc_id: bfc660f9-2483-52c8-90b1-0cada1f91ed1
           sources:
             - paradedb
-            - tiger
         - doc_id: 868816c1-30f5-5443-b2b5-a96a82eab233
           sources:
             - paradedb
@@ -15076,7 +14982,6 @@ queries:
           sources:
             - pg-gin
             - pg-noindex
-            - tiger
         - doc_id: 037ec0eb-ac04-5c70-beec-cc2ff38004ac
           sources:
             - pg-gin
@@ -15165,17 +15070,14 @@ queries:
           sources:
             - pg-gin
             - pg-noindex
-            - tiger
         - doc_id: 0b7ccbf2-a6cb-5b25-af8a-4f0d663cd982
           sources:
             - pg-gin
             - pg-noindex
-            - tiger
         - doc_id: 0bc5e709-3ec0-5466-91f4-69dd94d96c47
           sources:
             - pg-gin
             - pg-noindex
-            - tiger
         - doc_id: 0c3e6b66-9c60-559d-958f-db7a41599595
           sources:
             - pg-gin
@@ -15204,7 +15106,6 @@ queries:
           sources:
             - pg-gin
             - pg-noindex
-            - tiger
         - doc_id: 0e71d891-82dd-5741-82f1-f03520bc8503
           sources:
             - pg-gin
@@ -15236,48 +15137,63 @@ queries:
         - doc_id: 3105d68c-2a6f-558d-a8c4-db673221728e
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 120c8612-24c9-5a1b-8f54-306d49e5f6fa
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 12fcf39b-b38d-59fd-a3a4-1be9221fbf73
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 2a33f8a1-0d99-50c1-8f97-5d5cc9acdafb
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 357d439e-3830-5553-9f0a-e1ae6d69f0d1
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 369face1-c5aa-56e8-be23-4598b5471897
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 4442e4f7-8303-5b4d-991a-292838bd1ad0
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 4eb00ad0-b316-594d-b1e6-366385300930
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 545f8589-e338-5110-8ff3-f3740aec3d8e
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 54798750-29c0-50fd-a84a-436598c588e5
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 690d15f3-9d49-59da-9e1b-67e344f2889e
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 6ef18bf2-f41d-506c-b3ff-8474432170a1
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 75bc8893-bc65-52fe-876a-2cf992bae191
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 7718f589-a605-50ea-8ff4-001539a230a3
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 80a4709c-4ddb-5c14-883e-1396f8782571
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: bde07da8-ab93-54f2-b8ab-4b64c3550835
           sources:
             - pg-gin-norm
@@ -15285,133 +15201,17 @@ queries:
         - doc_id: c4de8776-1146-58de-9363-38f5fea51de4
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: e21f1e18-436e-5355-8ca2-cac1a0519e9d
           sources:
             - pg-gin-norm
-        - doc_id: eaf1c996-c319-5d55-95ae-98dc6c945b6e
-          sources:
-            - tiger
-        - doc_id: 94b21fe1-c031-5dc0-98ca-16302a184edd
-          sources:
-            - tiger
-        - doc_id: 8ee87451-737c-54a4-a830-ade57a813615
-          sources:
-            - tiger
-        - doc_id: 58cae20d-d83c-551e-a10e-a8532baae994
-          sources:
-            - tiger
-        - doc_id: a34731c5-be2a-53ac-a87c-e1fc8992c11c
-          sources:
-            - tiger
-        - doc_id: b5d9b3a2-f62f-549c-a394-e3b46b86ae98
-          sources:
-            - tiger
-        - doc_id: 31230609-11cd-5961-980d-b9231f57daaa
-          sources:
-            - tiger
-        - doc_id: d1dc3193-b110-5d96-8647-9daba13689e0
-          sources:
-            - tiger
-        - doc_id: 987c19b2-98e7-5f10-80d4-8f0f2ec7f1fa
-          sources:
-            - tiger
-        - doc_id: 40fdaed5-1e2d-5bb1-a6dc-c797fea6dc42
-          sources:
-            - tiger
-        - doc_id: 4e56ef88-220a-5c74-96df-e2b7919a981f
-          sources:
-            - tiger
-        - doc_id: a2440128-7704-5376-be1b-0beb0b43e36c
-          sources:
-            - tiger
-        - doc_id: 3d6765ca-f1ff-5677-865f-a785e44fa121
-          sources:
-            - tiger
-        - doc_id: a8d6fc08-47d9-51e6-a078-616e6c0bbc1b
-          sources:
-            - tiger
-        - doc_id: 9725be54-71d3-56e5-8594-aca3e02d3c54
-          sources:
-            - tiger
-        - doc_id: 14b081b9-d3fb-5cee-814d-3832ef8e5f45
-          sources:
-            - tiger
-        - doc_id: ab4003d4-9ce7-5b62-9455-1c1faada2b51
-          sources:
-            - tiger
-        - doc_id: fe14c2bb-c5db-505d-b7db-86233bed18c6
-          sources:
-            - tiger
-        - doc_id: 1a7c537a-61f2-564d-86f4-6808619c83c9
-          sources:
-            - tiger
-        - doc_id: cf309d56-d8cd-5bd3-ae66-e1ccca18c23f
-          sources:
-            - tiger
-        - doc_id: 67169a6b-a8df-52e1-9a9c-d1861ddfa59d
-          sources:
-            - tiger
-        - doc_id: 711b613e-e2dc-52c8-84c3-0a9bb1b5ee6b
-          sources:
-            - tiger
-        - doc_id: 6598c221-66bd-50f7-a11e-8eff9caa02b1
-          sources:
-            - tiger
-        - doc_id: 65b5da88-4152-513d-bb8a-0232e0523224
-          sources:
-            - tiger
-        - doc_id: f9cb8228-0c8a-57f0-a123-cc6432fbb089
-          sources:
-            - tiger
-        - doc_id: 33bdcae4-52aa-5801-954e-164a30360b4a
-          sources:
-            - tiger
-        - doc_id: 1446ffcd-d870-5864-a6e7-c5d89d416b34
-          sources:
-            - tiger
-        - doc_id: fc13c288-2823-5ab2-a83c-72cedc712f7e
-          sources:
-            - tiger
-        - doc_id: 229a2524-8344-50a9-8a56-0548fe880ded
-          sources:
-            - tiger
-        - doc_id: cd729f1f-3ba4-5527-8000-ed3da0922993
-          sources:
-            - tiger
-        - doc_id: a33f5769-f371-5389-b980-8f6827e6b3c7
-          sources:
-            - tiger
-        - doc_id: 12e9c3c0-46c0-5210-8d9c-9c6173f286a1
-          sources:
-            - tiger
-        - doc_id: 0c66dfbf-1199-5bd5-a7c7-f6d6c5868e17
-          sources:
-            - tiger
-        - doc_id: db32e3a1-bb9f-5d3c-b317-575e4c081f8e
-          sources:
-            - tiger
-        - doc_id: f4e834f6-cb8c-5f61-aaa5-48899a4577a4
-          sources:
-            - tiger
-        - doc_id: bdc330ea-077e-504a-bf49-ed2c75b4cf32
-          sources:
-            - tiger
-        - doc_id: 86e9efe6-8fe4-511a-87dd-5d009d6ed70c
-          sources:
-            - tiger
-        - doc_id: 607275b3-19d7-5781-af7c-6e44b6a5932b
-          sources:
-            - tiger
-        - doc_id: 66afb2cf-449f-5784-93b9-c4b1dfd68122
-          sources:
-            - tiger
       request_digests:
         elasticsearch: 47452260e4b4b9a33fde5dab6c8b5d2749d7272ad88a72b9d051f25aa012b9b9
         paradedb: 3f8000598902966e845bbe73df15d9c2ee256444f8a00f399631689b7b2d1b70
         pg-gin: c20df149b7b339219b794e8d3d635b3709b34bea7a39738f69000d57682b16ba
         pg-gin-norm: c7f60da85c9abbe04c1f8a61ca4d4edccf5aea9507369897b3929ea46a8ade27
         pg-noindex: c20df149b7b339219b794e8d3d635b3709b34bea7a39738f69000d57682b16ba
-        tiger: 5163d51231a01f7826dfa2270cee0d8cb09b9e053a2ca49634802607b1fa71a0
+        tiger: 51e37fc6e4c0a2a0ff5be8cd12dd5a98911536339c8acd0c1ecb8077fe979303
     - query_id: title-premier-league
       query_text: premier league
       query_desc: Articles whose title is about the Premier League
@@ -15422,76 +15222,91 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 731aae6d-8a15-5cb1-b9a0-7a92ab473e53
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 636672dc-e646-540f-863b-c8287f48162e
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: ace1a4a9-7296-5e80-b909-c952e9f4d008
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 0f0a383a-2bc8-5c59-b3d5-5aa696bd7c6d
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 90d40d53-6eeb-507d-a7f5-a4d1c4947e98
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 9a84d719-fde3-5646-a9a7-1262a5bbb0e7
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: b9158d06-f6dc-55f5-b4cd-72aa5d25210f
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 3cf320e0-9c2a-53c9-8d43-804cf2a9aa82
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 929d146a-7fd4-5174-bd60-d50275c664e6
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 7cf574ef-02c8-595f-84fd-19b73b18c615
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 177d3a74-427a-55d7-8a82-3b444a22eff3
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: bac577c3-2fa0-5f02-a388-025e2881ef64
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 5ead718f-55f5-5de7-ad1c-fa466be7e23e
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 137260c1-5c51-5cd7-aaec-6de8e9474c45
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 0aadf041-f054-53ed-b101-c1130838dd76
           sources:
             - elasticsearch
@@ -15499,6 +15314,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: ae965297-f207-5d23-ba65-45f9f5b03776
           sources:
             - elasticsearch
@@ -15515,6 +15331,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: d6ffadfc-4e13-5714-93b4-6d27065608ee
           sources:
             - elasticsearch
@@ -15537,15 +15354,18 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 2d0d5441-8500-5d8a-a304-d67ffa99436b
           sources:
             - elasticsearch
             - pg-gin-norm
+            - tiger
         - doc_id: b6c4ce69-e1f1-5589-add1-2a330f23ccde
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: e8ca8fbc-6347-531f-a4cc-a1b02aeffd1e
           sources:
             - elasticsearch
@@ -15559,21 +15379,25 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 0e0ba70b-0c5c-534b-b6d5-5b8229b356eb
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 05cea8ef-5d38-5bb6-90b7-69433a24e239
           sources:
             - elasticsearch
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 5d90e3a0-a093-5ad2-a607-4088bf0cad99
           sources:
             - elasticsearch
             - pg-gin-norm
+            - tiger
         - doc_id: f65030e5-2a19-55d3-8b31-d42e3c847a65
           sources:
             - elasticsearch
@@ -15583,6 +15407,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 4424e312-bb9f-5692-b149-b7b9808991b6
           sources:
             - elasticsearch
@@ -15594,6 +15419,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 0bf8cc6b-62ec-57f5-b153-6613a72264e2
           sources:
             - elasticsearch
@@ -15602,6 +15428,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: f5c39e09-9f1b-5bc7-918c-b8ab27304a2d
           sources:
             - elasticsearch
@@ -15611,6 +15438,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 09538f27-2896-5086-bdac-7960d84d4591
           sources:
             - elasticsearch
@@ -15618,6 +15446,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: b982bda1-af77-56c3-a6e6-53f0042172d9
           sources:
             - elasticsearch
@@ -15626,6 +15455,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 640f8b0b-7962-56b3-860c-1e44ed1498fe
           sources:
             - elasticsearch
@@ -15656,6 +15486,7 @@ queries:
           sources:
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 658aa49f-afe7-5357-8c23-78e6f81b9cac
           sources:
             - paradedb
@@ -15674,10 +15505,12 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 4416c47a-c443-5926-afeb-f100d93933d1
           sources:
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 9d3fc5a8-4ff4-5c35-9d57-5c76c85b63a1
           sources:
             - paradedb
@@ -15696,20 +15529,20 @@ queries:
           sources:
             - pg-gin
             - pg-noindex
-            - tiger
         - doc_id: 686fd443-f115-59c2-9aeb-a3c0f309be20
           sources:
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 2e0b5a03-9ccb-5d4e-8515-aaa609d5731a
           sources:
             - pg-gin
             - pg-noindex
-            - tiger
         - doc_id: 7d671a50-8a74-56a9-b9fa-6677bb6a7408
           sources:
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 4aa7d1e0-6b43-5398-a07b-d62c825c7a03
           sources:
             - pg-gin
@@ -15861,6 +15694,7 @@ queries:
         - doc_id: 16e13943-36c1-5227-b412-e925d0004423
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 1c77b1fa-4fdc-5bb5-8581-88478ac6d8d1
           sources:
             - pg-gin-norm
@@ -15868,184 +15702,60 @@ queries:
         - doc_id: 28c4b521-f47f-5d29-a89c-d2ad356d51df
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 34f6f5fa-32a1-5ecd-94cb-fda409787628
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 3ebf3067-d189-5654-a06b-b019230899fe
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 3ff51325-e06a-5f23-a7c3-30c37db08f0e
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 459cd4ce-abc2-561d-9716-47581320035e
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 572a3202-433a-5f9e-8732-0b684aa24872
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 57f6ed5c-287e-57c9-9827-f13000f12fd9
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 62a19d1e-1ffc-5ddb-b04c-f78c293af41e
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 6c9164ce-b6a7-5306-bae7-e897a582ae60
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 8b370ad8-dcfc-55ed-959d-9beddc18fd62
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 8fbee6c7-6c66-52d4-8e63-2d1cea57a355
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: a14ba47f-300f-5b30-baf3-04f344622485
           sources:
             - pg-gin-norm
         - doc_id: a7c89395-8d56-55e2-831c-fc11d965df07
           sources:
             - pg-gin-norm
-        - doc_id: 31621924-336a-506a-a0d1-bb239393def8
-          sources:
-            - tiger
-        - doc_id: b4a502d6-8c3f-5f57-baad-bf86304a6d1f
-          sources:
-            - tiger
-        - doc_id: 3d1ee07b-7b1c-5c65-ab05-1a2aceb73a4c
-          sources:
-            - tiger
-        - doc_id: 4a78f5dc-a1e8-5193-a203-542f32f33c19
-          sources:
-            - tiger
-        - doc_id: c8869030-d152-5a54-b55a-3ec6286e5855
-          sources:
-            - tiger
-        - doc_id: 6fdb3a77-1d5d-5827-8637-a91247c8885d
-          sources:
-            - tiger
-        - doc_id: 78a1c23e-2627-568d-b980-a3cc3bcd8fe9
-          sources:
-            - tiger
-        - doc_id: 7fde56eb-73f5-5fd2-bf2a-24b9ebc02bf5
-          sources:
-            - tiger
-        - doc_id: 51d8f04a-e1ee-5f90-b699-d00dc1fef57a
-          sources:
-            - tiger
-        - doc_id: b8ef1543-0211-55d2-8e39-747da74e2098
-          sources:
-            - tiger
-        - doc_id: 0dad7033-b66b-5240-899e-2718fa312bbe
-          sources:
-            - tiger
-        - doc_id: 24a57c29-af03-5db2-bf9e-3b7446be748f
-          sources:
-            - tiger
-        - doc_id: 6160dcdd-9c3e-5388-8c75-c8bc5054754e
-          sources:
-            - tiger
-        - doc_id: fa4d8259-31fc-5996-8e42-b7b0f7021ba4
-          sources:
-            - tiger
-        - doc_id: ca77aaf2-bd1a-5652-adbb-10491ee2b4a6
-          sources:
-            - tiger
-        - doc_id: 637fe989-9042-555b-b8f4-23b7e211e04e
-          sources:
-            - tiger
-        - doc_id: 70b20235-8b9c-5934-9735-7950e264f3e3
-          sources:
-            - tiger
-        - doc_id: 321313a5-1a84-5fef-b777-9a8f1358d010
-          sources:
-            - tiger
-        - doc_id: abdb4a5d-4933-5f2a-b394-5e8a49bc18f4
-          sources:
-            - tiger
-        - doc_id: fde44abe-743c-5fb4-b23f-41aa01da99e3
-          sources:
-            - tiger
-        - doc_id: b2016dd8-fb31-5a94-a9d4-d8cf0ab734f5
-          sources:
-            - tiger
-        - doc_id: 6ca89dbc-81ff-5cde-85ff-04e76ab66806
-          sources:
-            - tiger
-        - doc_id: bfef71b0-fd4e-584c-9592-4edfb0166823
-          sources:
-            - tiger
-        - doc_id: 6115b3cd-9040-52af-ad98-f53c35a4fb58
-          sources:
-            - tiger
-        - doc_id: 9cbba164-f529-52b4-a13a-08806210f877
-          sources:
-            - tiger
-        - doc_id: 974b9bed-869b-59e6-958d-330ad20b8765
-          sources:
-            - tiger
-        - doc_id: 306ebea1-db95-5ff7-b3f1-79c18b920736
-          sources:
-            - tiger
-        - doc_id: 21ae1305-3475-518f-a0f9-13ce9adcdfef
-          sources:
-            - tiger
-        - doc_id: c003dc99-3102-54ec-b6a8-3f1f39996525
-          sources:
-            - tiger
-        - doc_id: dfd50225-db79-596b-bb68-3682ad9e5804
-          sources:
-            - tiger
-        - doc_id: 7fda2235-7f9b-5603-bcdd-cfa471606a11
-          sources:
-            - tiger
-        - doc_id: 667a0d99-3ffc-5a9a-aa0e-5e38fb1af65f
-          sources:
-            - tiger
-        - doc_id: abe36d1a-4e09-503d-a638-7764b1a0a380
-          sources:
-            - tiger
-        - doc_id: df2267de-1ce7-510f-90d5-f83ef6be45f3
-          sources:
-            - tiger
-        - doc_id: 9b6fbe5d-c7cd-5e65-8af7-6ccd5c03d011
-          sources:
-            - tiger
-        - doc_id: bea53514-0dde-5c69-a1e3-992542adf9a0
-          sources:
-            - tiger
-        - doc_id: 1c508469-61f4-5491-b7f2-58a8e3912395
-          sources:
-            - tiger
-        - doc_id: 91fc7f70-da73-505a-8f58-79b7da7b710f
-          sources:
-            - tiger
-        - doc_id: dfa3e350-8b21-5b8e-804a-c4e7a950671b
-          sources:
-            - tiger
-        - doc_id: f9daf57d-c037-5527-870b-287170630fdc
-          sources:
-            - tiger
-        - doc_id: c76ac5b9-5e76-5b66-a2c8-732e379a6bfe
-          sources:
-            - tiger
-        - doc_id: 8fcb44b0-121d-550b-8255-189b98c5ce97
-          sources:
-            - tiger
-        - doc_id: 150bf593-b479-51fd-8c1e-47194c6a9ede
-          sources:
-            - tiger
-        - doc_id: bd0dcc56-e4c0-5c7e-a965-8e1e46d0a528
-          sources:
-            - tiger
-        - doc_id: 959a3697-1def-568f-af28-dd288847058d
-          sources:
-            - tiger
       request_digests:
         elasticsearch: d48697ccb2a0e302aa27f578636ce28c9785be907677ebda2eba54dfc8dfd32f
         paradedb: 715bab3c3e6144ac404811d6c2ec003ba0ee32feed868b7967227d43df4b70f4
         pg-gin: 1973fdd0a9f92b79dbd57788eb11744f5cb139ba92e3c7e7fe953a50b0abc71e
         pg-gin-norm: 67d412e7c5fd5682abdfc5ae8e714f999e6aeb8eabaeaf1b00c70148ba8df2bd
         pg-noindex: 1973fdd0a9f92b79dbd57788eb11744f5cb139ba92e3c7e7fe953a50b0abc71e
-        tiger: f9f6f6cb74b01e6e100021afa08130100aad7a5b25b7c62012b19d72963d037b
+        tiger: e922931622dc3e2e214c8ec622fb0f32cecda30f96d2372d923867a39b2310e5
     - query_id: title-super-bowl
       query_text: super bowl
       query_desc: Articles whose title is about the Super Bowl
@@ -16058,6 +15768,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 23033bc9-36c6-5d5e-9cfa-81009a267882
           sources:
             - elasticsearch
@@ -16065,6 +15776,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 73ac4996-bcba-5696-9fa1-4ff8098bcc70
           sources:
             - elasticsearch
@@ -16072,6 +15784,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 4a841bee-5da9-565d-adb6-74a33d941661
           sources:
             - elasticsearch
@@ -16079,41 +15792,49 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: d5fe674c-ccaf-57cf-aaaf-4fa721b396a1
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 904bc326-11db-50d6-827d-4cf4b93530dc
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 81a2016b-9698-542f-a1b7-9e61f3b8161a
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 9471fa31-fc75-5165-94e2-4bbf1b62a72f
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 698ff0ac-9742-5c60-bd6f-8ebd16fbb0ac
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: a2d653a2-7eb0-53a6-954a-185e0e318058
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 0dbc9104-5906-5789-87de-ce0a1d9dcee9
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 1773f595-2ee0-5a68-bba8-bb1f1b467523
           sources:
             - elasticsearch
@@ -16127,12 +15848,14 @@ queries:
             - paradedb
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: f4268cb2-8c0c-5f43-a646-6172b778b544
           sources:
             - elasticsearch
             - paradedb
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: a6d2df37-a716-5507-9cca-b16d129b8af2
           sources:
             - elasticsearch
@@ -16152,6 +15875,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: a86ac122-d3e3-5b92-8251-636ea92bf5ea
           sources:
             - elasticsearch
@@ -16161,16 +15885,19 @@ queries:
           sources:
             - elasticsearch
             - pg-gin-norm
+            - tiger
         - doc_id: c94a314a-0723-527f-b9e9-7b68614ca00d
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 8d87d210-2596-5026-8a2f-18247e67b870
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: feff1881-8def-5bac-b1a3-aa1fd010b1e7
           sources:
             - elasticsearch
@@ -16183,6 +15910,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: d96e716a-216a-5c4f-9581-c54f283fea6f
           sources:
             - elasticsearch
@@ -16198,6 +15926,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: c6479a81-d3e4-59f4-b32a-5505c3dc02c9
           sources:
             - elasticsearch
@@ -16207,6 +15936,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: cc38b223-f0e2-51f3-a98a-12381802f031
           sources:
             - elasticsearch
@@ -16217,6 +15947,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 3c3d958f-7e83-5261-bdbc-00782f691a9d
           sources:
             - elasticsearch
@@ -16228,39 +15959,47 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 1ca02bb2-aa75-56f8-ad65-7319d745a935
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 0dd7560f-f993-5a8a-8e17-ec2e20bec88d
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 522e2d63-a273-5450-939c-c3793aaf440c
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 16a923ea-130a-5556-b36c-d10030e81500
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 6d6e70ec-f390-501d-904a-9af2ca5a985c
           sources:
             - elasticsearch
             - pg-gin-norm
+            - tiger
         - doc_id: b04d9f38-772a-5a40-9f24-2ac40071e9db
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 67c861c9-1372-599d-9876-85e49d935b9e
           sources:
             - elasticsearch
             - paradedb
+            - tiger
         - doc_id: d8d55eb4-9a79-533f-985c-cc32d52c46c2
           sources:
             - elasticsearch
@@ -16274,6 +16013,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 841d878f-a38c-5945-838e-7618556bf807
           sources:
             - elasticsearch
@@ -16286,6 +16026,7 @@ queries:
             - paradedb
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: a76ca3b3-6797-581e-bd99-49e4d25d57d6
           sources:
             - elasticsearch
@@ -16304,12 +16045,14 @@ queries:
             - paradedb
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: d1e04d4c-6643-5db6-b90c-5ef67b8dc0b8
           sources:
             - elasticsearch
             - paradedb
             - pg-gin
             - pg-noindex
+            - tiger
         - doc_id: 79508125-0279-5728-b58d-9776b42313d0
           sources:
             - elasticsearch
@@ -16351,17 +16094,14 @@ queries:
           sources:
             - pg-gin
             - pg-noindex
-            - tiger
         - doc_id: 8ab5389a-4bf3-5ec0-9283-35a9c94fec1b
           sources:
             - pg-gin
             - pg-noindex
-            - tiger
         - doc_id: c260e1b9-20e0-56d6-afc2-e5cd1d2b02d9
           sources:
             - pg-gin
             - pg-noindex
-            - tiger
         - doc_id: 65b1c017-6b14-538b-8115-de307f8c523d
           sources:
             - pg-gin
@@ -16435,6 +16175,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 00756ce0-fe5c-5b0b-a541-5ce3da045c01
           sources:
             - pg-gin
@@ -16466,36 +16207,47 @@ queries:
         - doc_id: 0e18249a-259d-5e02-8f6e-4f6a96629324
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 14ac6818-e4a2-5276-9181-68fcde2d1eae
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 260fbb94-ae84-55bc-8a96-3a1bb7b92e66
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 2cd3efa4-4523-5494-880d-27f58388a374
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 50718129-1e47-5c9c-a2c9-3139c44fa479
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 5dd962e0-a67d-5a06-8bcb-cd7fdacaffd7
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 64d401a5-027c-5008-9ebc-0dd59b3878e6
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 68552f63-954f-55ca-8b0f-6efbaf16bb26
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 6b44173d-1d91-5dc1-80e7-8d26931a7ac4
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 6c370a66-56c9-5587-88f5-4801b4cebee5
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 977ce280-930f-54a9-b6d2-d43f99e499b4
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: aa629160-51a7-5e10-bc9d-fa8f621f4aed
           sources:
             - pg-gin-norm
@@ -16511,139 +16263,13 @@ queries:
         - doc_id: b9577727-f705-5d74-b025-9d5a4813ae5e
           sources:
             - pg-gin-norm
-        - doc_id: ed7f9334-ba91-545a-abcd-b9e62a41e9dd
-          sources:
-            - tiger
-        - doc_id: 49f5b140-8186-509d-af23-b34dbe82da08
-          sources:
-            - tiger
-        - doc_id: 680dbf30-96ed-57fb-ad43-e535e1b9ba2a
-          sources:
-            - tiger
-        - doc_id: d278fa8c-bbcb-5256-8bf5-7f5fed4b574f
-          sources:
-            - tiger
-        - doc_id: 70215227-93cf-5837-ba67-c3b757ca2222
-          sources:
-            - tiger
-        - doc_id: e4f5988e-ff30-5cc4-800c-81cf01f88178
-          sources:
-            - tiger
-        - doc_id: d0d19e59-ab4a-5912-9688-ccf701a45550
-          sources:
-            - tiger
-        - doc_id: 8082b012-5801-5d19-9382-7e38e51638d6
-          sources:
-            - tiger
-        - doc_id: f870565a-2ec2-534e-882b-56cbcfff0c7a
-          sources:
-            - tiger
-        - doc_id: 0e23c129-bb50-5a4c-8632-4406f2cae657
-          sources:
-            - tiger
-        - doc_id: 5ebf6968-4c19-5860-9c03-d8ab03968a34
-          sources:
-            - tiger
-        - doc_id: 162ffdf8-4111-58ad-8a5f-95a69c7a29d4
-          sources:
-            - tiger
-        - doc_id: 1bace9d4-fca5-553f-8efe-6bbb568a4d09
-          sources:
-            - tiger
-        - doc_id: 494e3b3f-f9f5-52c6-973e-e531c854de16
-          sources:
-            - tiger
-        - doc_id: cf45f7a8-976e-53c3-919e-a6546cfff042
-          sources:
-            - tiger
-        - doc_id: 5ef757a6-e53e-50fa-a4f0-e44e454daa76
-          sources:
-            - tiger
-        - doc_id: 3bb96f7d-a133-5f69-8eee-a3537a1a71c5
-          sources:
-            - tiger
-        - doc_id: 6430b4dd-660e-5551-9e3c-12444b238732
-          sources:
-            - tiger
-        - doc_id: 0c4668fd-4408-55e6-b66d-57e90d351455
-          sources:
-            - tiger
-        - doc_id: ac731d72-00fc-57c0-8aae-6bd3e7b9e9a7
-          sources:
-            - tiger
-        - doc_id: c54c717b-0c22-52d2-96ba-2adba93500a7
-          sources:
-            - tiger
-        - doc_id: 094a6caf-a603-5229-aeb3-5911f60de9c5
-          sources:
-            - tiger
-        - doc_id: b7600bae-2ce6-5a9d-ac1b-d3e7bb2213cc
-          sources:
-            - tiger
-        - doc_id: 4f727faf-96b2-52bb-84b1-81e8cae612ed
-          sources:
-            - tiger
-        - doc_id: 4caa3da8-8f89-52b2-bd14-ccd5c34fc78d
-          sources:
-            - tiger
-        - doc_id: a08b938f-d6b6-5d1a-aad5-802ef7df24b7
-          sources:
-            - tiger
-        - doc_id: 78418c36-c44f-56ca-97b6-5427be7705e5
-          sources:
-            - tiger
-        - doc_id: 92bbbe1c-1c85-5723-b767-e260021e4b90
-          sources:
-            - tiger
-        - doc_id: 1a9f1158-2999-5a39-a88e-a84610ecb6c3
-          sources:
-            - tiger
-        - doc_id: e727e349-9565-5b9f-8064-82cf8ba79e81
-          sources:
-            - tiger
-        - doc_id: 55b541e4-f387-54cb-a953-dc5f4c6b26aa
-          sources:
-            - tiger
-        - doc_id: cd873fbe-e627-58eb-9597-6a3f8678faff
-          sources:
-            - tiger
-        - doc_id: d96af8f1-66cc-5046-8dff-2f3b3428857b
-          sources:
-            - tiger
-        - doc_id: fbd9883f-aa12-5389-8195-cd6d07a66d69
-          sources:
-            - tiger
-        - doc_id: 6a52ea6e-3a3b-538a-972a-17aba2aaf07f
-          sources:
-            - tiger
-        - doc_id: 872fa3c9-ed57-5697-9eae-59ebd039dda4
-          sources:
-            - tiger
-        - doc_id: 5e110a71-d2c4-5546-ae24-7fa1b72a5724
-          sources:
-            - tiger
-        - doc_id: d398eed5-4436-5c78-9792-182edb64144b
-          sources:
-            - tiger
-        - doc_id: 2ee52c3c-4979-5284-bc97-a8c88910232d
-          sources:
-            - tiger
-        - doc_id: 862c7430-e29f-5267-a451-efd59be4fbce
-          sources:
-            - tiger
-        - doc_id: 66002419-cd6c-5b38-900d-55feda9afec7
-          sources:
-            - tiger
-        - doc_id: 6e0b0d98-909e-52a3-8dcd-1870318fc6fd
-          sources:
-            - tiger
       request_digests:
         elasticsearch: 861a44d0d525cb5a3b8cc3303da9b4f21d891e1f5e47056d5a6022b6a1b0018d
         paradedb: b3c4b2071723d6995e3a9330324b88bd3835bd8528955dcb15702b22465368e4
         pg-gin: c04e0c3310cf613396b012528e92c7ecd0fb7a74854b1aad64c3ac5c46b7f3cf
         pg-gin-norm: 52f25e4c7f178d48a0c1fd2c0233719f513b5402d76e42281d33c573f76c5e22
         pg-noindex: c04e0c3310cf613396b012528e92c7ecd0fb7a74854b1aad64c3ac5c46b7f3cf
-        tiger: ad1f4df3a38c8b08f524458c3d797c6f22022e4f16b236227bf2f6145dc42485
+        tiger: 85ace5cb588b672e775d37eaff3a238817ea5ad0a751669936a0ef3c2da8eec3
     - query_id: title-wildfire
       query_text: wildfire
       query_desc: Articles whose title is about a wildfire
@@ -16656,46 +16282,55 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: b6467eb8-a168-5b96-b9c3-4b086fd5287b
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: dc576fdf-fbb5-5f44-9af7-c22349c2c6c0
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: fdcc0106-012a-5fb4-b637-543cc73b846f
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: b2e4b8fc-9eb0-5c12-a42b-9b332e48b941
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 68d22261-6c37-5d1f-ba44-b904b9272643
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: d761d1d4-d1a8-5a5e-8a46-98db532c0d4b
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 95a5f22f-6755-5e50-ab7d-f5f6571a046a
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 910da390-23d2-5e96-a65a-de5f639ad4b5
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 9355e68f-58a5-5044-a8f0-5d7f65016592
           sources:
             - elasticsearch
@@ -16708,51 +16343,61 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: f5d38bd2-5158-50ce-95b2-655b5d907930
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 30d43d21-d63b-5ac5-ab51-7d6fa93ad497
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 25889a0e-6e30-576c-bcd7-aef38e39eecc
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 607f3ade-bc20-50af-a4a6-f0a14a365f00
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 572b6eaa-b830-5aec-bd9c-1aea9c666213
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: f01d9d3a-c7b2-5df1-bd4a-95ae23c3bc97
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 16cbc374-9fdc-5c09-a8da-9d7201433fee
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 1984b19a-d0ff-5ade-b202-2c9b1c741fac
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 66d9912a-a687-572f-b0b5-b4e469eb25b9
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 0b76801d-67b0-557d-9503-6d1087db8c91
           sources:
             - elasticsearch
@@ -16760,21 +16405,25 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: cd71ffa3-e26a-5e77-8dcd-9df9a0cf6443
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: ea99f6ad-7e99-5d52-9b44-bdacc9a2fa96
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 7d0445b0-dc95-5e3f-8d30-0c1c7c3a8da2
           sources:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 26c62780-1ba3-53d0-9570-b2803bac520b
           sources:
             - elasticsearch
@@ -16783,21 +16432,23 @@ queries:
           sources:
             - elasticsearch
             - pg-gin-norm
+            - tiger
         - doc_id: 24071d95-5d8a-5b82-9d94-5feae02fc762
           sources:
             - elasticsearch
             - pg-gin-norm
+            - tiger
         - doc_id: 8c69eff3-4b73-5ba6-8c39-9c9f4c0fab51
           sources:
             - elasticsearch
             - pg-gin-norm
+            - tiger
         - doc_id: 66b5327b-c7ee-5c7b-b704-52f159d61a86
           sources:
             - elasticsearch
         - doc_id: e57944ae-1d58-54b1-ac59-dbef43105018
           sources:
             - elasticsearch
-            - tiger
         - doc_id: e60c65f2-c876-55ec-b244-2571b5d4b775
           sources:
             - elasticsearch
@@ -16805,6 +16456,7 @@ queries:
           sources:
             - elasticsearch
             - pg-gin-norm
+            - tiger
         - doc_id: b43dc785-3a34-5822-a261-455ad1a9642d
           sources:
             - elasticsearch
@@ -16827,6 +16479,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: d4be23a5-ee1b-572b-9df8-52e7526e9eae
           sources:
             - elasticsearch
@@ -16840,6 +16493,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 842e310d-0c6a-572d-bf57-0edaf747d638
           sources:
             - elasticsearch
@@ -16861,6 +16515,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 502a203e-0444-502c-afc7-1a84c2f836de
           sources:
             - elasticsearch
@@ -16870,6 +16525,7 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: f454aa48-f220-5f20-abeb-ee942324a579
           sources:
             - elasticsearch
@@ -16883,14 +16539,17 @@ queries:
             - elasticsearch
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: 161cd89e-2615-5b6d-9cf8-23de467e513f
           sources:
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: cc92e131-281d-580b-86a6-5a2e723c193d
           sources:
             - paradedb
             - pg-gin-norm
+            - tiger
         - doc_id: aaf69b03-5425-5bec-b6f5-a97a0fa1ceb0
           sources:
             - paradedb
@@ -16905,6 +16564,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 2d8d8f9d-e3be-585d-9fb6-8fce298160f7
           sources:
             - paradedb
@@ -16942,6 +16602,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 03e51962-3972-53fb-a4e6-90f871814a8b
           sources:
             - pg-gin
@@ -17015,6 +16676,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 0acb37de-27c7-57b4-a392-31b2b026bd4c
           sources:
             - pg-gin
@@ -17044,11 +16706,13 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 0e01767a-62c5-5570-b73e-b5480937b1a9
           sources:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 0e86f3af-6044-5251-86ac-598a60c05ed8
           sources:
             - pg-gin
@@ -17061,7 +16725,6 @@ queries:
           sources:
             - pg-gin
             - pg-noindex
-            - tiger
         - doc_id: 100e8371-730d-5b0b-81c6-2242c5b457ba
           sources:
             - pg-gin
@@ -17087,6 +16750,7 @@ queries:
             - pg-gin
             - pg-gin-norm
             - pg-noindex
+            - tiger
         - doc_id: 13d90995-d3aa-5f16-8c79-e871d6a257b5
           sources:
             - pg-gin
@@ -17103,7 +16767,6 @@ queries:
           sources:
             - pg-gin
             - pg-noindex
-            - tiger
         - doc_id: 15bd9306-9e8e-501d-9ec4-18d104f8c13e
           sources:
             - pg-gin
@@ -17119,143 +16782,22 @@ queries:
         - doc_id: c4c1f39f-a053-5ab1-a151-432b77b6c7a5
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: c9759b58-9cbf-546a-ae6a-8ecf163ae149
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: fcdeeb0d-c582-5dee-bd0c-dbd109438e68
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 16f91cee-60f6-54c5-9547-ace4f3e0f421
           sources:
             - pg-gin-norm
+            - tiger
         - doc_id: 2325758b-1deb-5572-8b1a-aceec890a4f2
           sources:
             - pg-gin-norm
-        - doc_id: 20f702cd-bf8d-557b-ac3e-24ee5dbd4860
-          sources:
-            - tiger
-        - doc_id: 974f24ea-1fac-56a2-a0d5-7af50d37b7e3
-          sources:
-            - tiger
-        - doc_id: d4433e2f-7bac-516f-96dc-c82d8a07d625
-          sources:
-            - tiger
-        - doc_id: 1a44baec-ccc0-5561-aba9-e720c526386c
-          sources:
-            - tiger
-        - doc_id: dfe614f7-0cab-5c56-8dda-43d77c563167
-          sources:
-            - tiger
-        - doc_id: ee1b531f-dc67-5fb3-95b0-f283c0dc110e
-          sources:
-            - tiger
-        - doc_id: 6bb62b68-0a43-5277-a252-54861b1265e0
-          sources:
-            - tiger
-        - doc_id: 1914ebb3-43b4-5a46-aaaf-13b5bc5f701a
-          sources:
-            - tiger
-        - doc_id: c637912c-b9ed-549e-976d-b7cc683fa11f
-          sources:
-            - tiger
-        - doc_id: 73dcbee6-9a8e-5ec6-b38a-f924fe2d27c7
-          sources:
-            - tiger
-        - doc_id: e909a771-eda7-5de5-99d2-54ab364d8fa8
-          sources:
-            - tiger
-        - doc_id: f5c665e6-a2b5-5f7d-a6a2-46773673711b
-          sources:
-            - tiger
-        - doc_id: 3f5c116a-336b-5a9f-8e33-26dade9b52ed
-          sources:
-            - tiger
-        - doc_id: aca141fb-7f3a-54dc-a371-3a53768a31bc
-          sources:
-            - tiger
-        - doc_id: 599bd028-6a5c-5600-9793-d9e650af855c
-          sources:
-            - tiger
-        - doc_id: d67f225d-11e1-5565-94c1-2e2a7bc2e226
-          sources:
-            - tiger
-        - doc_id: 9fe353fd-2cc0-531c-bee9-032d90e7965a
-          sources:
-            - tiger
-        - doc_id: 5f117fb1-8b4e-5ac2-a48d-eed37448ca1b
-          sources:
-            - tiger
-        - doc_id: fc15683b-71dd-5aec-a2b9-671f1db1584b
-          sources:
-            - tiger
-        - doc_id: 26420eb9-1eec-5848-9675-7e7e2fe7c263
-          sources:
-            - tiger
-        - doc_id: 4f615235-54a0-5d67-86bc-56c809037d23
-          sources:
-            - tiger
-        - doc_id: b68ca145-8a53-5206-9f4c-7fe0795a43de
-          sources:
-            - tiger
-        - doc_id: 5000f708-9912-580c-8ffe-31d76f8871f4
-          sources:
-            - tiger
-        - doc_id: 3fe9d97c-ca50-5492-a7bc-05424915825f
-          sources:
-            - tiger
-        - doc_id: 7d77e63a-35b5-5ac7-9512-8c6dffae2079
-          sources:
-            - tiger
-        - doc_id: 169429e9-e4c8-5dae-a6c3-234bd39efb4c
-          sources:
-            - tiger
-        - doc_id: d4489f06-ea2c-536e-8ebe-948830c089fa
-          sources:
-            - tiger
-        - doc_id: 61d1b236-9cb1-5f17-8cf8-9061477a24d3
-          sources:
-            - tiger
-        - doc_id: 6ddeaaaa-7a50-546f-90f0-ced20e1fc4c0
-          sources:
-            - tiger
-        - doc_id: b6de15f2-1ed2-571e-9fa9-a5812f4a88a9
-          sources:
-            - tiger
-        - doc_id: 62984c06-7622-579b-87e7-2a53c8357fb8
-          sources:
-            - tiger
-        - doc_id: 81227b54-77dc-5d21-bb5d-fba8d8e4f8c3
-          sources:
-            - tiger
-        - doc_id: 714fc56c-9975-562b-8c13-171abbbf8906
-          sources:
-            - tiger
-        - doc_id: 551d15cb-0076-536f-80e3-a1d4410dce21
-          sources:
-            - tiger
-        - doc_id: fc1124cc-004c-5424-85cd-0fa18a706e3e
-          sources:
-            - tiger
-        - doc_id: 4d7eb292-a106-58a7-bb73-950a94abab59
-          sources:
-            - tiger
-        - doc_id: eca618fe-2a6e-5916-b7be-91d7aba410f1
-          sources:
-            - tiger
-        - doc_id: 486dbf47-0aca-5cc1-95f4-0ff1146bbb2e
-          sources:
-            - tiger
-        - doc_id: 921b88e6-90d0-575d-a029-0cff49d39ef1
-          sources:
-            - tiger
-        - doc_id: 89abb26e-7c5c-51e1-9e81-981f8a3ccf03
-          sources:
-            - tiger
-        - doc_id: 7bf338dd-a832-560b-92e6-22126de06034
-          sources:
-            - tiger
-        - doc_id: d126546d-d6c1-5aa1-b526-f445c8ac310a
-          sources:
             - tiger
       request_digests:
         elasticsearch: 171ac1997b78c339de4c15685f6ebc6d44b07d56768f8659ecb586c8c54cf2ce
@@ -17263,4 +16805,4 @@ queries:
         pg-gin: 0c4dc81c0738540bf4014fc6ac74a8340fe182ef4b108a8492f5c7dccf4e2146
         pg-gin-norm: 22884e85b99814449a0f0ec54b5619815c2f86aa8e48a59e51a412fdc17cc6ed
         pg-noindex: 0c4dc81c0738540bf4014fc6ac74a8340fe182ef4b108a8492f5c7dccf4e2146
-        tiger: 512284b8c1748f7a1a78797136d94b37d849b1002465e52ac1776991bd4c3bdd
+        tiger: 8d3a64159f25a904b7352db8746de1f306795c9062964546c6dda51252dc9506
