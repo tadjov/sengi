@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -12,8 +13,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tadjov/tusker/internal/bench/meta"
+	"github.com/tadjov/tusker/internal/resilience"
 )
 
 // DefaultJevModel is the Jev release the jev judge grades with when --model is
@@ -28,6 +31,8 @@ const (
 	jevRequestIDHeader = "x-typesafe-request-id"
 	// jevProbabilitySlack is how far from 1 the probabilities may sum.
 	jevProbabilitySlack = 0.05
+
+	jevAttemptTimeout = 30 * time.Second
 
 	jevGuidance = "Grade what the article is about, not whether the query words appear. " +
 		"A passing mention is the marginal level at most. When in doubt between two levels, pick the lower one."
@@ -52,6 +57,7 @@ type JevStrategy struct {
 	model    string
 	endpoint string
 	client   *http.Client
+	retry    resilience.Policy
 }
 
 // NewJevStrategy takes its key from TYPESAFE_API_KEY only, never from
@@ -72,7 +78,8 @@ func NewJevStrategy(opts StrategyOptions) (*JevStrategy, error) {
 		apiKey:   key,
 		model:    opts.Model,
 		endpoint: strings.TrimSuffix(base, "/") + jevPath,
-		client:   &http.Client{},
+		client:   &http.Client{Timeout: jevAttemptTimeout},
+		retry:    resilience.DefaultPolicy(),
 	}, nil
 }
 
@@ -92,7 +99,7 @@ func (s *JevStrategy) Grade(ctx context.Context, q GradingQuery, doc GradingDoc)
 	if err != nil {
 		return GradeUnjudged, fmt.Errorf("marshal jev request: %w", err)
 	}
-	reply, err := s.send(ctx, payload)
+	reply, err := s.ask(ctx, payload)
 	if err != nil {
 		return GradeUnjudged, err
 	}
@@ -161,30 +168,39 @@ func (s *JevStrategy) request(q GradingQuery, doc GradingDoc) jevRequest {
 	}
 }
 
-// jevReply is one HTTP exchange with the API, its body read and closed.
-type jevReply struct {
-	status    int
-	body      []byte
-	requestID string
-}
-
-func (s *JevStrategy) send(ctx context.Context, payload []byte) (jevReply, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.endpoint, bytes.NewReader(payload))
-	if err != nil {
-		return jevReply{}, fmt.Errorf("build jev request: %w", err)
+// ask sends payload, retrying as TypeSafe's SDK does; any status but 200
+// fails the doc.
+func (s *JevStrategy) ask(ctx context.Context, payload []byte) (jevReply, error) {
+	resp, err := s.retry.Do(ctx, func(ctx context.Context) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.endpoint, bytes.NewReader(payload))
+		if err != nil {
+			return nil, fmt.Errorf("build jev request: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+s.apiKey)
+		req.Header.Set("Content-Type", "application/json")
+		return s.client.Do(req)
+	})
+	var exhausted *resilience.ExhaustedError
+	if errors.As(err, &exhausted) {
+		return jevReply{}, fmt.Errorf("jev (request id %s): %w", exhausted.Header.Get(jevRequestIDHeader), err)
 	}
-	req.Header.Set("Authorization", "Bearer "+s.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := s.client.Do(req)
 	if err != nil {
 		return jevReply{}, fmt.Errorf("send jev request: %w", err)
 	}
 	defer resp.Body.Close()
-	reply := jevReply{status: resp.StatusCode, requestID: resp.Header.Get(jevRequestIDHeader)}
+	reply := jevReply{requestID: resp.Header.Get(jevRequestIDHeader)}
 	if reply.body, err = io.ReadAll(resp.Body); err != nil {
 		return jevReply{}, fmt.Errorf("read jev response (request id %s): %w", reply.requestID, err)
 	}
+	if resp.StatusCode != http.StatusOK {
+		return jevReply{}, fmt.Errorf("jev answered %d (request id %s): %s", resp.StatusCode, reply.requestID, reply.body)
+	}
 	return reply, nil
+}
+
+type jevReply struct {
+	body      []byte
+	requestID string
 }
 
 type jevRequest struct {

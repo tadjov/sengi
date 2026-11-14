@@ -245,6 +245,55 @@ func TestJev_LeavesADocWithoutAUsableAnswerUnjudged(t *testing.T) {
 	}
 }
 
+// A rate-limited request is sent again, the same bytes, and the doc graded.
+func TestJev_GradesADocAfterARateLimit(t *testing.T) {
+	fake := newFakeJev(t,
+		jevStubReply{status: http.StatusTooManyRequests, header: map[string]string{"retry-after": "0"}, body: `{"detail":"rate limited"}`},
+		jevScoreReply("jev-1.14.0", `{"0":0.0,"1":0.0,"2":1.0,"3":0.0}`))
+
+	grade, err := newTestJev(t, fake.url).Grade(context.Background(), floodsQuery, floodsDoc())
+
+	require.NoError(t, err)
+	assert.Equal(t, GradeRelevant, grade)
+	assert.Equal(t, string(fake.body(t, 0)), string(fake.body(t, 1)))
+}
+
+// A request TypeSafe rejects fails the doc on the first reply, with its
+// status, body and request id.
+func TestJev_FailsADocOnARejectedRequest(t *testing.T) {
+	const rejected = `{"detail":[{"type":"too_short","loc":["body","questions","grade","criteria"],` +
+		`"msg":"List should have at least 1 item after validation, not 0","input":[],"ctx":{"field_type":"List","min_length":1,"actual_length":0}}]}`
+	fake := newFakeJev(t, jevStubReply{status: http.StatusUnprocessableEntity, header: map[string]string{"x-typesafe-request-id": "req-422"}, body: rejected})
+
+	grade, err := newTestJev(t, fake.url).Grade(context.Background(), floodsQuery, floodsDoc())
+
+	require.Error(t, err)
+	assert.Equal(t, GradeUnjudged, grade)
+	assert.Contains(t, err.Error(), "422")
+	assert.Contains(t, err.Error(), rejected)
+	assert.Contains(t, err.Error(), "req-422")
+	assert.Equal(t, 1, fake.requests(), "not retried")
+}
+
+// A refused key fails the doc without retrying, and the error never shows
+// the key.
+func TestJev_FailsADocOnARefusedKeyWithoutRevealingIt(t *testing.T) {
+	const revoked = "ts-revoked-key-4f1c"
+	fake := newFakeJev(t, jevScoreReply("jev-1.14.0", `{"0":0.0,"1":0.0,"2":1.0,"3":0.0}`))
+	t.Setenv("TYPESAFE_API_KEY", revoked)
+	s, err := NewJevStrategy(StrategyOptions{Model: "jev-1.14.0", APIBaseURL: fake.url})
+	require.NoError(t, err)
+
+	grade, err := s.Grade(context.Background(), floodsQuery, floodsDoc())
+
+	require.Error(t, err)
+	assert.Equal(t, GradeUnjudged, grade)
+	assert.Contains(t, err.Error(), "401")
+	assert.NotContains(t, err.Error(), revoked)
+	assert.NotContains(t, s.Describe().Invocation, revoked)
+	assert.Equal(t, 1, fake.requests(), "not retried")
+}
+
 var floodsQuery = GradingQuery{ID: "q1", Text: "floods"}
 
 func floodsDoc() GradingDoc {
