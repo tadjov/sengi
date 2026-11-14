@@ -47,7 +47,7 @@ func Align(sets []Set) ([]Pair, error) {
 		return nil, fmt.Errorf("%s share no (query, doc) pair graded 0 to 3 in every set", strings.Join(labels(sets), ", "))
 	}
 	slices.SortFunc(pairs, func(a, b Pair) int {
-		return cmp.Or(cmp.Compare(a.QueryID, b.QueryID), cmp.Compare(a.DocID.String(), b.DocID.String()))
+		return cmp.Or(cmp.Compare(a.QueryID, b.QueryID), compareDocs(a.DocID, b.DocID))
 	})
 	return pairs, nil
 }
