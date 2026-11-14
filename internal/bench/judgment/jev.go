@@ -73,7 +73,16 @@ func NewJevStrategy(opts StrategyOptions) (*JevStrategy, error) {
 
 func (s *JevStrategy) Describe() meta.Judge { return meta.Judge{Model: s.model} }
 
+// Grade gives 0 without a request to a doc the query's filters or category
+// gate refuse; Jev grades only how well the rest answer the query.
 func (s *JevStrategy) Grade(ctx context.Context, q GradingQuery, doc GradingDoc) (int, error) {
+	tq, err := readTermQuery(q)
+	if err != nil {
+		return GradeUnjudged, err
+	}
+	if !tq.admits(analyzeDoc(doc)) {
+		return GradeNotRelev, nil
+	}
 	payload, err := json.Marshal(s.request(q, doc))
 	if err != nil {
 		return GradeUnjudged, fmt.Errorf("marshal jev request: %w", err)

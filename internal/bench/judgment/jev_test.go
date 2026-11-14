@@ -152,6 +152,56 @@ func TestJev_GradesTheMostProbableLevel(t *testing.T) {
 	}
 }
 
+// Phrase, boolean and filter constraints are decided in code, as for the LLM
+// judge: a doc that breaks one grades 0 and Jev is never asked.
+func TestJev_GradesADocBreakingTheQuerysConstraintZeroWithoutAsking(t *testing.T) {
+	tests := []struct {
+		name  string
+		query GradingQuery
+		doc   GradingDoc
+	}{
+		{
+			name:  "phrase",
+			query: GradingQuery{ID: "q1", Text: "solar power", Category: suite.CategoryPhrase},
+			doc:   GradingDoc{ID: uuid.New(), Title: "Power prices squeeze solar firms"},
+		},
+		{
+			name:  "not",
+			query: GradingQuery{ID: "q1", Text: "climate AND NOT politics", Category: suite.CategoryBoolean},
+			doc:   GradingDoc{ID: uuid.New(), Title: "Climate politics heats up in parliament"},
+		},
+		{
+			name:  "declared filter",
+			query: GradingQuery{ID: "q1", Text: "climate", Category: suite.CategoryKeyword, Filters: suite.Filters{PublisherDomain: "reuters.com"}},
+			doc:   GradingDoc{ID: uuid.New(), Title: "Climate summit opens", PublisherDomain: "bbc.co.uk"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fake := newFakeJev(t, jevScoreReply("jev-1.14.0", `{"0":0.0,"1":0.0,"2":0.0,"3":1.0}`))
+
+			grade, err := newTestJev(t, fake.url).Grade(context.Background(), tt.query, tt.doc)
+
+			require.NoError(t, err)
+			assert.Equal(t, GradeNotRelev, grade)
+			assert.Zero(t, fake.requests(), "no request for a doc the constraint refuses")
+		})
+	}
+}
+
+// A boolean text that does not parse leaves the constraint undecided, so the
+// whole query stays unjudged rather than graded by Jev alone.
+func TestJev_LeavesAQueryWithAnUnparsableBooleanUnjudged(t *testing.T) {
+	fake := newFakeJev(t, jevScoreReply("jev-1.14.0", `{"0":0.0,"1":0.0,"2":0.0,"3":1.0}`))
+	q := GradingQuery{ID: "q1", Text: "climate AND (politics", Category: suite.CategoryBoolean}
+
+	grade, err := newTestJev(t, fake.url).Grade(context.Background(), q, GradingDoc{ID: uuid.New(), Title: "Climate politics heats up"})
+
+	assert.True(t, FailsWholeQuery(err), "err = %v", err)
+	assert.Equal(t, GradeUnjudged, grade)
+	assert.Zero(t, fake.requests())
+}
+
 var floodsQuery = GradingQuery{ID: "q1", Text: "floods"}
 
 func floodsDoc() GradingDoc {
