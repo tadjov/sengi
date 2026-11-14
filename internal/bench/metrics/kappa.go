@@ -3,6 +3,8 @@ package metrics
 import (
 	"fmt"
 	"math"
+	"math/rand/v2"
+	"slices"
 )
 
 const gradeLevels = GradeHighly + 1
@@ -124,4 +126,50 @@ func (c GradeConfusion) relevance(threshold int) [2][2]int {
 		}
 	}
 	return b
+}
+
+const kappaResamples = 1000
+
+// KappaInterval is a κ and its 95% percentile bootstrap interval.
+type KappaInterval struct {
+	Kappa, Low, High float64
+}
+
+// BootstrapKappa is kappa over every pair of byQuery, one table per query,
+// with its 95% percentile interval over 1,000 resamples drawn from a source
+// seeded with seed, so one seed always gives the same interval. A resample
+// whose κ is undefined is left out. byQuery must not be empty.
+func BootstrapKappa(byQuery []GradeConfusion, kappa func(GradeConfusion) float64, seed uint64) KappaInterval {
+	// Whole queries are resampled because one query's docs share its topic, so
+	// two judges' grades on them are not independent pairs.
+	random := rand.New(rand.NewPCG(seed, seed))
+	resampled := make([]float64, 0, kappaResamples)
+	for range kappaResamples {
+		var resample GradeConfusion
+		for range byQuery {
+			resample.add(byQuery[random.IntN(len(byQuery))])
+		}
+		if k := kappa(resample); !math.IsNaN(k) {
+			resampled = append(resampled, k)
+		}
+	}
+	var all GradeConfusion
+	for _, c := range byQuery {
+		all.add(c)
+	}
+	interval := KappaInterval{Kappa: kappa(all), Low: math.NaN(), High: math.NaN()}
+	if len(resampled) > 0 {
+		slices.Sort(resampled)
+		interval.Low = percentile(resampled, 0.025)
+		interval.High = percentile(resampled, 0.975)
+	}
+	return interval
+}
+
+func (c *GradeConfusion) add(other GradeConfusion) {
+	for i := range gradeLevels {
+		for j := range gradeLevels {
+			c[i][j] += other[i][j]
+		}
+	}
 }

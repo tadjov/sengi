@@ -139,3 +139,62 @@ func TestGradeConfusion_BinaryKappaIsUndefinedWhenBothRatersStayOnOneSide(t *tes
 		t.Errorf("BinaryKappa(2) = %v, want NaN", got)
 	}
 }
+
+func confusionOf(t *testing.T, first, second []int) GradeConfusion {
+	t.Helper()
+	c, err := NewGradeConfusion(first, second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
+func TestBootstrapKappa_IdenticalRatersGiveAnIntervalOfOne(t *testing.T) {
+	byQuery := []GradeConfusion{
+		confusionOf(t, []int{0, 0, 3}, []int{0, 0, 3}),
+		confusionOf(t, []int{1, 2, 2}, []int{1, 2, 2}),
+		confusionOf(t, []int{0, 3, 3}, []int{0, 3, 3}),
+	}
+	for name, kappa := range map[string]func(GradeConfusion) float64{
+		"quadratic": GradeConfusion.QuadraticKappa,
+		"binary":    func(c GradeConfusion) float64 { return c.BinaryKappa(2) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			got := BootstrapKappa(byQuery, kappa, 1)
+			if got != (KappaInterval{Kappa: 1, Low: 1, High: 1}) {
+				t.Errorf("BootstrapKappa() = %+v, want κ 1 in [1, 1]", got)
+			}
+		})
+	}
+}
+
+func TestBootstrapKappa_IntervalHoldsTheEstimateAndRepeatsForASeed(t *testing.T) {
+	byQuery := []GradeConfusion{
+		confusionOf(t, []int{0, 1, 2, 3}, []int{0, 2, 2, 3}),
+		confusionOf(t, []int{3, 3, 2, 0}, []int{2, 3, 1, 0}),
+		confusionOf(t, []int{1, 1, 0, 0}, []int{0, 1, 0, 1}),
+		confusionOf(t, []int{2, 3, 3, 1}, []int{3, 3, 2, 1}),
+		confusionOf(t, []int{0, 0, 2, 3}, []int{0, 1, 3, 3}),
+		confusionOf(t, []int{2, 1, 0, 3}, []int{1, 1, 0, 2}),
+	}
+	var all GradeConfusion
+	for _, c := range byQuery {
+		for i := range c {
+			for j := range c[i] {
+				all[i][j] += c[i][j]
+			}
+		}
+	}
+
+	got := BootstrapKappa(byQuery, GradeConfusion.QuadraticKappa, 7)
+
+	if math.Abs(got.Kappa-all.QuadraticKappa()) > 1e-12 {
+		t.Errorf("κ = %v, want the κ over every pair, %v", got.Kappa, all.QuadraticKappa())
+	}
+	if got.Low > got.Kappa || got.Kappa > got.High || got.Low == got.High {
+		t.Errorf("interval [%v, %v] does not hold κ %v with any width", got.Low, got.High, got.Kappa)
+	}
+	if again := BootstrapKappa(byQuery, GradeConfusion.QuadraticKappa, 7); again != got {
+		t.Errorf("seed 7 gave %+v, then %+v", got, again)
+	}
+}
