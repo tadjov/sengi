@@ -94,6 +94,18 @@ idStrategy:
   source: url
 ```
 
+An optional `identity.ignore` block lists the url parts that do not change which article a url names: `scheme`, `www`, `trailingSlash`, `fragment`, and `queryParams` by name or by a `prefix*`. The id then hashes the url with those parts left out, so preprocess keeps one article per page; the stored url stays as written. Left out, ids follow the url as written, and the canonical descriptor records the block when it is set.
+
+```yaml
+identity:
+  ignore:
+    scheme: true
+    www: true
+    trailingSlash: true
+    fragment: true
+    queryParams: ["utm_*"]
+```
+
 ### Storage Layer
 Follows idiomatic Go patterns with sub-package organization:
 - **Interfaces**: Storage contracts define clear responsibilities

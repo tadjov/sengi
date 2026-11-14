@@ -26,6 +26,7 @@ import (
 	"github.com/tadjov/tusker/internal/datapackage"
 	"github.com/tadjov/tusker/internal/types/document"
 	"github.com/tadjov/tusker/internal/types/language"
+	"github.com/tadjov/tusker/pkg/apis/datamapping"
 )
 
 const ccNewsLikeMapping = `kind: DataMapper
@@ -453,6 +454,38 @@ func TestPreprocess_KeepsTheFirstOfRecordsSharingAURL(t *testing.T) {
 	assert.Equal(t, &datapackage.Report{Read: 4, Written: 2, Deduped: 2}, pkg.Report)
 }
 
+func TestPreprocess_KeepsURLVariantsApartWithoutIdentityRules(t *testing.T) {
+	run := newPreprocessRun(t, ccNewsLikeMapping,
+		csvFile("part.csv", "title,text,url\nFirst,Body,https://example.com/story\nVariant,Body,http://www.example.com/story/?utm_source=feed#top\n"),
+	)
+
+	require.NoError(t, run.execute(t.Context()))
+
+	pkg, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, []string{"https://example.com/story", "http://www.example.com/story/?utm_source=feed#top"}, rows.urls)
+	assert.Equal(t, &datapackage.Report{Read: 2, Written: 2}, pkg.Report)
+	assert.Nil(t, pkg.Identity)
+}
+
+func TestPreprocess_MergesTheURLVariantsItsIdentityIgnores(t *testing.T) {
+	identity := "identity:\n  ignore:\n    scheme: true\n    www: true\n    trailingSlash: true\n    fragment: true\n    queryParams: [\"utm_*\"]\n"
+	run := newPreprocessRun(t, mappingWith(t, "dateFormat:", identity+"dateFormat:"),
+		csvFile("part.csv", "title,text,url\nFirst,Body,https://example.com/story\nVariant,Body,http://www.example.com/story/?utm_source=feed#top\nOther,Body,https://example.com/story?page=2\n"),
+	)
+
+	require.NoError(t, run.execute(t.Context()))
+
+	pkg, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, []string{"https://example.com/story", "https://example.com/story?page=2"}, rows.urls)
+	assert.Equal(t, "First", rows.byURL["https://example.com/story"].Title)
+	assert.Equal(t, &datapackage.Report{Read: 3, Written: 2, Deduped: 1}, pkg.Report)
+	require.NotNil(t, pkg.Identity)
+	assert.Equal(t, datamapping.IdentityIgnore{Scheme: true, WWW: true, TrailingSlash: true, Fragment: true, QueryParams: []string{"utm_*"}}, pkg.Identity.Ignore)
+	namespace, err := uuid.Parse(pkg.IDStrategy.Namespace)
+	require.NoError(t, err)
+	assert.Equal(t, uuid.NewSHA1(namespace, []byte("example.com/story")), rows.byURL["https://example.com/story"].ID)
+}
+
 func TestPreprocess_DerivesThePublisherDomainFromTheURL(t *testing.T) {
 	tests := []struct {
 		url    string
@@ -522,6 +555,26 @@ func TestPreprocess_RerunOverTheSameInputsKeepsTheExistingPackage(t *testing.T) 
 	require.NoError(t, err)
 	assert.True(t, os.SameFile(before, after), "the resource file was replaced")
 	assert.Equal(t, firstHash, sha256Of(t, resourcePath))
+}
+
+func TestPreprocess_RestoresTheResourceOfAPackageCheckedOutWithoutIt(t *testing.T) {
+	run := newPreprocessRun(t, ccNewsLikeMapping,
+		csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\nTwo,Body,https://example.com/2\n"),
+	)
+	require.NoError(t, run.execute(t.Context()))
+	dir := run.packageDir(t)
+	resourcePath := filepath.Join(dir, "articles.parquet")
+	firstHash := sha256Of(t, resourcePath)
+	descriptor, err := os.ReadFile(filepath.Join(dir, "datapackage.json"))
+	require.NoError(t, err)
+	require.NoError(t, os.Remove(resourcePath))
+
+	require.NoError(t, run.execute(t.Context()))
+
+	assert.Equal(t, firstHash, sha256Of(t, resourcePath))
+	after, err := os.ReadFile(filepath.Join(dir, "datapackage.json"))
+	require.NoError(t, err)
+	assert.Equal(t, string(descriptor), string(after))
 }
 
 func TestPreprocess_TwoRunsOverOneRawPackageWriteIdenticalBytes(t *testing.T) {
