@@ -65,6 +65,9 @@ func newJudgeCmdWithReader(openReader articleReaderOpener) *cobra.Command {
   hybrid      — BM25 + vector fusion, vectors as for vector
   llm         — LLM-as-judge, one doc per request (--batch N groups N);
                 pick the endpoint with --provider
+  jev         — TypeSafe's Jev, one doc per request, a cross-judge of llm;
+                needs TYPESAFE_API_KEY (cmd/bench/.env), grades with the pinned
+                ` + judgment.DefaultJevModel + ` unless --model names another jev-<major>.<minor>.<patch>
   manual      — writes grade:-1 placeholders for hand grading; re-running keeps
                 existing hand grades and adds placeholders for new pool docs
                 (--force starts over)
@@ -82,7 +85,7 @@ are recorded in the artifact's judge block, so qrels always name the grader
 that produced them.
 
 Output goes to <track>/trec/annotations.<strategy>.yaml, where <strategy> is the
-strategy for heuristic judges and the provider for llm judges.
+strategy for heuristic and jev judges and the provider for llm judges.
 Multiple strategies live side-by-side; switch which one bench run scores
 against via --judgments <name>.
 
@@ -93,7 +96,8 @@ Ctrl-C is safe.`,
 		Example: `  bench judge tracks/global-news-dataset/fts_quality --strategy keyword
   bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-cli --model sonnet
   bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-api --model sonnet --batch 20 --resume
-  bench judge --pool /tmp/p.yaml --strategy keyword --output /tmp/a.yaml`,
+  bench judge --pool /tmp/p.yaml --strategy keyword --output /tmp/a.yaml
+  bench judge tracks/cc-news/fts --strategy jev --pool /tmp/sample.yaml --output /tmp/a.jev.yaml`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return judgeCommand{flags: f, openReader: openReader}.execute(cmd, args)
@@ -105,7 +109,7 @@ Ctrl-C is safe.`,
 	cmd.Flags().StringVar(&f.strategy, "strategy", string(judgment.StrategyKeyword), "Judge strategy")
 	cmd.Flags().StringVar(&f.pg, "pg", "", "Postgres connection (or set PG_CONNECTION_STRING)")
 	cmd.Flags().IntVar(&f.concurrency, "concurrency", 4, "Parallel Grade calls (per-doc strategies)")
-	cmd.Flags().IntVar(&f.batchSize, "batch", 0, "LLM docs per request (default one); bm25, vector and hybrid refuse it")
+	cmd.Flags().IntVar(&f.batchSize, "batch", 0, "LLM docs per request (default one); bm25, vector, hybrid and jev refuse it")
 	cmd.Flags().Uint64Var(&f.batchSeed, "seed", 1, "Seed that shuffles each query's pool into --batch batches")
 	cmd.Flags().BoolVar(&f.resume, "resume", false, "Skip docs already graded in --output; bm25, vector and hybrid skip only fully graded queries")
 	cmd.Flags().BoolVar(&f.allowUnjudged, "allow-unjudged", false, "Exit 0 even when some pooled docs end unjudged; a query with no usable terms still fails")
@@ -114,10 +118,11 @@ Ctrl-C is safe.`,
 	cmd.Flags().StringVar(&f.provider, "provider", string(judgment.DefaultProvider),
 		"LLM endpoint for --strategy llm: "+strings.Join(judgment.KnownProviders(), " | "))
 	cmd.Flags().StringVar(&f.model, "model", judgment.DefaultJudgeModel,
-		"LLM judge model id or alias ("+strings.Join(judgment.ClaudeModelAliases(), " | ")+"); haiku for cheap trial runs")
+		"LLM judge model id or alias ("+strings.Join(judgment.ClaudeModelAliases(), " | ")+"); haiku for cheap trial runs; "+
+			"jev takes a pinned jev-<major>.<minor>.<patch> and defaults to "+judgment.DefaultJevModel)
 	cmd.Flags().StringVar(&f.effort, "effort", string(judgment.EffortLow),
 		"Effort the llm judge's model grades at: "+strings.Join(judgment.KnownEfforts(), " | "))
-	cmd.Flags().StringVar(&f.apiBaseURL, "api-base", "", "Anthropic API base URL")
+	cmd.Flags().StringVar(&f.apiBaseURL, "api-base", "", "API base URL: Anthropic's for claude-api, TypeSafe's for jev")
 	cmd.Flags().StringVar(&f.cliBinary, "cli-binary", "", "claude CLI binary path")
 	cmd.Flags().StringVar(&f.embeddingBase, "embedding-base", "", "Embedding endpoint for vector/hybrid (or EMBEDDING_BASE_URL)")
 	cmd.Flags().StringVar(&f.embeddingModel, "embedding-model", "", "Embedding model for vector/hybrid (or EMBEDDING_MODEL)")
@@ -150,6 +155,9 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	}
 	if f.force && kind != judgment.StrategyManual {
 		return fmt.Errorf("--force applies only to --strategy manual; %s rewrites its file on every run without --resume", kind)
+	}
+	if kind == judgment.StrategyJev && f.batchSize > 0 {
+		return fmt.Errorf("jev grades one doc per request and takes no --batch")
 	}
 	// Heuristic judges file under their strategy; llm judges file under their
 	// provider, so two vendors can grade the same track side by side.
@@ -185,6 +193,11 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 		APIBaseURL:  f.apiBaseURL,
 		CLIBinary:   f.cliBinary,
 		Concurrency: f.concurrency,
+	}
+	// --model's default is the LLM judge's claude id, so only an omitted flag
+	// means jev's pin; a claude id given for jev fails.
+	if kind == judgment.StrategyJev && !cmd.Flags().Changed("model") {
+		opts.Model = judgment.DefaultJevModel
 	}
 	if kind == judgment.StrategyLLM {
 		if opts.Effort, err = judgment.ParseEffort(f.effort); err != nil {
@@ -298,7 +311,7 @@ func resolveJudge(f judgeFlags) (judgment.StrategyKind, judgment.Provider, error
 	case judgment.StrategyLLM:
 		return kind, judgment.Provider(f.provider), nil
 	case judgment.StrategyKeyword, judgment.StrategyBM25, judgment.StrategyVector,
-		judgment.StrategyHybrid, judgment.StrategyManual:
+		judgment.StrategyHybrid, judgment.StrategyJev, judgment.StrategyManual:
 		return kind, "", nil
 	}
 

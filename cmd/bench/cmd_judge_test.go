@@ -859,7 +859,10 @@ func TestCheckResumeCompat_RefusesAFileGradedUnderOtherGates(t *testing.T) {
 	require.NoError(t, err)
 	gates := llm.Describe().GateVersion
 	require.NotEmpty(t, gates, "the LLM judge block names its gates")
-	for _, strategy := range []judgment.Strategy{judgment.NewKeywordStrategy(), judgment.NewBM25Strategy(), llm} {
+	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+	jev, err := judgment.NewJevStrategy(judgment.StrategyOptions{Model: "jev-1.14.0"})
+	require.NoError(t, err)
+	for _, strategy := range []judgment.Strategy{judgment.NewKeywordStrategy(), judgment.NewBM25Strategy(), llm, jev} {
 		t.Run(strategy.Name(), func(t *testing.T) {
 			now := strategy.Describe()
 			assert.Equal(t, gates, now.GateVersion, "one gate version for every judge that gates")
@@ -902,4 +905,130 @@ func gradingCLIFlag(t *testing.T, cli, flag string) string {
 	i := slices.Index(args, flag)
 	require.True(t, i >= 0 && i+1 < len(args), "the CLI got %s", flag)
 	return args[i+1]
+}
+
+// jevAPI is a TypeSafe endpoint that grades every doc 2 under the model it is
+// asked for and keeps what each request asked.
+type jevAPI struct {
+	*httptest.Server
+
+	mu    sync.Mutex
+	asked []jevAsked
+}
+
+type jevAsked struct {
+	Model string `json:"model"`
+	State string `json:"state"`
+}
+
+func newJevAPI(t *testing.T) *jevAPI {
+	t.Helper()
+	api := &jevAPI{}
+	api.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req jevAsked
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		api.mu.Lock()
+		api.asked = append(api.asked, req)
+		api.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"model":%q,"answers":{"grade":{"type":"score","score":2.0,"confidence":0.9,`+
+			`"probabilities":{"0":0.0,"1":0.0,"2":1.0,"3":0.0}}},"usage":{"input_tokens":400,"output_tokens":18}}`, req.Model)
+	}))
+	t.Cleanup(api.Close)
+	return api
+}
+
+func (a *jevAPI) requests() []jevAsked {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]jevAsked(nil), a.asked...)
+}
+
+// Without --model jev grades with the pinned jev-1.14.0, not the LLM judge's
+// default, and files its grades as the jev set.
+func TestJudge_JevWithoutModelGradesWithThePinnedRelease(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+	api := newJevAPI(t)
+	fx := newJudgeFixture(t, "climate change", "climate change summit", "climate report")
+
+	require.NoError(t, fx.judge(t, "--strategy", "jev", "--api-base", api.URL))
+
+	jf := fx.annotations(t, "jev")
+	assert.Equal(t, "jev", jf.Judge().Strategy)
+	assert.Equal(t, "jev-1.14.0", jf.Judge().Model)
+	for _, grade := range gradesByQuery(jf)["q1"] {
+		assert.Equal(t, judgment.GradeRelevant, grade)
+	}
+	for _, req := range api.requests() {
+		assert.Equal(t, "jev-1.14.0", req.Model)
+	}
+}
+
+// --model for jev names a pinned jev release: a claude id, an alias or an
+// empty value fails before anything is graded.
+func TestJudge_JevRefusesAModelItCannotPin(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+	for _, model := range []string{"claude-sonnet-5-5", "jev-latest", ""} {
+		t.Run(model, func(t *testing.T) {
+			api := newJevAPI(t)
+			fx := newJudgeFixture(t, "climate change", "climate change summit")
+
+			err := fx.judge(t, "--strategy", "jev", "--api-base", api.URL, "--model", model)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "--model")
+			assert.Empty(t, api.requests())
+			assert.NoFileExists(t, filepath.Join(fx.track, "trec", "annotations.jev.yaml"))
+		})
+	}
+}
+
+// jev grades one doc per request and refuses --batch, as bm25, vector and
+// hybrid do, rather than ignoring it.
+func TestJudge_JevRefusesBatch(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+	api := newJevAPI(t)
+	fx := newJudgeFixture(t, "climate change", "climate change summit")
+
+	err := fx.judge(t, "--strategy", "jev", "--api-base", api.URL, "--batch", "2")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--batch")
+	assert.Empty(t, api.requests())
+	assert.NoFileExists(t, filepath.Join(fx.track, "trec", "annotations.jev.yaml"))
+}
+
+// Without TYPESAFE_API_KEY jev fails naming it before anything is graded,
+// whatever Anthropic key --api-key holds.
+func TestJudge_JevWithoutItsKeyFailsNamingIt(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", "")
+	api := newJevAPI(t)
+	fx := newJudgeFixture(t, "climate change", "climate change summit")
+
+	err := fx.judge(t, "--strategy", "jev", "--api-base", api.URL, "--api-key", "sk-ant-meant-for-claude")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "TYPESAFE_API_KEY")
+	assert.Empty(t, api.requests())
+	assert.NoFileExists(t, filepath.Join(fx.track, "trec", "annotations.jev.yaml"))
+}
+
+// --resume asks jev only about the docs a prior jev run left unjudged.
+func TestJudge_JevResumeAsksOnlyAboutUngradedDocs(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+	api := newJevAPI(t)
+	fx := newJudgeFixture(t, "climate change", "climate change summit", "climate report")
+	missing := fx.pool.Queries[0].Docs[1].DocID
+	article := fx.articles[missing]
+	delete(fx.articles, missing)
+	require.Error(t, fx.judge(t, "--strategy", "jev", "--api-base", api.URL), "one doc left unjudged")
+	fx.articles[missing] = article
+	askedBefore := len(api.requests())
+
+	require.NoError(t, fx.judge(t, "--strategy", "jev", "--api-base", api.URL, "--resume"))
+
+	resumed := api.requests()[askedBefore:]
+	require.Len(t, resumed, 1)
+	assert.Contains(t, resumed[0].State, article.Title)
+	assert.Equal(t, judgment.GradeRelevant, gradesByQuery(fx.annotations(t, "jev"))["q1"][missing])
 }
