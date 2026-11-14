@@ -74,3 +74,54 @@ func (c GradeConfusion) QuadraticKappa() float64 {
 	}
 	return 1 - observed/expected
 }
+
+// WithinOneAgreement is the share of pairs whose grades differ by at most
+// one; NaN without pairs.
+func (c GradeConfusion) WithinOneAgreement() float64 {
+	near := 0
+	for i := range gradeLevels {
+		for j := range gradeLevels {
+			if i-j <= 1 && j-i <= 1 {
+				near += c[i][j]
+			}
+		}
+	}
+	return float64(near) / float64(c.Pairs())
+}
+
+// RelevantAgreement is the share of pairs both raters put on the same side of
+// threshold, a grade at or above it being relevant; NaN without pairs.
+func (c GradeConfusion) RelevantAgreement(threshold int) float64 {
+	b := c.relevance(threshold)
+	return float64(b[0][0]+b[1][1]) / float64(c.Pairs())
+}
+
+// BinaryKappa is Cohen's κ on relevant, a grade at or above threshold,
+// against not relevant. It is NaN when chance alone predicts no disagreement:
+// no pairs, or both raters keeping every pair on one side.
+func (c GradeConfusion) BinaryKappa(threshold int) float64 {
+	b := c.relevance(threshold)
+	n := float64(c.Pairs())
+	observed := float64(b[0][0]+b[1][1]) / n
+	firstRelevant := float64(b[1][0]+b[1][1]) / n
+	secondRelevant := float64(b[0][1]+b[1][1]) / n
+	expected := firstRelevant*secondRelevant + (1-firstRelevant)*(1-secondRelevant)
+	return (observed - expected) / (1 - expected)
+}
+
+// relevance collapses the table to 2x2, index 1 being relevant.
+func (c GradeConfusion) relevance(threshold int) [2][2]int {
+	side := func(grade int) int {
+		if grade >= threshold {
+			return 1
+		}
+		return 0
+	}
+	var b [2][2]int
+	for i := range gradeLevels {
+		for j := range gradeLevels {
+			b[side(i)][side(j)] += c[i][j]
+		}
+	}
+	return b
+}

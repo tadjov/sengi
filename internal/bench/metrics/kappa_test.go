@@ -98,3 +98,44 @@ func TestNewGradeConfusion_RejectsBadInput(t *testing.T) {
 		})
 	}
 }
+
+// Worked by hand: 18 of the 20 pairs sit on or next to the diagonal, and the
+// weighted disagreement is 14 observed against 992/20 expected by chance.
+func TestGradeConfusion_WithinOneAndQuadraticKappaOnAWorkedTable(t *testing.T) {
+	c := GradeConfusion{
+		{4, 1, 1, 0},
+		{1, 3, 1, 0},
+		{0, 1, 2, 1},
+		{0, 1, 1, 3},
+	}
+	if got := c.WithinOneAgreement(); math.Abs(got-0.9) > 1e-12 {
+		t.Errorf("WithinOneAgreement() = %v, want 0.9", got)
+	}
+	if got, want := c.QuadraticKappa(), 1-14/49.6; math.Abs(got-want) > 1e-12 {
+		t.Errorf("QuadraticKappa() = %v, want %v", got, want)
+	}
+}
+
+// Cohen's worked example: the 2x2 [[20, 5], [10, 15]] has κ = 0.4. The grades
+// below collapse onto it at threshold 2.
+func TestGradeConfusion_BinaryKappaCollapsesAtTheThreshold(t *testing.T) {
+	c := GradeConfusion{
+		{8, 4, 0, 0},
+		{3, 5, 5, 0},
+		{0, 0, 6, 4},
+		{10, 0, 0, 5},
+	}
+	if got := c.BinaryKappa(2); math.Abs(got-0.4) > 1e-12 {
+		t.Errorf("BinaryKappa(2) = %v, want 0.4", got)
+	}
+	if got := c.RelevantAgreement(2); math.Abs(got-0.7) > 1e-12 {
+		t.Errorf("RelevantAgreement(2) = %v, want 0.7", got)
+	}
+}
+
+func TestGradeConfusion_BinaryKappaIsUndefinedWhenBothRatersStayOnOneSide(t *testing.T) {
+	c := GradeConfusion{{3, 2, 0, 0}, {1, 4, 0, 0}}
+	if got := c.BinaryKappa(2); !math.IsNaN(got) {
+		t.Errorf("BinaryKappa(2) = %v, want NaN", got)
+	}
+}
