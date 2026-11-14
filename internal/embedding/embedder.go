@@ -20,9 +20,10 @@ const DefaultBatchSize = 64
 
 // Embedder slices every vector to its width, L2-normalises it, and tags it model@dim.
 type Embedder struct {
-	model     string
-	dim       int
-	batchSize int
+	model           string
+	dim             int
+	batchSize       int
+	documentOptions map[string]any
 
 	client Client
 }
@@ -65,6 +66,13 @@ func WithDim(dim int) EmbedderOption {
 func WithBatchSize(size int) EmbedderOption {
 	return func(executor *Embedder) {
 		executor.batchSize = size
+	}
+}
+
+// WithDocumentOptions sets the model options sent with every document batch, such as Ollama's num_ctx.
+func WithDocumentOptions(options map[string]any) EmbedderOption {
+	return func(executor *Embedder) {
+		executor.documentOptions = options
 	}
 }
 
@@ -151,7 +159,7 @@ func (e *Embedder) embedBatch(ctx context.Context, batch []document.Article) ([]
 	for i, article := range batch {
 		leads[i] = article.Lead()
 	}
-	resp, err := e.client.GenerateBatch(ctx, BatchRequest{Model: e.model, Prompts: leads})
+	resp, err := e.client.GenerateBatch(ctx, BatchRequest{Model: e.model, Prompts: leads, Options: e.documentOptions})
 	if err != nil {
 		return nil, fmt.Errorf("embed the batch from article %s: %w", batch[0].ID, err)
 	}
