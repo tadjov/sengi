@@ -15,8 +15,7 @@ import (
 // GradingQuery is the query a judge grades against.
 type GradingQuery struct {
 	ID string
-	// Text is the query as a user would type it. The deterministic judges grade
-	// it and look its vector up by it; Description only describes it.
+	// Text is the query as typed; the deterministic judges grade against it, not Description.
 	Text        string
 	Description string
 	Category    suite.Category
@@ -33,35 +32,21 @@ type GradingDoc struct {
 	PublisherDomain string
 }
 
-// Strategy names a grader. It grades through one of DocStrategy,
-// BatchStrategy or PoolStrategy.
-//
-// Describe is mandatory: every artifact must attest who graded it, so a
-// strategy that cannot describe itself has no business writing qrels.
+// Strategy grades through DocStrategy, BatchStrategy or PoolStrategy.
+// Describe names the judge every artifact records.
 type Strategy interface {
 	Name() string
 	Describe() meta.Judge
 }
 
-// DocStrategy grades one (query, doc) pair at a time. Implementations must be
-// safe for concurrent calls — the runner dispatches multiple goroutines.
+// DocStrategy grades one (query, doc) pair at a time and must be safe for concurrent calls.
 type DocStrategy interface {
 	Strategy
 	Grade(ctx context.Context, q GradingQuery, doc GradingDoc) (int, error)
 }
 
-// BatchStrategy is an optional capability: strategies that can grade N docs
-// in a single LLM call implement it. The runner calls GradeBatch only when
-// RunnerConfig.BatchSize asks for more than one doc per request.
-//
-// The pattern follows Anthropic's "LLM as judge — batched" cookbook:
-//   - one system prompt sets the rubric
-//   - one user message containing the query + numbered candidates
-//   - response is a single JSON array, one entry per candidate
-//
-// Implementations MUST tolerate partial responses: if the model returns N-k
-// entries, return what was parsed and let the runner re-dispatch the missing
-// docs through Grade() as a fallback.
+// BatchStrategy grades several docs in one LLM call when RunnerConfig.BatchSize asks for it.
+// On a partial reply it returns what it parsed, and the runner grades the rest one by one.
 type BatchStrategy interface {
 	DocStrategy
 	// BatchMaxOutputTokens is the output budget of one batch request.
@@ -69,10 +54,7 @@ type BatchStrategy interface {
 	GradeBatch(ctx context.Context, q GradingQuery, docs []GradingDoc) ([]GradedDoc, error)
 }
 
-// PoolStrategy is an optional capability for strategies whose grades are
-// relative to the rest of the pool. The runner hands GradePool every doc in the
-// query's pool in one call, including docs a prior run already graded, so a
-// grade does not depend on batching or resume.
+// PoolStrategy grades a query's whole pool at once, since its grades are relative to the pool.
 type PoolStrategy interface {
 	Strategy
 	GradePool(ctx context.Context, q GradingQuery, docs []GradingDoc) ([]GradedDoc, error)
@@ -80,47 +62,34 @@ type PoolStrategy interface {
 
 type StrategyKind string
 
-// Strategy taxonomy. Heuristic strategies derive grades from algorithmic
-// signals; LLM strategies call out to a model; manual is a placeholder for
-// human grading.
 const (
-	// StrategyKeyword Heuristic.
 	StrategyKeyword StrategyKind = "keyword" // token-overlap baseline
 	StrategyBM25    StrategyKind = "bm25"    // pool-local Okapi BM25
 	StrategyVector  StrategyKind = "vector"  // embedding cosine similarity
 	StrategyHybrid  StrategyKind = "hybrid"  // BM25 + vector fusion
 
-	// StrategyLLM LLM-as-judge. One strategy for every vendor and transport —
-	// which endpoint it talks to is a Provider (claude-cli, claude-api, later
-	// codex-*, chatgpt-*), selected with --provider.
+	// StrategyLLM grades with a model behind a Provider, picked with --provider.
 	StrategyLLM StrategyKind = "llm"
 
-	// StrategyJev TypeSafe's Jev, a non-Anthropic cross-judge of the LLM judge.
+	// StrategyJev grades with TypeSafe's Jev, a non-Anthropic cross-judge.
 	StrategyJev StrategyKind = "jev"
 
-	// StrategyManual Human.
 	StrategyManual StrategyKind = "manual"
 )
 
 type StrategyOptions struct {
 	APIKey string
-	// Provider selects the endpoint behind StrategyLLM. Empty means
-	// DefaultProvider.
+	// Provider selects the endpoint behind StrategyLLM; empty means DefaultProvider.
 	Provider Provider
-	// Model is the judge model — a full id or a provider alias such as "sonnet".
-	// An LLM judge needs one. The provider expands it, so the judge block always
-	// records a concrete id.
+	// Model is a full id or an alias such as "sonnet", which the provider expands.
 	Model string
-	// Effort is the effort level an LLM judge's model grades at; an LLM judge
-	// needs one.
+	// Effort is the effort an LLM judge's model grades at.
 	Effort      Effort
 	APIBaseURL  string
 	CLIBinary   string
 	Concurrency int
 
-	// VectorStore backs the vector / hybrid strategies: document vectors are
-	// read from it and the query is embedded through it. Engine-agnostic
-	// (Postgres today, ES later); built by the caller via storage/factory.
+	// VectorStore holds the doc vectors and embeds the query for vector and hybrid.
 	VectorStore storage.VectorStore
 	// EmbeddingModel labels the judge block's model for vector/hybrid.
 	EmbeddingModel string
@@ -147,9 +116,7 @@ func NewStrategy(kind StrategyKind, opts StrategyOptions) (Strategy, error) {
 	}
 }
 
-// NewStrategyFromSelector resolves a judgment-set name ("keyword",
-// "claude-cli", …) and constructs the strategy that produced it. Used on read
-// paths; bench judge builds strategies from explicit --strategy/--provider.
+// NewStrategyFromSelector builds the strategy behind a judgment-set name, for read paths.
 func NewStrategyFromSelector(sel string, opts StrategyOptions) (Strategy, error) {
 	kind, provider, err := ParseSelector(sel)
 	if err != nil {

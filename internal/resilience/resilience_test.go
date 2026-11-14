@@ -37,8 +37,6 @@ func TestTransient_RetriesTimeoutsRateLimitsAndServerErrors(t *testing.T) {
 	}
 }
 
-// Do hands back the first response it does not retry, its body unread for
-// the caller, a refused request as much as a success.
 func TestDo_ReturnsTheFirstResponseItDoesNotRetry(t *testing.T) {
 	tests := map[string]struct {
 		replies    []reply
@@ -72,8 +70,6 @@ func TestDo_ReturnsTheFirstResponseItDoesNotRetry(t *testing.T) {
 	}
 }
 
-// Every retried response is read to its end and closed, so its connection
-// can be reused; the one Do returns stays open for the caller.
 func TestDo_DrainsAndClosesEveryRetriedBody(t *testing.T) {
 	server := &scriptedServer{replies: []reply{{status: 503, body: "busy"}, {status: 429, body: "slow down"}, {status: 200, body: "graded"}}}
 
@@ -90,8 +86,6 @@ func TestDo_DrainsAndClosesEveryRetriedBody(t *testing.T) {
 	assert.Same(t, server.bodies[2], resp.Body)
 }
 
-// Without a retry-after, the wait starts at the initial backoff and doubles up
-// to the cap.
 func TestDo_BacksOffDoublingFromTheInitialDelayToTheCap(t *testing.T) {
 	var waits []time.Duration
 	policy := testPolicy(&waits)
@@ -106,7 +100,6 @@ func TestDo_BacksOffDoublingFromTheInitialDelayToTheCap(t *testing.T) {
 	assert.Equal(t, []time.Duration{500 * time.Millisecond, time.Second, 2 * time.Second, 4 * time.Second, 5 * time.Second}, waits)
 }
 
-// Jitter takes a random share of up to Jitter off each backoff.
 func TestDo_JitterShortensEachBackoffByUpToItsShare(t *testing.T) {
 	var waits []time.Duration
 	policy := testPolicy(&waits)
@@ -123,8 +116,7 @@ func TestDo_JitterShortensEachBackoffByUpToItsShare(t *testing.T) {
 	assert.Equal(t, []time.Duration{437500 * time.Microsecond, 875 * time.Millisecond}, waits)
 }
 
-// A retry-after in seconds or as an HTTP date is waited as given, without
-// jitter; one Do cannot read falls back to the backoff.
+// An unreadable Retry-After falls back to the backoff.
 func TestDo_WaitsWhatRetryAfterAsks(t *testing.T) {
 	now := time.Date(2026, 11, 14, 22, 0, 0, 0, time.UTC)
 	tests := map[string]struct {
@@ -161,8 +153,6 @@ func TestDo_WaitsWhatRetryAfterAsks(t *testing.T) {
 	}
 }
 
-// When every attempt is retryable, Do gives up after MaxAttempts with an
-// error holding the last response.
 func TestDo_GivesUpAfterMaxAttemptsNamingTheLastStatus(t *testing.T) {
 	server := &scriptedServer{replies: []reply{
 		{status: 503, header: http.Header{"X-Request-Id": {"req-1"}}, body: "busy"},
@@ -188,7 +178,6 @@ func TestDo_GivesUpAfterMaxAttemptsNamingTheLastStatus(t *testing.T) {
 
 var errReset = errors.New("connection reset by peer")
 
-// A request that never got a response is retried as a transient status is.
 func TestDo_RetriesATransportError(t *testing.T) {
 	server := &scriptedServer{replies: []reply{{err: errReset}, {status: 200, body: "graded"}}}
 
@@ -210,8 +199,6 @@ func TestDo_GivesUpOnATransportErrorEveryAttempt(t *testing.T) {
 	assert.Equal(t, 3, server.sent)
 }
 
-// A cancelled call is not retried: Do returns the context's error, whether
-// the cancel lands during a wait or fails the request itself.
 func TestDo_ReturnsTheContextErrorOnceCancelled(t *testing.T) {
 	t.Run("during a wait", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -250,8 +237,6 @@ func TestDo_ReturnsTheContextErrorOnceCancelled(t *testing.T) {
 	})
 }
 
-// The default retries as TypeSafe's SDK does: 408, 429 and any 5xx, backing
-// off from 0.5 s, doubling, over 5 attempts.
 func TestDefaultPolicy_RetriesAsTypeSafesSDK(t *testing.T) {
 	var waits []time.Duration
 	policy := DefaultPolicy()
@@ -276,8 +261,7 @@ func closeIfAny(resp *http.Response) {
 	}
 }
 
-// testPolicy makes three attempts, backing off from 0.5 s to 5 s without
-// jitter, and records each wait in waits instead of sleeping.
+// testPolicy makes three attempts without jitter and records waits instead of sleeping.
 func testPolicy(waits *[]time.Duration) Policy {
 	if waits == nil {
 		waits = new([]time.Duration)
@@ -307,8 +291,7 @@ type reply struct {
 	err    error
 }
 
-// scriptedServer answers the nth attempt with the nth reply, repeating the
-// last, and keeps every body it hands out.
+// scriptedServer answers the nth attempt with the nth reply, repeating the last.
 type scriptedServer struct {
 	replies []reply
 	sent    int

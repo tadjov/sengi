@@ -1,6 +1,4 @@
-// Package resilience retries HTTP calls that failed for a reason a later
-// attempt may not meet: a rate limit, an overloaded server, a dropped
-// connection.
+// Package resilience retries rate-limited, overloaded and dropped HTTP calls.
 package resilience
 
 import (
@@ -14,31 +12,27 @@ import (
 	"time"
 )
 
-// drainLimit bounds how much of a retried body is read so its connection can
-// be reused.
+// drainLimit caps how much of a retried body is read, so its connection is reused.
 const drainLimit = 1 << 20
 
-// Policy is how often, after how long and on which statuses a call is retried.
+// Policy decides when and how often a call is retried.
 type Policy struct {
-	// MaxAttempts counts the first attempt; below 1 means 1.
+	// MaxAttempts includes the first attempt.
 	MaxAttempts    int
 	InitialBackoff time.Duration
 	MaxBackoff     time.Duration
-	// Jitter is the share of each backoff drawn at random, 0 to 1: 0.25 waits
-	// between 75% and 100% of it. A Retry-After is waited as given.
+	// Jitter shortens each backoff by a random share up to this, 0 to 1.
 	Jitter float64
-	// RetryStatus reports whether a response with status is worth another
-	// attempt; nil retries none.
+	// RetryStatus picks the statuses to retry; nil retries none.
 	RetryStatus func(status int) bool
 
-	// nil means the real timer, clock and random source.
+	// Test hooks; nil uses the real timer, clock and random source.
 	wait   func(ctx context.Context, d time.Duration) error
 	now    func() time.Time
 	random func() float64
 }
 
-// DefaultPolicy retries as TypeSafe's SDK does: 408, 429 and any 5xx, backing
-// off from 0.5 s, doubling up to 5 s, over 5 attempts.
+// DefaultPolicy retries the way TypeSafe's SDK does.
 func DefaultPolicy() Policy {
 	return Policy{
 		MaxAttempts:    5,
@@ -49,21 +43,16 @@ func DefaultPolicy() Policy {
 	}
 }
 
-// Transient reports a status a later attempt may not meet: a timeout, a rate
-// limit, or a server error, 529 overloaded included.
+// Transient reports whether a status is worth retrying.
 func Transient(status int) bool {
 	return status == http.StatusRequestTimeout || status == http.StatusTooManyRequests || status >= http.StatusInternalServerError
 }
 
-// Send makes one attempt of a call. It must build a new request each time,
-// since an attempt spends its request's body.
+// Send makes one attempt, with a new request each time.
 type Send func(ctx context.Context) (*http.Response, error)
 
-// Do runs send until it returns a response RetryStatus does not retry, and
-// returns that response with its body unread for the caller to close. A
-// request that got no response is retried too. Once ctx is done, Do returns
-// ctx.Err(). When the attempts run out, the error is an *ExhaustedError
-// holding the last response, or the last transport error.
+// Do retries send until it gets a response worth keeping; the caller closes its body.
+// If the last attempt still gets a retryable status, Do returns an *ExhaustedError.
 func (p Policy) Do(ctx context.Context, send Send) (*http.Response, error) {
 	attempts := max(p.MaxAttempts, 1)
 	for attempt := 1; ; attempt++ {
@@ -93,8 +82,7 @@ func (p Policy) Do(ctx context.Context, send Send) (*http.Response, error) {
 	}
 }
 
-// ExhaustedError is the last response of a call whose every attempt was
-// retried.
+// ExhaustedError holds the last response after every attempt was retried.
 type ExhaustedError struct {
 	Attempts int
 	Status   int
@@ -120,8 +108,6 @@ func drain(body io.ReadCloser) {
 	_ = body.Close()
 }
 
-// retryDelay waits what a Retry-After in whole seconds or an HTTP date asks,
-// else the backoff.
 func (p Policy) retryDelay(attempt int, retryAfter string) time.Duration {
 	if seconds, err := strconv.Atoi(retryAfter); err == nil && seconds >= 0 {
 		return time.Duration(seconds) * time.Second
@@ -132,7 +118,6 @@ func (p Policy) retryDelay(attempt int, retryAfter string) time.Duration {
 	return p.backoff(attempt)
 }
 
-// backoff doubles from InitialBackoff up to MaxBackoff, less its jitter.
 func (p Policy) backoff(attempt int) time.Duration {
 	delay := p.InitialBackoff
 	for range attempt - 1 {

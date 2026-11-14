@@ -15,8 +15,7 @@ import (
 )
 
 func init() {
-	// Let the spec loader query the strategy registry without importing
-	// judgment directly (keeps spec package dep-free of judgment).
+	// spec validates judgment-set names without importing judgment.
 	spec.KnownStrategies = judgment.KnownStrategies
 }
 
@@ -90,8 +89,7 @@ func main() {
 		stop()
 	}()
 	if err := root.ExecuteContext(ctx); err != nil {
-		// Printed rather than logged: resolution errors carry indented hint
-		// lines, and slog would escape the newlines into one unreadable string.
+		// Printed, not logged: slog would escape the hint lines' newlines.
 		fmt.Fprintf(os.Stderr, "%s %v\n", cFail.Sprint("Error:"), err)
 		os.Exit(1)
 	}

@@ -159,8 +159,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	if f.batchSize > 0 && kind != judgment.StrategyLLM {
 		return fmt.Errorf("--batch applies only to --strategy llm; %s grades without batches", kind)
 	}
-	// Heuristic judges file under their strategy; llm judges file under their
-	// provider, so two vendors can grade the same track side by side.
+	// llm judges file under their provider, so two vendors can grade one track.
 	outPath := f.output
 	if outPath == "" {
 		outPath = tr.JudgmentsPath(judgment.JudgmentSetName(kind, provider))
@@ -194,8 +193,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 		CLIBinary:   f.cliBinary,
 		Concurrency: f.concurrency,
 	}
-	// --model's default is the LLM judge's claude id, so only an omitted flag
-	// means jev's pin; a claude id given for jev fails.
+	// Only an omitted --model means jev's pin, since the default is a claude id.
 	if kind == judgment.StrategyJev && !cmd.Flags().Changed("model") {
 		opts.Model = judgment.DefaultJevModel
 	}
@@ -231,8 +229,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 		BatchSize:   f.batchSize,
 		BatchSeed:   f.batchSeed,
 	}
-	// Every flush carries this meta, so a file left by an interrupted run names
-	// its run and grader.
+	// Every flush carries this meta, so an interrupted run's file names its grader.
 	judge := cfg.Judge()
 	runMeta := meta.New("judge")
 	runMeta.Judge = &judge
@@ -286,8 +283,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 		return fmt.Errorf("judge run: %w", runErr)
 	}
 
-	// Run returns only the queries still in the pool, so a query dropped since
-	// the last run is not carried over.
+	// Run keeps only the queries still in the pool.
 	final.Meta = runMeta
 	if err := judgment.WriteFile(final, outPath); err != nil {
 		return fmt.Errorf("finalise judgments: %w", err)
@@ -301,10 +297,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	return requireJudged(final, f.allowUnjudged)
 }
 
-// resolveJudge turns --strategy/--provider into the pair the strategy factory
-// needs. --provider applies only to the llm strategy; naming a judgment set
-// ("claude-cli") in --strategy is redirected to the explicit form rather than
-// silently accepted, so there is one way to write a judge.
+// resolveJudge maps --strategy and --provider to what the strategy factory needs.
 func resolveJudge(f judgeFlags) (judgment.StrategyKind, judgment.Provider, error) {
 	kind := judgment.StrategyKind(f.strategy)
 	switch kind {
@@ -318,8 +311,7 @@ func resolveJudge(f judgeFlags) (judgment.StrategyKind, judgment.Provider, error
 		return kind, "", nil
 	}
 
-	// A provider name in --strategy is the old spelling. Redirect rather than
-	// accept it, so there is exactly one way to write a judge.
+	// A provider in --strategy is the old spelling; point to the explicit form.
 	if _, p, err := judgment.ParseSelector(f.strategy); err == nil {
 		return "", "", fmt.Errorf("%q names a provider, not a strategy — use --strategy llm --provider %s",
 			f.strategy, p)
@@ -328,9 +320,7 @@ func resolveJudge(f judgeFlags) (judgment.StrategyKind, judgment.Provider, error
 		f.strategy, strings.Join(judgment.KnownJudgeStrategies(), ", "))
 }
 
-// checkResumeCompat verifies that a prior judgments file is safe to resume
-// under the judge block now. A difference in any field of the judge block means
-// the two runs disagree on who is grading, and appending would corrupt the set.
+// checkResumeCompat refuses to resume a file another judge graded.
 func checkResumeCompat(prior *judgment.File, now meta.Judge) error {
 	was := prior.Judge()
 	if (was == meta.Judge{}) {
@@ -346,9 +336,8 @@ func checkResumeCompat(prior *judgment.File, now meta.Judge) error {
 		strings.Join(differences, "; "))
 }
 
-// buildVectorStore builds the vector/hybrid judges' store: query vectors from
-// the track's query-vectors package when it has one, from Ollama otherwise, and
-// document vectors from Postgres.
+// buildVectorStore reads query vectors from the track's package, else Ollama,
+// and doc vectors from Postgres.
 func buildVectorStore(ctx context.Context, f judgeFlags, tr *trackctx.Track) (storage.VectorStore, string, func(), error) {
 	noop := func() {}
 	pgConn := envOrFlag("PG_CONNECTION_STRING", f.pg)
@@ -394,8 +383,7 @@ func buildVectorStore(ctx context.Context, f judgeFlags, tr *trackctx.Track) (st
 	return store, store.Model(), noop, nil
 }
 
-// openArticleReader creates a PG reader for article enrichment. Centralised so
-// the no-key-needed case (manual strategy) can skip it cleanly.
+// openArticleReader opens the Postgres reader for pooled articles.
 func openArticleReader(cmd *cobra.Command, pgConn string) (storage.Reader, error) {
 	conn := envOrFlag("PG_CONNECTION_STRING", pgConn)
 	if conn == "" {
@@ -411,9 +399,8 @@ func openArticleReader(cmd *cobra.Command, pgConn string) (storage.Reader, error
 	return reader, nil
 }
 
-// buildManualJudgments writes a -1 placeholder for every pooled doc that has no
-// hand grade yet. Everything in existing survives, including docs that have
-// since left the pool, so re-running never erases a grade.
+// buildManualJudgments adds a -1 placeholder for each pooled doc without a hand
+// grade and keeps every existing grade.
 func buildManualJudgments(pf *pool.PoolFile, existing *judgment.File) *judgment.File {
 	jf := &judgment.File{}
 	if existing != nil {
@@ -450,8 +437,8 @@ type manualJudgments struct {
 	path     string
 }
 
-// write merges existing (nil starts over) with a -1 placeholder for every
-// pooled doc it lacks, binds the result to the pool and writes it.
+// write merges existing (nil starts over) with placeholders for missing docs and
+// writes the file.
 func (m manualJudgments) write(existing *judgment.File) (*judgment.File, error) {
 	jf := buildManualJudgments(m.pool, existing)
 	judge := judgment.NewManualStrategy().Describe()
@@ -465,8 +452,7 @@ func (m manualJudgments) write(existing *judgment.File) (*judgment.File, error) 
 	return jf, nil
 }
 
-// requireJudged fails when a pooled doc has no grade: bench run would score it
-// as non-relevant against whichever engine retrieved it.
+// requireJudged fails on an ungraded doc, which bench run would score as non-relevant.
 func requireJudged(jf *judgment.File, allowUnjudged bool) error {
 	_, unjudged := jf.GradeCounts()
 	if unjudged == 0 || allowUnjudged {

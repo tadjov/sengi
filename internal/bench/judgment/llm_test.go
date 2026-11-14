@@ -21,8 +21,7 @@ func TestParseSelector(t *testing.T) {
 		{sel: "claude-cli", kind: StrategyLLM, provider: ProviderClaudeCLI},
 		{sel: "claude-api", kind: StrategyLLM, provider: ProviderClaudeAPI},
 
-		// "llm" is writable but is never a judgment-set name: every LLM set is
-		// filed under its provider, or two providers would collide on one file.
+		// Every LLM set is filed under its provider.
 		{sel: "llm", wantErr: "does not name a judgment set"},
 
 		{sel: "codex-cli", wantErr: "unknown judgment set"},
@@ -52,8 +51,7 @@ func TestParseSelector(t *testing.T) {
 	}
 }
 
-// KnownStrategies is what the spec validator rejects typos against: it lists
-// judgment-set NAMES, so providers appear and the bare "llm" strategy does not.
+// Providers are set names; the bare llm strategy is not.
 func TestKnownStrategiesListsSetNames(t *testing.T) {
 	known := KnownStrategies()
 	joined := strings.Join(known, ",")
@@ -81,8 +79,6 @@ func TestJudgmentSetName(t *testing.T) {
 		{kind: StrategyJev, want: "jev"},
 		{kind: StrategyLLM, provider: ProviderClaudeCLI, want: "claude-cli"},
 		{kind: StrategyLLM, provider: ProviderClaudeAPI, want: "claude-api"},
-		// An unset provider falls back to the default rather than producing an
-		// unnamed file.
 		{kind: StrategyLLM, want: string(DefaultProvider)},
 	}
 
@@ -93,8 +89,6 @@ func TestJudgmentSetName(t *testing.T) {
 	}
 }
 
-// JudgmentSetName and ParseSelector must be exact inverses, or a set written by
-// bench judge cannot be found again by bench run.
 func TestJudgmentSetNameRoundTrips(t *testing.T) {
 	cases := []struct {
 		kind     StrategyKind
@@ -130,7 +124,6 @@ func TestResolveClaudeModelAliases(t *testing.T) {
 		{in: "sonnet", want: "claude-sonnet-5-5"},
 		{in: "opus", want: "claude-opus-5-5"},
 		{in: "fable", want: "claude-fable-5-2"},
-		// A full id passes through untouched.
 		{in: "claude-sonnet-5", want: "claude-sonnet-5"},
 	}
 
@@ -141,8 +134,6 @@ func TestResolveClaudeModelAliases(t *testing.T) {
 	}
 }
 
-// The library grades with the model it is given, so an empty one fails
-// naming the flag rather than falling back to a model nobody named.
 func TestLLMRefusesAnEmptyModel(t *testing.T) {
 	for _, provider := range []Provider{ProviderClaudeCLI, ProviderClaudeAPI} {
 		t.Run(string(provider), func(t *testing.T) {
@@ -155,7 +146,6 @@ func TestLLMRefusesAnEmptyModel(t *testing.T) {
 	}
 }
 
-// The effort a model grades at shifts its grades, so none is assumed either.
 func TestLLMRequiresAnEffort(t *testing.T) {
 	for _, provider := range []Provider{ProviderClaudeCLI, ProviderClaudeAPI} {
 		t.Run(string(provider), func(t *testing.T) {
@@ -209,7 +199,6 @@ func TestLLMDescribeNamesTheModelItWasGiven(t *testing.T) {
 	}
 }
 
-// An omitted provider must still yield a usable judge rather than an error.
 func TestLLMDefaultProvider(t *testing.T) {
 	s, err := NewLLMStrategy(StrategyOptions{CLIBinary: versionOnlyClaudeCLI(t), Model: "claude-haiku-5-5", Effort: EffortLow})
 	if err != nil {
@@ -221,8 +210,6 @@ func TestLLMDefaultProvider(t *testing.T) {
 	}
 }
 
-// --model takes an alias; the judge block must record the expanded id, since an
-// alias would silently re-point at a different model later.
 func TestLLMModelAliasRecordedAsFullID(t *testing.T) {
 	s, err := NewLLMStrategy(StrategyOptions{Provider: ProviderClaudeCLI, CLIBinary: versionOnlyClaudeCLI(t), Model: "sonnet", Effort: EffortLow})
 	if err != nil {

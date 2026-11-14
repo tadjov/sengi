@@ -20,8 +20,6 @@ import (
 
 const testJevKey = "ts-test-key-not-a-real-one"
 
-// Jev grades with a pinned release only: an alias re-points at another model
-// without notice, and the judge block would name a model that did not answer.
 func TestNewJev_TakesOnlyAPinnedJevRelease(t *testing.T) {
 	t.Setenv("TYPESAFE_API_KEY", testJevKey)
 	for _, model := range []string{"jev-1.14.0", "jev-2.0.13"} {
@@ -42,8 +40,7 @@ func TestNewJev_TakesOnlyAPinnedJevRelease(t *testing.T) {
 	}
 }
 
-// The key comes from TYPESAFE_API_KEY alone; the Anthropic key --api-key
-// carries never reaches TypeSafe.
+// The Anthropic key in --api-key never reaches TypeSafe.
 func TestNewJev_RefusesToStartWithoutTypeSafeAPIKey(t *testing.T) {
 	t.Setenv("TYPESAFE_API_KEY", "")
 
@@ -53,8 +50,6 @@ func TestNewJev_RefusesToStartWithoutTypeSafeAPIKey(t *testing.T) {
 	assert.Contains(t, err.Error(), "TYPESAFE_API_KEY")
 }
 
-// The judge block names the pinned release, the rubric and gates it grades
-// under and the endpoint, and none of an LLM judge's prompt, effort or budget.
 func TestJev_DescribeNamesTheReleaseTheRubricAndTheEndpoint(t *testing.T) {
 	t.Setenv("TYPESAFE_API_KEY", testJevKey)
 	s, err := NewStrategy(StrategyJev, StrategyOptions{Model: "jev-1.14.0"})
@@ -75,7 +70,6 @@ func TestJev_DescribeNamesTheReleaseTheRubricAndTheEndpoint(t *testing.T) {
 	assert.Zero(t, got.MaxOutputTokens)
 }
 
-// Jev grades one doc per request, so the runner never batches it.
 func TestJev_GradesOneDocPerRequest(t *testing.T) {
 	t.Setenv("TYPESAFE_API_KEY", testJevKey)
 	s, err := NewStrategy(StrategyJev, StrategyOptions{Model: "jev-1.14.0"})
@@ -87,8 +81,6 @@ func TestJev_GradesOneDocPerRequest(t *testing.T) {
 	assert.False(t, batches)
 }
 
-// Jev reads the article as the LLM judge shows it, content cut included, and
-// the query text under the instructions and levels probed against the API.
 func TestJev_AsksAboutTheArticleTheLLMJudgeSees(t *testing.T) {
 	doc := GradingDoc{
 		ID:          uuid.New(),
@@ -145,7 +137,6 @@ func TestJev_AsksAboutTheArticleTheLLMJudgeSees(t *testing.T) {
 	}
 }
 
-// The same doc sends the same bytes every time it is graded.
 func TestJev_SendsTheSameBytesForTheSameDoc(t *testing.T) {
 	fake := newFakeJev(t, jevScoreReply("jev-1.14.0", `{"0":0.0,"1":0.0,"2":1.0,"3":0.0}`))
 	s := newTestJev(t, fake.url)
@@ -160,8 +151,6 @@ func TestJev_SendsTheSameBytesForTheSameDoc(t *testing.T) {
 	assert.Equal(t, string(fake.body(t, 0)), string(fake.body(t, 1)))
 }
 
-// The grade is Jev's most probable level, a tie going to the lower one as
-// the instructions ask, never the expected score rounded.
 func TestJev_GradesTheMostProbableLevel(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -186,8 +175,6 @@ func TestJev_GradesTheMostProbableLevel(t *testing.T) {
 	}
 }
 
-// Phrase, boolean and filter constraints are decided in code, as for the LLM
-// judge: a doc that breaks one grades 0 and Jev is never asked.
 func TestJev_GradesADocBreakingTheQuerysConstraintZeroWithoutAsking(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -223,8 +210,6 @@ func TestJev_GradesADocBreakingTheQuerysConstraintZeroWithoutAsking(t *testing.T
 	}
 }
 
-// A boolean text that does not parse leaves the constraint undecided, so the
-// whole query stays unjudged rather than graded by Jev alone.
 func TestJev_LeavesAQueryWithAnUnparsableBooleanUnjudged(t *testing.T) {
 	fake := newFakeJev(t, jevScoreReply("jev-1.14.0", `{"0":0.0,"1":0.0,"2":0.0,"3":1.0}`))
 	q := GradingQuery{ID: "q1", Text: "climate AND (politics", Category: suite.CategoryBoolean}
@@ -236,8 +221,6 @@ func TestJev_LeavesAQueryWithAnUnparsableBooleanUnjudged(t *testing.T) {
 	assert.Zero(t, fake.requests())
 }
 
-// The judge block names the pinned release, so a reply from any other model
-// leaves the doc unjudged instead of filing its grade under the wrong model.
 func TestJev_LeavesADocAnotherModelAnsweredUnjudged(t *testing.T) {
 	fake := newFakeJev(t, jevScoreReply("jev-1.15.0", `{"0":0.0,"1":0.0,"2":1.0,"3":0.0}`))
 
@@ -250,8 +233,6 @@ func TestJev_LeavesADocAnotherModelAnsweredUnjudged(t *testing.T) {
 	assert.Contains(t, err.Error(), "req-200", "the request id traces the reply with TypeSafe")
 }
 
-// Only a probability for each of the levels 0 to 3, summing to 1 within 0.05,
-// is a grade; anything else leaves the doc unjudged.
 func TestJev_LeavesADocWithoutAUsableAnswerUnjudged(t *testing.T) {
 	traced := map[string]string{"x-typesafe-request-id": "req-200"}
 	tests := map[string]jevStubReply{
@@ -279,7 +260,6 @@ func TestJev_LeavesADocWithoutAUsableAnswerUnjudged(t *testing.T) {
 	}
 }
 
-// A rate-limited request is sent again, the same bytes, and the doc graded.
 func TestJev_GradesADocAfterARateLimit(t *testing.T) {
 	fake := newFakeJev(t,
 		jevStubReply{status: http.StatusTooManyRequests, header: map[string]string{"retry-after": "0"}, body: `{"detail":"rate limited"}`},
@@ -292,8 +272,6 @@ func TestJev_GradesADocAfterARateLimit(t *testing.T) {
 	assert.Equal(t, string(fake.body(t, 0)), string(fake.body(t, 1)))
 }
 
-// A request TypeSafe rejects fails the doc on the first reply, with its
-// status, body and request id.
 func TestJev_FailsADocOnARejectedRequest(t *testing.T) {
 	const rejected = `{"detail":[{"type":"too_short","loc":["body","questions","grade","criteria"],` +
 		`"msg":"List should have at least 1 item after validation, not 0","input":[],"ctx":{"field_type":"List","min_length":1,"actual_length":0}}]}`
@@ -309,8 +287,6 @@ func TestJev_FailsADocOnARejectedRequest(t *testing.T) {
 	assert.Equal(t, 1, fake.requests(), "not retried")
 }
 
-// A refused key fails the doc without retrying, and the error never shows
-// the key.
 func TestJev_FailsADocOnARefusedKeyWithoutRevealingIt(t *testing.T) {
 	const revoked = "ts-revoked-key-4f1c"
 	fake := newFakeJev(t, jevScoreReply("jev-1.14.0", `{"0":0.0,"1":0.0,"2":1.0,"3":0.0}`))
@@ -342,7 +318,6 @@ func newTestJev(t *testing.T, baseURL string) *JevStrategy {
 	return s
 }
 
-// jevRequestSent is a request body as the TypeSafe API reads it.
 type jevRequestSent struct {
 	Model     string                     `json:"model"`
 	State     string                     `json:"state"`
@@ -361,8 +336,6 @@ type jevStubReply struct {
 	body   string
 }
 
-// jevScoreReply is a 200 answering the grade question with probabilities, a
-// JSON object keyed by level.
 func jevScoreReply(model, probabilities string) jevStubReply {
 	return jevStubReply{
 		status: http.StatusOK,
@@ -373,9 +346,8 @@ func jevScoreReply(model, probabilities string) jevStubReply {
 	}
 }
 
-// fakeJev is a TypeSafe endpoint that answers the nth request with the nth
-// reply, repeating the last, and keeps every request body. Like the real one,
-// it refuses a request without the test key with a 401.
+// fakeJev answers the nth request with the nth reply, repeating the last, and 401s
+// any request without the test key.
 type fakeJev struct {
 	url     string
 	replies []jevStubReply
@@ -430,7 +402,7 @@ func (f *fakeJev) body(t *testing.T, n int) []byte {
 	return f.bodies[n]
 }
 
-// request decodes the nth body, refusing any field the API does not define.
+// request decodes the nth body, refusing fields the API does not define.
 func (f *fakeJev) request(t *testing.T, n int) jevRequestSent {
 	t.Helper()
 	dec := json.NewDecoder(bytes.NewReader(f.body(t, n)))

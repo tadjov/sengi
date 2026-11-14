@@ -19,32 +19,27 @@ import (
 	"github.com/tadjov/tusker/internal/resilience"
 )
 
-// DefaultJevModel is the Jev release the jev judge grades with when --model is
-// omitted.
+// DefaultJevModel is the Jev release used when --model is omitted.
 const DefaultJevModel = "jev-1.14.0"
 
 const (
-	jevAPIKeyEnv      = "TYPESAFE_API_KEY"
-	jevDefaultBaseURL = "https://api.typesafe.ai"
-	jevPath           = "/v1/systemone"
-	// jevRequestIDHeader traces a reply with TypeSafe.
+	jevAPIKeyEnv       = "TYPESAFE_API_KEY"
+	jevDefaultBaseURL  = "https://api.typesafe.ai"
+	jevPath            = "/v1/systemone"
 	jevRequestIDHeader = "x-typesafe-request-id"
 	// jevProbabilitySlack is how far from 1 the probabilities may sum.
 	jevProbabilitySlack = 0.05
 
-	// jevAttemptTimeout bounds one attempt; resilience retries one that times out.
 	jevAttemptTimeout = 30 * time.Second
 
-	// jevRubricVersion versions the question's wording and the grade rule:
-	// bump it when either changes.
+	// jevRubricVersion changes with the question's wording or the grade rule.
 	jevRubricVersion = "v1"
 
 	jevGuidance = "Grade what the article is about, not whether the query words appear. " +
 		"A passing mention is the marginal level at most. When in doubt between two levels, pick the lower one."
 )
 
-// jevLevels are the grade question's criteria; a criterion's position is its
-// grade.
+// A level's index is its grade.
 var jevLevels = []string{
 	"The article is about something else; the query topic is absent or the words only coincide.",
 	"The article mentions the query topic in passing, but its focus is something else.",
@@ -52,8 +47,7 @@ var jevLevels = []string{
 	"The article is centrally about the query topic.",
 }
 
-// jevRelease is a pinned release; jev-latest and jev-preview re-point at
-// another model without notice.
+// Aliases like jev-latest move to new models, so only pinned releases pass.
 var jevRelease = regexp.MustCompile(`^jev-\d+\.\d+\.\d+$`)
 
 // JevStrategy grades one doc per request with TypeSafe's Jev.
@@ -65,8 +59,7 @@ type JevStrategy struct {
 	retry    resilience.Policy
 }
 
-// NewJevStrategy takes its key from TYPESAFE_API_KEY only, never from
-// opts.APIKey, which holds the Anthropic key.
+// NewJevStrategy reads its key from TYPESAFE_API_KEY; opts.APIKey is Anthropic's.
 func NewJevStrategy(opts StrategyOptions) (*JevStrategy, error) {
 	if !jevRelease.MatchString(opts.Model) {
 		return nil, fmt.Errorf("jev needs --model to name a pinned release such as %s, not %q", DefaultJevModel, opts.Model)
@@ -90,8 +83,6 @@ func NewJevStrategy(opts StrategyOptions) (*JevStrategy, error) {
 
 func (s *JevStrategy) Name() string { return string(StrategyJev) }
 
-// Describe has no prompt version, effort or output budget to record: Jev takes
-// none of them.
 func (s *JevStrategy) Describe() meta.Judge {
 	return meta.Judge{
 		Strategy:      string(StrategyJev),
@@ -102,8 +93,7 @@ func (s *JevStrategy) Describe() meta.Judge {
 	}
 }
 
-// Grade gives 0 without a request to a doc the query's filters or category
-// gate refuse; Jev grades only how well the rest answer the query.
+// Grade gives a gated doc 0 without asking Jev.
 func (s *JevStrategy) Grade(ctx context.Context, q GradingQuery, doc GradingDoc) (int, error) {
 	tq, err := readTermQuery(q)
 	if err != nil {
@@ -127,8 +117,7 @@ func (s *JevStrategy) Grade(ctx context.Context, q GradingQuery, doc GradingDoc)
 	return grade, nil
 }
 
-// gradeOf reads the grade from a 200 body. Describe names the pinned release,
-// so a reply from any other model is no grade.
+// A reply from another model is an error, since the judge block names the pin.
 func (s *JevStrategy) gradeOf(body []byte) (int, error) {
 	var resp jevResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
@@ -143,9 +132,7 @@ func (s *JevStrategy) gradeOf(body []byte) (int, error) {
 	return mostProbableGrade(resp.Answers.Grade.Probabilities)
 }
 
-// mostProbableGrade breaks a tie toward the lower grade, as the instructions
-// ask Jev to when in doubt between two levels. The API promises only that the
-// probabilities sum to about 1.
+// Ties go to the lower grade, as the rubric's "when in doubt" rule does.
 func mostProbableGrade(probabilities map[string]float64) (int, error) {
 	if len(probabilities) != len(jevLevels) {
 		return GradeUnjudged, fmt.Errorf("jev's probabilities %v are not one per level 0 to 3", probabilities)
@@ -167,8 +154,7 @@ func mostProbableGrade(probabilities map[string]float64) (int, error) {
 	return grade, nil
 }
 
-// request asks one Score question: the grades are ordered levels, and a Choice
-// leans toward whichever option comes first.
+// A Score, not a Choice: Choice leans toward its first option.
 func (s *JevStrategy) request(q GradingQuery, doc GradingDoc) jevRequest {
 	var instructions, state strings.Builder
 	writeQuery(&instructions, q)
@@ -185,8 +171,7 @@ func (s *JevStrategy) request(q GradingQuery, doc GradingDoc) jevRequest {
 	}
 }
 
-// ask sends payload, retrying as TypeSafe's SDK does; any status but 200
-// fails the doc.
+// Any status but 200 fails the doc.
 func (s *JevStrategy) ask(ctx context.Context, payload []byte) (jevReply, error) {
 	resp, err := s.retry.Do(ctx, func(ctx context.Context) (*http.Response, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.endpoint, bytes.NewReader(payload))
