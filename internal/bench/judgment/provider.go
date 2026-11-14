@@ -8,10 +8,7 @@ import (
 	"strings"
 )
 
-// Provider names one LLM endpoint behind StrategyLLM: a vendor plus the
-// transport used to reach it. The strategy owns prompting, batching and
-// parsing; a provider owns only "send this prompt, return the text". Adding
-// Codex or ChatGPT means registering a provider — no strategy code changes.
+// Provider names one LLM endpoint behind StrategyLLM: a vendor plus its transport.
 type Provider string
 
 const (
@@ -48,8 +45,7 @@ func KnownEfforts() []string {
 	return names
 }
 
-// CompletionRequest is one grading call: a system prompt setting the rubric and
-// a user payload carrying the query plus candidates.
+// CompletionRequest is one grading call: a rubric and the query with its candidates.
 type CompletionRequest struct {
 	System    string
 	User      string
@@ -59,29 +55,22 @@ type CompletionRequest struct {
 // LLMProvider executes grading prompts against one vendor endpoint.
 type LLMProvider interface {
 	Name() Provider
-	// Model is the resolved model id this provider will use — an alias such as
-	// "haiku" is expanded at construction, so this always names a concrete
-	// model for the artifact's judge block.
+	// Model is the resolved model id, never an alias.
 	Model() string
 	Effort() Effort
-	// Invocation is the exact command line or request version a call runs
-	// with, recorded in the judge block.
+	// Invocation is the command line or API version a call runs with.
 	Invocation() string
 	// Complete sends one prompt and returns the assistant's raw text.
 	Complete(ctx context.Context, req CompletionRequest) (string, error)
 }
 
-// providers is the registry StrategyLLM resolves against. Register a vendor
-// here and its name becomes valid everywhere: --provider, --judgments,
-// spec.defaults.judgments, and the annotations filename.
+// providers is the LLM endpoint registry; each name is also a judgment set.
 var providers = map[Provider]func(StrategyOptions) (LLMProvider, error){
 	ProviderClaudeCLI: newClaudeCLIProvider,
 	ProviderClaudeAPI: newClaudeAPIProvider,
 }
 
-// DefaultProvider is used when --provider is omitted. The CLI transport bills
-// through an existing Claude subscription rather than per-token API credit, so
-// it is the cheap default.
+// DefaultProvider bills the Claude subscription, not API credit.
 const DefaultProvider = ProviderClaudeCLI
 
 func newProvider(name Provider, opts StrategyOptions) (LLMProvider, error) {
@@ -105,13 +94,8 @@ func KnownProviders() []string {
 	return out
 }
 
-// JudgmentSetName is the on-disk name of a judgment set: what appears in
-// annotations.<name>.yaml, qrels.<name>.tsv, --judgments and
-// spec.defaults.judgments.
-//
-// Heuristic and manual judges name themselves. LLM judges are named by their
-// provider ("claude-cli"), not by the strategy — a single "llm" name would
-// collide the moment a second provider grades the same track.
+// JudgmentSetName names a judgment set on disk and in --judgments. LLM sets go by
+// provider, so two vendors can grade one track.
 func JudgmentSetName(kind StrategyKind, provider Provider) string {
 	if kind != StrategyLLM {
 		return string(kind)
@@ -122,20 +106,12 @@ func JudgmentSetName(kind StrategyKind, provider Provider) string {
 	return string(provider)
 }
 
-// ParseSelector resolves a judgment-set name back into the strategy and
-// provider that produced it. This is the read path — --judgments,
-// spec.defaults.judgments, bench export --strategy — and is the exact inverse
-// of JudgmentSetName.
-//
-// Writing is separate and explicit: bench judge takes --strategy llm
-// --provider claude-cli.
+// ParseSelector is the inverse of JudgmentSetName.
 func ParseSelector(name string) (StrategyKind, Provider, error) {
 	switch kind := StrategyKind(name); kind {
-	case StrategyKeyword, StrategyBM25, StrategyVector, StrategyHybrid, StrategyManual:
+	case StrategyKeyword, StrategyBM25, StrategyVector, StrategyHybrid, StrategyJev, StrategyManual:
 		return kind, "", nil
 	case StrategyLLM:
-		// "llm" alone does not name a judgment set — every LLM set is filed
-		// under its provider.
 		return "", "", fmt.Errorf(
 			"%q does not name a judgment set — use a provider (known: %s)",
 			name, strings.Join(KnownProviders(), ", "))
@@ -148,9 +124,7 @@ func ParseSelector(name string) (StrategyKind, Provider, error) {
 	return "", "", fmt.Errorf("unknown judgment set %q (known: %s)", name, strings.Join(KnownStrategies(), ", "))
 }
 
-// KnownJudgeStrategies returns the values bench judge accepts in --strategy.
-// Distinct from KnownStrategies, which lists judgment-set names on disk: llm is
-// writable but never a set name, and providers are set names but not strategies.
+// KnownJudgeStrategies lists what --strategy accepts, unlike the set names in KnownStrategies.
 func KnownJudgeStrategies() []string {
 	return []string{
 		string(StrategyKeyword),
@@ -158,13 +132,12 @@ func KnownJudgeStrategies() []string {
 		string(StrategyVector),
 		string(StrategyHybrid),
 		string(StrategyLLM),
+		string(StrategyJev),
 		string(StrategyManual),
 	}
 }
 
-// KnownStrategies returns every judgment-set name the spec validator accepts.
-// LLM entries come from the provider registry, so a newly registered vendor is
-// immediately valid without touching this list.
+// KnownStrategies lists every judgment-set name, registered providers included.
 func KnownStrategies() []string {
 	out := []string{
 		string(StrategyKeyword),
@@ -173,5 +146,5 @@ func KnownStrategies() []string {
 		string(StrategyHybrid),
 	}
 	out = append(out, KnownProviders()...)
-	return append(out, string(StrategyManual))
+	return append(out, string(StrategyJev), string(StrategyManual))
 }

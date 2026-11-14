@@ -1,6 +1,4 @@
-// Package meta defines the provenance block embedded in every bench artifact.
-// Mirror of the "report card" convention from Anthropic/OpenAI eval cookbooks:
-// every output should self-attest to who/what/when produced it.
+// Package meta defines the provenance block every bench artifact carries.
 package meta
 
 import (
@@ -15,8 +13,7 @@ import (
 	"github.com/tadjov/tusker/internal/bench/version"
 )
 
-// Meta is embedded in pool/annotations/report artifacts. Fields are
-// intentionally additive — readers tolerate unknown keys, writers omit empty.
+// Meta is the provenance block of a pool, annotations or report file.
 type Meta struct {
 	RunID       string    `yaml:"run_id" json:"run_id"`
 	Tool        string    `yaml:"tool" json:"tool"`
@@ -40,9 +37,7 @@ type Meta struct {
 	UnjudgedCount  *int   `yaml:"unjudged_count,omitempty" json:"unjudged_count,omitempty"`
 	RelevanceScale []int  `yaml:"relevance_scale,omitempty" json:"relevance_scale,omitempty"`
 
-	// Legacy flat judgment fields, retained read-only so annotations written
-	// before the judge block still load at schema_version 1. Never written —
-	// Normalize folds them into Judge on read. Drop once no such files remain.
+	// Legacy flat judgment fields, read but never written; Normalize folds them into Judge.
 	LegacyStrategy      string `yaml:"strategy,omitempty" json:"strategy,omitempty"`
 	LegacyJudgeModel    string `yaml:"judge_model,omitempty" json:"judge_model,omitempty"`
 	LegacyPromptVersion string `yaml:"judge_prompt_version,omitempty" json:"judge_prompt_version,omitempty"`
@@ -52,20 +47,15 @@ type Meta struct {
 	Sources        *Sources `yaml:"sources,omitempty" json:"sources,omitempty"`
 }
 
-// DroppedExecution is a (query, engine) pair a pool written with
-// --allow-partial holds no documents for, because every execution of it failed.
+// DroppedExecution is a (query, engine) pair whose every execution failed in an
+// --allow-partial pool.
 type DroppedExecution struct {
 	QueryID string `yaml:"query_id" json:"query_id"`
 	Engine  string `yaml:"engine" json:"engine"`
 	Error   string `yaml:"error" json:"error"`
 }
 
-// Judge attests who graded an annotations file. Structured rather than flat so
-// a judgment set names its grader unambiguously: Strategy is the generic
-// taxonomy entry (keyword, bm25, vector, hybrid, llm-cli, llm-api, manual) and
-// Provider/Model identify the vendor and model behind the LLM strategies. This
-// is what makes LLM-graded qrels reproducible and lets the resume guard reject
-// a grader swap mid-run.
+// Judge records who graded an annotations file; the resume guard compares it field by field.
 type Judge struct {
 	Strategy      string `yaml:"strategy" json:"strategy"`
 	Provider      string `yaml:"provider,omitempty" json:"provider,omitempty"`
@@ -73,23 +63,19 @@ type Judge struct {
 	PromptVersion string `yaml:"prompt_version,omitempty" json:"prompt_version,omitempty"`
 	// Effort is the effort level an LLM judge's model graded at.
 	Effort string `yaml:"effort,omitempty" json:"effort,omitempty"`
-	// MaxOutputTokens is an LLM judge's output budget for a request holding one
-	// doc; a batch's is in Batching.
+	// MaxOutputTokens is an LLM judge's output budget per single-doc request.
 	MaxOutputTokens int `yaml:"max_output_tokens,omitempty" json:"max_output_tokens,omitempty"`
-	// Invocation is how an LLM judge reached its model: the exact command line,
-	// or the API version and effort.
+	// Invocation is how an LLM judge reached its model: a command line or API version.
 	Invocation string `yaml:"invocation,omitempty" json:"invocation,omitempty"`
 	// Batching is set when an LLM judge grades several docs per request.
 	Batching *Batching `yaml:"batching,omitempty" json:"batching,omitempty"`
-	// GateVersion names the phrase, boolean and filter gates the keyword, bm25
-	// and LLM judges' zeros come from.
+	// GateVersion names the phrase, boolean and filter gates behind a judge's zeros.
 	GateVersion string `yaml:"gate_version,omitempty" json:"gate_version,omitempty"`
-	// RubricVersion names the grading rules of a heuristic judge, which has no prompt.
+	// RubricVersion names the grading rules of a judge without a prompt.
 	RubricVersion string `yaml:"rubric_version,omitempty" json:"rubric_version,omitempty"`
 }
 
-// Batching is how many docs an LLM judge put in one request, the seed that
-// shuffled each query's pool into those batches, and a batch's output budget.
+// Batching is an LLM judge's batch size, shuffle seed and per-batch output budget.
 type Batching struct {
 	Size            int    `yaml:"size" json:"size"`
 	Seed            uint64 `yaml:"seed" json:"seed"`
@@ -100,13 +86,10 @@ func (b Batching) String() string {
 	return fmt.Sprintf("size %d, seed %d, %d tokens", b.Size, b.Seed, b.MaxOutputTokens)
 }
 
-// Equal reports whether two judges would produce comparable grades. Used by the
-// resume guard: any difference means the existing file and the current run
-// disagree on who is grading, so appending would corrupt the set.
+// Equal reports whether two judges grade alike; the resume guard refuses a mismatch.
 func (j Judge) Equal(other Judge) bool { return len(j.Differences(other)) == 0 }
 
-// Differences names, by its YAML key, each field in which other differs from
-// j, with both values: `effort: was "low", now "high"`.
+// Differences lists each differing field with both values: `effort: was "low", now "high"`.
 func (j Judge) Differences(other Judge) []string {
 	was, now := reflect.ValueOf(j), reflect.ValueOf(other)
 	var out []string
@@ -133,8 +116,7 @@ func judgeValue(v reflect.Value) string {
 	return fmt.Sprint(v.Interface())
 }
 
-// String renders the judge for CLI output, e.g. "llm-cli/claude
-// claude-haiku-4-5-20251001" or plain "keyword".
+// String renders the judge for CLI output.
 func (j Judge) String() string {
 	s := j.Strategy
 	if j.Provider != "" {
@@ -146,8 +128,7 @@ func (j Judge) String() string {
 	return s
 }
 
-// Normalize folds legacy flat judgment fields into the Judge block so readers
-// only ever deal with one shape. Idempotent; safe on any artifact.
+// Normalize folds the legacy flat fields into Judge; calling it twice is safe.
 func (m *Meta) Normalize() {
 	if m.Judge != nil {
 		return
@@ -162,8 +143,7 @@ func (m *Meta) Normalize() {
 	}
 }
 
-// Sources is embedded in a Report's meta to attest which on-disk artifacts
-// were consumed to compute the metrics in that report.
+// Sources names the artifacts a report's metrics were computed from.
 type Sources struct {
 	Spec       string   `yaml:"spec,omitempty" json:"spec,omitempty"`
 	Suites     []string `yaml:"suites,omitempty" json:"suites,omitempty"`
@@ -172,9 +152,7 @@ type Sources struct {
 	JudgesPath string   `yaml:"judgments_path,omitempty" json:"judgments_path,omitempty"`
 }
 
-// New returns a freshly-stamped Meta with tool string + ISO timestamp + run id.
-// The kind argument ("pool", "judge", "run") is embedded in the run id for
-// human readability.
+// New stamps a Meta with the tool, the time and a run id carrying kind.
 func New(kind string) Meta {
 	return Meta{
 		RunID:       NewRunID(kind),
@@ -183,12 +161,7 @@ func New(kind string) Meta {
 	}
 }
 
-// NewRunID generates a sortable identifier of the form
-//
-//	2026-05-21T14-08-55-judge-7c91a3
-//
-// Lexicographic order = chronological order. Random suffix avoids collisions
-// when two runs of the same kind fire in the same second.
+// NewRunID returns an id like 2026-05-21T14-08-55-judge-7c91a3 that sorts by time.
 func NewRunID(kind string) string {
 	stamp := time.Now().UTC().Format("2006-01-02T15-04-05")
 	return fmt.Sprintf("%s-%s-%s", stamp, kind, randHex(3))
@@ -197,8 +170,7 @@ func NewRunID(kind string) string {
 func randHex(n int) string {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
-		// Cryptographic randomness should never fail in practice; if it does,
-		// fall back to a fixed marker so the run id is still well-formed.
+		// crypto/rand does not fail in practice; keep the id well-formed if it does.
 		return "000000"[:n*2]
 	}
 	return hex.EncodeToString(b)

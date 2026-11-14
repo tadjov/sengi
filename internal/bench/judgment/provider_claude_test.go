@@ -259,6 +259,7 @@ func TestClaudeCLIProvider_RunsAnotherModelOrEffortFromAnotherDirectory(t *testi
 // is. Anything else would be recorded under an id the CLI does not report, so
 // every grade it paid for would be discarded.
 func TestClaudeProviders_TakeOnlyModelIDsTheCLIAnswersUnder(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	accepted := map[string]string{
 		"sonnet":                    "claude-sonnet-5-5",
 		"HAIKU":                     "claude-haiku-5-5",
@@ -269,14 +270,14 @@ func TestClaudeProviders_TakeOnlyModelIDsTheCLIAnswersUnder(t *testing.T) {
 	for _, provider := range []Provider{ProviderClaudeCLI, ProviderClaudeAPI} {
 		for model, want := range accepted {
 			t.Run(string(provider)+"/accepts "+model, func(t *testing.T) {
-				s, err := NewLLMStrategy(StrategyOptions{Provider: provider, APIKey: "test-key", CLIBinary: versionOnlyClaudeCLI(t), Model: model, Effort: EffortLow})
+				s, err := NewLLMStrategy(StrategyOptions{Provider: provider, CLIBinary: versionOnlyClaudeCLI(t), Model: model, Effort: EffortLow})
 				require.NoError(t, err)
 				assert.Equal(t, want, s.Describe().Model)
 			})
 		}
 		for _, model := range refused {
 			t.Run(string(provider)+"/refuses "+model, func(t *testing.T) {
-				_, err := NewLLMStrategy(StrategyOptions{Provider: provider, APIKey: "test-key", CLIBinary: versionOnlyClaudeCLI(t), Model: model, Effort: EffortLow})
+				_, err := NewLLMStrategy(StrategyOptions{Provider: provider, CLIBinary: versionOnlyClaudeCLI(t), Model: model, Effort: EffortLow})
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "--model")
 			})
@@ -414,6 +415,7 @@ func (c fakeCLICall) flag(t *testing.T, name string) string {
 // A refused request has no grade to give, whatever text came before the
 // refusal: the doc stays unjudged for a retry, never graded 0.
 func TestClaudeAPIProvider_LeavesARefusedDocUnjudged(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	doc := document.Article{ID: uuid.New(), Title: "Gunmen attack a village"}
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		partial, err := json.Marshal(`{"doc_id":"` + doc.ID.String() + `","grade":0}`)
@@ -423,7 +425,7 @@ func TestClaudeAPIProvider_LeavesARefusedDocUnjudged(t *testing.T) {
 			`"stop_reason":"refusal","stop_details":{"type":"refusal","category":"general_harms","explanation":"declined"}}`))
 	}))
 	defer api.Close()
-	s, err := NewLLMStrategy(StrategyOptions{Provider: ProviderClaudeAPI, APIKey: "test-key", APIBaseURL: api.URL, Model: "claude-sonnet-5-5", Effort: EffortLow})
+	s, err := NewLLMStrategy(StrategyOptions{Provider: ProviderClaudeAPI, APIBaseURL: api.URL, Model: "claude-sonnet-5-5", Effort: EffortLow})
 	require.NoError(t, err)
 	entry := pool.PoolEntry{QueryID: "q1", QueryText: "village attack", Docs: []pool.PooledDoc{{DocID: doc.ID}}}
 
@@ -438,6 +440,7 @@ func TestClaudeAPIProvider_LeavesARefusedDocUnjudged(t *testing.T) {
 // models reject: no sampling parameters, no thinking setting, no prefill. The
 // grade is read from the text block, after any thinking block.
 func TestClaudeAPIProvider_SendsThePinnedModelAndEffortOnly(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	docID := uuid.New()
 	var body map[string]any
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -449,7 +452,7 @@ func TestClaudeAPIProvider_SendsThePinnedModelAndEffortOnly(t *testing.T) {
 			`{"type":"thinking","thinking":"","signature":"sig"},{"type":"text","text":` + string(reply) + `}]}`))
 	}))
 	defer api.Close()
-	s, err := NewLLMStrategy(StrategyOptions{Provider: ProviderClaudeAPI, APIKey: "test-key", APIBaseURL: api.URL, Model: "sonnet", Effort: EffortLow})
+	s, err := NewLLMStrategy(StrategyOptions{Provider: ProviderClaudeAPI, APIBaseURL: api.URL, Model: "sonnet", Effort: EffortLow})
 	require.NoError(t, err)
 
 	grade, err := s.Grade(context.Background(), GradingQuery{ID: "q1", Text: "floods"}, GradingDoc{ID: docID, Title: "Floods reach Belgrade"})
@@ -484,6 +487,7 @@ func versionOnlyClaudeCLI(t *testing.T) string {
 // A batch gets its own budget, kept under the ~21,333 max_tokens a request may
 // ask for without streaming, and the judge block records it with the batching.
 func TestClaudeAPIProvider_SendsABatchUnderTheBatchBudget(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	docs := []GradingDoc{{ID: uuid.New(), Title: "Floods reach Belgrade"}, {ID: uuid.New(), Title: "Sava rises"}}
 	var body map[string]any
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -494,7 +498,7 @@ func TestClaudeAPIProvider_SendsABatchUnderTheBatchBudget(t *testing.T) {
 		_, _ = w.Write([]byte(`{"type":"message","role":"assistant","stop_reason":"end_turn","content":[{"type":"text","text":` + string(reply) + `}]}`))
 	}))
 	defer api.Close()
-	s, err := NewLLMStrategy(StrategyOptions{Provider: ProviderClaudeAPI, APIKey: "test-key", APIBaseURL: api.URL, Model: "sonnet", Effort: EffortLow})
+	s, err := NewLLMStrategy(StrategyOptions{Provider: ProviderClaudeAPI, APIBaseURL: api.URL, Model: "sonnet", Effort: EffortLow})
 	require.NoError(t, err)
 
 	_, err = s.GradeBatch(context.Background(), GradingQuery{ID: "q1", Text: "floods"}, docs)
@@ -502,4 +506,14 @@ func TestClaudeAPIProvider_SendsABatchUnderTheBatchBudget(t *testing.T) {
 	require.NoError(t, err)
 	assert.InDelta(t, 20000, body["max_tokens"], 0)
 	assert.Equal(t, &meta.Batching{Size: 2, Seed: 3, MaxOutputTokens: 20000}, RunnerConfig{Strategy: s, BatchSize: 2, BatchSeed: 3}.Judge().Batching)
+}
+
+func TestClaudeAPIProvider_RefusesToStartWithoutAnthropicAPIKey(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("TYPESAFE_API_KEY", "ts-meant-for-jev")
+
+	_, err := NewLLMStrategy(StrategyOptions{Provider: ProviderClaudeAPI, Model: "claude-sonnet-5-5", Effort: EffortLow})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ANTHROPIC_API_KEY")
 }

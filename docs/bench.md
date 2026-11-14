@@ -292,6 +292,7 @@ Every command accepts a track path as a positional arg (`bench run tracks/global
 | `hybrid`     | Heuristic | ✅        | Weighted BM25 + vector fusion → grade                    |
 | `claude-cli` | LLM       | ✅        | `claude -p` subprocess, one doc per request              |
 | `claude-api` | LLM       | ✅        | Anthropic Messages API, one doc per request              |
+| `jev`        | Model     | ✅        | TypeSafe's Jev, one Score question per doc, cross-judge  |
 | `manual`     | Human     | ✅        | Emits `grade: -1` placeholders for hand-grading          |
 
 The LLM judge (`--strategy llm`, filed as `claude-cli` or `claude-api`) is the primary
@@ -487,7 +488,7 @@ File convention: `trec/annotations.<strategy>.yaml`, `trec/qrels.<strategy>.tsv`
 
 ## Schema v1
 
-Every produced artifact carries `schema_version: 1` and a `meta:` block. The meta block records `run_id`, `tool` (with git sha), `generated_at`, and artifact-specific provenance (spec_id, strategy, judge_model, judge_prompt_version, sources).
+Every produced artifact carries `schema_version: 1` and a `meta:` block. The meta block records `run_id`, `tool`, `generated_at`, and artifact-specific provenance (spec_id, strategy, judge_model, judge_prompt_version, sources).
 
 Loading any artifact without `schema_version: 1` is a hard error — there is no silent tolerance.
 
@@ -515,13 +516,25 @@ Grades every `(query, doc)` pair in the pool using the chosen strategy. Output: 
 
 Key flags:
 - `--resume`: skip docs already graded (errors naming each field of the judge block that changed). `bm25`, `vector` and `hybrid` skip only fully graded queries and regrade any other query whole, since they grade the whole pool at once
-- `--model M`: the LLM judge's model, a full id or `haiku`, `sonnet`, `opus`, `fable` (default `claude-sonnet-5-5`; `haiku` for cheap trial runs)
+- `--model M`: the LLM judge's model, a full id or `haiku`, `sonnet`, `opus`, `fable` (default `claude-sonnet-5-5`; `haiku` for cheap trial runs). For `jev`, a pinned `jev-<major>.<minor>.<patch>` (default `jev-1.14.0`)
 - `--effort E`: the LLM judge's effort, `low` (default), `medium`, `high`, `xhigh` or `max`
-- `--batch N`: grade N LLM docs per request instead of one (`bm25`, `vector` and `hybrid` grade each query's whole pool at once and refuse it)
+- `--provider P`: the LLM judge's endpoint, `claude-cli` (default) or `claude-api`. Any other strategy refuses it
+- `--batch N`: grade N LLM docs per request instead of one. Any other strategy refuses it
 - `--seed S`: seed of the shuffle that forms `--batch` batches (default 1)
 - `--concurrency N`: parallel Grade calls (per-doc mode)
 - `--allow-unjudged`: exit 0 even when some pooled docs are left unjudged. A query with no usable terms still fails the run
 - `--force`: for `manual` only, rewrite the placeholders from scratch. Without it, `manual` keeps every existing hand grade, adds `-1` placeholders for new pool docs, and refuses a file another judge wrote
+- `--api-base URL`: the API `claude-api` or `jev` calls (defaults `https://api.anthropic.com`, `https://api.typesafe.ai`)
+
+`--strategy jev` grades with TypeSafe's Jev (`POST /v1/systemone`), a non-Anthropic cross-judge of the LLM judge, so it must grade exactly what the LLM judge graded:
+
+- `bench` loads `cmd/bench/.env` at startup, a path relative to the working directory, so run it from the repo root or name the file in `ENV_PATHS` (copy `cmd/bench/.env.example`; a variable already set wins). Each vendor reads its own key from the environment, `TYPESAFE_API_KEY` for jev and `ANTHROPIC_API_KEY` for `claude-api`; without it the run fails before anything is graded. The file holds no `ANTHROPIC_API_KEY`: `claude -p` inherits the environment and would bill the API instead of the claude.ai login.
+- The model is pinned: `jev-1.14.0` unless `--model` names another `jev-<major>.<minor>.<patch>`. `jev-latest`, `jev-preview` and claude ids are refused. A reply naming any other model leaves the doc unjudged, since the judge block names the pin.
+- Jev sees what the LLM judge sees. The phrase, boolean and filter gates run first, and a doc they refuse grades 0 without a request. The request's `state` is the article as the LLM prompt shows it, content cut at 1,744 characters, and its one `score` question carries the query text, the constraint note and the four levels 0 to 3.
+- The grade is the most probable level, a tie going to the lower grade, as the instructions ask; never the rounded `score`. Probabilities that are not one per level 0 to 3, each between 0 and 1 and summing to 1 within 0.05, leave the doc unjudged.
+- The judge block records `model`, `rubric_version` (the question's wording and the grade rule), `gate_version` and, in `invocation`, the endpoint and model.
+- A 408, 429 or 5xx, or a request that got no response, is retried through `internal/resilience`: 5 attempts, waiting what `Retry-After` asks (seconds or an HTTP date), else 0.5 s doubling up to 5 s less up to 25% jitter. Each attempt times out after 30 s. Any other status fails the doc with its status, body and `x-typesafe-request-id`, and `--resume` retries it.
+- Jev is not deterministic: the same request can return other probabilities, so a rerun may grade a borderline doc differently. The same doc always sends the same bytes.
 
 ### `bench grade [<name>] --against <S|path> [--sample N] [--seed S] [--pg <dsn>] [--report]`
 

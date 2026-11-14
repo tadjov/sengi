@@ -298,12 +298,9 @@ func newClaudeAPIProvider(opts StrategyOptions) (LLMProvider, error) {
 	if err := requireEffort(ProviderClaudeAPI, opts.Effort); err != nil {
 		return nil, err
 	}
-	key := opts.APIKey
+	key := os.Getenv(claudeAPIKeyEnv)
 	if key == "" {
-		key = os.Getenv(claudeAPIKeyEnv)
-	}
-	if key == "" {
-		return nil, fmt.Errorf("provider %s: %s not set and no key provided", ProviderClaudeAPI, claudeAPIKeyEnv)
+		return nil, fmt.Errorf("provider %s needs %s set", ProviderClaudeAPI, claudeAPIKeyEnv)
 	}
 	base := opts.APIBaseURL
 	if base == "" {

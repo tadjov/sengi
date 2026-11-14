@@ -53,6 +53,7 @@ The project follows a layered architecture pattern:
         - `factory/`: Storage factory for creating storage instances
         - `pg/`: PostgreSQL storage implementation with full-text search
         - `es/`: Elasticsearch storage implementation
+    - `resilience/`: Retry policy for HTTP calls: 408, 429 and 5xx or a dropped connection, honouring `Retry-After`, else backing off with jitter; only the `jev` judge uses it today
 
 - **pkg/**: Shared packages and APIs
     - `apis/datamapping/`: Data mapping type definitions
@@ -143,7 +144,7 @@ TREC-style IR evaluation pipeline. Full docs: [docs/bench.md](docs/bench.md).
 
 **Track convention**: a track is any folder holding `spec.yaml` + `suite.yaml` + `trec/` (+ `reports/`) — the layout above it is not enforced; this repo groups them as `tracks/<dataset>/<paradigm>/`. Track args are ordinary paths: absolute, relative to the track root (`--track-root` / `BENCH_TRACK_ROOT`, default cwd), a glob, or omitted to walk up from CWD.
 
-**Strategy taxonomy**: `keyword` (token-overlap), `bm25` (pool-local Okapi BM25), `vector` (embedding cosine), `hybrid` (BM25 + vector fusion), `claude-cli` / `claude-api` (LLM batched), `manual` (human placeholders). `vector`/`hybrid` read doc vectors from a storage-agnostic `storage.VectorStore` (PG `article_embeddings` now, ES stubbed; PG precedence) and take query vectors from the track's `trec/query-vectors/` package when it has one, from Ollama otherwise (`--pg` + `EMBEDDING_BASE_URL`). `validate`/`pool`/`run` fill the reserved `query_vector` arg from the same source.
+**Strategy taxonomy**: `keyword` (token-overlap), `bm25` (pool-local Okapi BM25), `vector` (embedding cosine), `hybrid` (BM25 + vector fusion), `claude-cli` / `claude-api` (LLM batched), `jev` (TypeSafe's Jev, one doc per request, a non-Anthropic cross-judge), `manual` (human placeholders). `vector`/`hybrid` read doc vectors from a storage-agnostic `storage.VectorStore` (PG `article_embeddings` now, ES stubbed; PG precedence) and take query vectors from the track's `trec/query-vectors/` package when it has one, from Ollama otherwise (`--pg` + `EMBEDDING_BASE_URL`). `validate`/`pool`/`run` fill the reserved `query_vector` arg from the same source.
 
 **Schema v1**: every artifact has `schema_version: 1` + `meta:` block. Loading without it is a hard error — no backward-compat tolerance.
 
@@ -244,6 +245,13 @@ Commands expect environment variables (typically in `.env` files):
 - `ES_ADDRESSES`: Elasticsearch cluster addresses (comma-separated)
 - `ES_INDEX_NAME`: Elasticsearch index name
 - `ES_DIAL_TIMEOUT`, `ES_RESPONSE_HEADER_TIMEOUT`: Go durations bounding each Elasticsearch request, bulk flushes included (default 5s, 30s); a timed-out request is not retried
+
+**Bench (`cmd/bench/.env`)**, loaded at startup from the repo root, or name it in `ENV_PATHS`; copy `cmd/bench/.env.example`:
+- `TYPESAFE_API_KEY`: TypeSafe key for `bench judge --strategy jev`
+- `PG_CONNECTION_STRING`: Postgres the judges read pooled articles and document vectors from
+- `EMBEDDING_BASE_URL`: Ollama endpoint for query vectors when a track has no `trec/query-vectors/`
+- `BENCH_TRACK_ROOT`: where relative track paths start
+- Never `ANTHROPIC_API_KEY`: `claude -p` inherits the environment and would bill the API instead of the claude.ai login
 
 **Search API (`cmd/news_search/.env`)**:
 - `PORT`: HTTP server port (default: 8080)
