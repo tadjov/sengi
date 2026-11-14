@@ -28,12 +28,12 @@ func LoadEnv() (*StorageConfig, error) {
 }
 
 func LoadEnvFor(storageType storage.Type) (*StorageConfig, error) {
-	if storageType != storage.ES && storageType != storage.PG && storageType != storage.InMem {
+	if storageType != storage.ES && storageType != storage.PG {
 		slog.Error("Invalid STORAGE_TYPE environment variable value", "value", storageType)
 		return nil, fmt.Errorf(
 			"invalid STORAGE_TYPE environment variable value: %s, expected one of %v",
 			storageType,
-			[]storage.Type{storage.ES, storage.PG, storage.InMem})
+			[]storage.Type{storage.ES, storage.PG})
 	}
 
 	var esCfg *es.ClientConfig

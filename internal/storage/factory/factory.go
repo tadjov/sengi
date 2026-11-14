@@ -94,13 +94,6 @@ func NewSearcher(cfg SearcherConfig) (storage.FullTextBackend, error) {
 		}
 		return es.NewSearcher(cfg.EsClient), nil
 
-	case storage.Solr:
-		return nil, fmt.Errorf("solr reader not yet implemented")
-
-	case storage.InMem:
-		// TODO: Implement InMem when needed
-		return nil, fmt.Errorf("inmem reader not yet implemented")
-
 	default:
 		return nil, fmt.Errorf(string(storage.ErrUnsupportedStorer), cfg.Type)
 	}
