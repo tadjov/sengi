@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	defaultLoadBatchSize   = 5_000
+	defaultLoadBatchSize   = 1_000
 	defaultLoadConcurrency = 1
 )
 
