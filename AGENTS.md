@@ -66,7 +66,7 @@ The project follows a layered architecture pattern:
 
 - **tracks/**: Benchmark tracks — each a self-contained folder with `spec.yaml`, `suite.yaml`, `trec/` (pool + judgments), and `reports/`
 - **db/**: Database-related files
-    - `migrations/`: SQL migrations per Postgres engine, `<engine>/schema/` (golang-migrate) and `<engine>/indexes.sql` (the search indexes, and on native and tiger the `corpus_words` table fuzzy search expands query words against, built after the load as timed stages), embedded by the `migrations` Go package
+    - `migrations/`: SQL migrations per Postgres engine, `<engine>/schema/` (golang-migrate) and `<engine>/indexes.sql` (the keys, filter indexes and search indexes, and on native and tiger the `corpus_words` table fuzzy search expands query words against, built after the load as timed stages), embedded by the `migrations` Go package
     - `query/`: SQL query files for database operations
 - **dataset/**: Sample datasets and documentation
 - **scripts/**: Utility scripts for setup and maintenance
