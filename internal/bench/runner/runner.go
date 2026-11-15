@@ -459,6 +459,7 @@ func (r *Runner) runEnginesForQuery(ctx context.Context, jr *JobResult, q *suite
 					ReturnedCount: result.returnedCount,
 					CorpusMatches: result.corpusMatches,
 					Latency:       result.latencyStats,
+					ServerLatency: result.serverStats,
 					Error:         result.err,
 				},
 				present: true,
@@ -518,6 +519,7 @@ type execResult struct {
 	returnedCount int
 	corpusMatches *int64
 	latencyStats  LatencyStats
+	serverStats   *LatencyStats
 	err           error
 }
 
@@ -540,7 +542,7 @@ func (r *Runner) measure(ctx context.Context, m measurement) execResult {
 		}
 	}
 
-	var latencies []time.Duration
+	var latencies, serverTimes []time.Duration
 	var lastExec *engine.Execution
 	for i := 0; i < r.config.Runs; i++ {
 		result, err := m.execute(ctx)
@@ -549,6 +551,9 @@ func (r *Runner) measure(ctx context.Context, m measurement) execResult {
 		}
 		lastExec = result
 		latencies = append(latencies, result.Latency)
+		if result.ServerTime != nil {
+			serverTimes = append(serverTimes, *result.ServerTime)
+		}
 	}
 
 	if lastExec == nil {
@@ -558,12 +563,17 @@ func (r *Runner) measure(ctx context.Context, m measurement) execResult {
 	if depth := r.config.RankingDepth; depth > 0 && len(ranked) > depth {
 		ranked = ranked[:depth]
 	}
-	return execResult{
+	measured := execResult{
 		rankedIDs:     ranked,
 		returnedCount: len(lastExec.RankedDocIDs),
 		corpusMatches: lastExec.CorpusMatches,
 		latencyStats:  ComputeLatencyStats(latencies),
 	}
+	if len(serverTimes) > 0 {
+		serverStats := ComputeLatencyStats(serverTimes)
+		measured.serverStats = &serverStats
+	}
+	return measured
 }
 
 // execute runs once under the query deadline, which the runner owns so that no

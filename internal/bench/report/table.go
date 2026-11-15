@@ -37,10 +37,12 @@ func WriteTable(r *Report, w io.Writer) {
 				tYellow.Sprint("WARNING:"))
 			fmt.Fprintf(w, "  Run bench pool, then bench judge.\n\n")
 			writeLatencyTable(w, &jr)
+			writeServerTimeTable(w, &jr)
 		} else {
 			writeAggregatedTable(w, &jr, r.Config.KValues)
 			writeCategoryTables(w, &jr, r.Config.KValues)
 			writeLatencyTable(w, &jr)
+			writeServerTimeTable(w, &jr)
 			writeSignificanceTable(w, &jr)
 			writePerQueryTable(w, &jr, r.Config.KValues)
 		}
@@ -98,9 +100,11 @@ func WriteMarkdown(r *Report, w io.Writer) {
 		if !hasAnyJudgments(&jr) {
 			fmt.Fprintf(w, "> ⚠️ No relevance judgments — latency only.\n\n")
 			writeMDLatencyTable(w, &jr)
+			writeMDServerTimeTable(w, &jr)
 		} else {
 			writeMDAggregatedTable(w, &jr, r.Config.KValues)
 			writeMDLatencyTable(w, &jr)
+			writeMDServerTimeTable(w, &jr)
 			writeMDSignificanceTable(w, &jr)
 		}
 	}
@@ -195,6 +199,22 @@ func writeMDLatencyTable(w io.Writer, jr *JobReport) {
 			s.SampleCount,
 			agg.LatencyExcludedQueries,
 		})
+	}
+	fmt.Fprintln(w, t.RenderMarkdown())
+	fmt.Fprintln(w)
+}
+
+func writeMDServerTimeTable(w io.Writer, jr *JobReport) {
+	reporting := serverTimed(jr.Aggregated)
+	if len(reporting) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "### %s\n\n", serverTimeTitle)
+
+	t := newMDTable()
+	t.AppendHeader(serverTimeHeader)
+	for _, agg := range reporting {
+		t.AppendRow(serverTimeRow(agg))
 	}
 	fmt.Fprintln(w, t.RenderMarkdown())
 	fmt.Fprintln(w)
@@ -400,6 +420,59 @@ func writeLatencyTable(w io.Writer, jr *JobReport) {
 
 	t.Render()
 	fmt.Fprintln(w)
+}
+
+func writeServerTimeTable(w io.Writer, jr *JobReport) {
+	reporting := serverTimed(jr.Aggregated)
+	if len(reporting) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "%s\n\n", tBold.Sprint(serverTimeTitle))
+
+	t := newTable(w)
+	t.AppendHeader(serverTimeHeader)
+	t.SetColumnConfigs(rightCols(2, 3, 4, 5, 6))
+	for _, agg := range reporting {
+		t.AppendRow(serverTimeRow(agg))
+	}
+	t.Render()
+	fmt.Fprintln(w)
+}
+
+const serverTimeTitle = "Server Time (reported by the engine)"
+
+var serverTimeHeader = table.Row{"Engine", "p50", "p95", "p99", "Mean", "Samples"}
+
+// serverTimed keeps the engines that report a server time.
+func serverTimed(aggregated []AggregatedEntry) []AggregatedEntry {
+	var reporting []AggregatedEntry
+	for _, agg := range aggregated {
+		if agg.ServerLatency != nil {
+			reporting = append(reporting, agg)
+		}
+	}
+	return reporting
+}
+
+func serverTimeRow(agg AggregatedEntry) table.Row {
+	s := agg.ServerLatency
+	return table.Row{
+		agg.EngineName,
+		fmtServerTime(s.P50()),
+		fmtServerTime(s.P95()),
+		fmtServerTime(s.P99()),
+		fmtServerTime(s.Mean),
+		s.SampleCount,
+	}
+}
+
+// fmtServerTime shows a reported zero, which a search under the engine's
+// resolution reads as, rather than the dash fmtDuration uses for absent.
+func fmtServerTime(d time.Duration) string {
+	if d == 0 {
+		return "0.00ms"
+	}
+	return fmtDuration(d)
 }
 
 func writeSignificanceTable(w io.Writer, jr *JobReport) {

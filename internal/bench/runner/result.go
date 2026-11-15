@@ -15,6 +15,9 @@ type QueryResult struct {
 	ReturnedCount int
 	CorpusMatches *int64
 	Latency       LatencyStats
+	// ServerLatency is the server time the engine reported for each measured
+	// iteration; nil when it reports none.
+	ServerLatency *LatencyStats
 	Error         error
 }
 

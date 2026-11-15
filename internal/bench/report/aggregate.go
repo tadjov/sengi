@@ -169,6 +169,7 @@ func generateJobReport(scope jobScope) JobReport {
 				ReturnedCount: qr.ReturnedCount,
 				CorpusMatches: qr.CorpusMatches,
 				Latency:       fromRunnerLatencyStats(qr.Latency),
+				ServerLatency: fromRunnerServerLatency(qr.ServerLatency),
 				Ranking:       rankDerivedScores(qr.RankedDocIDs),
 			}
 			if qr.Error != nil {
@@ -242,7 +243,7 @@ func aggregate(scope jobScope, queryIDs []string) []AggregatedEntry {
 		}
 
 		ndcgSamples := make(map[int][]float64, len(kValues))
-		var allStats []runner.LatencyStats
+		var allStats, serverStats []runner.LatencyStats
 		var gradedTopK, retrievedTopK int
 
 		for _, qID := range queryIDs {
@@ -253,6 +254,9 @@ func aggregate(scope jobScope, queryIDs []string) []AggregatedEntry {
 
 			if scope.answeredByEveryEngine(qID) {
 				allStats = append(allStats, qr.Latency)
+				if qr.ServerLatency != nil {
+					serverStats = append(serverStats, *qr.ServerLatency)
+				}
 			} else {
 				agg.LatencyExcludedQueries++
 			}
@@ -289,6 +293,10 @@ func aggregate(scope jobScope, queryIDs []string) []AggregatedEntry {
 
 		if len(allStats) > 0 {
 			agg.Latency = fromRunnerLatencyStats(runner.AggregateLatencyStats(allStats))
+		}
+		if len(serverStats) > 0 {
+			server := fromRunnerLatencyStats(runner.AggregateLatencyStats(serverStats))
+			agg.ServerLatency = &server
 		}
 
 		if agg.JudgedCount > 0 {

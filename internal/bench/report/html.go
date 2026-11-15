@@ -107,6 +107,7 @@ type htmlJob struct {
 	Name         string
 	Aggregated   []htmlAggRow
 	Latency      []htmlLatRow
+	ServerTime   []htmlServerTimeRow
 	Significance []htmlSigRow
 	PerQuery     []htmlQueryRow
 	NDCGChart    template.HTML
@@ -139,6 +140,12 @@ type htmlLatRow struct {
 	Min, P50, P75, P90, P95, P99, Max, Mean, Stddev string
 	Samples                                         int
 	ExcludedQueries                                 int
+}
+
+type htmlServerTimeRow struct {
+	Engine              string
+	P50, P95, P99, Mean string
+	Samples             int
 }
 
 type htmlSigRow struct {
@@ -255,6 +262,18 @@ func buildViewModel(r *Report) htmlReport {
 				Stddev:          fmtDuration(s.Stddev),
 				Samples:         s.SampleCount,
 				ExcludedQueries: agg.LatencyExcludedQueries,
+			})
+		}
+
+		for _, agg := range serverTimed(jr.Aggregated) {
+			s := agg.ServerLatency
+			job.ServerTime = append(job.ServerTime, htmlServerTimeRow{
+				Engine:  agg.EngineName,
+				P50:     fmtServerTime(s.P50()),
+				P95:     fmtServerTime(s.P95()),
+				P99:     fmtServerTime(s.P99()),
+				Mean:    fmtServerTime(s.Mean),
+				Samples: s.SampleCount,
 			})
 		}
 

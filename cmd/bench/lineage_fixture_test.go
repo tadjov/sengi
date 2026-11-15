@@ -24,11 +24,13 @@ import (
 )
 
 // fakeIndex is one engine's index in fakeCluster: its document count and the
-// ranked ids each query returns. A query listed in failing answers 500.
+// ranked ids each query returns. A query listed in failing answers 500. took,
+// when set, is the server time in milliseconds every search reports.
 type fakeIndex struct {
 	count   int64
 	ranked  map[string][]uuid.UUID
 	failing map[string]bool
+	took    *int
 }
 
 // fakeCluster serves the part of the Elasticsearch API the bench executors
@@ -64,10 +66,10 @@ func fakeCluster(t *testing.T, indexes map[string]*fakeIndex) string {
 					http.Error(w, "shard failure", http.StatusInternalServerError)
 					return
 				}
-				writeHits(w, ids)
+				writeHits(w, ids, index.took)
 				return
 			}
-			writeHits(w, nil)
+			writeHits(w, nil, index.took)
 		default:
 			http.NotFound(w, r)
 		}
@@ -76,14 +78,18 @@ func fakeCluster(t *testing.T, indexes map[string]*fakeIndex) string {
 	return srv.URL
 }
 
-func writeHits(w io.Writer, ids []uuid.UUID) {
+func writeHits(w io.Writer, ids []uuid.UUID, took *int) {
 	hits := make([]map[string]any, 0, len(ids))
 	for _, id := range ids {
 		hits = append(hits, map[string]any{"_source": map[string]string{"id": id.String()}})
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	response := map[string]any{
 		"hits": map[string]any{"total": map[string]any{"value": len(ids), "relation": "eq"}, "hits": hits},
-	})
+	}
+	if took != nil {
+		response["took"] = *took
+	}
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // lineageTrack is a track with engines a and b over queries q1 and q2, in two

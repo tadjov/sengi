@@ -95,6 +95,7 @@ func (e *EsExecutor) Execute(ctx context.Context, search Request) (*Execution, e
 		RankedDocIDs:  ids,
 		CorpusMatches: esResp.Hits.Total.exactCount(),
 		Latency:       latency,
+		ServerTime:    esResp.serverTime(),
 	}, nil
 }
 
@@ -394,7 +395,17 @@ type esValidateExplanation struct {
 }
 
 type esSearchResponse struct {
+	// Took is whole milliseconds, so a search under one reads 0.
+	Took *int64 `json:"took"`
 	Hits esHits `json:"hits"`
+}
+
+func (r esSearchResponse) serverTime() *time.Duration {
+	if r.Took == nil {
+		return nil
+	}
+	took := time.Duration(*r.Took) * time.Millisecond
+	return &took
 }
 
 type esHits struct {
