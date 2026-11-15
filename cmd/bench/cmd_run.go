@@ -199,6 +199,7 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 		return err
 	}
 	indexes := collectIndexProvenance(cmd.Context(), cmd.OutOrStdout(), executors)
+	containers := inspectContainers(cmd.Context(), cmd.OutOrStdout(), bs.Engines)
 
 	r := runner.New(runCfg)
 	sp := startSpinner("Running " + tr.Name() + "…")
@@ -211,9 +212,10 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 	}
 
 	rpt := report.Generate(result, &report.GenerateOptions{
-		Spec:    bs,
-		Corpus:  corpus,
-		Indexes: indexes,
+		Spec:       bs,
+		Corpus:     corpus,
+		Indexes:    indexes,
+		Containers: containers,
 	})
 	rpt.Provenance.SpecID = bs.ID
 	rpt.Provenance.Sources = &meta.Sources{
@@ -766,6 +768,25 @@ func describeIndex(ctx context.Context, describer engine.IndexDescriber) (*engin
 	ctx, cancel := context.WithTimeout(ctx, indexDescribeTimeout)
 	defer cancel()
 	return describer.DescribeIndex(ctx)
+}
+
+// inspectContainers reads the image of every container the spec names. One
+// docker cannot inspect is warned about and kept with its note.
+func inspectContainers(ctx context.Context, w io.Writer, engines map[string]spec.Engine) map[string]engine.Container {
+	containers := make(map[string]engine.Container)
+	for _, name := range slices.Sorted(maps.Keys(engines)) {
+		if engines[name].Container == "" {
+			continue
+		}
+		inspectCtx, cancel := context.WithTimeout(ctx, indexDescribeTimeout)
+		container := engine.InspectContainer(inspectCtx, engines[name].Container)
+		cancel()
+		if container.Note != "" {
+			printWarn(w, fmt.Sprintf("container of %q not recorded: %s", name, container.Note))
+		}
+		containers[name] = container
+	}
+	return containers
 }
 
 func firstNonZero(a, b int) int {
