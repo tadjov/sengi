@@ -1,0 +1,340 @@
+package agreement
+
+import (
+	"cmp"
+	"fmt"
+	"math"
+	"slices"
+
+	"github.com/google/uuid"
+	"github.com/tadjov/tusker/internal/bench/judgment"
+	"github.com/tadjov/tusker/internal/bench/metrics"
+	"github.com/tadjov/tusker/internal/bench/report"
+)
+
+// RescoreOptions configures Rescore.
+type RescoreOptions struct {
+	Report *report.Report
+	Sets   []Set
+	// Reference is the label whose engine order every set's is compared with.
+	Reference string
+	KValues   []int
+	Threshold int
+}
+
+// Rescoring is a run report's engine means recomputed under each judgment set.
+type Rescoring struct {
+	ReportRunID string `json:"report_run_id"`
+	// ReportSet is the label of the set the report was scored with.
+	ReportSet string `json:"report_set"`
+	// Reference is empty when the reference set was refused, leaving no τ.
+	Reference string         `json:"reference"`
+	Metrics   []string       `json:"metrics"`
+	LeftOut   []Exclusion    `json:"left_out,omitempty"`
+	Refused   []Exclusion    `json:"refused,omitempty"`
+	Jobs      []JobRescoring `json:"jobs"`
+}
+
+// Exclusion is a metric or set left out of a rescoring, and why.
+type Exclusion struct {
+	Name   string `json:"name"`
+	Reason string `json:"reason"`
+}
+
+// JobRescoring is one job's engines ranked under each rescored set.
+type JobRescoring struct {
+	Job     string            `json:"job"`
+	Engines []string          `json:"engines"`
+	Queries int               `json:"queries"`
+	Metrics []MetricRescoring `json:"metrics"`
+}
+
+// MetricRescoring is one metric's engine order under each rescored set.
+type MetricRescoring struct {
+	Metric string        `json:"metric"`
+	Sets   []EngineOrder `json:"sets"`
+}
+
+// EngineOrder is each engine's mean under one set, the engines best first
+// with ties in name order, and Kendall's τ-b against the reference's means.
+type EngineOrder struct {
+	Label string             `json:"label"`
+	Means map[string]float64 `json:"means"`
+	Order []string           `json:"order"`
+	TauB  Statistic          `json:"tau_b"`
+}
+
+// Rescore recomputes the report's per-query metrics under each set and ranks
+// each job's engines by their means. A metric is rescored only when the
+// report's own set gives back every stored value, and a set only when it
+// grades every doc in each ranking's top max(KValues).
+func Rescore(opts RescoreOptions) (Rescoring, error) {
+	if err := requireRankings(opts.Report); err != nil {
+		return Rescoring{}, err
+	}
+	own := slices.IndexFunc(opts.Sets, func(s Set) bool { return s.File.Meta.RunID == opts.Report.Provenance.JudgmentsRunID })
+	if own < 0 {
+		return Rescoring{}, fmt.Errorf("report %s was scored with judgments %s (%s); pass them in --judgments so its scores can be reproduced first",
+			opts.Report.Provenance.RunID, opts.Report.Provenance.JudgmentsRunID, reportJudgmentsPath(opts.Report))
+	}
+	grades := make([]map[string]map[uuid.UUID]int, len(opts.Sets))
+	for i, s := range opts.Sets {
+		grades[i] = gradesByQuery(s.File)
+	}
+	result := Rescoring{ReportRunID: opts.Report.Provenance.RunID, ReportSet: opts.Sets[own].Label}
+	var rescored []rescoredSet
+	for i, s := range opts.Sets {
+		if reason := uncoveredTopK(opts.Report, grades[i], slices.Max(opts.KValues)); reason != "" {
+			result.Refused = append(result.Refused, Exclusion{Name: s.Label, Reason: reason})
+			continue
+		}
+		rescored = append(rescored, rescoredSet{label: s.Label, scores: scoreJobs(opts.Report, grades[i], opts)})
+	}
+	kept, leftOut := reproducedMetrics(opts.Report, opts.Sets[own].Label, scoreJobs(opts.Report, grades[own], opts), opts.KValues)
+	result.LeftOut = leftOut
+	for _, m := range kept {
+		result.Metrics = append(result.Metrics, m.name)
+	}
+	reference := slices.IndexFunc(rescored, func(s rescoredSet) bool { return s.label == opts.Reference })
+	if reference >= 0 {
+		result.Reference = opts.Reference
+	}
+	for j, job := range opts.Report.Jobs {
+		result.Jobs = append(result.Jobs, rankJob(job, j, kept, rescored, reference))
+	}
+	return result, nil
+}
+
+type rescoredSet struct {
+	label string
+	// scores hold each job's scored cells.
+	scores []map[cell]metrics.ScoreSet
+}
+
+// reproducedMetrics keeps the metrics the report's own set gives back for
+// every cell. One it cannot reproduce was scored some other way, and
+// rescoring it under another set would compare unlike numbers.
+func reproducedMetrics(r *report.Report, ownLabel string, ownScores []map[cell]metrics.ScoreSet, kValues []int) (kept []metric, leftOut []Exclusion) {
+	for _, m := range catalogue(kValues) {
+		if reason := irreproducible(m, r, ownScores, ownLabel); reason != "" {
+			leftOut = append(leftOut, Exclusion{Name: m.name, Reason: reason})
+			continue
+		}
+		kept = append(kept, m)
+	}
+	return kept, leftOut
+}
+
+// rankJob orders the job's engines under each rescored set; reference is -1
+// when the reference set was refused.
+func rankJob(job report.JobReport, jobIndex int, kept []metric, rescored []rescoredSet, reference int) JobRescoring {
+	queries := judgedQueries(job)
+	jr := JobRescoring{Job: job.JobName, Engines: engines(job), Queries: len(queries)}
+	for _, m := range kept {
+		means := make([][]float64, len(rescored))
+		for r, s := range rescored {
+			means[r] = engineMeans(jr.Engines, queries, s.scores[jobIndex], m)
+		}
+		mr := MetricRescoring{Metric: m.name}
+		for r, s := range rescored {
+			order := EngineOrder{
+				Label: s.label,
+				Means: make(map[string]float64, len(jr.Engines)),
+				Order: bestFirst(jr.Engines, means[r]),
+				TauB:  Statistic(math.NaN()),
+			}
+			for e, engine := range jr.Engines {
+				order.Means[engine] = means[r][e]
+			}
+			if reference >= 0 {
+				order.TauB = Statistic(metrics.KendallTauB(means[r], means[reference]))
+			}
+			mr.Sets = append(mr.Sets, order)
+		}
+		jr.Metrics = append(jr.Metrics, mr)
+	}
+	return jr
+}
+
+func reportJudgmentsPath(r *report.Report) string {
+	if r.Provenance.Sources == nil {
+		return "no path recorded"
+	}
+	return r.Provenance.Sources.Judgments
+}
+
+// requireRankings refuses a report written before rankings were stored. A
+// cell that retrieved nothing has no ranking either, so only a cell that
+// returned docs without one counts.
+func requireRankings(r *report.Report) error {
+	for _, job := range r.Jobs {
+		for _, e := range job.PerQuery {
+			if e.Error == "" && e.ReturnedCount > 0 && len(e.Ranking) == 0 {
+				return fmt.Errorf("report %s stores no ranking for %s/%s/%s, so it cannot be rescored", r.Provenance.RunID, job.JobName, e.QueryID, e.EngineName)
+			}
+		}
+	}
+	return nil
+}
+
+func gradesByQuery(file *judgment.File) map[string]map[uuid.UUID]int {
+	out := make(map[string]map[uuid.UUID]int)
+	for key, grade := range gradesOf(file) {
+		if out[key.queryID] == nil {
+			out[key.queryID] = make(map[uuid.UUID]int)
+		}
+		out[key.queryID][key.docID] = grade
+	}
+	return out
+}
+
+type cell struct {
+	queryID, engine string
+}
+
+// scoreJobs scores every judged cell that did not fail, per job.
+func scoreJobs(r *report.Report, grades map[string]map[uuid.UUID]int, opts RescoreOptions) []map[cell]metrics.ScoreSet {
+	out := make([]map[cell]metrics.ScoreSet, len(r.Jobs))
+	for j, job := range r.Jobs {
+		out[j] = make(map[cell]metrics.ScoreSet)
+		for _, e := range job.PerQuery {
+			if e.Judged && e.Error == "" {
+				out[j][cell{queryID: e.QueryID, engine: e.EngineName}] = metrics.ComputeAll(rankedIDs(e.Ranking), grades[e.QueryID], opts.KValues, opts.Threshold)
+			}
+		}
+	}
+	return out
+}
+
+func rankedIDs(ranking []report.RankedDoc) []uuid.UUID {
+	ids := make([]uuid.UUID, len(ranking))
+	for i, doc := range ranking {
+		ids[i] = doc.DocID
+	}
+	return ids
+}
+
+func uncoveredTopK(r *report.Report, grades map[string]map[uuid.UUID]int, k int) string {
+	missing, first := 0, ""
+	for _, job := range r.Jobs {
+		for _, e := range job.PerQuery {
+			if !e.Judged || e.Error != "" {
+				continue
+			}
+			for rank, doc := range e.Ranking[:min(k, len(e.Ranking))] {
+				if _, ok := grades[e.QueryID][doc.DocID]; ok {
+					continue
+				}
+				if missing == 0 {
+					first = fmt.Sprintf("%s at rank %d of %s/%s/%s", doc.DocID, rank+1, job.JobName, e.QueryID, e.EngineName)
+				}
+				missing++
+			}
+		}
+	}
+	if missing == 0 {
+		return ""
+	}
+	return fmt.Sprintf("leaves %d docs of the rankings' top %d ungraded, first %s", missing, k, first)
+}
+
+type metric struct {
+	name   string
+	scored func(metrics.ScoreSet) float64
+	stored func(report.Entry) (float64, bool)
+}
+
+func catalogue(kValues []int) []metric {
+	var out []metric
+	atK := func(format string, scored func(metrics.ScoreSet) map[int]float64, stored func(report.Entry) map[int]float64) {
+		for _, k := range kValues {
+			out = append(out, metric{
+				name:   fmt.Sprintf(format, k),
+				scored: func(s metrics.ScoreSet) float64 { return scored(s)[k] },
+				stored: func(e report.Entry) (float64, bool) {
+					v, ok := stored(e)[k]
+					return v, ok
+				},
+			})
+		}
+	}
+	atK("NDCG@%d", func(s metrics.ScoreSet) map[int]float64 { return s.NDCG }, func(e report.Entry) map[int]float64 { return e.NDCG })
+	atK("NDCG@%d (gain rel)", func(s metrics.ScoreSet) map[int]float64 { return s.NDCGLinear }, func(e report.Entry) map[int]float64 { return e.NDCGLinear })
+	atK("P@%d", func(s metrics.ScoreSet) map[int]float64 { return s.Precision }, func(e report.Entry) map[int]float64 { return e.Precision })
+	atK("R@%d", func(s metrics.ScoreSet) map[int]float64 { return s.Recall }, func(e report.Entry) map[int]float64 { return e.Recall })
+	atK("F1@%d", func(s metrics.ScoreSet) map[int]float64 { return s.F1 }, func(e report.Entry) map[int]float64 { return e.F1 })
+	whole := func(name string, scored func(metrics.ScoreSet) float64, stored func(report.Entry) float64) {
+		out = append(out, metric{name: name, scored: scored, stored: func(e report.Entry) (float64, bool) { return stored(e), true }})
+	}
+	whole("MAP", func(s metrics.ScoreSet) float64 { return s.AP }, func(e report.Entry) float64 { return e.AP })
+	whole("MRR", func(s metrics.ScoreSet) float64 { return s.RR }, func(e report.Entry) float64 { return e.RR })
+	whole("Bpref", func(s metrics.ScoreSet) float64 { return s.Bpref }, func(e report.Entry) float64 { return e.Bpref })
+	return out
+}
+
+func irreproducible(m metric, r *report.Report, ownScores []map[cell]metrics.ScoreSet, ownLabel string) string {
+	for j, job := range r.Jobs {
+		for _, e := range job.PerQuery {
+			if !e.Judged || e.Error != "" {
+				continue
+			}
+			where := fmt.Sprintf("%s/%s/%s", job.JobName, e.QueryID, e.EngineName)
+			stored, ok := m.stored(e)
+			if !ok {
+				return fmt.Sprintf("the report stores no %s for %s", m.name, where)
+			}
+			if scored := m.scored(ownScores[j][cell{queryID: e.QueryID, engine: e.EngineName}]); scored != stored {
+				return fmt.Sprintf("under %s, %s scores %v where the report stores %v", ownLabel, where, scored, stored)
+			}
+		}
+	}
+	return ""
+}
+
+func engines(job report.JobReport) []string {
+	out := make([]string, len(job.Aggregated))
+	for i, agg := range job.Aggregated {
+		out[i] = agg.EngineName
+	}
+	return out
+}
+
+func judgedQueries(job report.JobReport) []string {
+	var out []string
+	for _, e := range job.PerQuery {
+		if e.Judged && !slices.Contains(out, e.QueryID) {
+			out = append(out, e.QueryID)
+		}
+	}
+	return out
+}
+
+// engineMeans averages over the job's judged queries, a failed or missing cell
+// scoring 0, as the report's own means do.
+func engineMeans(engines, queries []string, scores map[cell]metrics.ScoreSet, m metric) []float64 {
+	means := make([]float64, len(engines))
+	for i, engine := range engines {
+		for _, queryID := range queries {
+			if s, ok := scores[cell{queryID: queryID, engine: engine}]; ok {
+				means[i] += m.scored(s)
+			}
+		}
+		means[i] /= float64(len(queries))
+	}
+	return means
+}
+
+func bestFirst(engines []string, means []float64) []string {
+	order := make([]int, len(engines))
+	for i := range order {
+		order[i] = i
+	}
+	slices.SortFunc(order, func(a, b int) int {
+		return cmp.Or(cmp.Compare(means[b], means[a]), cmp.Compare(engines[a], engines[b]))
+	})
+	out := make([]string, len(order))
+	for i, e := range order {
+		out[i] = engines[e]
+	}
+	return out
+}
