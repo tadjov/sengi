@@ -634,7 +634,9 @@ Measured elasticsearch templates should set `"track_total_hits": false` until it
 
 #### Rounds
 
-`bench run --rounds N` measures each job N times, one round after another. A round is a full pass over the job's queries and engines, warmup included, so a slow stretch of the host lands in one round rather than on whichever engine was running. The engine order rotates by one each round: with engines `a`, `b`, `c`, round 1 runs every query on `a`, `b`, `c`, round 2 on `b`, `c`, `a`, round 3 on `c`, `a`, `b`. The default, 1, measures once, and the report records the count as `settings.rounds`.
+`bench run --rounds N` measures each job N times, one round after another. A round is a full pass over the job's queries and engines, warmup included, so a slow stretch of the host lands in one round rather than on whichever engine was running. The engine order rotates by one each round: with engines `a`, `b`, `c`, round 1 runs every query on `a`, `b`, `c`, round 2 on `b`, `c`, `a`, round 3 on `c`, `a`, `b`. Every engine leads once only when `--rounds` is at least the number of engines; with fewer rounds some engine never runs first. The default, 1, measures once, and the report records the count as `settings.rounds`.
+
+Engines run in the order the job declares them, rotated each round, at `--rounds 1` too. Reports made before this change ran them in whatever order the Go scheduler picked, which put the last-declared engine first for nearly every query, so their latency carries another position bias than reports made since.
 
 Quality metrics score the first round's ranking. Every later round must return the same ranking for the cell, or the run fails (see above).
 
@@ -646,23 +648,23 @@ Before the first query, `bench run` reads from each live engine how it indexed t
 
 | Engine        | Recorded                                                                                                                                                                                                                                        |
 |---------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| postgres      | `server_version`; the versions of `vector`, `pg_search`, `pg_textsearch`, `pg_trgm` and `fuzzystrmatch`, where installed; `indexdef` and `reloptions` of every index on `articles` and `article_embeddings`; the live value of each `connection_settings` entry |
-| elasticsearch | the version from `GET /`; the concrete index the spec's `index` resolves to; its `settings.index.analysis`; analyzer, `index_options`, dims and similarity of every text and `dense_vector` field                                                      |
+| postgres      | `server_version`, which is `version()`; every installed extension with its version; `indexdef` and `reloptions` of every index on `articles` and `article_embeddings`; the live value of each `connection_settings` entry |
+| elasticsearch | the version and `build_hash` from `GET /`; the concrete index the spec's `index` resolves to; its `settings.index.analysis`; analyzer, `index_options`, dims and similarity of every text and `dense_vector` field                                       |
 
 Provenance is metadata, so a failed read never fails the run: it prints a warning and the block carries `error` instead. An `api` engine cannot describe its index, so its block carries only that error. Reports written before provenance was recorded have no `index` block and still load.
 
-`bench show report` prints one line per engine summarising the block. `bench diff` lists the provenance fields that differ between the two runs before the metric deltas. The analysis block is compared as one field and shown as a digest.
-
 #### Engine environment
 
-The same read records what each engine ran with, beside its index:
+The same read records what each engine ran with, in the same block, each fact once:
 
-| Engine        | Block                   | Recorded                                                                                                                                                                                                                                                                                             |
-|---------------|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| postgres      | `postgres_server`       | `version()`; every installed extension with its version, from `pg_extension`; every `pg_settings` row whose `source` is not `default` (name, setting, unit, source), so a `-c` flag reads `command line` and a `connection_settings` entry `session`; the container's `cpu.max` and `memory.max`, read through `pg_read_file`, or under `unreadable` why the server could not read them |
-| elasticsearch | `elasticsearch_cluster` | the build hash from `GET /`; the index's settings that are not defaults, flat (`GET <index>/_settings?flat_settings=true`); the persistent and transient cluster settings; each node's heap max and cgroup CPU quota, period and memory limit, from `_nodes/stats/os,jvm`                                     |
+| Engine        | Recorded                                                                                                                                                                                                                                                                                                 |
+|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| postgres      | `settings`: each `connection_settings` entry as `SHOW` reads it back once applied, so `8192kB` reads `8MB`; `server_settings`: every other `pg_settings` row whose `source` is not `default` (name, setting, unit, source), so a `-c` flag reads `command line`; `cgroup_limits`: the container's `cpu.max` and `memory.max`, read through `pg_read_file` |
+| elasticsearch | `settings`: the index's settings that are not defaults, flat, without the analysis block; `cluster_settings`: the persistent and transient cluster settings, flat; `nodes`: each node's heap max and cgroup CPU quota, period and memory limit, from `_nodes/stats/os,jvm`                                                   |
 
-The spec's `connection_settings`, read back from the session once applied, stay under `index.postgres.settings`. An engine that names its `container` in the spec also gets `environment.engines.<name>.container`: the image, its id and its registry digests, from `docker inspect`. A container docker cannot inspect is recorded with a `note` and a warning, never a failed run.
+A read of the server settings, cgroup limits, cluster settings or node stats that fails, as `pg_read_file` does for a role that may not read server files, is listed under `unreadable` with its error, and the rest of the block stands. An engine that names its `container` in the spec also gets `index.container`: the image, its id and its registry digests, from `docker inspect`. A container docker cannot inspect is recorded with a `note` and a warning, never a failed run.
+
+`bench show report` prints one line per engine summarising the block. `bench diff` lists every provenance field that differs between the two runs before the metric deltas: each setting, extension, index, limit, node and image. The analysis block is compared as one field and shown as a digest.
 
 ### `bench export [<name>] --format <F>`
 
@@ -750,7 +752,7 @@ The qrels must hold exactly the job's queries: `-c` averages over every qrels to
 
 All artifacts are self-attesting. A report's `provenance.sources` block records the exact paths of the spec, suite, pool, and judgments files used — you can reconstruct any run from the report alone.
 
-Every path an artifact records is relative to the track directory: `meta.pool_ref` in a judgments file, and `provenance.pool_ref` and `provenance.sources` (spec, suites, pool, judgments) in a report. A file outside the track climbs out of it (`../shared/suite.yaml`), so a track folder copied elsewhere or cloned on another machine names the same files. A reader resolves a relative path against the track directory; an absolute path in an older artifact still reads as absolute.
+Every path an artifact records is relative to the track directory: `meta.pool_ref` in a judgments file, and `provenance.pool_ref` and `provenance.sources` (spec, suites, pool, judgments) in a report. A file outside the track climbs out of it (`../shared/suite.yaml`), so a track folder copied elsewhere or cloned on another machine names the same files. A report's `pool_ref` is always the track's own pool, which the judgments were bound to by `pool_run_id`, never the path a judgments file recorded, so an older file's absolute path from another machine never reaches a report. A reader resolves a relative path against the track directory; an absolute path in an older artifact still reads as absolute.
 
 For per-track documentation, see `tracks/<name>/README.md`.
 
