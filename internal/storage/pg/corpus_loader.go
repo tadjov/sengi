@@ -82,6 +82,9 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	if err := l.refuseLoaded(ctx, conn); err != nil {
 		return storage.LoadRecord{}, err
 	}
+	if err := readContainerBudget(ctx, conn, record.Settings); err != nil {
+		return storage.LoadRecord{}, err
+	}
 	if err := pauseAutovacuum(ctx, conn, record.Settings); err != nil {
 		return storage.LoadRecord{}, err
 	}
@@ -222,7 +225,7 @@ func (l *CorpusLoader) refuseLoaded(ctx context.Context, conn *pgx.Conn) error {
 		return fmt.Errorf("check for existing search indexes: %w", err)
 	}
 	if len(built) > 0 {
-		return fmt.Errorf("search indexes %s already exist; drop the schema before loading", strings.Join(built, ", "))
+		return fmt.Errorf("indexes and keys %s already exist; drop the schema before loading", strings.Join(built, ", "))
 	}
 	var loaded bool
 	err = conn.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM articles) OR EXISTS (SELECT 1 FROM corpus_load)").Scan(&loaded)
@@ -276,7 +279,7 @@ func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record 
 		}
 		record.Settings[name] = value
 	}
-	return readContainerBudget(ctx, conn, record.Settings)
+	return nil
 }
 
 // readContainerBudget reads the server's cgroup v2 limits, which only a superuser may read.
@@ -380,7 +383,7 @@ func resumeAutovacuum(ctx context.Context, conn *pgx.Conn) error {
 	return nil
 }
 
-// openWriters needs the schema's vector type; its connections skip the commit flush, since a crash mid-load means a fresh volume.
+// openWriters needs the schema's vector type; its connections skip the commit flush, since a crash mid-load means a reload.
 func (l *CorpusLoader) openWriters(ctx context.Context, concurrency int) (*pgxpool.Pool, error) {
 	config := l.pool.conn.Config()
 	config.MaxConns = int32(concurrency)
@@ -403,7 +406,7 @@ func flushCommits(ctx context.Context, conn *pgx.Conn) error {
 	return nil
 }
 
-// corpusCopier commits each batch in its own transaction, so a failed copy keeps the batches before it.
+// corpusCopier commits each batch in its own transaction, so a failed copy keeps whichever batches committed.
 type corpusCopier struct {
 	writers     *pgxpool.Pool
 	concurrency int
@@ -415,7 +418,7 @@ func (cp *corpusCopier) failed(err error) error {
 	if cp.committed.Load() == 0 {
 		return err
 	}
-	return fmt.Errorf("%w; the database now holds a partial corpus, recreate its volume before loading again", err)
+	return fmt.Errorf("%w; the database now holds a partial corpus, drop its schema before loading again", err)
 }
 
 // copyArticles returns the ids in corpus order, which the vectors must follow.
