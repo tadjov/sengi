@@ -47,12 +47,12 @@ func RenderHTML(r *Report) ([]byte, error) {
 
 // ─── git-relative path helper ────────────────────────────────────────────────
 
-// repoRelPath makes path relative to the nearest .git root it can find by
-// walking up. Falls back to the path's basename if no git root is found.
-// This keeps source paths readable in shared reports.
+// repoRelPath makes an absolute path, which older reports recorded, relative
+// to the nearest .git root it can find by walking up, or to its basename when
+// it finds none. A relative path is already relative to the track and stands.
 func repoRelPath(path string) string {
-	if path == "" {
-		return ""
+	if path == "" || !filepath.IsAbs(path) {
+		return path
 	}
 	root := findGitRoot(filepath.Dir(path))
 	if root == "" {

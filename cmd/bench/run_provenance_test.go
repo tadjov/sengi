@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/tusker/internal/bench/judgment"
+	"github.com/tadjov/tusker/internal/bench/meta"
 )
 
 func TestRun_ReportNamesThePoolAndJudgmentsItScoredAgainst(t *testing.T) {
@@ -49,15 +50,16 @@ func TestRun_ReportListsTheSuitesItsJobsLoaded(t *testing.T) {
 	resolved, err := filepath.EvalSymlinks(aOnlySuite)
 	require.NoError(t, err)
 	both := filepath.Join(filepath.Dir(resolved), "suite.yaml")
-	assert.ElementsMatch(t, []string{both, resolved}, canonicalPaths(t, suitesByJobs[2]), "every job's suite")
-	assert.Equal(t, []string{resolved}, canonicalPaths(t, suitesByJobs[1]), "only the suite of the job that ran")
+	assert.ElementsMatch(t, []string{both, resolved}, canonicalPaths(t, tr.dir, suitesByJobs[2]), "every job's suite")
+	assert.Equal(t, []string{resolved}, canonicalPaths(t, tr.dir, suitesByJobs[1]), "only the suite of the job that ran")
 }
 
-func canonicalPaths(t *testing.T, paths []string) []string {
+// canonicalPaths resolves paths recorded relative to trackDir.
+func canonicalPaths(t *testing.T, trackDir string, paths []string) []string {
 	t.Helper()
 	out := make([]string, 0, len(paths))
 	for _, p := range paths {
-		resolved, err := filepath.EvalSymlinks(p)
+		resolved, err := filepath.EvalSymlinks(meta.ResolveFromTrack(trackDir, p))
 		require.NoError(t, err)
 		out = append(out, resolved)
 	}
