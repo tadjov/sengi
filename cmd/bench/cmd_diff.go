@@ -1,23 +1,53 @@
 package main
 
 import (
+	"cmp"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+	judgeagreement "github.com/tadjov/tusker/internal/bench/agreement"
+	"github.com/tadjov/tusker/internal/bench/pool"
 	"github.com/tadjov/tusker/internal/bench/report"
+	"github.com/tadjov/tusker/internal/bench/spec"
+	"github.com/tadjov/tusker/internal/bench/suite"
 	"github.com/tadjov/tusker/internal/bench/trackctx"
 )
+
+func newDiffCmd() *cobra.Command { return newDiffCmdWithReader(openArticleReader) }
+
+func newDiffCmdWithReader(openReader articleReaderOpener) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "diff runs|judgments [track]",
+		Short: "Compare two benchmark runs, or a track's judgment sets",
+		Long: `bench diff runs compares two benchmark runs of a track.
+bench diff judgments compares two or more judgment sets of a track.`,
+		// Without RunE, cobra prints the help and exits 0 for `bench diff fts`.
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+			return fmt.Errorf("unknown command %[1]q for %[2]q: compare two runs with bench diff runs %[1]s, or judgment sets with bench diff judgments %[1]s --judgments <set,...>",
+				args[0], cmd.CommandPath())
+		},
+	}
+	cmd.AddCommand(newDiffRunsCmd(), newDiffJudgmentsCmd(openReader))
+	return cmd
+}
 
 type diffFlags struct {
 	trackArg string
@@ -25,10 +55,10 @@ type diffFlags struct {
 	pathB    string
 }
 
-func newDiffCmd() *cobra.Command {
+func newDiffRunsCmd() *cobra.Command {
 	var f diffFlags
 	cmd := &cobra.Command{
-		Use:   "diff [track]",
+		Use:   "runs [track]",
 		Short: "Compare two benchmark runs side by side",
 		Long: `Loads two report JSON files and shows per-engine metric deltas and the
 per-query NDCG regressions sorted by magnitude.
@@ -38,9 +68,9 @@ newest earlier complete report (judged metrics, no failed queries, nothing
 recorded in settings.incomplete), or the newest earlier report, with a
 warning, when none is. --a and --b accept run IDs
 (e.g. 2026-05-26T23-39-05-run-7e0750) or direct paths to report.json files.`,
-		Example: `  bench diff tracks/global-news-dataset/fts_quality                               # latest two runs
-  bench diff tracks/global-news-dataset/fts_quality --b 2026-05-26T23-39-05-run-7e0750
-  bench diff --a /tmp/before.json --b /tmp/after.json`,
+		Example: `  bench diff runs tracks/global-news-dataset/fts_quality                               # latest two runs
+  bench diff runs tracks/global-news-dataset/fts_quality --b 2026-05-26T23-39-05-run-7e0750
+  bench diff runs --a /tmp/before.json --b /tmp/after.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return executeDiff(cmd.OutOrStdout(), f, args)
@@ -528,4 +558,430 @@ func durStr(d time.Duration) string {
 		return fmt.Sprintf("%.2fms", float64(d.Microseconds())/1000)
 	}
 	return fmt.Sprintf("%.2fs", d.Seconds())
+}
+
+type diffJudgmentsFlags struct {
+	judgments []string
+	reference string
+	pairs     bool
+	minGap    int
+	report    string
+	pg        string
+	seed      uint64
+	output    string
+}
+
+type diffJudgmentsCommand struct {
+	flags      diffJudgmentsFlags
+	openReader articleReaderOpener
+}
+
+func newDiffJudgmentsCmd(openReader articleReaderOpener) *cobra.Command {
+	var f diffJudgmentsFlags
+	cmd := &cobra.Command{
+		Use:   "judgments [track] --judgments <[label=]set,...>",
+		Short: "Measure how alike judgment sets grade the same pairs",
+		Long: `Compares two or more judgment sets of a track over the (query, doc) pairs
+every one of them graded 0 to 3. Each --judgments entry is a set name or an
+annotations path, as bench run --judgments takes it, optionally prefixed with
+label=; without a label a set goes by its judge's model, or its strategy.
+
+For each set it prints the grade distribution, and for each pair of sets the
+exact, within-one and relevant agreement and the quadratic and binary Cohen's
+kappa, each kappa with a 95% bootstrap interval over resampled queries.
+Relevant means a grade at or above the spec's metrics.relevance_threshold.
+
+--reference adds each other set's 4x4 table against the reference, its two
+kinds of miss, and the agreement per query category. --pg re-runs the judges'
+phrase, boolean and filter gate on the articles and measures agreement again
+over the pairs it admits; without it, the gate's zeros are included. --pairs
+lists the pairs whose grades span at least --min-gap. --report rescores a run
+report (a path, or latest) under each set once its own set reproduces it.`,
+		Example: `  bench diff judgments tracks/cc-news/fts --judgments sonnet=claude-cli,jev
+  bench diff judgments tracks/cc-news/fts --judgments sonnet=claude-cli,jev,opus=trec/cross-judge/annotations.opus.yaml --reference opus
+  bench diff judgments tracks/cc-news/fts --judgments sonnet=claude-cli,jev --pairs --min-gap 3
+  bench diff judgments tracks/cc-news/fts --judgments sonnet=claude-cli,jev --report latest --output /tmp/agreement.json`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return diffJudgmentsCommand{flags: f, openReader: openReader}.execute(cmd, args)
+		},
+	}
+	cmd.Flags().StringSliceVar(&f.judgments, "judgments", nil, "Judgment sets to compare: [label=]<set name or annotations path>, comma-separated")
+	cmd.Flags().StringVar(&f.reference, "reference", "", "Label to tabulate the other sets against, and to rank engines against with --report")
+	cmd.Flags().BoolVar(&f.pairs, "pairs", false, "List the pairs whose grades span at least --min-gap")
+	cmd.Flags().IntVar(&f.minGap, "min-gap", 2, "Smallest grade span --pairs lists")
+	cmd.Flags().StringVar(&f.report, "report", "", "Run report to rescore under each set: a path, or latest")
+	cmd.Flags().StringVar(&f.pg, "pg", "", "Postgres connection to read the articles from and re-run the gate")
+	cmd.Flags().Uint64Var(&f.seed, "seed", 1, "Seed of the bootstrap that sets each kappa's interval")
+	cmd.Flags().StringVar(&f.output, "output", "", "Also write the results as JSON to this path")
+	_ = cmd.MarkFlagRequired("judgments")
+	return cmd
+}
+
+func (d diffJudgmentsCommand) execute(cmd *cobra.Command, args []string) error {
+	if d.flags.minGap < 0 {
+		return fmt.Errorf("--min-gap must be 0 or more, got %d", d.flags.minGap)
+	}
+	if cmd.Flags().Changed("min-gap") && !d.flags.pairs {
+		return errors.New("--min-gap sets what --pairs lists; pass --pairs too")
+	}
+	c, err := d.compare(cmd, args)
+	if err != nil {
+		return err
+	}
+	w := cmd.OutOrStdout()
+	c.print(w)
+	if d.flags.output == "" {
+		return nil
+	}
+	return writeAgreementArtifact(w, d.flags.output, c.result)
+}
+
+// judgmentComparison is what bench diff judgments measured, for stdout and
+// --output alike.
+type judgmentComparison struct {
+	flags  diffJudgmentsFlags
+	sets   []judgeagreement.Set
+	result judgeagreement.Artifact
+}
+
+func (d diffJudgmentsCommand) compare(cmd *cobra.Command, args []string) (judgmentComparison, error) {
+	f := d.flags
+	tr, err := trackctx.Resolve(trackInputs("", args))
+	if err != nil {
+		return judgmentComparison{}, err
+	}
+	bs, err := spec.LoadFromFile(tr.Spec)
+	if err != nil {
+		return judgmentComparison{}, fmt.Errorf("load spec %s: %w", tr.Spec, err)
+	}
+	sets, err := judgeagreement.Load(tr, f.judgments)
+	if err != nil {
+		return judgmentComparison{}, err
+	}
+	pairs, err := judgeagreement.Align(sets)
+	if err != nil {
+		return judgmentComparison{}, err
+	}
+	var pf *pool.PoolFile
+	if f.reference != "" || f.pg != "" {
+		if pf, err = pool.ReadPoolFile(tr.Pool); err != nil {
+			return judgmentComparison{}, fmt.Errorf("read the pool %s for each query's category and gate: %w", tr.Pool, err)
+		}
+	}
+	opts := judgeagreement.SummaryOptions{
+		Labels:     setLabels(sets),
+		Threshold:  bs.Metrics.RelevanceThreshold,
+		Seed:       f.seed,
+		Reference:  f.reference,
+		Categories: poolCategories(pf),
+	}
+	all, err := judgeagreement.Summarize(pairs, opts)
+	if err != nil {
+		return judgmentComparison{}, err
+	}
+
+	var gate *judgeagreement.GateSummary
+	var titles map[uuid.UUID]string
+	if f.pg != "" {
+		if gate, titles, err = d.gate(cmd, pairs, pf, opts); err != nil {
+			return judgmentComparison{}, err
+		}
+	}
+	var disagreements []judgeagreement.Disagreement
+	if f.pairs {
+		disagreements = judgeagreement.Disagreements(pairs, f.minGap)
+		for i := range disagreements {
+			disagreements[i].Title = titles[disagreements[i].DocID]
+		}
+	}
+	var rescoring *judgeagreement.Rescoring
+	reportRunID := ""
+	if f.report != "" {
+		if rescoring, err = rescore(tr, bs, sets, f); err != nil {
+			return judgmentComparison{}, err
+		}
+		reportRunID = rescoring.ReportRunID
+	}
+
+	result := judgeagreement.NewArtifact(sets, reportRunID)
+	result.RelevanceThreshold, result.Seed = opts.Threshold, f.seed
+	result.AllPairs, result.Gate, result.Disagreements, result.Rescoring = all, gate, disagreements, rescoring
+	return judgmentComparison{flags: f, sets: sets, result: result}, nil
+}
+
+func (d diffJudgmentsCommand) gate(cmd *cobra.Command, pairs []judgeagreement.Pair, pf *pool.PoolFile, opts judgeagreement.SummaryOptions) (*judgeagreement.GateSummary, map[uuid.UUID]string, error) {
+	reader, err := d.openReader(cmd, d.flags.pg)
+	if err != nil {
+		return nil, nil, err
+	}
+	gated, err := judgeagreement.Gate(cmd.Context(), judgeagreement.GateOptions{Pairs: pairs, Pool: pf, Reader: reader})
+	if err != nil {
+		return nil, nil, err
+	}
+	gate := &judgeagreement.GateSummary{Refused: gated.Refused}
+	if len(gated.Admitted) > 0 {
+		admitted, err := judgeagreement.Summarize(gated.Admitted, opts)
+		if err != nil {
+			return nil, nil, err
+		}
+		gate.Admitted = &admitted
+	}
+	return gate, gated.Titles, nil
+}
+
+func (c judgmentComparison) print(w io.Writer) {
+	r := c.result
+	printJudgmentSets(w, c.sets)
+	fmt.Fprintf(w, "%d (query, doc) pairs graded 0 to 3 by every set; relevant means a grade of %d or more (metrics.relevance_threshold)\n",
+		r.AllPairs.Pairs, r.RelevanceThreshold)
+	if r.Gate == nil {
+		printWarn(w, "without --pg, gated zeros are included: every gated judge grades a doc the phrase, boolean or filter gate refuses 0 without a model seeing it, which inflates agreement")
+		printAgreementSummary(w, fmt.Sprintf("Agreement over all %d common pairs", r.AllPairs.Pairs), r.AllPairs)
+	} else {
+		printAgreementSummary(w, fmt.Sprintf("Agreement over all %d common pairs, gated zeros included", r.AllPairs.Pairs), r.AllPairs)
+		printGate(w, r.Gate, r.AllPairs.Pairs)
+	}
+	if c.flags.pairs {
+		printDisagreements(w, r.Disagreements, setLabels(c.sets), c.flags.minGap, r.Gate != nil)
+	}
+	if r.Rescoring != nil {
+		printRescoring(w, r.Rescoring, cmp.Or(c.flags.reference, c.sets[0].Label))
+	}
+}
+
+func setLabels(sets []judgeagreement.Set) []string {
+	labels := make([]string, len(sets))
+	for i, s := range sets {
+		labels[i] = s.Label
+	}
+	return labels
+}
+
+func poolCategories(pf *pool.PoolFile) map[string]suite.Category {
+	if pf == nil {
+		return nil
+	}
+	categories := make(map[string]suite.Category, len(pf.Queries))
+	for _, entry := range pf.Queries {
+		categories[entry.QueryID] = entry.Category
+	}
+	return categories
+}
+
+func rescore(tr *trackctx.Track, bs *spec.BenchSpec, sets []judgeagreement.Set, f diffJudgmentsFlags) (*judgeagreement.Rescoring, error) {
+	var rpt *report.Report
+	var err error
+	if f.report == "latest" {
+		rpt, err = report.ReadLatestReport(tr.LatestReportPath())
+	} else {
+		rpt, err = report.ReadJSON(f.report)
+	}
+	if err != nil {
+		return nil, err
+	}
+	rescoring, err := judgeagreement.Rescore(judgeagreement.RescoreOptions{
+		Report:    rpt,
+		Sets:      sets,
+		Reference: cmp.Or(f.reference, sets[0].Label),
+		KValues:   bs.Metrics.KValues,
+		Threshold: bs.Metrics.RelevanceThreshold,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &rescoring, nil
+}
+
+func printJudgmentSets(w io.Writer, sets []judgeagreement.Set) {
+	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprint("Judgment sets"))
+	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+	fmt.Fprintln(tw, "Label\tJudge\tGraded\tRun ID\tPath")
+	fmt.Fprintln(tw, "---\t---\t---\t---\t---")
+	for _, s := range sets {
+		graded, _ := s.File.GradeCounts()
+		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\n", s.Label, s.File.Judge(), graded, s.File.Meta.RunID, s.Path)
+	}
+	tw.Flush()
+	fmt.Fprintln(w)
+}
+
+func printAgreementSummary(w io.Writer, title string, s judgeagreement.Summary) {
+	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprint(title))
+	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+	fmt.Fprintln(tw, "Set\tGrade 0\tGrade 1\tGrade 2\tGrade 3")
+	fmt.Fprintln(tw, "---\t---\t---\t---\t---")
+	for _, d := range s.Distributions {
+		fmt.Fprintf(tw, "%s\t%d\t%d\t%d\t%d\n", d.Label, d.Grades[0], d.Grades[1], d.Grades[2], d.Grades[3])
+	}
+	tw.Flush()
+	fmt.Fprintln(w)
+
+	tw = tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+	fmt.Fprintln(tw, "Pair\tn\tExact\tWithin 1\tRelevant\tQuadratic κ [95% CI]\tBinary κ [95% CI]")
+	fmt.Fprintln(tw, "---\t---\t---\t---\t---\t---\t---")
+	for _, c := range s.Comparisons {
+		fmt.Fprintf(tw, "%s\t%s\n", comparisonName(c), comparisonCells(c))
+	}
+	tw.Flush()
+	if s.Reference != nil {
+		printReference(w, s.Reference)
+	}
+}
+
+func comparisonName(c judgeagreement.Comparison) string { return c.First + " vs " + c.Second }
+
+func comparisonCells(c judgeagreement.Comparison) string {
+	return fmt.Sprintf("%d\t%.4f\t%.4f\t%.4f\t%s\t%s", c.Pairs, c.Exact, c.WithinOne, c.Relevant, formatKappa(c.QuadraticKappa), formatKappa(c.BinaryKappa))
+}
+
+func formatKappa(k judgeagreement.Kappa) string {
+	if math.IsNaN(float64(k.Value)) {
+		return "n/a"
+	}
+	return fmt.Sprintf("%.4f [%s, %s]", k.Value, formatStatistic(k.Low), formatStatistic(k.High))
+}
+
+func formatStatistic(s judgeagreement.Statistic) string { return formatRatio(float64(s), "%.4f", 1) }
+
+func printReference(w io.Writer, ref *judgeagreement.Reference) {
+	for _, c := range ref.Against {
+		fmt.Fprintf(w, "\n%s\n", cBold.Sprintf("%s against %s (rows are %s's grades)", c.Label, ref.Label, ref.Label))
+		fmt.Fprintf(w, "%s graded %d of %s's %d irrelevant pairs relevant and %d of its %d relevant pairs irrelevant\n\n",
+			c.Label, c.GradedRelevant, ref.Label, c.ReferenceIrrelevant, c.GradedIrrelevant, c.ReferenceRelevant)
+		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+		fmt.Fprintf(tw, "%s \\ %s\t0\t1\t2\t3\n", ref.Label, c.Label)
+		fmt.Fprintln(tw, "---\t---\t---\t---\t---")
+		for grade, row := range c.Table {
+			fmt.Fprintf(tw, "%d\t%d\t%d\t%d\t%d\n", grade, row[0], row[1], row[2], row[3])
+		}
+		tw.Flush()
+	}
+
+	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprint("Agreement by query category"))
+	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+	fmt.Fprintln(tw, "Category\tQueries\tPair\tn\tExact\tWithin 1\tRelevant\tQuadratic κ [95% CI]\tBinary κ [95% CI]")
+	fmt.Fprintln(tw, "---\t---\t---\t---\t---\t---\t---\t---\t---")
+	for _, category := range ref.ByCategory {
+		name := cmp.Or(string(category.Category), "(none)")
+		for _, c := range category.Comparisons {
+			fmt.Fprintf(tw, "%s\t%d\t%s\t%s\n", name, category.Queries, comparisonName(c), comparisonCells(c))
+		}
+	}
+	tw.Flush()
+}
+
+func printGate(w io.Writer, gate *judgeagreement.GateSummary, common int) {
+	fmt.Fprintf(w, "\nThe gate refused %d of %d common pairs on their phrase, boolean or filter: every gated judge graded those 0 without a model seeing them.\n",
+		gate.Refused, common)
+	if gate.Admitted == nil {
+		printWarn(w, "the gate refused every common pair, so there is no agreement without its zeros")
+		return
+	}
+	printAgreementSummary(w, fmt.Sprintf("Agreement over the %d pairs the gate admits", gate.Admitted.Pairs), *gate.Admitted)
+}
+
+func printDisagreements(w io.Writer, rows []judgeagreement.Disagreement, labels []string, minGap int, withTitles bool) {
+	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprintf("%d pairs whose grades span %d or more", len(rows), minGap))
+	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+	header := append([]string{"Query", "Doc", "Span"}, labels...)
+	if withTitles {
+		header = append(header, "Title")
+	}
+	fmt.Fprintln(tw, strings.Join(header, "\t"))
+	fmt.Fprintln(tw, strings.TrimSuffix(strings.Repeat("---\t", len(header)), "\t"))
+	for _, row := range rows {
+		cells := []string{row.QueryID, row.DocID.String(), strconv.Itoa(row.Span)}
+		for _, grade := range row.Grades {
+			cells = append(cells, strconv.Itoa(grade))
+		}
+		if withTitles {
+			cells = append(cells, row.Title)
+		}
+		fmt.Fprintln(tw, strings.Join(cells, "\t"))
+	}
+	tw.Flush()
+}
+
+func printRescoring(w io.Writer, r *judgeagreement.Rescoring, reference string) {
+	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprintf("Report %s rescored under each set", r.ReportRunID))
+	fmt.Fprintf(w, "Rescoring under %s, the set the report was scored with, gives back every stored value of: %s\n",
+		r.ReportSet, orNone(strings.Join(r.Metrics, ", ")))
+	if len(r.LeftOut) > 0 {
+		fmt.Fprintf(w, "Left out, since %s does not give back the stored value:\n", r.ReportSet)
+		for _, e := range r.LeftOut {
+			fmt.Fprintf(w, "  %s: %s\n", e.Name, e.Reason)
+		}
+	}
+	if len(r.Refused) > 0 {
+		fmt.Fprintln(w, "Refused, since a set rescores only when it grades every doc in each ranking's top max(k_values):")
+		for _, e := range r.Refused {
+			fmt.Fprintf(w, "  %s: %s\n", e.Name, e.Reason)
+		}
+	}
+	if r.Reference == "" {
+		printWarn(w, fmt.Sprintf("τ-b needs the reference set rescored, and %s was refused", reference))
+	} else {
+		fmt.Fprintf(w, "τ-b compares each set's engine means with %s's.\n", r.Reference)
+	}
+	for _, job := range r.Jobs {
+		printJobRescoring(w, job, r.Reference)
+	}
+}
+
+func orNone(s string) string { return cmp.Or(s, "none") }
+
+func printJobRescoring(w io.Writer, job judgeagreement.JobRescoring, reference string) {
+	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprintf("--- Job: %s (%d engines, %d judged queries) ---", job.Job, len(job.Engines), job.Queries))
+	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+	fmt.Fprintf(tw, "Metric\tSet\t%s\tOrder\tτ-b\n", strings.Join(job.Engines, "\t"))
+	fmt.Fprintln(tw, strings.TrimSuffix(strings.Repeat("---\t", len(job.Engines)+4), "\t"))
+	for _, m := range job.Metrics {
+		for i, order := range m.Sets {
+			metric := m.Metric
+			if i > 0 {
+				metric = ""
+			}
+			cells := make([]string, 0, len(job.Engines)+4)
+			cells = append(cells, metric, order.Label)
+			for _, engine := range job.Engines {
+				cells = append(cells, fmt.Sprintf("%.4f", order.Means[engine]))
+			}
+			tau := formatStatistic(order.TauB)
+			if order.Label == reference {
+				tau = "—"
+			}
+			cells = append(cells, formatEngineOrder(order), tau)
+			fmt.Fprintln(tw, strings.Join(cells, "\t"))
+		}
+	}
+	tw.Flush()
+}
+
+// formatEngineOrder joins tied engines with =, since τ-b counts ties.
+func formatEngineOrder(order judgeagreement.EngineOrder) string {
+	var b strings.Builder
+	for i, engine := range order.Order {
+		if i > 0 {
+			separator := " > "
+			if order.Means[engine] == order.Means[order.Order[i-1]] {
+				separator = " = "
+			}
+			b.WriteString(separator)
+		}
+		b.WriteString(engine)
+	}
+	return b.String()
+}
+
+func writeAgreementArtifact(w io.Writer, path string, artifact judgeagreement.Artifact) error {
+	data, err := json.MarshalIndent(artifact, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode %s: %w", path, err)
+	}
+	if err := os.WriteFile(path, append(data, '\n'), 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+	printDone(w, "Wrote "+path)
+	return nil
 }

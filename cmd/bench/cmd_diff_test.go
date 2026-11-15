@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -9,10 +12,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tadjov/tusker/internal/bench/judgment"
 	"github.com/tadjov/tusker/internal/bench/meta"
+	"github.com/tadjov/tusker/internal/bench/pool"
 	"github.com/tadjov/tusker/internal/bench/report"
+	"github.com/tadjov/tusker/internal/bench/suite"
+	"github.com/tadjov/tusker/internal/storage"
 )
 
 type diffRun struct {
@@ -287,4 +296,340 @@ func TestPrintDiff_ChangeFromAZeroBaselineHasNoPercentage(t *testing.T) {
 
 	assert.Contains(t, got, "n/a")
 	assert.NotContains(t, got, "+0.0%")
+}
+
+func TestDiff_WithoutAVerbNamesBoth(t *testing.T) {
+	cmd := &cobra.Command{Use: "bench"}
+	cmd.AddCommand(newDiffCmd())
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"diff", "fts"})
+
+	err := cmd.Execute()
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "bench diff runs")
+	assert.Contains(t, err.Error(), "bench diff judgments")
+}
+
+func TestDiffRuns_ComparesTheLatestTwoRuns(t *testing.T) {
+	cwd := t.TempDir()
+	t.Chdir(cwd)
+	initCmd := newInitCmd()
+	initCmd.SetOut(&bytes.Buffer{})
+	initCmd.SetArgs([]string{"demo"})
+	require.NoError(t, initCmd.Execute())
+	reports := filepath.Join(cwd, "demo", "reports")
+	writeTrackReport(t, reports, "2026-01-01T00-00-01-run-aaaaaa", nil)
+	writeTrackReport(t, reports, "2026-01-01T00-00-02-run-bbbbbb", nil)
+	require.NoError(t, updateLatestPointer(filepath.Join(reports, "latest.json"), filepath.Join(reports, "2026-01-01T00-00-02-run-bbbbbb.json")))
+
+	cmd := newDiffCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"runs", "demo"})
+	require.NoError(t, cmd.Execute())
+
+	assert.Regexp(t, `A \(before\):\s+2026-01-01T00-00-01-run-aaaaaa`, out.String())
+}
+
+// judgmentsTrack is a two-query track: kw (keyword "climate") with docs k1-k3
+// and ph (phrase "climate change") with p1, which holds the phrase, and p2,
+// which does not. Its spec counts grade 3 alone as relevant.
+type judgmentsTrack struct {
+	root     string
+	articles articleStore
+	k1, k2   uuid.UUID
+	k3       uuid.UUID
+	p1, p2   uuid.UUID
+}
+
+const judgmentsSpec = `schema_version: 1
+id: agreement
+kind: fts
+engines:
+  a: {type: postgres, connection: "postgres://localhost/a"}
+  b: {type: postgres, connection: "postgres://localhost/b"}
+jobs:
+  - name: fts
+    suite: suite.yaml
+    engines: [a, b]
+metrics:
+  k_values: [2]
+  relevance_threshold: 3
+`
+
+func newJudgmentsTrack(t *testing.T) *judgmentsTrack {
+	t.Helper()
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	require.NoError(t, err)
+	tr := &judgmentsTrack{root: root, k1: uuid.New(), k2: uuid.New(), k3: uuid.New(), p1: uuid.New(), p2: uuid.New()}
+	require.NoError(t, os.MkdirAll(filepath.Join(tr.root, "trec"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(tr.root, "reports"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(tr.root, "spec.yaml"), []byte(judgmentsSpec), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tr.root, "suite.yaml"), []byte("schema_version: 1\nid: agreement\n"), 0o644))
+	tr.articles = articleStore{
+		tr.k1: {ID: tr.k1, Title: "climate one"},
+		tr.k2: {ID: tr.k2, Title: "climate two"},
+		tr.k3: {ID: tr.k3, Title: "climate three"},
+		tr.p1: {ID: tr.p1, Title: "climate change summit"},
+		tr.p2: {ID: tr.p2, Title: "a change in the climate"},
+	}
+	require.NoError(t, pool.WritePoolFile(&pool.PoolFile{Meta: meta.New("pool"), Queries: []pool.PoolEntry{
+		{QueryID: "kw", QueryText: "climate", Category: suite.CategoryKeyword, Docs: []pool.PooledDoc{{DocID: tr.k1}, {DocID: tr.k2}, {DocID: tr.k3}}},
+		{QueryID: "ph", QueryText: "climate change", Category: suite.CategoryPhrase, Docs: []pool.PooledDoc{{DocID: tr.p1}, {DocID: tr.p2}}},
+	}}, filepath.Join(tr.root, "trec", "pool.yaml")))
+	tr.writeSet(t, "first", meta.Judge{Strategy: "llm", Model: "model-a"}, [5]int{3, 2, 0, 3, 0})
+	tr.writeSet(t, "second", meta.Judge{Strategy: "llm", Model: "model-b"}, [5]int{2, 2, 1, 3, 0})
+	tr.writeSet(t, "bm25", meta.Judge{Strategy: "bm25"}, [5]int{3, 0, 0, 1, 0})
+	return tr
+}
+
+// writeSet grades k1, k2, k3, p1 and p2 in that order.
+func (tr *judgmentsTrack) writeSet(t *testing.T, name string, judge meta.Judge, grades [5]int) {
+	t.Helper()
+	require.NoError(t, judgment.WriteFile(&judgment.File{
+		Meta: meta.Meta{RunID: "judge-" + name, Judge: &judge},
+		Queries: []judgment.Entry{
+			{QueryID: "kw", Docs: []judgment.GradedDoc{{DocID: tr.k1, Grade: grades[0]}, {DocID: tr.k2, Grade: grades[1]}, {DocID: tr.k3, Grade: grades[2]}}},
+			{QueryID: "ph", Docs: []judgment.GradedDoc{{DocID: tr.p1, Grade: grades[3]}, {DocID: tr.p2, Grade: grades[4]}}},
+		},
+	}, filepath.Join(tr.root, "trec", "annotations."+name+".yaml")))
+}
+
+func (tr *judgmentsTrack) diff(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+	cmd := newDiffCmdWithReader(func(*cobra.Command, string) (storage.Reader, error) { return tr.articles, nil })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs(append([]string{"judgments", tr.root}, args...))
+	err := cmd.ExecuteContext(context.Background())
+	return out.String(), err
+}
+
+// pairwiseRow returns the numbers of a pairwise agreement row: n, exact,
+// within one, relevant, then each kappa.
+func pairwiseRow(t *testing.T, output, pair string) []string {
+	t.Helper()
+	line := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(pair) + `\s+(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)`).FindStringSubmatch(output)
+	require.NotNil(t, line, "no %q row in:\n%s", pair, output)
+	return line[1:]
+}
+
+func TestDiffJudgments_RelevantMeansTheSpecsThreshold(t *testing.T) {
+	tr := newJudgmentsTrack(t)
+
+	out, err := tr.diff(t, "--judgments", "first,second")
+	require.NoError(t, err)
+
+	// At the spec's threshold 3, k1 (3 against 2) splits the sets; at 2 all five pairs would agree.
+	assert.Equal(t, []string{"5", "0.6000", "1.0000", "0.8000"}, pairwiseRow(t, out, "model-a vs model-b")[:4])
+}
+
+func TestDiffJudgments_WithoutPGSaysGatedZerosAreIncluded(t *testing.T) {
+	tr := newJudgmentsTrack(t)
+
+	out, err := tr.diff(t, "--judgments", "first,second")
+	require.NoError(t, err)
+
+	assert.Contains(t, out, "gated zeros are included")
+}
+
+func TestDiffJudgments_WithPGMeasuresThePairsTheGateAdmits(t *testing.T) {
+	tr := newJudgmentsTrack(t)
+
+	out, err := tr.diff(t, "--judgments", "first,second", "--pg", "postgres://stub")
+	require.NoError(t, err)
+
+	assert.Contains(t, out, "gate refused 1 of 5")
+	admitted := out[strings.Index(out, "4 pairs the gate admits"):]
+	assert.Equal(t, []string{"4", "0.5000"}, pairwiseRow(t, admitted, "model-a vs model-b")[:2])
+}
+
+func TestDiffJudgments_PairsListsTheWidestDisagreementsFirst(t *testing.T) {
+	tr := newJudgmentsTrack(t)
+
+	rows := func(t *testing.T, args ...string) []string {
+		t.Helper()
+		out, err := tr.diff(t, append([]string{"--judgments", "first,second,bm25", "--pairs"}, args...)...)
+		require.NoError(t, err)
+		var docs []string
+		for _, line := range strings.Split(out, "\n") {
+			for _, doc := range []uuid.UUID{tr.k1, tr.k2, tr.k3, tr.p1, tr.p2} {
+				if strings.Contains(line, doc.String()) {
+					docs = append(docs, doc.String())
+				}
+			}
+		}
+		return docs
+	}
+
+	assert.Equal(t, []string{tr.k2.String(), tr.p1.String()}, rows(t))
+	wider := rows(t, "--min-gap", "1")
+	assert.Equal(t, []string{tr.k2.String(), tr.p1.String()}, wider[:2])
+	assert.ElementsMatch(t, []string{tr.k1.String(), tr.k3.String()}, wider[2:])
+}
+
+func TestDiffJudgments_ReferenceCountsBothKindsOfMiss(t *testing.T) {
+	tr := newJudgmentsTrack(t)
+
+	out, err := tr.diff(t, "--judgments", "first,second", "--reference", "model-a")
+	require.NoError(t, err)
+
+	// model-a's relevant pairs at threshold 3 are k1 and p1, and model-b grades k1 a 2.
+	assert.Contains(t, out, "model-b graded 0 of model-a's 3 irrelevant pairs relevant and 1 of its 2 relevant pairs irrelevant")
+	assert.Regexp(t, `(?m)^keyword\s+1\s+model-a vs model-b\s+3\s+0\.3333`, out)
+	assert.Regexp(t, `(?m)^phrase\s+1\s+model-a vs model-b\s+2\s+1\.0000`, out)
+}
+
+func TestDiffJudgments_SameInputsPrintTheSameBytes(t *testing.T) {
+	tr := newJudgmentsTrack(t)
+	tr.addQueries(t, 8)
+	args := []string{"--judgments", "first,second,bm25", "--reference", "bm25", "--pairs"}
+
+	first, err := tr.diff(t, args...)
+	require.NoError(t, err)
+	second, err := tr.diff(t, args...)
+	require.NoError(t, err)
+
+	assert.Equal(t, first, second)
+}
+
+// addQueries rewrites the track with n more keyword queries of four docs each,
+// graded differently by first, second and bm25, so a bootstrap over the
+// queries has intervals a seed can move.
+func (tr *judgmentsTrack) addQueries(t *testing.T, n int) {
+	t.Helper()
+	pf, err := pool.ReadPoolFile(filepath.Join(tr.root, "trec", "pool.yaml"))
+	require.NoError(t, err)
+	sets := map[string]*judgment.File{}
+	for _, name := range []string{"first", "second", "bm25"} {
+		sets[name], err = judgment.ReadFile(filepath.Join(tr.root, "trec", "annotations."+name+".yaml"))
+		require.NoError(t, err)
+	}
+	for q := range n {
+		entry := pool.PoolEntry{QueryID: fmt.Sprintf("extra-%d", q), QueryText: "climate", Category: suite.CategoryKeyword}
+		graded := map[string]judgment.Entry{}
+		for d := range 4 {
+			doc := uuid.New()
+			entry.Docs = append(entry.Docs, pool.PooledDoc{DocID: doc})
+			for i, name := range []string{"first", "second", "bm25"} {
+				e := graded[name]
+				e.QueryID = entry.QueryID
+				e.Docs = append(e.Docs, judgment.GradedDoc{DocID: doc, Grade: (q*(i+1) + d*(i+2)) % 4})
+				graded[name] = e
+			}
+		}
+		pf.Queries = append(pf.Queries, entry)
+		for name, e := range graded {
+			sets[name].Queries = append(sets[name].Queries, e)
+		}
+	}
+	require.NoError(t, pool.WritePoolFile(pf, filepath.Join(tr.root, "trec", "pool.yaml")))
+	for name, jf := range sets {
+		require.NoError(t, judgment.WriteFile(jf, filepath.Join(tr.root, "trec", "annotations."+name+".yaml")))
+	}
+}
+
+func TestDiffJudgments_UndefinedKappaPrintsNAAndWritesNull(t *testing.T) {
+	tr := newJudgmentsTrack(t)
+	tr.writeSet(t, "zeros", meta.Judge{Strategy: "keyword"}, [5]int{})
+	tr.writeSet(t, "nil", meta.Judge{Strategy: "manual"}, [5]int{})
+	output := filepath.Join(t.TempDir(), "agreement.json")
+
+	out, err := tr.diff(t, "--judgments", "zeros,nil", "--output", output)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"5", "1.0000", "1.0000", "1.0000", "n/a"}, pairwiseRow(t, out, "keyword vs manual"))
+	var written struct {
+		AllPairs struct {
+			Comparisons []struct {
+				QuadraticKappa struct {
+					Value *float64 `json:"value"`
+				} `json:"quadratic_kappa"`
+			} `json:"comparisons"`
+		} `json:"all_pairs"`
+	}
+	data, err := os.ReadFile(output)
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(data, &written))
+	assert.Nil(t, written.AllPairs.Comparisons[0].QuadraticKappa.Value)
+}
+
+func TestDiffJudgments_OutputNamesEverySourceItRead(t *testing.T) {
+	tr := newJudgmentsTrack(t)
+	tr.writeReport(t)
+	output := filepath.Join(t.TempDir(), "agreement.json")
+
+	_, err := tr.diff(t, "--judgments", "first,second", "--report", "latest", "--output", output)
+	require.NoError(t, err)
+
+	var written struct {
+		SchemaVersion int `json:"schema_version"`
+		Meta          struct {
+			Sources struct {
+				Judgments []struct {
+					Label string `json:"label"`
+					Path  string `json:"path"`
+					RunID string `json:"run_id"`
+				} `json:"judgments"`
+				ReportRunID string `json:"report_run_id"`
+			} `json:"sources"`
+		} `json:"meta"`
+	}
+	data, err := os.ReadFile(output)
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(data, &written))
+	assert.Equal(t, 1, written.SchemaVersion)
+	require.Len(t, written.Meta.Sources.Judgments, 2)
+	assert.Equal(t, "model-a", written.Meta.Sources.Judgments[0].Label)
+	assert.Equal(t, filepath.Join(tr.root, "trec", "annotations.first.yaml"), written.Meta.Sources.Judgments[0].Path)
+	assert.Equal(t, "judge-first", written.Meta.Sources.Judgments[0].RunID)
+	assert.Equal(t, "judge-second", written.Meta.Sources.Judgments[1].RunID)
+	assert.Equal(t, "run-agreement", written.Meta.Sources.ReportRunID)
+}
+
+// writeReport records a run of engines a and b on kw, scored with "first":
+// a ranks k1, k2 (P@2 = 1/2 at threshold 3) and b ranks k3, k1 (P@2 = 1/2).
+func (tr *judgmentsTrack) writeReport(t *testing.T) {
+	t.Helper()
+	cell := func(engine string, docs ...uuid.UUID) report.Entry {
+		e := report.Entry{QueryID: "kw", EngineName: engine, Judged: true, Precision: map[int]float64{2: 0.5}, ReturnedCount: len(docs)}
+		for i, doc := range docs {
+			e.Ranking = append(e.Ranking, report.RankedDoc{DocID: doc, Score: float64(len(docs) - i)})
+		}
+		return e
+	}
+	rpt := &report.Report{
+		SchemaVersion: 1,
+		Provenance:    meta.Meta{RunID: "run-agreement", JudgmentsRunID: "judge-first"},
+		Jobs: []report.JobReport{{
+			JobName:    "fts",
+			Aggregated: []report.AggregatedEntry{{EngineName: "a"}, {EngineName: "b"}},
+			PerQuery:   []report.Entry{cell("a", tr.k1, tr.k2), cell("b", tr.k3, tr.k1)},
+		}},
+	}
+	path := filepath.Join(tr.root, "reports", "run-agreement.json")
+	require.NoError(t, report.WriteJSON(rpt, path))
+	require.NoError(t, updateLatestPointer(filepath.Join(tr.root, "reports", "latest.json"), path))
+}
+
+func TestDiffJudgments_ReportRanksTheEnginesUnderEachSet(t *testing.T) {
+	tr := newJudgmentsTrack(t)
+	tr.writeReport(t)
+	tr.writeSet(t, "sample", meta.Judge{Strategy: "llm", Model: "model-c"}, [5]int{3, 2, 0, 3, 0})
+	sample := filepath.Join(tr.root, "trec", "annotations.sample.yaml")
+	jf, err := judgment.ReadFile(sample)
+	require.NoError(t, err)
+	jf.Queries[0].Docs = jf.Queries[0].Docs[:2]
+	require.NoError(t, judgment.WriteFile(jf, sample))
+
+	out, err := tr.diff(t, "--judgments", "first,second,sample", "--report", "latest")
+	require.NoError(t, err)
+
+	assert.Contains(t, out, "model-c: leaves 1 of the rankings' top-2 docs ungraded")
+	// Under model-b (k1 2, k3 1, nothing relevant at 3), both engines score 0 and tie.
+	assert.Regexp(t, `(?m)^P@2\s+model-a\s+0\.5000\s+0\.5000\s+a = b`, out)
+	assert.Regexp(t, `(?m)^\s+model-b\s+0\.0000\s+0\.0000\s+a = b\s+n/a`, out)
 }

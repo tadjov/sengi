@@ -37,7 +37,9 @@ Typical pipeline (pass the track path as a positional arg):
      bench export <track> --format qrels  TREC qrels for trec_eval / R / Python
 
   bench status <track>               see where you left off
-  bench diff   <track>               compare latest two runs
+  bench diff runs <track>            compare latest two runs
+  bench diff judgments <track> --judgments a,b
+                                     compare judgment sets
   bench clean  <track>               remove old report files (keep N newest)
 
 A track is any folder holding spec.yaml + suite.yaml + trec/ — nothing above it
