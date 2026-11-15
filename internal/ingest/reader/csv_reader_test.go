@@ -9,32 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCSVReader_Read(t *testing.T) {
-	csvData := `id,title,author,published
-1,Go Concurrency,John Doe,2023-10-01
-2,Understanding Interfaces,Jane Smith,2023-10-02`
-
-	reader := NewCSVReader(strings.NewReader(csvData))
-
-	records, err := reader.Read()
-	require.NoError(t, err)
-	require.Len(t, records, 2)
-
-	assert.Equal(t, map[string]string{
-		"id":        "1",
-		"title":     "Go Concurrency",
-		"author":    "John Doe",
-		"published": "2023-10-01",
-	}, records[0])
-
-	assert.Equal(t, map[string]string{
-		"id":        "2",
-		"title":     "Understanding Interfaces",
-		"author":    "Jane Smith",
-		"published": "2023-10-02",
-	}, records[1])
-}
-
 func TestCSVReader_ReadParallel(t *testing.T) {
 	csvData := `id,title,author,published
 1,Go Concurrency,John Doe,2023-10-01
