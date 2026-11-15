@@ -54,14 +54,13 @@ func TestParquetReader_Columns(t *testing.T) {
 	assert.Equal(t, []string{"id", "title", "author", "year", "tags.list.element"}, r.columns)
 }
 
-func TestParquetReader_Read(t *testing.T) {
+func TestParquetReader_Records(t *testing.T) {
 	r := newTestParquetReader(t, []parquetTestRow{
 		{ID: "1", Title: "Go Concurrency", Author: ptr("John Doe"), Year: 2023},
 		{ID: "2", Title: "Understanding Interfaces", Author: nil, Year: 2024},
 	})
 
-	records, err := r.Read()
-	require.NoError(t, err)
+	records := readRecords(t, r)
 	require.Len(t, records, 2)
 
 	assert.Equal(t, map[string]string{
@@ -85,8 +84,7 @@ func TestParquetReader_ReadRepeatedColumn(t *testing.T) {
 		{ID: "1", Title: "Go", Tags: []string{"politics", "us"}},
 	})
 
-	records, err := r.Read()
-	require.NoError(t, err)
+	records := readRecords(t, r)
 	require.Len(t, records, 1)
 
 	assert.Equal(t, "politics,us", records[0]["tags.list.element"])
@@ -100,8 +98,7 @@ func TestParquetReader_ReadAcrossRowGroups(t *testing.T) {
 	)
 	require.Len(t, r.file.RowGroups(), 3)
 
-	records, err := r.Read()
-	require.NoError(t, err)
+	records := readRecords(t, r)
 	require.Len(t, records, 3)
 }
 
@@ -114,8 +111,7 @@ func TestParquetReader_ReadBatchBoundary(t *testing.T) {
 	}
 	r := newTestParquetReader(t, rows)
 
-	records, err := r.Read()
-	require.NoError(t, err)
+	records := readRecords(t, r)
 	assert.Len(t, records, parquetRowBatchSize+7)
 }
 
@@ -193,4 +189,14 @@ func TestRowToRecord_IgnoresOutOfRangeColumns(t *testing.T) {
 	}
 
 	assert.Equal(t, map[string]string{"title": "kept"}, rowToRecord(row, []string{"title"}))
+}
+
+func readRecords(t *testing.T, r *ParquetReader) []map[string]string {
+	t.Helper()
+	var records []map[string]string
+	for record, err := range r.Records() {
+		require.NoError(t, err)
+		records = append(records, record)
+	}
+	return records
 }

@@ -21,25 +21,6 @@ func NewJSONLReader(reader io.Reader) *JSONLReader {
 
 const BufferSize = 10 * 1024 * 1024 // 10 MB
 
-func (jr *JSONLReader) Read() ([]map[string]string, error) {
-	scanner := bufio.NewScanner(jr.reader)
-	scanner.Buffer(make([]byte, BufferSize), BufferSize)
-
-	var records []map[string]string
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		if len(line) == 0 {
-			continue
-		}
-		record, err := decodeJSONLine(line)
-		if err != nil {
-			return nil, err
-		}
-		records = append(records, record)
-	}
-	return records, scanner.Err()
-}
-
 func (jr *JSONLReader) Records() iter.Seq2[map[string]string, error] {
 	return func(yield func(map[string]string, error) bool) {
 		scanner := bufio.NewScanner(jr.reader)

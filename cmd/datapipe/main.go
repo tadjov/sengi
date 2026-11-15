@@ -12,17 +12,20 @@ import (
 
 const (
 	cliName  = "datapipe"
-	cliShort = "Tusker data pipeline: preprocess a dataset, load it into an engine"
+	cliShort = "Tusker data pipeline: preprocess a dataset, embed it, load it into an engine"
 	cliLong  = `datapipe moves news data from a raw dataset into one search engine.
 
 Stages:
   preprocess           map a raw data package into a canonical data package
+  embed                embed a canonical package's articles through an embedding
+                       API into an embeddings package
   load                 load a canonical package, and optionally an embeddings
                        package built from it, into native, paradedb, tiger or es
 
 Typical flow:
   datapipe preprocess --input datasets/<name>/raw \
       --output datasets/<name>/canonical --mapping datasets/<name>/mapping.yaml
+  datapipe embed --canonical datasets/<name>/canonical/<version>/datapackage.json
   datapipe load --engine native \
       --canonical datasets/<name>/canonical/<version>/datapackage.json \
       --embeddings datasets/<name>/embeddings/<tag-dir>/<version>/datapackage.json
@@ -49,6 +52,7 @@ func newRootCmd() *cobra.Command {
 	}
 	root.AddCommand(
 		newPreprocessCmd(),
+		newEmbedCmd(),
 		newLoadCmd(),
 	)
 	return root

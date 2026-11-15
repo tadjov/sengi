@@ -14,7 +14,6 @@ import (
 const parquetRowBatchSize = 256
 
 var (
-	_ Reader            = (*ParquetReader)(nil)
 	_ RawParallelReader = (*ParquetReader)(nil)
 )
 
@@ -49,20 +48,6 @@ func NewParquetReader(r io.ReaderAt, size int64) (*ParquetReader, error) {
 		file:    f,
 		columns: cols,
 	}, nil
-}
-
-func (p *ParquetReader) Read() ([]map[string]string, error) {
-	var records []map[string]string
-	for _, rg := range p.file.RowGroups() {
-		err := p.eachRecord(rg, func(record map[string]string) error {
-			records = append(records, record)
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	return records, nil
 }
 
 var errStopRecords = errors.New("stop reading records")

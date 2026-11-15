@@ -292,7 +292,9 @@ Inspect at any point:
 ```
 bench status [<name>]              one-glance pipeline state
 bench show   report|pool|judgments|spec [<name>]
-bench diff   [<name>]              compare latest two runs
+bench diff runs [<name>]           compare latest two runs
+bench diff judgments [<name>] --judgments <set,...>
+                                   compare judgment sets
 bench clean  [<name>]              remove old report files
 ```
 
@@ -552,17 +554,16 @@ Key flags:
 - A 408, 429 or 5xx, or a request that got no response, is retried through `internal/resilience`: 5 attempts, waiting what `Retry-After` asks (seconds or an HTTP date), else 0.5 s doubling up to 5 s less up to 25% jitter. Each attempt times out after 30 s. Any other status fails the doc with its status, body and `x-typesafe-request-id`, and `--resume` retries it.
 - Jev is not deterministic: the same request can return other probabilities, so a rerun may grade a borderline doc differently. The same doc always sends the same bytes.
 
-### `bench grade [<name>] --against <S|path> [--sample N] [--seed S] [--pg <dsn>] [--report]`
+### `bench grade [<name>] --against <S|path> [--sample N] [--seed S] [--pg <dsn>]`
 
-Grades pool pairs by hand into `trec/annotations.manual.yaml` and reports how well the `--against` judge agrees. It creates or merges the manual file as `bench judge --strategy manual` does, so hand grades are kept per (query, doc) across re-pools, and it refuses an `--against` file graded against another pool.
+Grades pool pairs by hand into `trec/annotations.manual.yaml`, sampled from the `--against` judge's grades. It creates or merges the manual file as `bench judge --strategy manual` does, so hand grades are kept per (query, doc) across re-pools, and it refuses an `--against` file graded against another pool.
 
 Each screen shows progress, the query from the pool, and the article's title, publisher, date, description and first 800 characters of content (from Postgres, `--pg` / `PG_CONNECTION_STRING`). The judge's grade and the engines that retrieved the doc are not shown. Answer `0`–`3`, `s` to skip, `u` to undo the last grade, `q` to quit. Each grade is saved before the next pair shows, so rerunning the command resumes.
 
 - `--sample N` — walk N pairs drawn from the pairs the judge graded, an equal share per judge grade; a grade with fewer pairs than its share gives the shortfall to the others. Without it, every ungraded pool pair is walked
 - `--seed S` — fixes the sample and the order of docs within each query (default 1). The same pool, judge file and seed give the same walk every session; pairs already graded by hand are skipped
-- `--report` — print the agreement instead of starting a session; needs no `--pg`
 
-A session ends with progress only (`graded 37 of 150; rerun to continue`), never the agreement: seeing the judge's grades for the pairs just graded would calibrate the rest of the sample. Run `--report` once the walk is graded. The agreement covers the pairs graded in both files: their count, the exact-agreement rate, quadratic-weighted Cohen's κ over the fixed 0–3 scale, and the 4×4 table of hand grade against judge grade. A sampled κ weights high grades more than the pool does, because each grade gets an equal share.
+A session ends with progress only (`graded 37 of 150; rerun to continue`), never the agreement: seeing the judge's grades for the pairs just graded would calibrate the rest of the sample. Once the walk is graded, the hand grades are the `manual` judgment set, and `bench diff judgments <name> --judgments manual,<S> --reference manual` measures the agreement over the pairs graded in both: their count, exact agreement, Cohen's κ and the 4×4 table of hand grade against judge grade. A sampled κ weights high grades more than the pool does, because each grade gets an equal share.
 
 ### `bench run [<name>] [--judgments <S|path>] [--jobs <name,...>]`
 
@@ -664,7 +665,7 @@ The same read records what each engine ran with, in the same block, each fact on
 
 A read of the server settings, cgroup limits, cluster settings or node stats that fails, as `pg_read_file` does for a role that may not read server files, is listed under `unreadable` with its error, and the rest of the block stands. An engine that names its `container` in the spec also gets `index.container`: the image, its id and its registry digests, from `docker inspect`. A container docker cannot inspect is recorded with a `note` and a warning, never a failed run.
 
-`bench show report` prints one line per engine summarising the block. `bench diff` lists every provenance field that differs between the two runs before the metric deltas: each setting, extension, index, limit, node and image. The analysis block is compared as one field and shown as a digest.
+`bench show report` prints one line per engine summarising the block. `bench diff runs` lists every provenance field that differs between the two runs before the metric deltas: each setting, extension, index, limit, node and image. The analysis block is compared as one field and shown as a digest.
 
 ### `bench export [<name>] --format <F>`
 
@@ -688,9 +689,45 @@ bench export tracks/global-news-dataset/fts_quality --format markdown --output /
 
 Prints a one-glance dashboard showing which artifacts exist, when they were last generated, and what the natural next step is — like `git status` for the pipeline.
 
-### `bench diff [<name>]`
+### `bench diff runs [<name>]`
 
 Compares the report `latest.json` points at with the newest earlier complete report: judged metrics, no failed queries and nothing in `settings.incomplete`. When no earlier report qualifies, it warns and falls back to the newest earlier one. It warns when the judge, relevance threshold or judgments file differ, lists the index provenance fields that changed, then shows per-engine metric deltas (NDCG, MAP, MRR, latency) and per-query NDCG regressions sorted by magnitude. NDCG is compared at the largest K both runs computed. Pass `--a` / `--b` to compare specific run IDs.
+
+`bench diff` itself takes no track: `bench diff <name>` fails and names `runs` and `judgments`.
+
+### `bench diff judgments [<name>] --judgments <[label=]set,...>`
+
+Measures how alike two or more judgment sets grade the same (query, doc) pairs. It reads committed files only and writes nothing but `--output`.
+
+```bash
+bench diff judgments tracks/cc-news/fts --judgments sonnet=claude-cli,jev
+bench diff judgments tracks/cc-news/fts --reference opus \
+  --judgments sonnet=claude-cli,jev,opus=tracks/cc-news/fts/trec/cross-judge/annotations.opus.yaml
+```
+
+Each entry is a set name or an annotations path, resolved as `bench run --judgments` resolves it, with an optional `label=` in front. Without a label a set goes by its judge block's `model`, or by its `strategy` when it has no model (`keyword`, `bm25`). Two sets under one label fail, naming both files; label one of them.
+
+Sets are aligned on `(query_id, doc_id)` alone. `pool_run_id` and `pool_ref` are never compared, since a sample is pooled on its own and its run id never equals the full pool's. Grades outside 0 to 3, such as `manual`'s `-1`, are dropped, and every statistic covers only the pairs every set graded. The output prints that n, so a sample beside a full pool is measured over the sample. Sets with no pair in common fail. Relevant means a grade at or above the spec's `metrics.relevance_threshold`.
+
+| Column | Meaning |
+|---|---|
+| Grade 0 to 3 | how many common pairs each set gave each grade |
+| n | the pairs both sets of the pair graded |
+| Exact | share of pairs graded the same |
+| Within 1 | share whose grades differ by at most one |
+| Relevant | share both sets put on the same side of the threshold |
+| Quadratic κ | Cohen's κ weighted by the squared grade distance over the whole 0 to 3 scale |
+| Binary κ | Cohen's κ on relevant against not relevant |
+
+Each κ has a 95% percentile bootstrap interval over 1,000 resamples of the queries, drawn with replacement. Queries are resampled rather than pairs because one query's docs are not independent. `--seed` (default 1) fixes the resamples, so the same files and seed print the same bytes. A κ is undefined when both sets give one grade throughout; it prints `n/a`, and `null` in the JSON.
+
+- `--reference R`: for each other set, its 4×4 table against R (rows are R's grades), how many of R's irrelevant pairs it graded relevant and how many of R's relevant pairs it graded irrelevant, and the pairwise table per query category, which comes from the track's pool
+- `--pg <dsn>`: re-runs the judges' phrase, boolean and filter gate on the articles and reports the agreement twice, over all common pairs and over the pairs the gate admits. Every gated judge grades a doc the gate refuses 0 without a model seeing it, and those zeros inflate agreement. Without `--pg` only the first is printed, with a line saying gated zeros are included. Postgres is only read
+- `--pairs`: one row per common pair whose grades span at least `--min-gap` (default 2), widest span first, then by query and doc, with each set's grade and, with `--pg`, the article's title
+- `--report <path|latest>`: rescores a run report under each set, below. `latest` is the track's `reports/latest.json`
+- `--output <path>`: writes the results as JSON with `schema_version: 1` and a `meta` block whose `sources` name each judgment file's path and `run_id`, and the rescored report's run id
+
+`--report` reproduces the report before it rescores it, because a stored value its own judgments cannot give back was computed some other way. The set whose `run_id` is the report's `judgments_run_id` must be among `--judgments`. Each metric is recomputed from the stored rankings at the spec's `k_values` and threshold, and a metric that differs from the stored value for any (job, query, engine) is left out, with the first cell that differed. A set rescores only when it graded every doc in each ranking's top `max(k_values)`; a sample set does not, and is refused by name. Per job, the command prints each engine's mean under each set, the engine order with ties shown as `=`, and Kendall's τ-b between each set's means and the reference's (`--reference`, else the first entry). With a handful of engines τ-b moves in coarse steps, so read the orders too. Means are rounded to 1e-12 first, so equal means tie however they were summed.
 
 ### `bench show <subcommand> [<name>|path]`
 
