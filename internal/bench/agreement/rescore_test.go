@@ -183,3 +183,21 @@ func TestRescore_EqualMeansTieWhateverOrderTheyWereSummedIn(t *testing.T) {
 	assert.Equal(t, sets[0].Means["a"], sets[0].Means["b"])
 	assert.True(t, math.IsNaN(float64(sets[1].TauB)), "τ-b over two tied engines is undefined")
 }
+
+func TestRescore_ScoresEachJobFromItsOwnCells(t *testing.T) {
+	fx := newRescoreFixture()
+	// Engine c ranks d1 then d2 on q1: one of two relevant at threshold 1.
+	fx.report.Jobs = append(fx.report.Jobs, report.JobReport{
+		JobName:    "solo",
+		Aggregated: []report.AggregatedEntry{{EngineName: "c"}},
+		PerQuery: []report.Entry{
+			{QueryID: "q1", EngineName: "c", Judged: true, Precision: map[int]float64{2: 0.5}, RR: 1, ReturnedCount: 2, Ranking: ranking(fx.d1, fx.d2)},
+		},
+	})
+
+	got := fx.rescore(t)
+
+	require.Len(t, got.Jobs, 2)
+	assert.Equal(t, "solo", got.Jobs[1].Job)
+	assert.Equal(t, map[string]float64{"c": 0.5}, got.Jobs[1].Metrics[0].Sets[0].Means)
+}

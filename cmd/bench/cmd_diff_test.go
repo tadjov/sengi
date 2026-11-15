@@ -633,3 +633,12 @@ func TestDiffJudgments_ReportRanksTheEnginesUnderEachSet(t *testing.T) {
 	assert.Regexp(t, `(?m)^P@2\s+model-a\s+0\.5000\s+0\.5000\s+a = b`, out)
 	assert.Regexp(t, `(?m)^\s+model-b\s+0\.0000\s+0\.0000\s+a = b\s+n/a`, out)
 }
+
+func TestDiffJudgments_PairsWithPGShowEachArticlesTitle(t *testing.T) {
+	tr := newJudgmentsTrack(t)
+
+	out, err := tr.diff(t, "--judgments", "first,second", "--pairs", "--min-gap", "1", "--pg", "postgres://stub")
+	require.NoError(t, err)
+
+	assert.Regexp(t, `(?m)^kw\s+`+tr.k1.String()+`\s+1\s+3\s+2\s+climate one$`, out)
+}
