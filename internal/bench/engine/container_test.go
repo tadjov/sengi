@@ -12,6 +12,9 @@ import (
 )
 
 func TestDocker_AFailureKeepsBothTheExitAndWhatDockerSaid(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping docker-backed test in -short mode")
+	}
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Skip("no docker CLI")
 	}
