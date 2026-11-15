@@ -2,6 +2,7 @@ package main
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -83,7 +84,9 @@ func TestRun_ACellRankedDifferentlyInALaterRoundFailsTheRun(t *testing.T) {
 	assertLatestUnchanged(t, tr, before)
 	reports := tr.reports(t)
 	require.Len(t, reports, 1, "the report is still written")
-	assert.Contains(t, reports[0].Settings.Incomplete[0], "both:q1/b")
+	assert.True(t, slices.ContainsFunc(reports[0].Settings.Incomplete, func(reason string) bool {
+		return strings.Contains(reason, "both:q1/b")
+	}), "settings.incomplete = %v, want the unstable cell named", reports[0].Settings.Incomplete)
 }
 
 func TestRun_RoundsBelowOneAreRejected(t *testing.T) {

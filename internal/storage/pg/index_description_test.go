@@ -11,6 +11,13 @@ func TestDescribeIndexes_ReadsTheMigratedServer(t *testing.T) {
 	specSettings := map[string]string{
 		"hnsw.ef_search":  "123",
 		"plan_cache_mode": "force_custom_plan",
+		"work_mem":        "8192kB",
+	}
+	// SHOW reads a size in the largest unit it divides into.
+	readBack := map[string]string{
+		"hnsw.ef_search":  "123",
+		"plan_cache_mode": "force_custom_plan",
+		"work_mem":        "8MB",
 	}
 	pool, err := NewConnectionPool(testCtx, PoolConfig{
 		ConnStr:            testPool.GetConn().Config().ConnString(),
@@ -97,8 +104,8 @@ func TestDescribeIndexes_ReadsTheMigratedServer(t *testing.T) {
 		}
 	})
 
-	t.Run("connection settings the pool applied", func(t *testing.T) {
-		for name, want := range specSettings {
+	t.Run("connection settings the pool applied, as the session reads them", func(t *testing.T) {
+		for name, want := range readBack {
 			if got := description.Settings[name]; got != want {
 				t.Errorf("setting %s = %q, want %q", name, got, want)
 			}

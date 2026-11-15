@@ -81,7 +81,7 @@ func TestRun_ReportRecordsWhatThePostgresServerRanWith(t *testing.T) {
     connection: %q
     container: %s
     connection_settings:
-      plan_cache_mode: force_custom_plan`, pg.ConnString, containerName(t, pg.Container)), "SELECT id FROM articles LIMIT 10")
+      maintenance_work_mem: 65536kB`, pg.ConnString, containerName(t, pg.Container)), "SELECT id FROM articles LIMIT 10")
 
 	out, err := execute(t, newRunCmd(), track, "--latency-only")
 	require.NoError(t, err, out)
@@ -97,7 +97,10 @@ func TestRun_ReportRecordsWhatThePostgresServerRanWith(t *testing.T) {
 		extensions[ext.Name] = ext.Version
 	}
 	assert.NotEmpty(t, extensions["vector"], "pgvector with its version; got %v", server.Extensions)
-	assert.Equal(t, "force_custom_plan", server.Settings["plan_cache_mode"], "the spec's connection setting, read back from the session")
+	assert.Equal(t, "64MB", server.Settings["maintenance_work_mem"], "the spec's 65536kB, read back from the session")
+	for _, setting := range server.ServerSettings {
+		assert.NotEqual(t, "default", setting.Source, setting.Name)
+	}
 	require.NotNil(t, server.Limits, "unreadable: %v", server.Unreadable)
 	assert.NotEmpty(t, server.Limits.CPUMax)
 	assert.Empty(t, server.Unreadable)

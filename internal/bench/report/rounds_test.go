@@ -37,18 +37,19 @@ func roundsRun(roundLatencies ...time.Duration) *runner.BenchmarkResult {
 	}
 }
 
+// The rounds' mean, 30 ms, is not their median, 20 ms.
 func TestGenerate_KeepsEveryRoundAndTheirMedianWithItsSpread(t *testing.T) {
-	agg := Generate(roundsRun(30*time.Millisecond, 10*time.Millisecond, 20*time.Millisecond), nil).Jobs[0].Aggregated[0]
+	agg := Generate(roundsRun(60*time.Millisecond, 10*time.Millisecond, 20*time.Millisecond), nil).Jobs[0].Aggregated[0]
 
 	require.Len(t, agg.Rounds, 3)
-	assert.Equal(t, 30*time.Millisecond, agg.Rounds[0].P50(), "rounds keep their order")
+	assert.Equal(t, 60*time.Millisecond, agg.Rounds[0].P50(), "rounds keep their order")
 	require.NotNil(t, agg.AcrossRounds)
-	assert.Equal(t, Spread{Median: 20 * time.Millisecond, Min: 10 * time.Millisecond, Max: 30 * time.Millisecond}, agg.AcrossRounds.P50)
-	assert.Equal(t, Spread{Median: 20 * time.Millisecond, Min: 10 * time.Millisecond, Max: 30 * time.Millisecond}, agg.AcrossRounds.P99)
+	assert.Equal(t, Spread{Median: 20 * time.Millisecond, Min: 10 * time.Millisecond, Max: 60 * time.Millisecond}, agg.AcrossRounds.P50)
+	assert.Equal(t, Spread{Median: 20 * time.Millisecond, Min: 10 * time.Millisecond, Max: 60 * time.Millisecond}, agg.AcrossRounds.P99)
 }
 
 func TestWriters_ShowTheMedianOfTheRoundsWithItsSpread(t *testing.T) {
-	rpt := Generate(roundsRun(30*time.Millisecond, 10*time.Millisecond, 20*time.Millisecond), nil)
+	rpt := Generate(roundsRun(60*time.Millisecond, 10*time.Millisecond, 20*time.Millisecond), nil)
 	var terminal, markdown bytes.Buffer
 	WriteTable(rpt, &terminal)
 	WriteMarkdown(rpt, &markdown)
@@ -58,7 +59,7 @@ func TestWriters_ShowTheMedianOfTheRoundsWithItsSpread(t *testing.T) {
 	for name, out := range map[string]string{"terminal": terminal.String(), "markdown": markdown.String(), "html": string(page)} {
 		_, roundsSection, found := strings.Cut(out, "Latency Across Rounds")
 		require.True(t, found, "%s has no rounds section", name)
-		assert.Contains(t, roundsSection, "20.00ms [10.00ms, 30.00ms]", name)
+		assert.Contains(t, roundsSection, "20.00ms [10.00ms, 60.00ms]", name)
 	}
 }
 
