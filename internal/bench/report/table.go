@@ -511,7 +511,6 @@ const serverTimeTitle = "Server Time (reported by the engine)"
 
 var serverTimeHeader = table.Row{"Engine", "p50", "p95", "p99", "Mean", "Samples"}
 
-// serverTimed keeps the engines that report a server time.
 func serverTimed(aggregated []AggregatedEntry) []AggregatedEntry {
 	var reporting []AggregatedEntry
 	for _, agg := range aggregated {

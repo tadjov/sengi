@@ -529,19 +529,35 @@ func (r *Runner) queryResult(q *suite.Query, c *cell) QueryResult {
 	}
 }
 
+// cellResult is one cell measured over every round.
+type cellResult struct {
+	rankedIDs      []uuid.UUID
+	returnedCount  int
+	corpusMatches  *int64
+	latencyStats   LatencyStats
+	roundLatencies []LatencyStats
+	serverStats    *LatencyStats
+	unstableRounds []int
+	err            error
+}
+
 // acrossRounds keeps the first round's ranking, which is the one scored, and
 // pools every round's latencies. A round that failed fails the cell.
-func acrossRounds(rounds []execResult) execResult {
+func acrossRounds(rounds []execResult) cellResult {
 	for i, round := range rounds {
 		if round.err == nil {
 			continue
 		}
 		if len(rounds) == 1 {
-			return round
+			return cellResult{err: round.err}
 		}
-		return execResult{err: fmt.Errorf("round %d of %d: %w", i+1, len(rounds), round.err)}
+		return cellResult{err: fmt.Errorf("round %d of %d: %w", i+1, len(rounds), round.err)}
 	}
-	merged := rounds[0]
+	merged := cellResult{
+		rankedIDs:     rounds[0].rankedIDs,
+		returnedCount: rounds[0].returnedCount,
+		corpusMatches: rounds[0].corpusMatches,
+	}
 	var latencies, serverTimes []time.Duration
 	for i, round := range rounds {
 		latencies = append(latencies, round.latencyStats.Raw...)
@@ -601,14 +617,12 @@ func (r *Runner) judgmentsFor(q *suite.Query) map[uuid.UUID]int {
 }
 
 type execResult struct {
-	rankedIDs      []uuid.UUID
-	returnedCount  int
-	corpusMatches  *int64
-	latencyStats   LatencyStats
-	roundLatencies []LatencyStats
-	serverStats    *LatencyStats
-	unstableRounds []int
-	err            error
+	rankedIDs     []uuid.UUID
+	returnedCount int
+	corpusMatches *int64
+	latencyStats  LatencyStats
+	serverStats   *LatencyStats
+	err           error
 }
 
 // measurement is one query on one engine, executed for warmup and then for the

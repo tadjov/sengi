@@ -809,6 +809,10 @@ func describeIndex(ctx context.Context, describer engine.IndexDescriber) (*engin
 	return describer.DescribeIndex(ctx)
 }
 
+// containerInspectTimeout bounds each docker inspect, so a docker daemon that
+// does not answer delays the run by this much rather than stalling it.
+const containerInspectTimeout = 15 * time.Second
+
 // inspectContainers reads the image of every container the spec names. One
 // docker cannot inspect is warned about and kept with its note.
 func inspectContainers(ctx context.Context, w io.Writer, engines map[string]spec.Engine) map[string]engine.Container {
@@ -817,7 +821,7 @@ func inspectContainers(ctx context.Context, w io.Writer, engines map[string]spec
 		if engines[name].Container == "" {
 			continue
 		}
-		inspectCtx, cancel := context.WithTimeout(ctx, indexDescribeTimeout)
+		inspectCtx, cancel := context.WithTimeout(ctx, containerInspectTimeout)
 		container := engine.InspectContainer(inspectCtx, engines[name].Container)
 		cancel()
 		if container.Note != "" {

@@ -57,7 +57,7 @@ func docker(ctx context.Context, args ...string) (string, error) {
 	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) && stderr.Len() > 0 {
-			return "", fmt.Errorf("docker %s: %s", args[0], strings.TrimSpace(stderr.String()))
+			return "", fmt.Errorf("docker %s: %s: %w", args[0], strings.TrimSpace(stderr.String()), err)
 		}
 		return "", fmt.Errorf("docker %s: %w", args[0], err)
 	}
