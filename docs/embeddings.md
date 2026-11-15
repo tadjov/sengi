@@ -222,6 +222,35 @@ The notebook can't run locally. `scripts/tests/test_colab_notebook.py` checks th
 every script call in it parses against the scripts' CLIs, which have abbreviations
 turned off so a stale flag fails instead of matching a longer one.
 
+### `datapipe embed`
+
+`datapipe embed` writes the same package format through an embedding API instead of
+on a GPU. It sends each article's `lead-v1` text to Ollama in batches and publishes
+one vector per canonical row, in canonical order, so `datapipe load` takes the
+package unchanged.
+
+```bash
+EMBEDDING_BASE_URL=http://<ollama-host>:11434 go run ./cmd/datapipe embed \
+  --canonical datasets/<ds>/canonical/<version>/datapackage.json --version go-v1
+# writes datasets/<ds>/embeddings/<tag-dir>/go-v1/
+```
+
+- Ollama comes from `EMBEDDING_BASE_URL`, `EMBEDDING_MODEL` (default `qwen3-embedding:0.6b`)
+  and `EMBEDDING_DIM` (default 1024), as the search API reads them. Vectors are sliced to
+  the width and L2-normalised, like queries.
+- `--batch-size` (default 64) is the leads per request. `--max-tokens` (default 512) is
+  sent as Ollama's `num_ctx`, which cuts a longer lead.
+- A version folder that already exists is refused before anything is embedded; pass a
+  new `--version`. `--limit N` records `embedding.limit`, and `datapipe load` takes it
+  only with `--trial`.
+- The descriptor records `producedBy {tool: "datapipe embed"}`. In `embedding`, `hfModel`
+  is the source repo (`--hf-model`, required unless the model is the default),
+  `revision` the Ollama model digest from `/api/tags`, `dtype` its quantization level
+  from `/api/show`, and `maxTokens` the `num_ctx` sent.
+
+Go-made vectors share the Kaggle tag, so a bench run must use the thesis package; nothing
+refuses pairing them with Hugging Face query vectors.
+
 ### Query vectors
 
 A track's queries are embedded with the same runtime into

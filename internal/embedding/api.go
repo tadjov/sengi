@@ -7,6 +7,9 @@ import (
 // DefaultModel is the Ollama model used when none is configured.
 const DefaultModel = "qwen3-embedding:0.6b"
 
+// DefaultHuggingFaceModel is the source repo DefaultModel is built from.
+const DefaultHuggingFaceModel = "Qwen/Qwen3-Embedding-0.6B"
+
 type Request struct {
 	Model string `json:"model"`
 
@@ -34,4 +37,14 @@ type BatchResponse struct {
 type Client interface {
 	Generate(ctx context.Context, req Request) (*Response, error)
 	GenerateBatch(ctx context.Context, req BatchRequest) (*BatchResponse, error)
+}
+
+// ModelDescription identifies the build of a model an embedding API serves.
+type ModelDescription struct {
+	Digest            string
+	QuantizationLevel string
+}
+
+type ModelDescriber interface {
+	DescribeModel(ctx context.Context, model string) (ModelDescription, error)
 }
