@@ -39,6 +39,9 @@ type Config struct {
 	RelevanceThreshold int
 	WarmupRuns         int
 	Runs               int
+	// Rounds is how many times each job is measured over all its queries and
+	// engines, warmup included; zero measures once.
+	Rounds int
 	// RankingDepth cuts every ranking before it is scored or stored, so scores
 	// count only docs a pool that deep could have judged. Zero keeps it whole.
 	RankingDepth int
@@ -77,5 +80,10 @@ func (c Config) validate() error {
 	if c.WarmupRuns < 0 {
 		return fmt.Errorf("warmup iterations must not be negative, got %d", c.WarmupRuns)
 	}
+	if c.Rounds < 0 {
+		return fmt.Errorf("rounds must not be negative, got %d", c.Rounds)
+	}
 	return nil
 }
+
+func (c Config) rounds() int { return max(c.Rounds, 1) }

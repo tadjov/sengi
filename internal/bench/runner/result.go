@@ -14,11 +14,17 @@ type QueryResult struct {
 	RankedDocIDs  []uuid.UUID
 	ReturnedCount int
 	CorpusMatches *int64
-	Latency       LatencyStats
+	// Latency pools the measured iterations of every round.
+	Latency LatencyStats
+	// RoundLatencies holds each round's latency, in round order.
+	RoundLatencies []LatencyStats
 	// ServerLatency is the server time the engine reported for each measured
 	// iteration; nil when it reports none.
 	ServerLatency *LatencyStats
-	Error         error
+	// UnstableRounds lists the rounds, counted from 1, whose ranking differs
+	// from the first round's, which is the one scored.
+	UnstableRounds []int
+	Error          error
 }
 
 type JobResult struct {

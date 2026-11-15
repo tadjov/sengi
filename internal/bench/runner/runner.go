@@ -324,35 +324,79 @@ func (r *Runner) RunJob(ctx context.Context, req JobRequest) (*JobResult, error)
 }
 
 func (r *Runner) runQueries(ctx context.Context, jr *JobResult, req JobRequest) {
-	queries := req.Suite.Suite.Queries
-	// Pre-populate order and result maps sequentially before launching any
-	// goroutines. Goroutines only READ the outer jr.Results map (to get their
-	// inner map pointer) and write only to their own inner map — no races.
-	for i := range queries {
-		jr.QueryOrder = append(jr.QueryOrder, queries[i].ID)
-		jr.Results[queries[i].ID] = make(map[string]QueryResult)
+	job := &jobRounds{
+		req:     req,
+		engines: jr.EngineNames,
+		queries: req.Suite.Suite.Queries,
+		rounds:  r.config.rounds(),
+	}
+	job.cells = make([][]*cell, len(job.queries))
+	for i := range job.queries {
+		jr.QueryOrder = append(jr.QueryOrder, job.queries[i].ID)
+		jr.Results[job.queries[i].ID] = make(map[string]QueryResult)
 	}
 
+	for round := range job.rounds {
+		r.runRound(ctx, job, round)
+		if ctx.Err() != nil {
+			return
+		}
+	}
+
+	for i := range job.queries {
+		for _, c := range job.cells[i] {
+			jr.Results[job.queries[i].ID][c.engine] = r.queryResult(&job.queries[i], c)
+		}
+	}
+}
+
+// jobRounds is a job measured round after round. The first round builds each
+// query's cells; every later round sends the same requests again.
+type jobRounds struct {
+	req     JobRequest
+	engines []string
+	queries []suite.Query
+	// cells[i] are queries[i]'s, in the job's engine order.
+	cells  [][]*cell
+	rounds int
+}
+
+// cell is one query on one engine: the request every round sends, and what
+// each round measured.
+type cell struct {
+	engine      string
+	measurement measurement
+	digest      string
+	// unsent is why the request could not be built; the cell is never measured.
+	unsent error
+	rounds []execResult
+}
+
+// roundPass is one round of a job and the semaphore that bounds its
+// concurrent engine calls across every query.
+type roundPass struct {
+	number    int
+	engineSem chan struct{}
+}
+
+func (r *Runner) runRound(ctx context.Context, job *jobRounds, round int) {
 	// querySem controls how many queries execute concurrently.
 	// QueryParallelismSerial (1) = one at a time → clean latency numbers.
 	// QueryParallelismUnlimited (0) → all queries in parallel → faster pool/validate.
 	qp := r.config.QueryParallelism
 	if qp <= 0 {
-		qp = len(queries)
+		qp = len(job.queries)
 	}
 	querySem := make(chan struct{}, qp)
 
-	// engineSem is shared across all query goroutines — it bounds total
-	// concurrent engine calls globally, not just per query.
 	ep := r.config.EngineParallelism
 	if ep <= 0 {
-		ep = len(jr.EngineNames)
+		ep = len(job.engines)
 	}
-	engineSem := make(chan struct{}, ep)
+	pass := roundPass{number: round, engineSem: make(chan struct{}, ep)}
 
 	var wg sync.WaitGroup
-	for i := range queries {
-		q := &queries[i]
+	for i := range job.queries {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -361,118 +405,160 @@ func (r *Runner) runQueries(ctx context.Context, jr *JobResult, req JobRequest) 
 			if ctx.Err() != nil {
 				return
 			}
-			r.runEnginesForQuery(ctx, jr, q, req, engineSem)
+			if round == 0 {
+				job.cells[i] = r.prepareCells(ctx, job, &job.queries[i])
+			}
+			r.measureQuery(ctx, job.cells[i], pass)
 		}()
 	}
 	wg.Wait()
 }
 
-// runEnginesForQuery fans out to all engines for a single query concurrently.
-// Each goroutine writes only to its own index in the slots slice (no mutex),
-// and the merge into jr.Results happens after all goroutines finish.
-func (r *Runner) runEnginesForQuery(ctx context.Context, jr *JobResult, q *suite.Query, req JobRequest, engineSem chan struct{}) {
-	judgments := r.judgmentsFor(q)
-	queryVector := r.queryVector(ctx, req.Suite, q)
-
-	type slot struct {
-		engName string
-		qr      QueryResult
-		present bool
-	}
-	slots := make([]slot, len(jr.EngineNames))
-	for idx, name := range jr.EngineNames {
-		slots[idx].engName = name
-	}
-
-	var wg sync.WaitGroup
-	for idx, engName := range jr.EngineNames {
-		exec, ok := req.Executors[engName]
+// prepareCells resolves the query's request for every engine of the job.
+func (r *Runner) prepareCells(ctx context.Context, job *jobRounds, q *suite.Query) []*cell {
+	queryVector := r.queryVector(ctx, job.req.Suite, q)
+	cells := make([]*cell, 0, len(job.engines))
+	for _, engName := range job.engines {
+		exec, ok := job.req.Executors[engName]
 		if !ok {
 			continue
 		}
-		idx, engName := idx, engName
+		c := &cell{engine: engName, rounds: make([]execResult, job.rounds)}
+		cells = append(cells, c)
+
+		// An engine with no declared binding reads its own block; an empty
+		// QuerySource would instead match nothing and drop the query silently.
+		binding, declared := job.req.Bindings[engName]
+		if !declared {
+			binding = spec.QueryBinding{QuerySource: engName}
+		}
+		resolved, err := q.ResolveEngineQuery(suite.ResolveOptions{
+			Engine:      binding.QuerySource,
+			Registry:    job.req.Suite.Registry,
+			SuiteDir:    job.req.Suite.Dir,
+			Defaults:    binding.Params,
+			QueryVector: queryVector,
+		})
+		if err != nil {
+			c.unsent = fmt.Errorf("resolve query: %w", err)
+			slog.Warn("resolve query failed", "query", q.ID, "engine", engName, "error", err)
+			continue
+		}
+		request := job.req.Dialects[engName].Request(job.req.Track, resolved)
+		if c.digest, err = requestDigest(request); err != nil {
+			c.unsent = err
+			slog.Warn("request digest failed", "query", q.ID, "engine", engName, "error", err)
+			continue
+		}
+		c.measurement = measurement{
+			queryID:  q.ID,
+			engine:   engName,
+			executor: exec,
+			request:  request,
+			timeout:  job.req.QueryTimeout,
+		}
+	}
+	return cells
+}
+
+// measureQuery runs the query's cells with the engine order rotated by one each
+// round, so no engine always runs first or last. Serial engines run in exactly
+// that order; goroutines racing for the semaphore would pick their own.
+func (r *Runner) measureQuery(ctx context.Context, cells []*cell, pass roundPass) {
+	ordered := rotated(cells, pass.number)
+	if r.config.EngineParallelism == EngineParallelismSerial {
+		for _, c := range ordered {
+			r.measureCell(ctx, c, pass)
+		}
+		return
+	}
+	var wg sync.WaitGroup
+	for _, c := range ordered {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			engineSem <- struct{}{}
-			defer func() { <-engineSem }()
-
-			// An engine with no declared binding reads its own block; an empty
-			// QuerySource would instead match nothing and drop the query silently.
-			binding, declared := req.Bindings[engName]
-			if !declared {
-				binding = spec.QueryBinding{QuerySource: engName}
-			}
-			resolved, err := q.ResolveEngineQuery(suite.ResolveOptions{
-				Engine:      binding.QuerySource,
-				Registry:    req.Suite.Registry,
-				SuiteDir:    req.Suite.Dir,
-				Defaults:    binding.Params,
-				QueryVector: queryVector,
-			})
-			if err != nil {
-				slots[idx] = slot{
-					engName: engName,
-					qr:      QueryResult{QueryID: q.ID, EngineName: engName, Error: fmt.Errorf("resolve query: %w", err)},
-					present: true,
-				}
-				slog.Warn("resolve query failed", "query", q.ID, "engine", engName, "error", err)
-				return
-			}
-			request := req.Dialects[engName].Request(req.Track, resolved)
-			digest, err := requestDigest(request)
-			if err != nil {
-				slots[idx] = slot{
-					engName: engName,
-					qr:      QueryResult{QueryID: q.ID, EngineName: engName, Error: err},
-					present: true,
-				}
-				slog.Warn("request digest failed", "query", q.ID, "engine", engName, "error", err)
-				return
-			}
-
-			result := r.measure(ctx, measurement{
-				queryID:  q.ID,
-				engine:   engName,
-				executor: exec,
-				request:  request,
-				timeout:  req.QueryTimeout,
-			})
-
-			var scores metrics.ScoreSet
-			if result.err == nil && len(judgments) > 0 {
-				scores = metrics.ComputeAll(result.rankedIDs, judgments, r.config.KValues, r.config.RelevanceThreshold)
-			}
-			if result.err != nil {
-				slog.Warn("query failed", "query", q.ID, "engine", engName, "error", result.err)
-			}
-
-			slots[idx] = slot{
-				engName: engName,
-				qr: QueryResult{
-					QueryID:       q.ID,
-					Category:      string(q.Category),
-					EngineName:    engName,
-					RequestDigest: digest,
-					Scores:        scores,
-					RankedDocIDs:  result.rankedIDs,
-					ReturnedCount: result.returnedCount,
-					CorpusMatches: result.corpusMatches,
-					Latency:       result.latencyStats,
-					ServerLatency: result.serverStats,
-					Error:         result.err,
-				},
-				present: true,
-			}
+			r.measureCell(ctx, c, pass)
 		}()
 	}
 	wg.Wait()
+}
 
-	for _, s := range slots {
-		if s.present {
-			jr.Results[q.ID][s.engName] = s.qr
+func rotated(cells []*cell, round int) []*cell {
+	if len(cells) == 0 {
+		return cells
+	}
+	shift := round % len(cells)
+	return append(slices.Clone(cells[shift:]), cells[:shift]...)
+}
+
+func (r *Runner) measureCell(ctx context.Context, c *cell, pass roundPass) {
+	if c.unsent != nil {
+		return
+	}
+	pass.engineSem <- struct{}{}
+	defer func() { <-pass.engineSem }()
+	c.rounds[pass.number] = r.measure(ctx, c.measurement)
+	if err := c.rounds[pass.number].err; err != nil {
+		slog.Warn("query failed", "query", c.measurement.queryID, "engine", c.engine, "round", pass.number+1, "error", err)
+	}
+}
+
+func (r *Runner) queryResult(q *suite.Query, c *cell) QueryResult {
+	if c.unsent != nil {
+		return QueryResult{QueryID: q.ID, EngineName: c.engine, Error: c.unsent}
+	}
+	measured := acrossRounds(c.rounds)
+	var scores metrics.ScoreSet
+	if judgments := r.judgmentsFor(q); measured.err == nil && len(judgments) > 0 {
+		scores = metrics.ComputeAll(measured.rankedIDs, judgments, r.config.KValues, r.config.RelevanceThreshold)
+	}
+	return QueryResult{
+		QueryID:        q.ID,
+		Category:       string(q.Category),
+		EngineName:     c.engine,
+		RequestDigest:  c.digest,
+		Scores:         scores,
+		RankedDocIDs:   measured.rankedIDs,
+		ReturnedCount:  measured.returnedCount,
+		CorpusMatches:  measured.corpusMatches,
+		Latency:        measured.latencyStats,
+		RoundLatencies: measured.roundLatencies,
+		ServerLatency:  measured.serverStats,
+		UnstableRounds: measured.unstableRounds,
+		Error:          measured.err,
+	}
+}
+
+// acrossRounds keeps the first round's ranking, which is the one scored, and
+// pools every round's latencies. A round that failed fails the cell.
+func acrossRounds(rounds []execResult) execResult {
+	for i, round := range rounds {
+		if round.err == nil {
+			continue
+		}
+		if len(rounds) == 1 {
+			return round
+		}
+		return execResult{err: fmt.Errorf("round %d of %d: %w", i+1, len(rounds), round.err)}
+	}
+	merged := rounds[0]
+	var latencies, serverTimes []time.Duration
+	for i, round := range rounds {
+		latencies = append(latencies, round.latencyStats.Raw...)
+		if round.serverStats != nil {
+			serverTimes = append(serverTimes, round.serverStats.Raw...)
+		}
+		merged.roundLatencies = append(merged.roundLatencies, round.latencyStats)
+		if i > 0 && !slices.Equal(round.rankedIDs, rounds[0].rankedIDs) {
+			merged.unstableRounds = append(merged.unstableRounds, i+1)
 		}
 	}
+	merged.latencyStats = ComputeLatencyStats(latencies)
+	if len(serverTimes) > 0 {
+		serverStats := ComputeLatencyStats(serverTimes)
+		merged.serverStats = &serverStats
+	}
+	return merged
 }
 
 // queryVector looks the query's text up once when any of its blocks takes the
@@ -515,12 +601,14 @@ func (r *Runner) judgmentsFor(q *suite.Query) map[uuid.UUID]int {
 }
 
 type execResult struct {
-	rankedIDs     []uuid.UUID
-	returnedCount int
-	corpusMatches *int64
-	latencyStats  LatencyStats
-	serverStats   *LatencyStats
-	err           error
+	rankedIDs      []uuid.UUID
+	returnedCount  int
+	corpusMatches  *int64
+	latencyStats   LatencyStats
+	roundLatencies []LatencyStats
+	serverStats    *LatencyStats
+	unstableRounds []int
+	err            error
 }
 
 // measurement is one query on one engine, executed for warmup and then for the

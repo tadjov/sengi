@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -31,6 +32,68 @@ type fakeIndex struct {
 	ranked  map[string][]uuid.UUID
 	failing map[string]bool
 	took    *int
+	// log, when set, records every search. A query in drifted answers its
+	// drifted ranking once log holds more than driftAfter searches of it here.
+	log        *searchLog
+	drifted    map[string][]uuid.UUID
+	driftAfter int
+}
+
+// searchLog records the searches a fake cluster answers, in arrival order.
+type searchLog struct {
+	mu       sync.Mutex
+	searches []loggedSearch
+}
+
+type loggedSearch struct {
+	index   string
+	queryID string
+}
+
+// add records a search and returns how many searches of the query the index
+// has answered since the last reset, this one included.
+func (l *searchLog) add(search loggedSearch) int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.searches = append(l.searches, search)
+	n := 0
+	for _, s := range l.searches {
+		if s == search {
+			n++
+		}
+	}
+	return n
+}
+
+func (l *searchLog) reset() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.searches = nil
+}
+
+// indexesSearchedFor lists the index of every search of queryID, in order.
+func (l *searchLog) indexesSearchedFor(queryID string) []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var indexes []string
+	for _, s := range l.searches {
+		if s.queryID == queryID {
+			indexes = append(indexes, s.index)
+		}
+	}
+	return indexes
+}
+
+func (i *fakeIndex) ranking(name, queryID string) []uuid.UUID {
+	if i.log == nil {
+		return i.ranked[queryID]
+	}
+	if i.log.add(loggedSearch{index: name, queryID: queryID}) > i.driftAfter {
+		if drifted, ok := i.drifted[queryID]; ok {
+			return drifted
+		}
+	}
+	return i.ranked[queryID]
 }
 
 // fakeCluster serves the part of the Elasticsearch API the bench executors
@@ -58,7 +121,7 @@ func fakeCluster(t *testing.T, indexes map[string]*fakeIndex) string {
 			_, _ = fmt.Fprintf(w, `{"count": %d}`, index.count)
 		case "_search", "_search/template":
 			body, _ := io.ReadAll(r.Body)
-			for queryID, ids := range index.ranked {
+			for queryID := range index.ranked {
 				if !bytes.Contains(body, []byte(`"`+queryID+`"`)) {
 					continue
 				}
@@ -66,7 +129,7 @@ func fakeCluster(t *testing.T, indexes map[string]*fakeIndex) string {
 					http.Error(w, "shard failure", http.StatusInternalServerError)
 					return
 				}
-				writeHits(w, ids, index.took)
+				writeHits(w, index.ranking(parts[0], queryID), index.took)
 				return
 			}
 			writeHits(w, nil, index.took)

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,6 +34,7 @@ type runFlags struct {
 	jobs        string // comma-separated job name filter
 	warmup      int
 	iters       int
+	rounds      int
 	latencyOnly bool
 }
 
@@ -60,6 +62,8 @@ report is marked latency_only and never becomes latest.json.
 The report is always written. bench run then exits non-zero and leaves
 latest.json alone when the run failed:
   • a (query, engine) execution errored
+  • with --rounds, a (query, engine) cell ranked differently in a later round
+    than in the first, whose ranking is the one scored
   • it measured a (query, engine) cell the pool dropped (--allow-partial)
   • it ran a query the pool holds no entry for
   • it measured an engine the pool never saw
@@ -90,6 +94,7 @@ spec.defaults.judgments.`,
 	cmd.Flags().StringVar(&f.jobs, "jobs", "", "Comma-separated job names to run (default: all jobs in spec)")
 	cmd.Flags().IntVar(&f.warmup, "warmup", 0, "Warmup iterations")
 	cmd.Flags().IntVar(&f.iters, "iterations", 0, "Measured iterations (0 = spec.runs.iterations)")
+	cmd.Flags().IntVar(&f.rounds, "rounds", 1, "Measure every job this many times, warmup included, rotating the engine order each round")
 	cmd.Flags().BoolVar(&f.latencyOnly, "latency-only", false, "Measure latency without judgments; the report never becomes latest.json")
 	return cmd
 }
@@ -98,6 +103,9 @@ func executeRun(cmd *cobra.Command, f runFlags, args []string) error {
 	ks, err := parseKList(f.kValues)
 	if err != nil {
 		return err
+	}
+	if f.rounds < 1 {
+		return fmt.Errorf("--rounds must be at least 1, got %d", f.rounds)
 	}
 	in := trackInputs(f.trackArg, args)
 	in.SpecPath = f.specPath
@@ -115,6 +123,7 @@ func newRunConfig(f runFlags, bs *spec.BenchSpec, ks []int, kFromFlag bool) runn
 		RelevanceThreshold: bs.Metrics.RelevanceThreshold,
 		WarmupRuns:         firstNonZero(f.warmup, bs.Runs.Warmup),
 		Runs:               firstNonZero(f.iters, bs.Runs.Iterations),
+		Rounds:             f.rounds,
 		QueryParallelism:   runner.QueryParallelismSerial,
 		EngineParallelism:  runner.EngineParallelismSerial,
 	}
@@ -235,6 +244,7 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 	rpt.Settings = report.RunSettings{
 		Warmup:       runCfg.WarmupRuns,
 		Iterations:   runCfg.Runs,
+		Rounds:       runCfg.Rounds,
 		QueryTimeout: bs.Runs.QueryTimeout,
 		JobFilter:    jobFilter,
 		LatencyOnly:  f.latencyOnly,
@@ -436,6 +446,10 @@ func runFailures(result *runner.BenchmarkResult, judgments *runJudgments, suiteQ
 	}
 	if cells := erroredCells(result); len(cells) > 0 {
 		failures = append(failures, fmt.Sprintf("%d (query, engine) executions errored: %s", len(cells), strings.Join(cells, ", ")))
+	}
+	if cells := unstableRankings(result); len(cells) > 0 {
+		failures = append(failures, fmt.Sprintf("%d (query, engine) cells ranked differently in a later round than in the first, which is the one scored: %s; an unstable tie or a corpus that changed under the run",
+			len(cells), strings.Join(cells, ", ")))
 	}
 	if judgments.meta != nil {
 		if engines := unpooledEngines(result, judgments); len(engines) > 0 {
@@ -641,6 +655,26 @@ func erroredCells(result *runner.BenchmarkResult) []string {
 				if qr, ok := jr.Results[queryID][engineName]; ok && qr.Error != nil {
 					cells = append(cells, fmt.Sprintf("%s:%s/%s", jr.JobName, queryID, engineName))
 				}
+			}
+		}
+	}
+	return cells
+}
+
+func unstableRankings(result *runner.BenchmarkResult) []string {
+	var cells []string
+	for _, jr := range result.Jobs {
+		for _, queryID := range jr.QueryOrder {
+			for _, engineName := range jr.EngineNames {
+				qr, ok := jr.Results[queryID][engineName]
+				if !ok || len(qr.UnstableRounds) == 0 {
+					continue
+				}
+				rounds := make([]string, len(qr.UnstableRounds))
+				for i, round := range qr.UnstableRounds {
+					rounds[i] = strconv.Itoa(round)
+				}
+				cells = append(cells, fmt.Sprintf("%s:%s/%s (round %s)", jr.JobName, queryID, engineName, strings.Join(rounds, ", ")))
 			}
 		}
 	}

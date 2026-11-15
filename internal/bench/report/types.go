@@ -165,7 +165,12 @@ type AggregatedEntry struct {
 	// ServerLatency covers the same queries as Latency; nil for an engine
 	// that reports no server time.
 	ServerLatency *LatencyStats `json:",omitempty"`
-	QueryCount    int
+	// Rounds holds each round's latency over the same queries as Latency,
+	// which pools them; nil in reports written before rounds.
+	Rounds []LatencyStats `json:",omitempty"`
+	// AcrossRounds is nil in reports written before rounds.
+	AcrossRounds *RoundSpread `json:",omitempty"`
+	QueryCount   int
 	// JudgedCount is the size of the job's judged query set, the denominator
 	// of every quality mean. A query this engine failed or had no block for
 	// scores 0.
@@ -187,6 +192,20 @@ type LatencyStats struct {
 	Stddev      time.Duration         `json:"stddev"`
 	Percentiles map[int]time.Duration `json:"percentiles"`
 	SampleCount int                   `json:"sample_count"`
+}
+
+// RoundSpread is the median of the rounds' p50, p95 and p99, each with the
+// smallest and largest round value.
+type RoundSpread struct {
+	P50 Spread
+	P95 Spread
+	P99 Spread
+}
+
+type Spread struct {
+	Median time.Duration
+	Min    time.Duration
+	Max    time.Duration
 }
 
 func fromRunnerServerLatency(s *runner.LatencyStats) *LatencyStats {
@@ -219,6 +238,9 @@ func (s LatencyStats) P99() time.Duration { return s.Percentiles[99] }
 type RunSettings struct {
 	Warmup     int `json:"warmup"`
 	Iterations int `json:"iterations"`
+	// Rounds is how many times every job was measured, warmup included; 0 in
+	// reports written before rounds, which measured once.
+	Rounds int `json:"rounds"`
 	// QueryTimeout is the deadline each execution ran under.
 	QueryTimeout time.Duration `json:"query_timeout"`
 	// JobFilter is the --jobs selection; empty when the run took every job.
