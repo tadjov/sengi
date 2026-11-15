@@ -1,5 +1,7 @@
-# Every engine gets cpus: 8 and mem_limit: 7g. shared_buffers is 25% of it, effective_cache_size the rest,
-# Elasticsearch sizes its own heap from the limit, and the worker counts follow the cpus.
+# One budget for every engine, C cpus and M mem_limit (C=8, M=7g; C cannot exceed the host's CPUs). What sizes to it:
+# shared_buffers 25% of M, effective_cache_size M minus shared_buffers, max_parallel_workers C,
+# max_parallel_maintenance_workers C-1, max_worker_processes C+19; Elasticsearch takes its heap and processors from the
+# limits itself. maintenance_work_mem stays 4GB, the size of the HNSW graph.
 services:
   pg-news-native:
     image: pgvector/pgvector:pg18
@@ -80,7 +82,6 @@ services:
       - cluster.name=news-cluster
       - discovery.type=single-node
       - bootstrap.memory_lock=true
-      - node.processors=8
       - xpack.security.enabled=false
       - xpack.security.enrollment.enabled=false
     ulimits:
