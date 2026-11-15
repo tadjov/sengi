@@ -26,24 +26,49 @@ func TestDescribeIndexes_ReadsTheMigratedServer(t *testing.T) {
 		t.Fatalf("DescribeIndexes: %v", err)
 	}
 
-	t.Run("server version", func(t *testing.T) {
-		if !strings.HasPrefix(description.ServerVersion, "18") {
-			t.Errorf("server_version = %q, want the pg18 image's version", description.ServerVersion)
+	t.Run("server version with its build", func(t *testing.T) {
+		if !strings.HasPrefix(description.ServerVersion, "PostgreSQL 18") || !strings.Contains(description.ServerVersion, " on ") {
+			t.Errorf("server_version = %q, want version() of the pg18 image", description.ServerVersion)
 		}
 	})
 
-	t.Run("search extensions the migrations create", func(t *testing.T) {
+	t.Run("every extension the migrations create", func(t *testing.T) {
 		versions := make(map[string]string)
 		for _, ext := range description.Extensions {
 			versions[ext.Name] = ext.Version
 		}
-		for _, name := range []string{"vector", "pg_trgm", "fuzzystrmatch"} {
+		for _, name := range []string{"vector", "pg_trgm", "fuzzystrmatch", "uuid-ossp"} {
 			if versions[name] == "" {
 				t.Errorf("extension %s missing or without a version; got %v", name, description.Extensions)
 			}
 		}
-		if _, ok := versions["uuid-ossp"]; ok {
-			t.Errorf("uuid-ossp recorded, but it plays no part in search")
+	})
+
+	t.Run("server settings off their default, connection settings once", func(t *testing.T) {
+		bySource := make(map[string]ServerSetting)
+		for _, setting := range description.ServerSettings {
+			bySource[setting.Name] = setting
+			if setting.Source == "default" {
+				t.Errorf("%s recorded at its default", setting.Name)
+			}
+		}
+		want := ServerSetting{Name: "maintenance_work_mem", Setting: "4194304", Unit: "kB", Source: "command line"}
+		if got := bySource["maintenance_work_mem"]; got != want {
+			t.Errorf("maintenance_work_mem = %+v, want the container's -c flag %+v", got, want)
+		}
+		for name := range specSettings {
+			if setting, ok := bySource[name]; ok {
+				t.Errorf("connection setting %s recorded again as a server setting: %+v", name, setting)
+			}
+		}
+	})
+
+	t.Run("cgroup limits a superuser reads", func(t *testing.T) {
+		if description.Limits == nil || description.Limits.CPUMax == "" || description.Limits.MemoryMax == "" {
+			t.Errorf("limits = %+v, unreadable %v, want cpu.max and memory.max", description.Limits, description.Unreadable)
+		}
+		if len(description.Unreadable) != 0 {
+			t.Errorf("unreadable = %v, want every read to succeed", description.Unreadable)
 		}
 	})
 

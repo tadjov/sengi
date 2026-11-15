@@ -15,8 +15,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/engine"
 	"github.com/tadjov/tusker/internal/bench/report"
+	pgstore "github.com/tadjov/tusker/internal/storage/pg"
 	pkgtesting "github.com/tadjov/tusker/pkg/testing"
 	"github.com/testcontainers/testcontainers-go"
 )
@@ -88,17 +88,19 @@ func TestRun_ReportRecordsWhatThePostgresServerRanWith(t *testing.T) {
 
 	info := onlyReport(t, track).Environment.Engines["pg"]
 	require.NotNil(t, info.Index)
-	server := info.Index.PostgresServer
+	server := info.Index.Postgres
 	require.NotNil(t, server, "index error: %s", info.Index.Error)
-	assert.True(t, strings.HasPrefix(server.Version, "PostgreSQL 18"), server.Version)
-	assert.Contains(t, server.Settings, engine.PostgresSetting{Name: "work_mem", Setting: "7168", Unit: "kB", Source: "command line"})
+	assert.True(t, strings.HasPrefix(server.ServerVersion, "PostgreSQL 18"), server.ServerVersion)
+	assert.Contains(t, server.ServerSettings, pgstore.ServerSetting{Name: "work_mem", Setting: "7168", Unit: "kB", Source: "command line"})
 	extensions := map[string]string{}
 	for _, ext := range server.Extensions {
 		extensions[ext.Name] = ext.Version
 	}
 	assert.NotEmpty(t, extensions["vector"], "pgvector with its version; got %v", server.Extensions)
-	assert.Equal(t, "force_custom_plan", info.Index.Postgres.Settings["plan_cache_mode"], "the spec's connection setting, read back from the session")
-	assert.True(t, server.Limits.CPUMax != "" || server.Limits.Unreadable != "", "cgroup limits or why they are unread: %+v", server.Limits)
+	assert.Equal(t, "force_custom_plan", server.Settings["plan_cache_mode"], "the spec's connection setting, read back from the session")
+	require.NotNil(t, server.Limits, "unreadable: %v", server.Unreadable)
+	assert.NotEmpty(t, server.Limits.CPUMax)
+	assert.Empty(t, server.Unreadable)
 	require.NotNil(t, info.Container)
 	assert.Equal(t, "pgvector/pgvector:pg18", info.Container.Image)
 	assert.True(t, strings.HasPrefix(info.Container.ImageID, "sha256:"), info.Container.ImageID)
@@ -131,11 +133,12 @@ func TestRun_AServerThatCannotReadItsCgroupLimitsRecordsWhyAndRuns(t *testing.T)
 	rpt := onlyReport(t, track)
 	info := rpt.Environment.Engines["pg"]
 	require.NotNil(t, info.Index)
-	server := info.Index.PostgresServer
+	server := info.Index.Postgres
 	require.NotNil(t, server, "index error: %s", info.Index.Error)
-	assert.NotEmpty(t, server.Limits.Unreadable, "a role that may not read server files says why")
-	assert.Empty(t, server.Limits.CPUMax)
-	assert.NotEmpty(t, server.Settings, "the rest of the server is still recorded")
+	assert.Nil(t, server.Limits)
+	require.Len(t, server.Unreadable, 1)
+	assert.Contains(t, server.Unreadable[0], "cgroup limits", "a role that may not read server files says why")
+	assert.NotEmpty(t, server.ServerSettings, "the rest of the server is still recorded")
 	assert.Nil(t, aggregatedEngine(t, rpt.Jobs[0], "pg").ServerLatency, "postgres reports no server time")
 }
 
@@ -154,11 +157,11 @@ func TestRun_ReportRecordsWhatTheElasticsearchClusterRanWith(t *testing.T) {
 
 	info := onlyReport(t, track).Environment.Engines["es"]
 	require.NotNil(t, info.Index)
-	cluster := info.Index.ElasticsearchCluster
+	cluster := info.Index.Elasticsearch
 	require.NotNil(t, cluster, "index error: %s", info.Index.Error)
 	assert.Equal(t, "8.12.0", info.Version)
 	assert.NotEmpty(t, cluster.BuildHash)
-	assert.Equal(t, "0", cluster.IndexSettings["index.number_of_replicas"])
+	assert.Equal(t, "0", cluster.Settings["index.number_of_replicas"])
 	require.NotEmpty(t, cluster.Nodes)
 	assert.Equal(t, int64(512<<20), cluster.Nodes[0].HeapMaxBytes, "the container's -Xmx512m")
 	assert.Nil(t, info.Container, "the spec names no container")
