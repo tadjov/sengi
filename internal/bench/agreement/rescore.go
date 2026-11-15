@@ -235,7 +235,7 @@ func uncoveredTopK(r *report.Report, grades map[string]map[uuid.UUID]int, k int)
 	if missing == 0 {
 		return ""
 	}
-	return fmt.Sprintf("leaves %d docs of the rankings' top %d ungraded, first %s", missing, k, first)
+	return fmt.Sprintf("leaves %d of the rankings' top-%d docs ungraded, first %s", missing, k, first)
 }
 
 type metric struct {
@@ -309,17 +309,22 @@ func judgedQueries(job report.JobReport) []string {
 	return out
 }
 
+// meanPrecision is the grid means are rounded to, so equal means that land on
+// different floats (0.1+0.2+0.3 and 0.3+0.2+0.1) tie in the order and in τ-b.
+const meanPrecision = 1e12
+
 // engineMeans averages over the job's judged queries, a failed or missing cell
 // scoring 0, as the report's own means do.
 func engineMeans(engines, queries []string, scores map[cell]metrics.ScoreSet, m metric) []float64 {
 	means := make([]float64, len(engines))
 	for i, engine := range engines {
+		var sum float64
 		for _, queryID := range queries {
 			if s, ok := scores[cell{queryID: queryID, engine: engine}]; ok {
-				means[i] += m.scored(s)
+				sum += m.scored(s)
 			}
 		}
-		means[i] /= float64(len(queries))
+		means[i] = math.Round(sum/float64(len(queries))*meanPrecision) / meanPrecision
 	}
 	return means
 }

@@ -1,12 +1,15 @@
 package agreement_test
 
 import (
+	"fmt"
+	"math"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/tusker/internal/bench/agreement"
+	"github.com/tadjov/tusker/internal/bench/judgment"
 	"github.com/tadjov/tusker/internal/bench/meta"
 	"github.com/tadjov/tusker/internal/bench/report"
 )
@@ -141,4 +144,42 @@ func keys(m map[string]string) []string {
 		out = append(out, k)
 	}
 	return out
+}
+
+// Engine a finds 1, 2 and 3 relevant docs in its top 10 over q1-q3, engine b
+// 3, 2 and 1. Both means are 0.2, though 0.1+0.2+0.3 and 0.3+0.2+0.1 are
+// different floats.
+func TestRescore_EqualMeansTieWhateverOrderTheyWereSummedIn(t *testing.T) {
+	var entries []judgment.Entry
+	var cells []report.Entry
+	for q, relevant := range [][2]int{{1, 3}, {2, 2}, {3, 1}} {
+		entry := judgment.Entry{QueryID: fmt.Sprintf("q%d", q+1)}
+		for e, engine := range []string{"a", "b"} {
+			var docs []uuid.UUID
+			for rank := range 10 {
+				doc := uuid.New()
+				grade := 0
+				if rank < relevant[e] {
+					grade = 3
+				}
+				entry.Docs = append(entry.Docs, judgment.GradedDoc{DocID: doc, Grade: grade})
+				docs = append(docs, doc)
+			}
+			cells = append(cells, report.Entry{QueryID: entry.QueryID, EngineName: engine, Judged: true, ReturnedCount: 10,
+				Precision: map[int]float64{10: float64(relevant[e]) / 10}, Ranking: ranking(docs...)})
+		}
+		entries = append(entries, entry)
+	}
+	rpt := &report.Report{
+		Provenance: meta.Meta{RunID: "run-1", JudgmentsRunID: "judge-own"},
+		Jobs:       []report.JobReport{{JobName: "fts", Aggregated: []report.AggregatedEntry{{EngineName: "a"}, {EngineName: "b"}}, PerQuery: cells}},
+	}
+
+	got, err := agreement.Rescore(agreement.RescoreOptions{Report: rpt, Sets: []agreement.Set{set("own", entries...), set("again", entries...)}, Reference: "own", KValues: []int{10}, Threshold: 1})
+	require.NoError(t, err)
+
+	require.Equal(t, []string{"P@10"}, got.Metrics)
+	sets := got.Jobs[0].Metrics[0].Sets
+	assert.Equal(t, sets[0].Means["a"], sets[0].Means["b"])
+	assert.True(t, math.IsNaN(float64(sets[1].TauB)), "τ-b over two tied engines is undefined")
 }
