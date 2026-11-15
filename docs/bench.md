@@ -84,6 +84,22 @@ which puts part of any recall gap in the graph rather than the engine. Both are 
 pgvector's default, so the loaded Postgres graphs stand as built. Changing the value rebuilds
 the graph and is therefore a new run.
 
+### Engine container
+
+An engine may name the docker container it runs in, and `bench run` records the container's
+image in the report:
+
+```yaml
+engines:
+  pg-native:
+    type: postgres
+    connection: "postgresql://…"
+    container: pg-native-news
+```
+
+Left out, nothing is recorded and nothing is warned about. See
+[Engine environment](#engine-environment).
+
 ### Query templates
 
 A suite query reaches each engine through that engine's own parameter mechanism. The bench
@@ -298,8 +314,8 @@ Every command accepts a track path as a positional arg (`bench run tracks/global
 The LLM judge (`--strategy llm`, filed as `claude-cli` or `claude-api`) is the primary
 relevance judge on every cc-news track. `keyword`, `bm25`, `vector` and `hybrid` are
 cross-checks. The semantic track reports both the LLM judge's relevance and the `vector`
-judge's recall@10 against exact search. Hand grades from `bench grade --against claude-cli`
-(or `claude-api`) give the κ that validates the LLM judge.
+judge's recall@10 against exact search. Self-agreement and a second model on a stratified
+sample validate the LLM judge; `bench grade` remains for a hand-graded check.
 
 ```bash
 bench judge <track> --strategy llm --provider claude-cli
@@ -554,6 +570,7 @@ Executes the suite against all engines, computes IR metrics and latency, prints 
 
 The report is always written. A run fails, exits non-zero and leaves `reports/latest.json` alone when:
 - a (query, engine) execution errored
+- with `--rounds`, a (query, engine) cell ranked differently in a later round than in the first, whose ranking is the one scored; the error names the cells and the rounds (`fts:q07/es (round 2, 3)`). A deterministic engine returns the same ranking every time, so a difference is an unstable tie or a corpus that changed under the run
 - it measured a (query, engine) cell the pool dropped (`bench pool --allow-partial`)
 - it ran a query the pool holds no entry for
 - it measured an engine the pool never saw
@@ -577,6 +594,7 @@ Flags:
 - `--jobs pg,es` — run only the named job(s) from the spec (useful during development)
 - `--k 3,5,10` — NDCG/P cut-off values; each must be positive, distinct and no deeper than the pool's `meta.pool_depth`, or the run fails before measuring. The spec loader holds `metrics.k_values` to the same rule against `defaults.pool_depth` when that is set
 - `--warmup N`, `--iterations N` — override spec settings
+- `--rounds N` — measure every job N times (default 1); see [Rounds](#rounds)
 - `--latency-only` — measure latency without judgments
 
 Retrieval depth is the suite's own `limit` param (or ES `size`); there is no run flag for it. Every ranking is cut at the pool's `meta.pool_depth` before it is scored and stored, so MAP and bpref count only docs the pool could have judged, and the run files `bench export --format run` writes hold the rankings bench scored. A `--latency-only` run keeps the rankings whole.
@@ -602,6 +620,8 @@ The clock covers sending the query and receiving the whole result. For postgres 
 
 One failed measured iteration fails the query with that iteration's error, so a timeout can never vanish from p95, p99 and max behind the iterations that succeeded. A failed warmup does not fail the query; it is logged with the query and the engine.
 
+Elasticsearch also reports the time it spent on each search, `took`, in whole milliseconds, without the transport or the client decoding the response. The runner keeps it for every measured iteration beside the client latency, and the report gives its p50, p95, p99 and mean as the server time (`ServerLatency`) of every engine that reports one, over the same queries as the client latency. A search under a millisecond reads 0. Postgres and the API report none, so they have no server time rather than an invented one.
+
 Every engine ships the same payload: document ids only. Postgres templates `SELECT id`, so elasticsearch templates set `"_source": false`. Without it each hit carries the full article and its 1024-dim embedding, and a `size: 100` search times shipping a hundred articles against postgres shipping a hundred ids. The executor reads the id from `hit._id`, which the indexer sets to the article id, and falls back to `_source.id` only when `_id` is not a UUID.
 
 ```json
@@ -611,6 +631,14 @@ Every engine ships the same payload: document ids only. Postgres templates `SELE
 Every engine in a job answers every query of its suite. If an engine has no block for one of them (its own, or the one its `queries_from` names), `bench validate`, `bench pool` and `bench run` reject the track when its suites load, before any template is stored or query runs, and name the query and the engine.
 
 Measured elasticsearch templates should set `"track_total_hits": false` until its cost has been measured. By default elasticsearch counts matches up to 10,000 to fill `hits.total`, which delays its early termination of a top-k search, while postgres reports no total at all. Leaving it on makes elasticsearch do work postgres does not, by an amount nobody has sized yet. With it off, elasticsearch omits `hits.total` and `corpus_matches` is left empty for those queries.
+
+#### Rounds
+
+`bench run --rounds N` measures each job N times, one round after another. A round is a full pass over the job's queries and engines, warmup included, so a slow stretch of the host lands in one round rather than on whichever engine was running. The engine order rotates by one each round: with engines `a`, `b`, `c`, round 1 runs every query on `a`, `b`, `c`, round 2 on `b`, `c`, `a`, round 3 on `c`, `a`, `b`. The default, 1, measures once, and the report records the count as `settings.rounds`.
+
+Quality metrics score the first round's ranking. Every later round must return the same ranking for the cell, or the run fails (see above).
+
+Each aggregated entry keeps every round's latency stats under `Rounds`, over the same queries as `Latency`, which pools every round's iterations. `AcrossRounds` holds the median of the rounds' p50, p95 and p99, each with the smallest and largest round value. With more than one round the text, markdown and HTML reports show it as `median [min, max]`.
 
 #### Index provenance
 
@@ -624,6 +652,17 @@ Before the first query, `bench run` reads from each live engine how it indexed t
 Provenance is metadata, so a failed read never fails the run: it prints a warning and the block carries `error` instead. An `api` engine cannot describe its index, so its block carries only that error. Reports written before provenance was recorded have no `index` block and still load.
 
 `bench show report` prints one line per engine summarising the block. `bench diff` lists the provenance fields that differ between the two runs before the metric deltas. The analysis block is compared as one field and shown as a digest.
+
+#### Engine environment
+
+The same read records what each engine ran with, beside its index:
+
+| Engine        | Block                   | Recorded                                                                                                                                                                                                                                                                                             |
+|---------------|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| postgres      | `postgres_server`       | `version()`; every installed extension with its version, from `pg_extension`; every `pg_settings` row whose `source` is not `default` (name, setting, unit, source), so a `-c` flag reads `command line` and a `connection_settings` entry `session`; the container's `cpu.max` and `memory.max`, read through `pg_read_file`, or under `unreadable` why the server could not read them |
+| elasticsearch | `elasticsearch_cluster` | the build hash from `GET /`; the index's settings that are not defaults, flat (`GET <index>/_settings?flat_settings=true`); the persistent and transient cluster settings; each node's heap max and cgroup CPU quota, period and memory limit, from `_nodes/stats/os,jvm`                                     |
+
+The spec's `connection_settings`, read back from the session once applied, stay under `index.postgres.settings`. An engine that names its `container` in the spec also gets `environment.engines.<name>.container`: the image, its id and its registry digests, from `docker inspect`. A container docker cannot inspect is recorded with a `note` and a warning, never a failed run.
 
 ### `bench export [<name>] --format <F>`
 
@@ -695,7 +734,7 @@ Significance is a two-tailed Wilcoxon signed-rank test per engine pair for NDCG@
 
 Beside each test, `Δ A−B [low, high]` is the mean of the per-query differences A − B with its 95% percentile bootstrap interval: 10,000 resamples of the judged queries, percentiles interpolated as `numpy.percentile` does. It matches `scipy.stats.bootstrap((d,), np.mean, method="percentile", n_resamples=10000)` within resampling noise. The resampler is seeded from the engine pair and metric names, so regenerating a report gives the same interval. Untestable pairs get one too. The interval is unadjusted, one per comparison, while the stars come from the Holm-adjusted p, so an interval clear of zero can sit beside `ns`. Wilcoxon tests the pseudo-median, so a starred pair can disagree in sign with Δ.
 
-Latency (min/p50/p75/p90/p95/p99/max/mean/stddev) covers only the queries every engine in the job answered; `LatencyExcludedQueries` counts the rest.
+Latency (min/p50/p75/p90/p95/p99/max/mean/stddev) covers only the queries every engine in the job answered; `LatencyExcludedQueries` counts the rest. The server time and every round's latency cover the same queries.
 
 Each report records every (query, engine) ranking, so `trec_eval` can reproduce its MAP, P@k and linear-gain NDCG:
 
@@ -710,6 +749,8 @@ The qrels must hold exactly the job's queries: `-c` averages over every qrels to
 ## Artifacts
 
 All artifacts are self-attesting. A report's `provenance.sources` block records the exact paths of the spec, suite, pool, and judgments files used — you can reconstruct any run from the report alone.
+
+Every path an artifact records is relative to the track directory: `meta.pool_ref` in a judgments file, and `provenance.pool_ref` and `provenance.sources` (spec, suites, pool, judgments) in a report. A file outside the track climbs out of it (`../shared/suite.yaml`), so a track folder copied elsewhere or cloned on another machine names the same files. A reader resolves a relative path against the track directory; an absolute path in an older artifact still reads as absolute.
 
 For per-track documentation, see `tracks/<name>/README.md`.
 
