@@ -139,6 +139,7 @@ TREC-style IR evaluation pipeline. Full docs: [docs/bench.md](docs/bench.md).
 - `runner/` — orchestration: warmup + measured iterations, per-query metrics
 - `report/` — aggregation, JSON output, `bench show report`
 - `metrics/` — NDCG, MAP, MRR, Bpref, P/R/F1
+- `agreement/` — how alike judgment sets grade the same pairs and rank a run's engines (`bench diff judgments`)
 - `meta/` — provenance block embedded in every artifact (run_id, tool, generated_at, sources)
 - `version/` — schema version constant + checker
 
