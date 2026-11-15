@@ -1,8 +1,8 @@
 schema_version: 1
 meta:
-    run_id: 2026-11-14T23-59-13-pool-5b2735
+    run_id: 2026-11-15T01-01-06-pool-466575
     tool: bench/1.0.0
-    generated_at: 2026-11-14T23:59:13.642799Z
+    generated_at: 2026-11-15T01:01:06.842531Z
     spec_id: cc_news_fuzzy
     pool_depth: 50
     engines:
@@ -2397,6 +2397,7 @@ queries:
           sources:
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: d5cc41f1-f43a-53ba-81de-f9a67af821f9
@@ -2486,7 +2487,6 @@ queries:
         - doc_id: fd28fbd3-a5b8-5a92-8bb7-2577c3257af8
           sources:
             - es-fuzzy
-            - paradedb-fuzzy
         - doc_id: dc814c89-5395-59d7-913d-f43a701d5dee
           sources:
             - paradedb
@@ -2565,6 +2565,12 @@ queries:
         - doc_id: b624fc09-c19f-5e86-b292-b2ab9359f287
           sources:
             - paradedb
+        - doc_id: 2040e3b8-1bcd-5156-9dd0-b56f93a61337
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+            - pg-trgm
         - doc_id: b138d3e1-63de-5410-84af-deeeb56eee0a
           sources:
             - paradedb-fuzzy
@@ -2573,33 +2579,7 @@ queries:
         - doc_id: 64e96d52-8a71-53ad-b523-1ad1cd5cbbcb
           sources:
             - paradedb-fuzzy
-        - doc_id: 2040e3b8-1bcd-5156-9dd0-b56f93a61337
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-            - pg-trgm
-        - doc_id: 40800fab-4a4c-56eb-ae58-447ed4546ebf
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
         - doc_id: 3f786010-1537-59bb-a29a-21492f89e6a3
-          sources:
-            - paradedb-fuzzy
-        - doc_id: db9d377c-2378-5e66-8bd5-fa777a49a4a7
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 630cf416-a6e2-512e-9d31-1e7b57578cf9
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 57d4e1c6-98ca-5bb0-8253-1f7c2773db85
-          sources:
-            - paradedb-fuzzy
-        - doc_id: f4da55df-a4a7-5c82-ba91-680057dc51d2
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 16092e93-f7e5-5b55-b5bb-cfc78a549839
           sources:
             - paradedb-fuzzy
         - doc_id: de052551-5190-54c8-96e0-44ba1a845be9
@@ -2608,13 +2588,36 @@ queries:
             - pg-fuzzy
             - pg-gin-spelled
             - pg-trgm
+        - doc_id: 57d4e1c6-98ca-5bb0-8253-1f7c2773db85
+          sources:
+            - paradedb-fuzzy
+        - doc_id: f4da55df-a4a7-5c82-ba91-680057dc51d2
+          sources:
+            - paradedb-fuzzy
         - doc_id: 7e390085-361e-57f6-b78f-1de2847f4aee
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 16092e93-f7e5-5b55-b5bb-cfc78a549839
+          sources:
+            - paradedb-fuzzy
+        - doc_id: db9d377c-2378-5e66-8bd5-fa777a49a4a7
           sources:
             - paradedb-fuzzy
         - doc_id: 0baf409f-e671-5b25-bb0b-e78abf8f5fc7
           sources:
             - paradedb-fuzzy
+        - doc_id: 7902da86-b1a3-5f68-8a21-7b0886989fc0
+          sources:
+            - paradedb-fuzzy
         - doc_id: 9c5ddeb9-f946-56e2-9ad6-152d9645b960
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 40800fab-4a4c-56eb-ae58-447ed4546ebf
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: 6ecec411-6ba5-598c-9e6a-77f9ba4c929c
           sources:
             - paradedb-fuzzy
         - doc_id: 3d11f6ad-12fa-5751-be0b-4978cf55fcaa
@@ -2626,10 +2629,7 @@ queries:
         - doc_id: eea1d20d-da5f-5c12-896a-5d4cba5bb0e3
           sources:
             - paradedb-fuzzy
-        - doc_id: a43c54f4-f2fa-5f06-9d85-af94de37d52d
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 851c146e-7a61-5f95-8a0e-bb74dadbf043
+        - doc_id: 90d70d42-5bde-5380-8445-1f40c62c60cd
           sources:
             - paradedb-fuzzy
         - doc_id: a5a1ab32-5808-58db-9255-bb7055e854b6
@@ -2656,7 +2656,7 @@ queries:
         elasticsearch: f75329195cd9c59b4db5d01c828419468e6d292d75f09d5bba451fd057134aa8
         es-fuzzy: 55775a85d8e310fb6a0489399120ba06f66e7b46c3b0032a9b28d83b7a26b31f
         paradedb: 6c1f3b641c3cce0a41050723a6f92a9c7c180a8f71ab25a9e4954d2cc57e835b
-        paradedb-fuzzy: f991ff8d1387274e99ef2d62a794c5b1f5a56a08d5000f146894fe472db2f8b8
+        paradedb-fuzzy: c6cd2f3bd27c337058c03126ece3150060d0517b26a5c043c52c1b0167a2562b
         pg-fuzzy: 39a6eeb82a25ca551996aae5622a5aee81b2d8c25a94be377d1f7c92a8fd2b3e
         pg-gin: 42ddc620e854b76dd4aa0eae5da781025749061fc6c4982bd57188c255cf3a20
         pg-gin-spelled: 2da775d77e2d0b2597ce71916996a531e5d60bdbbfb259540fdd3c4edc3e0b8d
@@ -2671,6 +2671,7 @@ queries:
           sources:
             - elasticsearch
             - es-fuzzy
+            - paradedb-fuzzy
         - doc_id: 09200172-da09-5583-b6c9-22864f5fb534
           sources:
             - elasticsearch
@@ -3247,9 +3248,6 @@ queries:
         - doc_id: 163ffd60-679a-5132-aaec-90292a7ec42e
           sources:
             - paradedb-fuzzy
-        - doc_id: 8c8ad494-2b36-5340-b11c-5b4ec5daa290
-          sources:
-            - paradedb-fuzzy
         - doc_id: 9e53f357-480b-5e45-8cd0-36f23eb0cb73
           sources:
             - paradedb-fuzzy
@@ -3261,9 +3259,6 @@ queries:
             - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
-        - doc_id: 94cd8615-bc46-51f1-9c32-c045bba07e03
-          sources:
-            - paradedb-fuzzy
         - doc_id: 191df0b4-8f98-5fea-8247-5907d096462e
           sources:
             - paradedb-fuzzy
@@ -3294,16 +3289,10 @@ queries:
         - doc_id: 5fd84332-41a1-5655-be9e-60511486a147
           sources:
             - paradedb-fuzzy
-        - doc_id: 868c0058-a9f5-54ad-b960-1e5c91299264
-          sources:
-            - paradedb-fuzzy
-        - doc_id: c808fbbc-b629-5db2-b842-a4e75865e06e
-          sources:
-            - paradedb-fuzzy
         - doc_id: 8376c276-16ca-54fe-aeda-073fb1c60600
           sources:
             - paradedb-fuzzy
-        - doc_id: 9e56583b-12b1-5f1b-bdd1-81778d29cc30
+        - doc_id: 94cd8615-bc46-51f1-9c32-c045bba07e03
           sources:
             - paradedb-fuzzy
         - doc_id: 3fec1d58-7818-59d7-907b-3a578e6163b9
@@ -3313,6 +3302,9 @@ queries:
           sources:
             - paradedb-fuzzy
         - doc_id: 6c0ca6a3-7e66-58d5-9ff5-48d58567a4d2
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 868c0058-a9f5-54ad-b960-1e5c91299264
           sources:
             - paradedb-fuzzy
         - doc_id: 691e7df6-7218-5046-9fba-d8cc8a236671
@@ -3325,6 +3317,12 @@ queries:
           sources:
             - paradedb-fuzzy
         - doc_id: 3b614cc1-fc2f-5f27-95a3-dc3242b2f24f
+          sources:
+            - paradedb-fuzzy
+        - doc_id: c808fbbc-b629-5db2-b842-a4e75865e06e
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 1e54401a-1196-504a-9e10-61974682e0c1
           sources:
             - paradedb-fuzzy
         - doc_id: ebfcf219-7962-5392-948c-63c6fdff9844
@@ -3441,7 +3439,7 @@ queries:
         elasticsearch: 06b0a063a0f9bce1c8348a55b957004eefddee9a078ee92df7b7725aaff4828f
         es-fuzzy: 4285a5df5a25eab8006aaf73badcfe609d47553daa4e3a1bf5f43afad31b48f2
         paradedb: b158a7c5f2ca94046f6313fc9bb9e8144c9fd3c06de9553e24616218e5bec861
-        paradedb-fuzzy: b1676b9f000b1c79fabd2d3ef4ff55bdddf9cd19a3f8c92aa546c08bb9c7423d
+        paradedb-fuzzy: c29bf990e56d7fe85028a5e5e8b39dea89b1ed52e35a49839f57acef9a9ee56d
         pg-fuzzy: 9724ddfc41251b580e11df73b0920a085f241e9c8c10cc16a68c490aff28d983
         pg-gin: d539edb2e0cc208b9000b89ceabbf8837f0df44a5303c7632057f4f33b58c5f9
         pg-gin-spelled: 9b10a2fb8a067b44fe900079df0fcbd72ffb25b5df7cba50a4be2f33b56b74ca
@@ -4266,6 +4264,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
             - pg-trgm
@@ -4273,6 +4272,7 @@ queries:
           sources:
             - elasticsearch
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
             - pg-trgm
@@ -4308,6 +4308,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 1b4190da-26be-5d05-ac94-65dacb0c565f
@@ -4490,6 +4491,7 @@ queries:
         - doc_id: 432a66e0-77af-55f1-b444-c90cd0627a0c
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-trgm
         - doc_id: 9b3c953f-1878-5eb2-a115-9dbeb353156e
           sources:
@@ -4497,6 +4499,7 @@ queries:
         - doc_id: 8bc5338b-fb7d-5ca0-bbe2-5b2a2867d0b2
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
         - doc_id: 94159a8a-59d5-5434-bd33-5be08575c8cc
           sources:
             - es-fuzzy
@@ -4638,7 +4641,13 @@ queries:
         - doc_id: a1f17a6f-d28c-55c1-a363-126b1558acbf
           sources:
             - paradedb
-        - doc_id: 99563bfe-4aa0-59f6-9694-eb0e137759ab
+        - doc_id: 4401bc73-c4c3-545b-8253-5ef7cbb6142e
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+            - pg-trgm
+        - doc_id: aa190446-49a9-561b-a9cf-0e086ce844e5
           sources:
             - paradedb-fuzzy
             - pg-fuzzy
@@ -4647,107 +4656,14 @@ queries:
           sources:
             - paradedb-fuzzy
             - pg-trgm
-        - doc_id: d91e8c60-5d04-5b3c-b1f8-4c28db2aa54e
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 56248570-bffd-556b-a6a6-6135f635a738
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-            - pg-trgm
-        - doc_id: d0d68fa8-6c15-5925-9024-4a06972733c5
-          sources:
-            - paradedb-fuzzy
-        - doc_id: cf3fae00-336b-551a-bf1c-ed8a5b9746ce
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-        - doc_id: 7415b48d-f7f8-5704-83b6-b7b5f58df18a
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-        - doc_id: 4401bc73-c4c3-545b-8253-5ef7cbb6142e
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-            - pg-trgm
-        - doc_id: a04e2c4e-dfc4-514e-80de-c19f0c08a462
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 865559ee-ef5e-55d7-8aa0-004fa35dbb30
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-        - doc_id: 087604d2-efa6-5771-98f9-44392a01c602
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-            - pg-trgm
-        - doc_id: 57d6dbb5-73d6-57d4-a36f-42d952fddd22
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-            - pg-trgm
-        - doc_id: cf4c7056-ed86-53f5-bf8d-7681c9f94bb5
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-        - doc_id: c90720cb-29a1-5ebc-8115-81122feaa0ed
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
         - doc_id: e8a34e09-ee54-5adb-ab15-cefaf673e368
           sources:
             - paradedb-fuzzy
-        - doc_id: d5a62a56-9e0a-5a77-9ea2-212d03d27d73
+        - doc_id: 99563bfe-4aa0-59f6-9694-eb0e137759ab
           sources:
             - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
-        - doc_id: 49e43daf-534e-5c93-a68c-af72c11d0ad4
-          sources:
-            - paradedb-fuzzy
-            - pg-trgm
-        - doc_id: 32632b7c-2f8b-5214-813e-db1d58d75189
-          sources:
-            - paradedb-fuzzy
-        - doc_id: e1071bff-a0a6-596f-ad52-a3d7caf7825c
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-        - doc_id: 0181eb72-1884-5179-bcc5-f6fa752fd38a
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-            - pg-trgm
-        - doc_id: f3938f55-bca1-584a-9371-ec3b519faba6
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 77f61123-a9bc-514e-ab68-0db3ad125aba
-          sources:
-            - paradedb-fuzzy
-        - doc_id: aa190446-49a9-561b-a9cf-0e086ce844e5
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-        - doc_id: c3f3bb59-7c69-573d-a91f-9176664b6bb8
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 8a99e966-d43a-5333-90a1-db642e1c4370
-          sources:
-            - paradedb-fuzzy
         - doc_id: 75323f93-c8ec-5376-8e82-ca424a992581
           sources:
             - paradedb-fuzzy
@@ -4759,6 +4675,11 @@ queries:
           sources:
             - paradedb-fuzzy
             - pg-trgm
+        - doc_id: 7415b48d-f7f8-5704-83b6-b7b5f58df18a
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
         - doc_id: 7fec70d7-0bc5-50a6-ac41-88602bdd061d
           sources:
             - paradedb-fuzzy
@@ -4777,11 +4698,80 @@ queries:
         - doc_id: 96a2951f-6a8d-5d4a-838a-c514684d03a9
           sources:
             - paradedb-fuzzy
+        - doc_id: d91e8c60-5d04-5b3c-b1f8-4c28db2aa54e
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 56248570-bffd-556b-a6a6-6135f635a738
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+            - pg-trgm
+        - doc_id: d0d68fa8-6c15-5925-9024-4a06972733c5
+          sources:
+            - paradedb-fuzzy
+        - doc_id: d5a62a56-9e0a-5a77-9ea2-212d03d27d73
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: 49e43daf-534e-5c93-a68c-af72c11d0ad4
+          sources:
+            - paradedb-fuzzy
+            - pg-trgm
+        - doc_id: 03df2c0d-1c28-5843-a0a4-03caa1ba2813
+          sources:
+            - paradedb-fuzzy
+            - pg-trgm
+        - doc_id: 32632b7c-2f8b-5214-813e-db1d58d75189
+          sources:
+            - paradedb-fuzzy
+        - doc_id: e1071bff-a0a6-596f-ad52-a3d7caf7825c
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: b909c95e-5c71-5657-a3fd-e9077ec817ab
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: 49051056-2d38-520a-9e68-e6bc895a2e3d
+          sources:
+            - paradedb-fuzzy
+            - pg-trgm
+        - doc_id: cf3fae00-336b-551a-bf1c-ed8a5b9746ce
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: 0181eb72-1884-5179-bcc5-f6fa752fd38a
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+            - pg-trgm
+        - doc_id: f3938f55-bca1-584a-9371-ec3b519faba6
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 2355976a-3b27-5484-be4f-b3e3ede0137d
+          sources:
+            - paradedb-fuzzy
+            - pg-trgm
         - doc_id: 3581c9f6-8761-5190-9189-caee1e55a877
           sources:
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 065c14e2-f4ce-5439-bd52-e4eaad4d6fa9
+          sources:
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: 57d6dbb5-73d6-57d4-a36f-42d952fddd22
+          sources:
+            - pg-fuzzy
+            - pg-gin-spelled
+            - pg-trgm
+        - doc_id: c90720cb-29a1-5ebc-8115-81122feaa0ed
           sources:
             - pg-fuzzy
             - pg-gin-spelled
@@ -4793,11 +4783,20 @@ queries:
           sources:
             - pg-fuzzy
             - pg-gin-spelled
+        - doc_id: cf4c7056-ed86-53f5-bf8d-7681c9f94bb5
+          sources:
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: 087604d2-efa6-5771-98f9-44392a01c602
+          sources:
+            - pg-fuzzy
+            - pg-gin-spelled
+            - pg-trgm
         - doc_id: c1206a1b-8fe2-5c1f-8bd8-312d5e8bdaa4
           sources:
             - pg-fuzzy
             - pg-gin-spelled
-        - doc_id: b909c95e-5c71-5657-a3fd-e9077ec817ab
+        - doc_id: 865559ee-ef5e-55d7-8aa0-004fa35dbb30
           sources:
             - pg-fuzzy
             - pg-gin-spelled
@@ -4874,9 +4873,6 @@ queries:
         - doc_id: aa4f2a7e-d11d-5de8-b542-946fc4b47aa7
           sources:
             - pg-trgm
-        - doc_id: 03df2c0d-1c28-5843-a0a4-03caa1ba2813
-          sources:
-            - pg-trgm
         - doc_id: 05f02f1b-be1f-5962-a62e-dae18660af54
           sources:
             - pg-trgm
@@ -4890,9 +4886,6 @@ queries:
           sources:
             - pg-trgm
         - doc_id: 215b89bb-ba44-5930-88fa-d333c04a1edb
-          sources:
-            - pg-trgm
-        - doc_id: 2355976a-3b27-5484-be4f-b3e3ede0137d
           sources:
             - pg-trgm
         - doc_id: 28f54a92-7880-53d2-a6e4-45052a639115
@@ -4914,9 +4907,6 @@ queries:
           sources:
             - pg-trgm
         - doc_id: 4310acdd-ff6a-5b4e-aec6-7d3eddcbc1b9
-          sources:
-            - pg-trgm
-        - doc_id: 49051056-2d38-520a-9e68-e6bc895a2e3d
           sources:
             - pg-trgm
         - doc_id: 4ebb828c-fc27-573d-ad2d-619960fa67cf
@@ -4947,7 +4937,7 @@ queries:
         elasticsearch: 06e5b1a5c4a98ed70b2bb8ebdc76f76bdd33eaa528319747f8f57335d08b13ea
         es-fuzzy: 431269083c9fe839c521ae27003d020393ce85d43b8732e8424e6d150f513cba
         paradedb: 5d288e36604e3c6dc85a4f18f2060c63759b9af30bcc8dafd212bf81b9ddab31
-        paradedb-fuzzy: 7f3dbacb19f63a076cc6b34968d21835edd4942ffc528931a8f7e1958ceea40b
+        paradedb-fuzzy: 68a728bfcc613b7ce11ca303c9d07d8d761436ec80d3fcbcde26e631bf7cb071
         pg-fuzzy: 7a6b4c6a9ec49c49dac8eb6ab94ea7cdea128a5b32e7edf30044fa82310af85a
         pg-gin: 261686f28d7aac42d99fd9ce5174c96963bd77a4f562cdb5cd13e2d2d522d7b8
         pg-gin-spelled: 2068b88d7fe3b88cc3e4a628b17bbd62a7916052c07e5d92d5518fbbcc9a146a
@@ -7399,16 +7389,19 @@ queries:
         - doc_id: 3becd282-0190-5887-b0b4-3fee97f49ee9
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 0fd423e6-814c-5fc7-9ab1-1f694e2ec674
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 0eedf0f1-affd-5406-b837-c7d8c598d1c2
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 41e55295-1150-56b7-99f6-7d4a0c897e46
@@ -7430,6 +7423,7 @@ queries:
         - doc_id: cc94e91f-e103-5245-913b-a0b152632855
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 9c21f969-2d0c-5c14-a89a-6ccff93aaa5a
@@ -7455,6 +7449,7 @@ queries:
         - doc_id: c197dec9-9a9e-59ba-b893-118be7b3767f
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: b5026f9a-1e21-5b7c-9f46-c26e1f02805f
@@ -7582,147 +7577,130 @@ queries:
         - doc_id: bb53ca08-30bb-5c2e-b7c3-25deac0295d7
           sources:
             - es-fuzzy
-        - doc_id: c82a6fd5-209e-5c02-8510-71d597272faf
+        - doc_id: 2a2bc8be-7314-596b-b6be-32791dcf65bd
           sources:
             - paradedb-fuzzy
-        - doc_id: 8d4d07bd-983f-5a49-9293-c714a31947eb
+        - doc_id: 5e455a25-f02e-5bc2-af95-fa9f80414534
           sources:
             - paradedb-fuzzy
-        - doc_id: ec89f3f8-38fc-5823-b7d1-5bb53e5d9da2
+        - doc_id: ff020b1d-b8ba-52b1-bc3e-4e58b6ba9984
+          sources:
+            - paradedb-fuzzy
+        - doc_id: bb866d29-307b-5bb2-a236-418037706ab4
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 2d680b38-b9a8-5505-8bc8-c33489786675
           sources:
             - paradedb-fuzzy
         - doc_id: 3c61b08e-4998-5f32-8030-a9504d4aea7e
           sources:
             - paradedb-fuzzy
+        - doc_id: 89aee4e3-e90b-50fb-a7b4-97a9becb7396
+          sources:
+            - paradedb-fuzzy
+        - doc_id: f1845663-3035-51eb-9b3a-be1c6bbde833
+          sources:
+            - paradedb-fuzzy
+        - doc_id: f874b048-7380-5922-9c1a-742add509217
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 551eb68a-68e0-594f-9715-f5b67864d27f
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 55f80445-4b9a-53df-b937-de5ab2a753a2
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 8c3f405e-9d2d-562d-a673-1f730a485831
+          sources:
+            - paradedb-fuzzy
+        - doc_id: dffbf9b5-7307-5699-8c91-00f1f4013627
+          sources:
+            - paradedb-fuzzy
+        - doc_id: e7560ac0-8b33-52e5-b239-3b94442eb424
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 49258783-9b95-5083-a653-58c5dda8e7da
+          sources:
+            - paradedb-fuzzy
+        - doc_id: c0e9fb97-996e-5966-bd0a-2f418e651090
+          sources:
+            - paradedb-fuzzy
+        - doc_id: b181784f-1346-56e1-909e-a83d12232839
+          sources:
+            - paradedb-fuzzy
+        - doc_id: ad55b885-7919-5797-b0d3-556a9e2b8408
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 26866817-add7-5fab-9789-bb876d42691a
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 77d516ac-4cfc-5567-a3f3-7971873a0efb
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 5e7d22f9-ab5c-5548-a856-c539d888913e
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 91c8320d-1cb8-567d-a173-b84dec6fc071
+          sources:
+            - paradedb-fuzzy
         - doc_id: c31ad1c2-bfb3-556a-b9c9-1123474670a1
           sources:
             - paradedb-fuzzy
-        - doc_id: cc9471ea-e5a7-5796-802a-6a63ef4fafe7
+        - doc_id: 12fbd2b7-c438-5035-87f2-eda52382409f
           sources:
             - paradedb-fuzzy
-        - doc_id: da7ff06e-6eab-5dcf-97cb-5fc575e58726
+        - doc_id: f3403268-83b2-5127-8bc2-b20aa44bd20e
           sources:
             - paradedb-fuzzy
-        - doc_id: b566e526-ddaa-5abb-9e90-483558f2c99c
+        - doc_id: f760a3dc-a375-58a4-9ae9-40dc1608bb00
           sources:
             - paradedb-fuzzy
-        - doc_id: b2a16efb-0607-5501-aba8-01708f1f0159
+        - doc_id: e2ee9c89-1ce1-5dd1-94db-a216fa3f73f4
           sources:
             - paradedb-fuzzy
-        - doc_id: ada8593d-1a30-5800-a5e9-e51b01be9c0f
+        - doc_id: 7d389cb3-5b1f-53f7-b360-6845cf9d3ed0
           sources:
             - paradedb-fuzzy
-        - doc_id: a349a01e-4c38-53b6-957b-c2b5bdc60aa1
+        - doc_id: 5ad1a92e-f297-5ee8-9ece-106e251d0755
           sources:
             - paradedb-fuzzy
-        - doc_id: 0df6353c-5ceb-5a83-b50c-c7bc97798363
+        - doc_id: 73aa0c50-b451-53e2-8871-20d524c959bd
           sources:
             - paradedb-fuzzy
-        - doc_id: 08007880-d949-5ecb-8ba9-df167ef42aa1
+        - doc_id: 6fc3467a-a413-51f0-896b-df58649136c2
           sources:
             - paradedb-fuzzy
-        - doc_id: 214c870e-98db-55c9-a5c8-73fdab8a4ee7
+        - doc_id: 22495e33-4ce7-5aa5-9b3d-8c2f98c9473c
           sources:
             - paradedb-fuzzy
-        - doc_id: fe86d786-d61c-5c14-8528-3e10ed84277b
+        - doc_id: ee66c464-7b2f-57a9-ad67-16bd8190d118
           sources:
             - paradedb-fuzzy
-        - doc_id: abe5d251-5041-5e78-9fce-49b9b3f067e9
+        - doc_id: cc24cd3b-9121-5c79-91b7-50f5f9abf976
           sources:
             - paradedb-fuzzy
-        - doc_id: c09a94d6-eb17-5687-8c90-6b95da8fd0a1
+        - doc_id: aaab53d3-d48a-561d-a10f-ae6ce94c0714
           sources:
             - paradedb-fuzzy
-        - doc_id: 02f03b41-5ab3-5cfb-b5f1-4c6813c8099d
+        - doc_id: d58840ee-2b53-5d32-8753-ca27421c07dd
           sources:
             - paradedb-fuzzy
-        - doc_id: 458eb90c-fd83-5f6e-b419-217852d1be52
+        - doc_id: ec89f3f8-38fc-5823-b7d1-5bb53e5d9da2
           sources:
             - paradedb-fuzzy
-        - doc_id: 2eed960c-d927-5104-a192-2e2f4bcbdf0e
+        - doc_id: 7cda3f07-4eb1-5752-b124-beb36c4c3470
           sources:
             - paradedb-fuzzy
-        - doc_id: c92d1d32-bdae-5971-b707-7be2509480f9
+        - doc_id: 7b0ff56d-c169-5415-8a3a-f799531efa4f
           sources:
             - paradedb-fuzzy
-        - doc_id: 5405411a-cbc8-502a-9dd0-38c01c2e4030
+        - doc_id: bafb12e6-3359-55df-8e8c-bafa6088278d
           sources:
             - paradedb-fuzzy
-        - doc_id: 06a69af0-eedd-5cdc-bb64-89440fa6ab75
+        - doc_id: 17c0e028-2458-5c40-a7f8-91eb34f4dadc
           sources:
             - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-        - doc_id: a6431a33-efee-51b4-89ab-21105ff2cdc4
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 163f051d-42eb-5ab9-8f80-9baf27d145d8
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 4c6c3eda-0a54-5fad-950e-39342244cd29
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 6a0cc620-f07c-53d9-a36e-56bea4a7b630
-          sources:
-            - paradedb-fuzzy
-        - doc_id: b6ac2795-a3cb-525a-9d79-fead9466bb37
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 4d99f0e5-24b9-567d-97d6-3b16006e6c5f
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 0e496643-1af9-51a6-9cc8-184c517dc0c5
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 7cacf3f0-2eb4-57fc-80c8-f0ac8f220819
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 8dec2968-a0a4-57cd-9a5f-fcada88a5fe4
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 80a00b20-295c-58b0-85b1-1e7d5d42e5d5
-          sources:
-            - paradedb-fuzzy
-        - doc_id: b66b7ed3-1040-51fe-a47d-9c5de40fd185
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 5fa8dbca-c3a1-5bb7-b547-ab1b08945aed
-          sources:
-            - paradedb-fuzzy
-        - doc_id: f8ca0711-32bb-5ea3-a491-e8df88d21a3f
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 0e3f30c9-48bb-51c4-89e8-f32ff3179edb
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 9032772d-d298-5ac2-bbb6-b751ac60acaa
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 4457c1da-4710-5ad5-b947-f192a42f8f1f
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 05902c3d-7573-5061-9665-702282b4e0a7
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 5e05f7d2-c126-53c0-bf0c-f823e86fa395
-          sources:
-            - paradedb-fuzzy
-        - doc_id: d666f35b-dabc-50a9-9dce-576acd2033d1
-          sources:
-            - paradedb-fuzzy
-        - doc_id: d85894fa-5aa7-59ea-9efe-e1151d54b45d
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 4d60e0d4-f6cc-5cc3-99c1-7f1ec2913337
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 30dafde6-d5f7-5cc8-ada7-4abcdee36979
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 50019ab2-a60b-5ee3-8630-69654641dd6f
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 1ee6cd47-64bb-5c33-b410-09c420d9c1f2
+        - doc_id: be713970-9605-5fb2-8073-a03727468f18
           sources:
             - paradedb-fuzzy
         - doc_id: 822fe315-2cee-5e3d-8b28-9e1d60df23f5
@@ -7761,6 +7739,10 @@ queries:
           sources:
             - pg-fuzzy
             - pg-gin-spelled
+        - doc_id: 06a69af0-eedd-5cdc-bb64-89440fa6ab75
+          sources:
+            - pg-fuzzy
+            - pg-gin-spelled
         - doc_id: 8411021b-0131-5022-abd2-ff447fe9d713
           sources:
             - pg-fuzzy
@@ -7785,7 +7767,7 @@ queries:
         elasticsearch: bc618f0cb14b2c73dd842b2297f7b33c34e73034cba03e1fdad1d8813817f166
         es-fuzzy: 473c76279925440ba26c23bd6dc8b308fd2c9135ef0e31f715a101c612ef48c5
         paradedb: 0bbf4bcd6716968bd81d7d927ccd58ab8bf2a1972c0d727d0400876a5784715e
-        paradedb-fuzzy: f0d024cc1e2bc4f7520b9271701c5059643bd375b7034a664c035addd09e27ee
+        paradedb-fuzzy: 053e41e23266a62868afd051a633e13d49a5274dcae1961e816659442ad737d6
         pg-fuzzy: 401983712accb5eb125e2319802918b5a2b661fb63d5ff58a9cd0da25fcfdaa5
         pg-gin: 60339855bb8f3e0f862a0bb7ebae5b865b865f6ccebe81d2ef3e58d8d33f57cd
         pg-gin-spelled: 6c8868e656ef4e8c8c6c7dccece3660395716020dde13d3c37310faf2d09c864
@@ -9436,10 +9418,12 @@ queries:
         - doc_id: 3ee28995-f3c8-5698-b6d8-a55aa8390867
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-trgm
         - doc_id: d0c9d98f-fc73-57e1-9c4b-ad127a1aeece
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 2606ef0a-864d-588f-ad59-f5abb874adb6
@@ -9452,16 +9436,19 @@ queries:
         - doc_id: 8b771148-e467-5ecf-9ef1-f83c96e61431
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 3c812a1f-5c93-5abd-b18e-95892f018c48
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: a2a3ab20-0f50-5b17-adaa-0f8021bf4e03
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 67fa9b1b-7a62-5d1c-9cbc-1a339a4d2bca
@@ -9473,6 +9460,7 @@ queries:
         - doc_id: 25c0b770-e454-5909-bcdd-6e2c89b76c66
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
             - pg-trgm
@@ -9491,11 +9479,13 @@ queries:
         - doc_id: e8aa11d0-02d2-50d0-a793-671848c0042c
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: a9c73992-0b7f-507d-905d-f38b825306e7
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 0d05fb11-10f0-53ba-8337-8a0fc386e69f
@@ -9507,6 +9497,7 @@ queries:
         - doc_id: 9e8c29b5-a1f1-55f8-a38c-e2fd09d5c343
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 23fabc8b-f619-5f02-b611-345354938fed
@@ -9572,23 +9563,27 @@ queries:
         - doc_id: 0eb01010-d055-5ece-8c21-d578c6fa9e01
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
             - pg-trgm
         - doc_id: 16c7edb4-a98e-5727-aa2c-8c2741a93a36
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
             - pg-trgm
         - doc_id: e7ed019d-be7b-55a7-887f-d468cafeaecf
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: a6931ab7-fb11-53aa-b752-c709ea5fda6a
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
         - doc_id: 7f2c59dc-8464-5de0-acde-859ef414930a
           sources:
             - es-fuzzy
@@ -9619,6 +9614,7 @@ queries:
         - doc_id: ad08aa06-1c01-5706-991d-4db854d802aa
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 8ffde477-fe67-5fe2-8587-db4455bdbc7e
@@ -9639,11 +9635,13 @@ queries:
         - doc_id: 8da5142b-8237-5a83-ba1f-8496afa01d81
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 4d9730fc-5952-5cc1-ae89-30d69e00e4eb
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-trgm
         - doc_id: bea473a8-818a-5b10-9013-b98f36de5505
           sources:
@@ -9777,161 +9775,64 @@ queries:
         - doc_id: 1117a08e-bf29-5538-8c8f-4b6acf2e6551
           sources:
             - paradedb
-        - doc_id: 48555c29-ae68-5441-be10-658660268fec
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 421c1977-b916-5a83-84c2-99d4d3c2ae9b
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 76ecb72f-e389-54c3-8d7a-1705eadd7485
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 0046ed75-5d81-53d6-919a-cc90d5238cce
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 0cd977e6-1bbc-5ecf-8b82-8942b4215758
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 553188bf-8ab0-5a4e-a6de-73ad09d62e0b
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 05307e9d-c2f6-5145-aa4f-671c91be7b9d
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 10389025-3779-5abb-8764-b0cf4354f8bc
-          sources:
-            - paradedb-fuzzy
-        - doc_id: ea6dd419-1a30-57a8-8c49-f60ea276bc49
-          sources:
-            - paradedb-fuzzy
-        - doc_id: d1cb1766-d0d7-58e0-bfce-b1d00b9c2c33
-          sources:
-            - paradedb-fuzzy
-        - doc_id: c6eb6458-3792-5783-b238-38e981b288b0
-          sources:
-            - paradedb-fuzzy
-        - doc_id: ee7c9dd3-e0c4-57b4-bb99-571df2bdc92e
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 6e936580-90a5-5cb0-b2cf-ff8befa8b0cd
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 4fd6edb2-866e-5755-a2ae-6fad4309dc8b
-          sources:
-            - paradedb-fuzzy
-        - doc_id: b657d3f3-2983-5a92-91b8-f1305181808f
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 3d8d7c19-f4c0-58b3-89c2-dbb5a84fe68c
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-            - pg-trgm
-        - doc_id: 5bfc0b1d-cc68-5c95-8c95-2f246bec3c0d
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 925af3d8-07c9-51ff-9e07-b29535dfb568
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 0777f6a9-59a2-5351-ab05-1b663bbb68b7
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 7976fde0-7703-52f8-adfc-a1f8782927a3
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 528f8266-65df-5b09-b35d-593af6b9e613
-          sources:
-            - paradedb-fuzzy
-        - doc_id: d6dfc3b6-8c3f-5c52-95b7-afdde9a19655
-          sources:
-            - paradedb-fuzzy
-        - doc_id: b0177570-aedd-5dec-a316-8ce7789cbd9f
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 4fd74c82-cc31-54e0-bfad-c38fa164a235
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 14e6267d-b2a2-509e-81c9-2ff2ab902d15
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 50f2f70c-1677-5756-a251-df1aac1701a5
-          sources:
-            - paradedb-fuzzy
-            - pg-trgm
-        - doc_id: 6389d2f4-b00e-5358-97c9-229b66f8993a
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
         - doc_id: afb6fffd-d6ce-5ace-b3fd-5e242edb2ce9
           sources:
             - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
-        - doc_id: f226fb50-9925-56f2-a7cc-470f7b04d427
+        - doc_id: 46d5c315-7bab-5034-b973-0b0bf3da262a
           sources:
             - paradedb-fuzzy
-        - doc_id: bbcadb40-f32f-5820-b562-5380e4cf9ff9
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: 5bb156e5-e221-571f-83f7-b3a5f2239b4f
           sources:
             - paradedb-fuzzy
-        - doc_id: c7ebe51f-7699-5256-b4ed-1bb384d72e5f
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: 2c8589e6-8918-5236-87b5-966f8d33c63e
           sources:
             - paradedb-fuzzy
-        - doc_id: d829e0a6-d589-53a4-9988-9959b73eae67
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 8a72b4b7-1e2e-5aaf-a811-db02ca019f33
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 6e3f22c8-a71a-573f-b41c-6237b9909da0
-          sources:
-            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+            - pg-trgm
         - doc_id: 0866d87c-ed99-50cc-8d9c-170045b87cfd
           sources:
             - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
             - pg-trgm
-        - doc_id: cb34bf35-56b2-5d4d-831d-4cf6e01438bf
-          sources:
-            - paradedb-fuzzy
-        - doc_id: eb405364-87c2-5de8-9814-a30268d87c13
-          sources:
-            - paradedb-fuzzy
         - doc_id: 0c901619-2b01-54c8-989c-d6c3397d72ed
           sources:
             - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
-        - doc_id: 0be483d8-8119-5700-8ede-22229ce8680d
-          sources:
-            - paradedb-fuzzy
-        - doc_id: d186e874-a988-524b-a7bc-fff7f75dfc94
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 728d2b9d-bfea-554c-a510-03c539027853
-          sources:
-            - paradedb-fuzzy
-        - doc_id: f195edfc-9b04-5fa6-94bc-a20247966d53
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 59a3bb53-27e9-55c2-af95-16623cc3b578
-          sources:
-            - paradedb-fuzzy
-        - doc_id: bd323b49-827c-5359-beda-81982c02ce31
-          sources:
-            - paradedb-fuzzy
-        - doc_id: a380f4ca-7267-539c-8bf2-c7e3aaeed9e5
+        - doc_id: 5b5846cd-bb5a-5d7b-93d9-e76f670d8465
           sources:
             - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
+            - pg-trgm
+        - doc_id: 850dca8b-8d85-5bed-9c34-fa1b5cda3bf9
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+            - pg-trgm
         - doc_id: 32aea7ec-bafd-5139-b531-58e54bba37e8
           sources:
             - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
+        - doc_id: 3d8d7c19-f4c0-58b3-89c2-dbb5a84fe68c
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+            - pg-trgm
+        - doc_id: b9c3d639-5faa-585d-bc8e-3c3add17b6ff
+          sources:
+            - paradedb-fuzzy
         - doc_id: f9764d9b-015f-5fda-8ecc-5f3c749fe591
           sources:
             - paradedb-fuzzy
@@ -9939,22 +9840,74 @@ queries:
             - pg-gin-spelled
         - doc_id: f08488bd-9a51-51d5-8bd3-0a9b92317775
           sources:
-            - pg-fuzzy
-            - pg-gin-spelled
-        - doc_id: 2c8589e6-8918-5236-87b5-966f8d33c63e
-          sources:
-            - pg-fuzzy
-            - pg-gin-spelled
-            - pg-trgm
-        - doc_id: 46d5c315-7bab-5034-b973-0b0bf3da262a
-          sources:
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 5bfe8ef4-294b-5121-94fc-555acb7a332b
           sources:
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
             - pg-trgm
+        - doc_id: 1c201f44-3ce7-5e39-81d6-e93ed17d2474
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 6389d2f4-b00e-5358-97c9-229b66f8993a
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: e4c4521f-3f0c-530d-a9f7-d505821603cd
+          sources:
+            - paradedb-fuzzy
+        - doc_id: a380f4ca-7267-539c-8bf2-c7e3aaeed9e5
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: 231603cc-1c3a-53c3-97b8-ce8cbc87c10d
+          sources:
+            - paradedb-fuzzy
+        - doc_id: d73ae377-6993-5b06-8484-5d5162aec788
+          sources:
+            - paradedb-fuzzy
+        - doc_id: c7be1ad7-5ef2-5e4f-b411-171ca51eb012
+          sources:
+            - paradedb-fuzzy
+        - doc_id: c3b83cd2-0014-5a8e-9afd-3e26c24be6e1
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 7eba7fcb-040e-5e31-aa63-82076ef76703
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 62066ca5-a0a6-51b5-84f3-fd98b975429e
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 5bfe9347-7fad-51b7-89d5-da760ef296c9
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+            - pg-trgm
+        - doc_id: 0e79d392-8c8f-570e-aeac-9f04bca6f5b2
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 50f2f70c-1677-5756-a251-df1aac1701a5
+          sources:
+            - paradedb-fuzzy
+            - pg-trgm
+        - doc_id: bf8afcd4-c4d3-5758-972b-46df8c95ee39
+          sources:
+            - paradedb-fuzzy
+        - doc_id: d7e05507-72e7-5233-a8b0-d982419d4b64
+          sources:
+            - paradedb-fuzzy
+        - doc_id: a8db766a-25a8-52bf-827f-224e519fc9ff
+          sources:
+            - paradedb-fuzzy
+        - doc_id: ea600464-3c98-5252-925a-656590818268
+          sources:
+            - paradedb-fuzzy
         - doc_id: b0272498-ad02-549c-b438-644cfa51e92c
           sources:
             - pg-fuzzy
@@ -9968,25 +9921,6 @@ queries:
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 1502115b-f7eb-549c-b43d-0439eee326e8
-          sources:
-            - pg-fuzzy
-            - pg-gin-spelled
-            - pg-trgm
-        - doc_id: 5b5846cd-bb5a-5d7b-93d9-e76f670d8465
-          sources:
-            - pg-fuzzy
-            - pg-gin-spelled
-            - pg-trgm
-        - doc_id: 5bb156e5-e221-571f-83f7-b3a5f2239b4f
-          sources:
-            - pg-fuzzy
-            - pg-gin-spelled
-        - doc_id: 5bfe9347-7fad-51b7-89d5-da760ef296c9
-          sources:
-            - pg-fuzzy
-            - pg-gin-spelled
-            - pg-trgm
-        - doc_id: 850dca8b-8d85-5bed-9c34-fa1b5cda3bf9
           sources:
             - pg-fuzzy
             - pg-gin-spelled
@@ -10084,7 +10018,7 @@ queries:
         elasticsearch: c3c1abcbf8ac183103f4e51a12cfb33b9847581426b0ecc891e653bdd543871f
         es-fuzzy: 99e9b2546c0e9831d0f36c95bf502b707c04d5eb512f84ebb93349892821af70
         paradedb: 8a566ce7da8b84ce783f4989fb6e745e079b84fae8f2412defe1a33e45b8f174
-        paradedb-fuzzy: 17d1c1aac703f4cfdb1ac81b766321c099584e48c41e0b0cb2167cd99bdb25c6
+        paradedb-fuzzy: da626abcd2be1df39c27fce933cfdde46ad554a9b2ab263ee89674a8ee157bf5
         pg-fuzzy: e5be2e126d46503a35fc11e0895ba47c32a333e83c526dec43a237e383d68db0
         pg-gin: cf174ad603a95d0dc547adc5c265b571023efe2c10366908ace6342628917982
         pg-gin-spelled: 487030c81eece75118111aef8bbe5f105c0f9a63832972e51af9bc0e60741e02
@@ -10209,6 +10143,7 @@ queries:
         - doc_id: 85cb0876-08df-5a6a-ba58-2a2a206c4b38
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
         - doc_id: b079786b-12e6-5483-be76-825baacba1ba
           sources:
             - es-fuzzy
@@ -10321,6 +10256,7 @@ queries:
         - doc_id: be49f365-7f4e-5e68-a8e3-697af62cb406
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
         - doc_id: cc64b5ab-90b4-50f2-a187-856790711548
           sources:
             - es-fuzzy
@@ -10330,150 +10266,151 @@ queries:
         - doc_id: cafb47e9-d342-5dd3-912f-2179162f2b2d
           sources:
             - es-fuzzy
-        - doc_id: 7ee8871d-c665-553d-9781-124a6c3eb2dd
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 852d3291-87cf-5ad3-80de-9a0062ba7150
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 642c49cb-1d85-51de-a8b3-cd82c58ad6c5
-          sources:
-            - paradedb-fuzzy
-        - doc_id: e23aac61-ce55-5d5a-bf7d-d8dfd6c30c41
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 4fad4cab-7090-5266-8556-7cefa3b29531
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 5f6adc60-01dd-5789-9e37-8782b55f057f
-          sources:
-            - paradedb-fuzzy
-        - doc_id: a17db3d1-5d39-59cc-a330-97d38fb23863
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 3b9cd60d-5be0-5c5a-9e59-dfd7e9a344a7
-          sources:
-            - paradedb-fuzzy
-        - doc_id: f398d95a-546e-55d9-a4ee-18c8df5ce240
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 29f1ebbb-ca0a-5d27-9760-7f075ec012a0
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 15907f4a-a38e-5d96-b6a6-fb4f04289275
-          sources:
-            - paradedb-fuzzy
-        - doc_id: aad51da1-add2-5292-92e2-1b0ab7fd5c68
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 7d06adf9-483b-5f71-9d10-595b6559f706
-          sources:
-            - paradedb-fuzzy
-        - doc_id: a418b5f4-08e9-549b-a257-f5241ee6e8e3
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 39b55b53-227b-557d-ba08-8f352d204b84
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 54cb4363-fc66-5f16-9da0-18cc9846b114
-          sources:
-            - paradedb-fuzzy
-        - doc_id: efd20e74-31f4-5bc5-824e-20f482bee71c
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 28830208-c613-5048-936e-8fcceb9fc9e9
-          sources:
-            - paradedb-fuzzy
-        - doc_id: bb8e251d-6d9e-5b59-8bec-576d122d777b
-          sources:
-            - paradedb-fuzzy
-        - doc_id: c1405c4f-51dd-5a74-9670-3e6d67880725
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin-spelled
-        - doc_id: 48555c29-ae68-5441-be10-658660268fec
-          sources:
-            - paradedb-fuzzy
         - doc_id: a066420e-5869-5131-ad02-5f5da89fcdd3
           sources:
             - paradedb-fuzzy
-        - doc_id: 73d8632c-dd4a-5cdd-9159-178aacef1073
-          sources:
-            - paradedb-fuzzy
-        - doc_id: d59fae74-d315-533c-ab54-87249d28d413
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 69952b52-c19c-54d1-9bba-9a7476ed91f0
-          sources:
-            - paradedb-fuzzy
-        - doc_id: f3838c7f-75bb-5c2d-bc8a-626103bb7e7c
-          sources:
-            - paradedb-fuzzy
-        - doc_id: ace90e76-0fa2-59e2-9617-7865c8bb4054
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 847e8aca-7852-57b7-9faf-83e6dd7cc471
+        - doc_id: cc365cf1-0b99-5807-896a-6e74ba055583
           sources:
             - paradedb-fuzzy
         - doc_id: 8ef79bbc-b1fa-5a07-8633-5d5ce5545994
           sources:
             - paradedb-fuzzy
+        - doc_id: 320cf71e-8d63-595c-b712-80846ea8cf44
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 4d223c9f-7884-56d1-b31e-61569a45bc43
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 4a78e99c-2bc8-5870-ba42-18c5ea0f07e8
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 0444dad4-e8dd-573c-8acb-56730b3a6540
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 98b57f36-ac69-5820-a21d-c21372b7e7ac
+          sources:
+            - paradedb-fuzzy
+        - doc_id: f96798bc-33f0-5666-bea8-f07610dbe2d9
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: b6123601-8efa-5287-b29a-97e82899a30f
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: e50d297f-41ec-522c-930c-ab48bf7bb5bc
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 7d675973-721f-5416-8ff0-eac2a59a8ebf
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 217abcfa-bd06-568a-842f-4579075ef0f7
+          sources:
+            - paradedb-fuzzy
+            - pg-trgm
+        - doc_id: b907ca9b-d817-55a1-bbc0-b047b525ff11
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 148afa2e-224f-594d-9be1-f484d4c74cb8
+          sources:
+            - paradedb-fuzzy
+        - doc_id: e237f54e-8d0a-5056-bf9c-f594bd8ad59d
+          sources:
+            - paradedb-fuzzy
+        - doc_id: ee28058f-3fc7-5330-bbc1-c84215cb7123
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 591f6a71-79f6-5c92-a1a1-2aa273a18621
+          sources:
+            - paradedb-fuzzy
+        - doc_id: e8ab8a2c-357b-54c6-be65-cccde6572ef3
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 2ad9b16e-03ef-52bb-a3b8-dbd87c87ca52
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 1518df76-96f3-5bf9-b984-a25770bbb60d
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 82b582e1-86d0-58e5-98d2-6367a816270d
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 847e8aca-7852-57b7-9faf-83e6dd7cc471
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 18d3e5a8-4732-51c1-8bda-aefc95132627
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 3afdcde4-74f1-57aa-ba2a-ea88c9cb1aa9
+          sources:
+            - paradedb-fuzzy
+        - doc_id: d4c7d23b-1c06-5d2e-b8e0-3e030e693aeb
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: a221d9e0-e53b-5fa5-89cc-dc6a0ee1e041
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: c42842b9-762a-5520-9eba-c9a173729ff7
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 2c1b986d-a0b3-5250-81a8-2fbbd3ee61e8
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 10f068b8-9781-5489-b252-270a0bd15651
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 8cde2405-84f9-50aa-b778-1d27b20f2fc7
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 14d987d8-b9a6-59a4-ab66-41154d05b197
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 066e46ed-9d26-5ef0-9d4f-c38574f54259
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 9ee13949-a62c-5454-b6b0-dfc8e9d0f0fb
+          sources:
+            - paradedb-fuzzy
+        - doc_id: f555ba91-5cf2-5a04-b3d4-97e6835770d8
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 0a0021c9-c397-5539-b053-24afcb09471b
+          sources:
+            - paradedb-fuzzy
+        - doc_id: eac5c686-f99c-5e49-8f6b-7c16c915f994
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 2f948eed-4e64-59e1-ac62-7bbeaf24a379
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 76372356-4e54-579d-ba51-e4116c72543b
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 04b05fe0-d1b6-5772-ac5b-49a403f102bc
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 528d146a-e8fa-51ea-9011-79de08efcc7a
+          sources:
+            - paradedb-fuzzy
         - doc_id: 03f58c18-6356-5bdf-9c59-16a0158d5463
           sources:
             - paradedb-fuzzy
-        - doc_id: 9fd96c0a-f3fa-5f1e-a137-ac02dd62304b
+        - doc_id: 09f28193-3267-539b-942e-bff8d8372817
           sources:
             - paradedb-fuzzy
-        - doc_id: 5ccaf577-553a-5d35-bf34-0ea654708a5f
+        - doc_id: efed0654-1400-50c7-9fed-560b0fcca4a8
           sources:
             - paradedb-fuzzy
-        - doc_id: 8196bf58-0820-548d-9099-1a7ad73cbcaf
+        - doc_id: c9247b08-ef67-58ce-aaf5-6b927669df76
           sources:
             - paradedb-fuzzy
-        - doc_id: b2dc7771-3d91-5ce6-bb3b-008f487051bd
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 0dc65375-ad96-5845-aabf-6e65a38f879d
-          sources:
-            - paradedb-fuzzy
-        - doc_id: deb1067c-127c-5cbe-ba7d-f98d1cdf94e9
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 91f905d8-4221-5561-a124-156008d94562
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 92b92ec6-d215-57b0-b516-9fa0f19b7510
-          sources:
-            - paradedb-fuzzy
-        - doc_id: afd8f99d-16cd-5e52-8a14-46d504b31251
-          sources:
-            - paradedb-fuzzy
-        - doc_id: c4c87ac4-88aa-57cd-a756-9bcc2bf251a5
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 3a7ecdce-c4f4-5dba-bf8c-e80548e10f6d
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 7688fbcd-a48f-5dd9-a552-41aae9efe299
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 32c35869-ac3c-53d6-bbb1-eed92998860b
-          sources:
-            - paradedb-fuzzy
-        - doc_id: ca6983d1-b49f-54f9-959d-7824b2612f3e
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 26e3d945-fb18-5e7d-a332-ff5131a46ebd
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 4dbf6edc-7458-5255-8e75-69bf3f1c9a3a
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 6cd2f817-11d8-5523-bed9-edb0c12d8b80
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 37f04182-e74a-544a-aec3-c9e31cabb6b6
+        - doc_id: ff9a8489-38c5-5c95-950d-0d25ba70aa7d
           sources:
             - paradedb-fuzzy
         - doc_id: 605c0eab-1b7b-59e6-bced-a433dbe38fac
@@ -10498,14 +10435,6 @@ queries:
             - pg-fuzzy
             - pg-gin-spelled
             - pg-trgm
-        - doc_id: a221d9e0-e53b-5fa5-89cc-dc6a0ee1e041
-          sources:
-            - pg-fuzzy
-            - pg-gin-spelled
-        - doc_id: d4c7d23b-1c06-5d2e-b8e0-3e030e693aeb
-          sources:
-            - pg-fuzzy
-            - pg-gin-spelled
         - doc_id: 7cb0c669-64b1-5a90-8c9f-393febb8ac58
           sources:
             - pg-fuzzy
@@ -10546,24 +10475,20 @@ queries:
           sources:
             - pg-fuzzy
             - pg-gin-spelled
-        - doc_id: b6123601-8efa-5287-b29a-97e82899a30f
-          sources:
-            - pg-fuzzy
-            - pg-gin-spelled
         - doc_id: 2aa63861-8327-5ffc-9e5f-751098521d47
           sources:
             - pg-fuzzy
             - pg-gin-spelled
             - pg-trgm
-        - doc_id: f96798bc-33f0-5666-bea8-f07610dbe2d9
-          sources:
-            - pg-fuzzy
-            - pg-gin-spelled
         - doc_id: e78ad4a4-ae8f-51f1-ac27-9a6ac4b1ee16
           sources:
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: f6ac0095-dc79-5dd6-99d1-f42e5d9b0ad1
+          sources:
+            - pg-fuzzy
+            - pg-gin-spelled
+        - doc_id: c1405c4f-51dd-5a74-9670-3e6d67880725
           sources:
             - pg-fuzzy
             - pg-gin-spelled
@@ -10710,9 +10635,6 @@ queries:
         - doc_id: 1de667eb-7ce5-5eea-a516-4120e1d11a5d
           sources:
             - pg-trgm
-        - doc_id: 217abcfa-bd06-568a-842f-4579075ef0f7
-          sources:
-            - pg-trgm
         - doc_id: 243a8aaf-ebce-552d-b440-215919390cc1
           sources:
             - pg-trgm
@@ -10753,7 +10675,7 @@ queries:
         elasticsearch: eb6ae4d80abfd884d22cb85766d07741a3db597f4d28c4bd38e3b21d99851fdf
         es-fuzzy: 8b6e69f339e2ea27289c368ecad97a7f0866d4043bde827944f2540c806a3acd
         paradedb: dd78fd35b7dc2f33ee5355ba2cccf64c7f5c33065fb3d14b4819b91375aa6323
-        paradedb-fuzzy: 287238d3bc0f46fe8c2a591cb7f54766615e82154f910a55614944d06192babb
+        paradedb-fuzzy: 226c4920a3a4040e0429bdb512961f825408fd67c9ce52b1a8e543eea96e17d5
         pg-fuzzy: 9af52f0bfa4f53ddf716eebc9a4b0b13f42fdaa18fbb7b4f9e4f76fa62f7d42f
         pg-gin: 2e80046d5f135941fae5bbfcc58c1fc60cb970073ef3495e273fceace91dc4e2
         pg-gin-spelled: a308989f81d981dd8d293faad1b4519183527b678c31b9b7c8e712382658c7dd
@@ -12050,6 +11972,7 @@ queries:
         - doc_id: 68148563-c978-56b7-833a-f0725a4355a7
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 513e2a7b-2865-56d6-84fe-845f43d49b14
@@ -12096,6 +12019,7 @@ queries:
         - doc_id: a25fc457-b7e4-59a2-b751-6292e2a53ce9
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-gin-spelled
         - doc_id: e0f987a4-7763-59c8-9c24-7bdd1d703f33
           sources:
@@ -12117,6 +12041,7 @@ queries:
         - doc_id: 11ffa43a-977d-5e76-bed2-a83e155a6386
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
         - doc_id: c8675714-648c-5d03-96ff-eb7008cf0564
           sources:
             - es-fuzzy
@@ -12141,6 +12066,7 @@ queries:
         - doc_id: f85f2ad0-daa7-54be-b815-7c4c0b92c282
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: bc6aba67-36e0-5234-834f-36a2853292cf
@@ -12157,6 +12083,7 @@ queries:
         - doc_id: 6cf75a85-f3bc-5708-8dee-480173d1906e
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 461f6735-8eea-520f-bada-7cd080425e21
@@ -12167,6 +12094,7 @@ queries:
           sources:
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: 245f9f9b-8da7-53d2-9140-453b01dc9d8b
@@ -12196,6 +12124,7 @@ queries:
         - doc_id: d2271c2d-6741-51d8-9300-664afe3d35f2
           sources:
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
         - doc_id: caf5828e-4d2b-541b-8be4-273197816891
@@ -12376,22 +12305,16 @@ queries:
             - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
-        - doc_id: 1a731e6d-c056-5c96-9fa5-ff705414e87e
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 0400330a-4637-5786-b941-69235c452900
-          sources:
-            - paradedb-fuzzy
         - doc_id: 262a87e4-7cc6-52e3-80cd-7a870ea2d045
           sources:
             - paradedb-fuzzy
         - doc_id: 2c20dbcf-d21d-5dbf-aeba-f83360a330d9
           sources:
             - paradedb-fuzzy
-        - doc_id: 7dcd2a9d-b2a0-5cf9-8d22-dbba1fd57a40
+        - doc_id: 521e222f-5243-507d-ae0b-a46f67912aee
           sources:
             - paradedb-fuzzy
-        - doc_id: 521e222f-5243-507d-ae0b-a46f67912aee
+        - doc_id: 7dcd2a9d-b2a0-5cf9-8d22-dbba1fd57a40
           sources:
             - paradedb-fuzzy
         - doc_id: e4a96c30-8f0e-5bb2-838f-5c1435685df1
@@ -12401,9 +12324,6 @@ queries:
           sources:
             - paradedb-fuzzy
         - doc_id: e36c9f95-d9fa-5037-a3af-529ac92dcab9
-          sources:
-            - paradedb-fuzzy
-        - doc_id: db060ea3-55ae-5a84-8b95-579eae9acc81
           sources:
             - paradedb-fuzzy
         - doc_id: f7f7839a-1eb9-5074-bb7e-7a1c810076d5
@@ -12427,6 +12347,11 @@ queries:
         - doc_id: d803d4a6-6c33-5f6f-9c83-8e6a7c71c643
           sources:
             - paradedb-fuzzy
+        - doc_id: 6fb74883-3e1b-57e9-83d1-5706e713c97a
+          sources:
+            - paradedb-fuzzy
+            - pg-fuzzy
+            - pg-gin-spelled
         - doc_id: 11ab98fd-74ea-56ee-b92c-5a2ccd9d149e
           sources:
             - paradedb-fuzzy
@@ -12437,21 +12362,6 @@ queries:
             - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin-spelled
-        - doc_id: 94a426f4-8da0-53bd-aaa0-adbcf39e2768
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 8d011df5-db56-57ad-9358-c2c1f2d855ac
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 74d8ae7b-b845-5771-81d2-cc983eaa04f3
-          sources:
-            - paradedb-fuzzy
-        - doc_id: aa7a0d23-6751-5566-bceb-ad3cc2d49e2b
-          sources:
-            - paradedb-fuzzy
-        - doc_id: ad145640-9f63-5ef8-b0e5-cf74332eb242
-          sources:
-            - paradedb-fuzzy
         - doc_id: a59f6f55-3158-58d4-b9f3-f20570c4edd9
           sources:
             - pg-fuzzy
@@ -12476,10 +12386,6 @@ queries:
         - doc_id: 9da025cc-fcfb-528c-99c1-ae0d1bd77431
           sources:
             - pg-fuzzy
-        - doc_id: 6fb74883-3e1b-57e9-83d1-5706e713c97a
-          sources:
-            - pg-fuzzy
-            - pg-gin-spelled
         - doc_id: 19a2455b-ab56-5eac-9081-0a390d36acdd
           sources:
             - pg-fuzzy
@@ -12508,7 +12414,7 @@ queries:
         elasticsearch: 6de089936dd257fbd7bef8c70084fa14897807a76d30bfc2679677f75938e8e3
         es-fuzzy: e2e295f7ff69e1a6c4c1ece52147fed87c344d78a6c7057b86fd4247ba550267
         paradedb: 954d3b25dd3556091dd4f604006727283f1a525335c7d0203a9840ba4008ca23
-        paradedb-fuzzy: 49e1fc24bb5908b82dbbec3d27fb810a72ad040b74d510af737ff8dde9f5e792
+        paradedb-fuzzy: 924ceb0538bdae505f9eefb513d515469f195a27aadf83d2d873473933829608
         pg-fuzzy: 99e3613e545986c23f7c868e3846cbc1ef4e87c8be671c29fed9e90b7c785d88
         pg-gin: 533e864e51fbd3309911119f5a212a72f0b338415f34cd1e507a45eefcfee784
         pg-gin-spelled: 1a92b07c726dc6a031cba1bd3f6a5f19b9daf75434733e9491f3e88ce0355947
@@ -13423,13 +13329,13 @@ queries:
         - doc_id: 9c8551d2-04a3-5e83-8f97-6de6ff7554d5
           sources:
             - paradedb-fuzzy
-        - doc_id: 236c1238-f41f-5290-910b-8a0f2b653c4f
-          sources:
-            - paradedb-fuzzy
         - doc_id: ad35fd85-3479-5f93-bb15-23c80fcf872d
           sources:
             - paradedb-fuzzy
             - pg-gin-spelled
+        - doc_id: 236c1238-f41f-5290-910b-8a0f2b653c4f
+          sources:
+            - paradedb-fuzzy
         - doc_id: 4aa2dc57-3bf5-5f1a-8d2b-26326abc47e9
           sources:
             - paradedb-fuzzy
@@ -13459,22 +13365,22 @@ queries:
           sources:
             - paradedb-fuzzy
             - pg-gin-spelled
-        - doc_id: f2999548-3830-5c6d-a862-efc2af1ee6db
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 82292748-9fda-5cc1-82d5-6a9a48b69475
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 489dde9c-38db-5b78-807d-9ac7f64adade
-          sources:
-            - paradedb-fuzzy
         - doc_id: f7c7b727-e421-561e-887a-f4d954e78cb7
           sources:
             - paradedb-fuzzy
-        - doc_id: 3112f062-4525-52a0-a815-100bec221127
+        - doc_id: 5f9c2329-01df-56d5-a51f-357525f842b4
           sources:
             - paradedb-fuzzy
-        - doc_id: 5f9c2329-01df-56d5-a51f-357525f842b4
+        - doc_id: 0606822e-569f-53a9-b537-0b504788ec33
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 437037c7-5219-54fb-b04b-3f84e5751d3b
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 436f9b7e-e011-5643-99b5-671f124249df
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 2a103ddf-1a34-5e8e-a9e7-22feb87d786e
           sources:
             - paradedb-fuzzy
         - doc_id: 9c1a82b4-1a2c-54b6-b704-bb9f9b7e869a
@@ -13637,7 +13543,7 @@ queries:
         elasticsearch: 4eccacd7729023d9a88ebee96e97513ef82b0bef6626c839d110c05f7b5e2919
         es-fuzzy: 8fbcabdc90ce21706b5fc31b206d3dc7891d703dab1802da036d068f8769ea9e
         paradedb: 85691001589eb86b1111545dcfaf8f1b0f223fce43ffe51c7ef65c4b48707905
-        paradedb-fuzzy: 3156435d73ec584e9f1b10c4dcbdf299a0eecfe97a7c12c1067f98230e2d9b66
+        paradedb-fuzzy: 4b55fb6842149a2a6c4eefb93e960ccfd4692771197781f8dc5f06f29f0e5e62
         pg-fuzzy: a8ae2ea5271247815a1b52252737bb3b1aad14e87c2647c8f49e6615d8126795
         pg-gin: 98702a93cafd6900f08eb5ab2958959f3ce95a59126e7169e823970a5851fe4b
         pg-gin-spelled: 29083f9e1cf11054e3d1ac6ecf35408909f9d301bdf3480daeb85de859324d75
@@ -14966,9 +14872,6 @@ queries:
         - doc_id: 8b3bf3e6-a100-5ae8-bc9b-f4c568ea08e8
           sources:
             - paradedb-fuzzy
-        - doc_id: def80ebd-34f9-5d3f-b48e-2db0c93afa0b
-          sources:
-            - paradedb-fuzzy
         - doc_id: 54068727-5276-5ab7-97ef-efcad3ce6857
           sources:
             - paradedb-fuzzy
@@ -14995,6 +14898,9 @@ queries:
           sources:
             - paradedb-fuzzy
         - doc_id: 941b9da1-f008-52ca-9c17-2076aa127529
+          sources:
+            - paradedb-fuzzy
+        - doc_id: eb0ae203-f89f-54e8-aad3-64cb41bd8b56
           sources:
             - paradedb-fuzzy
         - doc_id: 54c88376-5ab4-5b2a-9fec-35ac0ce19964
@@ -15194,7 +15100,7 @@ queries:
         elasticsearch: f71c408a2f345ebfa8684aa2ca42491539bf4689546868b7723207c0953ac7b6
         es-fuzzy: 0f28bebc0f24b477a8536b667e0a38dc44460f60b3b66c1784d8f883acf76ae8
         paradedb: 348b1406bf52fe4ec485e205ae66421590e30a3513a3110484d5e1a5a5ffb7ce
-        paradedb-fuzzy: 1a10e4cd1d34142fe2982d8aaf9e5ce9d2b817401eda4c9886f8be3bafc190ac
+        paradedb-fuzzy: c5fef796c9b86ae7e64a943456298119f1c606cc86257e6623a79ff2f78aa7a9
         pg-fuzzy: bb6d5a7bf91e29900d4c5ee4aebf443f5ed6702bb98d7a5e5906947a7a8f8de3
         pg-gin: 18ae1fdb05bfb6df7ee77acb9175d639b1662640f90de97befc6b6ccd0b7c2bc
         pg-gin-spelled: 18ae1fdb05bfb6df7ee77acb9175d639b1662640f90de97befc6b6ccd0b7c2bc
@@ -15216,6 +15122,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-trgm
             - tiger
         - doc_id: f17f1b89-4c63-52cb-a98e-f1c2f3d04f9e
@@ -15223,6 +15130,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - tiger
         - doc_id: 0118f73e-f3cb-5b19-9697-559daa8f2db7
           sources:
@@ -15236,6 +15144,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin
             - pg-gin-spelled
@@ -15330,11 +15239,13 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
         - doc_id: bb4cc823-73bc-5174-96ed-3acb11f7aef9
           sources:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin
             - pg-gin-spelled
@@ -15344,6 +15255,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-trgm
         - doc_id: 0eb12310-4314-523d-9860-18464bff8674
           sources:
@@ -15375,6 +15287,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
         - doc_id: 5c48869d-36b4-5891-961b-6bc0f78d45f0
           sources:
             - elasticsearch
@@ -15391,6 +15304,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-trgm
             - tiger
         - doc_id: 28bab959-8732-5677-8b69-6bfe57bee72c
@@ -15398,6 +15312,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-trgm
             - tiger
         - doc_id: dbf2d670-5b39-5476-beec-ef42faa0a5d6
@@ -15405,6 +15320,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - tiger
         - doc_id: b1e008b8-26be-5526-bbf4-514aca5d1f08
           sources:
@@ -15431,6 +15347,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin
             - pg-gin-spelled
@@ -15484,12 +15401,14 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - tiger
         - doc_id: 6e963a95-b3f7-5bdc-ab04-26f09b686ecf
           sources:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - tiger
         - doc_id: 930305ed-13d0-54e4-908f-b814a4953fcc
           sources:
@@ -15507,6 +15426,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin
             - pg-gin-spelled
@@ -15516,6 +15436,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
         - doc_id: 12805b51-ed19-596a-bb4a-be49436bd204
           sources:
             - elasticsearch
@@ -15541,12 +15462,14 @@ queries:
           sources:
             - elasticsearch
             - es-fuzzy
+            - paradedb-fuzzy
             - tiger
         - doc_id: c67ecb37-d149-5a3e-a665-673896a49ed0
           sources:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin
             - pg-gin-spelled
@@ -15555,6 +15478,7 @@ queries:
           sources:
             - elasticsearch
             - es-fuzzy
+            - paradedb-fuzzy
             - pg-trgm
             - tiger
         - doc_id: 18692261-96e5-5b51-9c14-7db37093a616
@@ -15622,6 +15546,7 @@ queries:
         - doc_id: ebcba764-b785-53e3-8472-b0f1acfff425
           sources:
             - paradedb
+            - paradedb-fuzzy
             - tiger
         - doc_id: a3ba80d8-2c58-56cb-9bbb-226725c4a84a
           sources:
@@ -15639,6 +15564,7 @@ queries:
         - doc_id: 7ccd6b66-ece3-5c2b-97c3-e3d831ffa1ac
           sources:
             - paradedb
+            - paradedb-fuzzy
             - tiger
         - doc_id: cca70e80-1678-5e94-83d3-69cb35fa98bc
           sources:
@@ -15654,91 +15580,29 @@ queries:
         - doc_id: 55fa3d41-fe3f-5482-a3ce-3274a8aea9c0
           sources:
             - paradedb
+            - paradedb-fuzzy
             - pg-trgm
             - tiger
-        - doc_id: c82a6fd5-209e-5c02-8510-71d597272faf
+        - doc_id: 9d540080-a3e9-5c3d-b7f1-f66e7a0b049f
           sources:
             - paradedb-fuzzy
-        - doc_id: fcc41667-5411-504b-bc32-a0872d45c3fb
+            - pg-fuzzy
+            - pg-trgm
+            - tiger
+        - doc_id: 978719ba-944c-5003-8187-513e5c8478d2
           sources:
             - paradedb-fuzzy
-        - doc_id: 76ecb72f-e389-54c3-8d7a-1705eadd7485
+            - pg-trgm
+        - doc_id: 70d3d70a-24d4-577a-8af1-94864b6949b8
           sources:
             - paradedb-fuzzy
-        - doc_id: 0046ed75-5d81-53d6-919a-cc90d5238cce
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 0cd977e6-1bbc-5ecf-8b82-8942b4215758
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 54655c80-2ddc-53e5-a575-c196aaf92c9b
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 7f61bded-14f9-5a92-a631-fc18774608cf
-          sources:
-            - paradedb-fuzzy
-        - doc_id: d1cb1766-d0d7-58e0-bfce-b1d00b9c2c33
-          sources:
-            - paradedb-fuzzy
-        - doc_id: ee7c9dd3-e0c4-57b4-bb99-571df2bdc92e
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 553188bf-8ab0-5a4e-a6de-73ad09d62e0b
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 421c1977-b916-5a83-84c2-99d4d3c2ae9b
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 10389025-3779-5abb-8764-b0cf4354f8bc
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 4fd6edb2-866e-5755-a2ae-6fad4309dc8b
-          sources:
-            - paradedb-fuzzy
-        - doc_id: b657d3f3-2983-5a92-91b8-f1305181808f
-          sources:
-            - paradedb-fuzzy
-        - doc_id: e058045f-5767-549e-a6c0-ffb3501c6e98
-          sources:
-            - paradedb-fuzzy
-        - doc_id: ea6dd419-1a30-57a8-8c49-f60ea276bc49
-          sources:
-            - paradedb-fuzzy
-        - doc_id: c6eb6458-3792-5783-b238-38e981b288b0
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 05307e9d-c2f6-5145-aa4f-671c91be7b9d
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 6e936580-90a5-5cb0-b2cf-ff8befa8b0cd
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 3c61b08e-4998-5f32-8030-a9504d4aea7e
-          sources:
-            - paradedb-fuzzy
-        - doc_id: e2622bd1-8fab-54bd-a9ba-1241680beefe
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 8dec2968-a0a4-57cd-9a5f-fcada88a5fe4
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 9776f16c-b8f8-5210-b9ea-f6a7ab72679f
-          sources:
-            - paradedb-fuzzy
-        - doc_id: ada8593d-1a30-5800-a5e9-e51b01be9c0f
-          sources:
-            - paradedb-fuzzy
+            - pg-trgm
         - doc_id: 628a4643-df57-588c-aca3-d8570565343a
           sources:
             - pg-fuzzy
         - doc_id: 06a757de-10df-59ea-835d-605dc5f92480
           sources:
             - pg-fuzzy
-        - doc_id: 9d540080-a3e9-5c3d-b7f1-f66e7a0b049f
-          sources:
-            - pg-fuzzy
-            - pg-trgm
-            - tiger
         - doc_id: 021be4dc-4bab-577a-ad92-cfb6f7fe3dcf
           sources:
             - pg-fuzzy
@@ -15855,12 +15719,6 @@ queries:
             - pg-gin
             - pg-gin-spelled
             - pg-trgm
-        - doc_id: 70d3d70a-24d4-577a-8af1-94864b6949b8
-          sources:
-            - pg-trgm
-        - doc_id: 978719ba-944c-5003-8187-513e5c8478d2
-          sources:
-            - pg-trgm
         - doc_id: eb139df2-5ca7-53ef-91a7-437d5dc582d5
           sources:
             - tiger
@@ -15889,7 +15747,7 @@ queries:
         elasticsearch: 6f7075c5f30b9274bd30854745b8fed8f9c9f2a606ef5df3a640bff6bbea3af6
         es-fuzzy: d933e0dbf46f295443342cf491d754a0d4426858ba79d96c9051ecb358040dfa
         paradedb: e96cacaa939f1ee3e693f305f7a9cd15b70acaae0274fa5a836d07b16ae95b20
-        paradedb-fuzzy: bc68175be729747718e0241babdd43043c4d093100b8e00e9e995f897046738d
+        paradedb-fuzzy: 18e4a41249de9506e1725e04e59c7a03076c9e74e825afe528e78e34c9165d9c
         pg-fuzzy: daaf794a421732bc710da0940f72c130383e1a058f5dec762075e2c62b344aa7
         pg-gin: de333424ef5ae805b0312dde9d520c4c97982536c1509d8bdf6be6c8737e20ef
         pg-gin-spelled: de333424ef5ae805b0312dde9d520c4c97982536c1509d8bdf6be6c8737e20ef
@@ -16365,9 +16223,6 @@ queries:
         - doc_id: cf5805d5-8625-5b14-a9a1-6ee897cbb6ff
           sources:
             - paradedb-fuzzy
-        - doc_id: 6bd2a8b2-2f7a-54af-b521-08b803ba345b
-          sources:
-            - paradedb-fuzzy
         - doc_id: ac9b1a92-af47-57cc-914d-7f3335481161
           sources:
             - paradedb-fuzzy
@@ -16382,6 +16237,9 @@ queries:
             - pg-gin
             - pg-gin-spelled
             - tiger
+        - doc_id: 7ba07e5d-2497-5a76-a3ca-f84b1e5fe7bb
+          sources:
+            - paradedb-fuzzy
         - doc_id: c3333c42-2b7c-59d9-82aa-3ab72214c4c1
           sources:
             - pg-fuzzy
@@ -16591,7 +16449,7 @@ queries:
         elasticsearch: b7e6ce173e07f90d9d65956e3b8632314e7994a4edb13c005a2e17d043808f79
         es-fuzzy: 595dda18b5f28940bf03d85fcf3f3cd9528210db7f1ce13a3abd899536148fc8
         paradedb: 6f02c4d5bacc182ccc158f19808c3c3dab07a7093009cc057a6f3cea52a2e662
-        paradedb-fuzzy: 86724963e103f03dd224e92ca57c4e47c8f1847a6ce73a6186501a2fa72e9f78
+        paradedb-fuzzy: 3a333c89fb30afd4b87e05b6e9ba16afc6810f62997738ea552268148fe3aeb7
         pg-fuzzy: 081406d10bb8df46ed4cce55848bc667f3566afa1d45feb847762eb5cca946e1
         pg-gin: 0c429aaa3cd08a9df23cad1ce0d12d85bd7366988bbb33e2444afd13a0447c7c
         pg-gin-spelled: 0c429aaa3cd08a9df23cad1ce0d12d85bd7366988bbb33e2444afd13a0447c7c
@@ -18000,6 +17858,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
         - doc_id: 9b3a2636-aa55-5412-85b1-0ab1bd006a7d
           sources:
             - elasticsearch
@@ -18009,6 +17868,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
         - doc_id: f798d45f-5237-5425-a9f7-fc9fbf880184
           sources:
             - elasticsearch
@@ -18088,6 +17948,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-trgm
         - doc_id: 7ab18bf4-135a-5248-93e9-d1c83fcc2ea9
           sources:
@@ -18243,15 +18104,18 @@ queries:
         - doc_id: 3c3580c7-205a-58a9-9770-7479e656325e
           sources:
             - paradedb
+            - paradedb-fuzzy
         - doc_id: e3b986cf-d1c3-554e-beb9-ea7223d19e70
           sources:
             - paradedb
         - doc_id: 86435a5a-a1eb-5f79-97c2-fffaf560e80e
           sources:
             - paradedb
+            - paradedb-fuzzy
         - doc_id: 60c86923-82d4-5053-b392-49be2439afe0
           sources:
             - paradedb
+            - paradedb-fuzzy
         - doc_id: 2aa09837-802e-5752-9140-4e7c4186171c
           sources:
             - paradedb
@@ -18260,9 +18124,11 @@ queries:
         - doc_id: 70318cfb-8f17-5a83-9f0e-89cabb7478f3
           sources:
             - paradedb
+            - paradedb-fuzzy
         - doc_id: 3df873e6-eff4-58db-a250-e9626f3e8f29
           sources:
             - paradedb
+            - paradedb-fuzzy
         - doc_id: 32cffb33-065f-5c5a-aaea-3cee59cbcd36
           sources:
             - paradedb
@@ -18285,6 +18151,7 @@ queries:
         - doc_id: 22bca157-d410-5d9b-a2ad-00f0b0b4e8a1
           sources:
             - paradedb
+            - paradedb-fuzzy
             - pg-trgm
         - doc_id: 81710cd0-3c5e-5ac5-abca-f76e5d3b792c
           sources:
@@ -18301,6 +18168,7 @@ queries:
         - doc_id: ba9ad6c2-cad8-58d7-8c17-e2b644fef9ac
           sources:
             - paradedb
+            - paradedb-fuzzy
         - doc_id: 42d67d43-c76d-5238-b045-a21b4ec8211f
           sources:
             - paradedb
@@ -18310,18 +18178,22 @@ queries:
         - doc_id: f05c58b7-1ffc-5525-8757-bc091420d10d
           sources:
             - paradedb
+            - paradedb-fuzzy
         - doc_id: 628c771c-f4fb-557c-bf00-76d3f728d623
           sources:
             - paradedb
+            - paradedb-fuzzy
         - doc_id: 927eeee9-f440-5da2-8c61-4512eaedb735
           sources:
             - paradedb
         - doc_id: 664b4669-22db-51eb-b417-1be88d0b5c85
           sources:
             - paradedb
+            - paradedb-fuzzy
         - doc_id: d22bd00a-4a27-5d32-bd87-6a458f68d33b
           sources:
             - paradedb
+            - paradedb-fuzzy
         - doc_id: 3b779fba-fa51-56f0-a378-63c843209659
           sources:
             - paradedb
@@ -18335,171 +18207,113 @@ queries:
         - doc_id: feaae0a6-b5c4-5c73-bf6c-b832d7b57a63
           sources:
             - paradedb
-        - doc_id: 76ecb72f-e389-54c3-8d7a-1705eadd7485
+        - doc_id: ee659384-a70f-525a-b645-08a071ecace8
           sources:
             - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: 0046ed75-5d81-53d6-919a-cc90d5238cce
+        - doc_id: 31fe5243-a643-5937-ac1a-160681311d8d
           sources:
             - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: 421c1977-b916-5a83-84c2-99d4d3c2ae9b
+        - doc_id: 301628df-ddfc-5ee6-a833-b02d79181a72
           sources:
             - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: 10389025-3779-5abb-8764-b0cf4354f8bc
+            - pg-gin
+            - pg-gin-spelled
+            - tiger
+        - doc_id: a2d83def-747b-5958-9d51-4ecff7733a8f
           sources:
             - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: 0cd977e6-1bbc-5ecf-8b82-8942b4215758
+        - doc_id: 3f98135d-925e-5608-ad86-125143ba15f9
           sources:
             - paradedb-fuzzy
-            - pg-fuzzy
+        - doc_id: a25f76cb-9fb5-59b0-af77-222b05c856fd
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 98ef6b87-5bb2-54cf-bdba-55f003485177
+          sources:
+            - paradedb-fuzzy
         - doc_id: 892b7d34-b26f-5589-8e32-0c429bae1e59
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 48555c29-ae68-5441-be10-658660268fec
-          sources:
-            - paradedb-fuzzy
-        - doc_id: ea6dd419-1a30-57a8-8c49-f60ea276bc49
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: d1cb1766-d0d7-58e0-bfce-b1d00b9c2c33
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: c6eb6458-3792-5783-b238-38e981b288b0
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: ee7c9dd3-e0c4-57b4-bb99-571df2bdc92e
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: 553188bf-8ab0-5a4e-a6de-73ad09d62e0b
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: 05307e9d-c2f6-5145-aa4f-671c91be7b9d
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: 6e936580-90a5-5cb0-b2cf-ff8befa8b0cd
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: 4fd6edb2-866e-5755-a2ae-6fad4309dc8b
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: b657d3f3-2983-5a92-91b8-f1305181808f
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: f7b7c5fe-9509-52c1-9e4f-379b4fb0eee2
-          sources:
-            - paradedb-fuzzy
-        - doc_id: b3b84dd6-4261-5315-abf8-7bb63bb45d1d
-          sources:
-            - paradedb-fuzzy
-        - doc_id: c4ba25d0-b37c-5b60-93cb-24a994038bc0
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 0777f6a9-59a2-5351-ab05-1b663bbb68b7
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: 7976fde0-7703-52f8-adfc-a1f8782927a3
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: 528f8266-65df-5b09-b35d-593af6b9e613
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-        - doc_id: c2ab3019-8d2b-513e-870d-097c29965102
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 458eb90c-fd83-5f6e-b419-217852d1be52
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 3c61b08e-4998-5f32-8030-a9504d4aea7e
           sources:
             - paradedb-fuzzy
         - doc_id: 2334abf3-9082-5dd9-8c41-a21fdad1e943
           sources:
             - paradedb-fuzzy
-        - doc_id: 82840c0c-9d1f-5694-865e-7f80bfc06cfa
+        - doc_id: 91c3ec9a-d217-5dd7-a036-774e84ed44eb
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 5cb52fea-af44-5f80-8e6d-3aecf9baa523
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 04b2c9ab-6a69-56e5-bef4-1257c82110c5
+          sources:
+            - paradedb-fuzzy
+        - doc_id: aed0a87f-2e01-59d8-b45d-8c634bc862bc
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 73ee0667-5496-5e01-bece-fcf0ec533405
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 86e818ea-856b-58a9-aa96-5f6c687c8fd7
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 6e741ca9-9fb0-5e0c-a983-d646530d4316
+          sources:
+            - paradedb-fuzzy
+        - doc_id: f6592dd6-b2c4-55e1-8852-1a875d6679d9
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 46969b80-1488-51d3-8be1-157b8e24f991
+          sources:
+            - paradedb-fuzzy
+        - doc_id: e9b5af67-4bb7-5d0c-94a0-eb379a9532a9
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 1dd3b1cc-1251-52cf-8b2e-777d454b5bfe
+          sources:
+            - paradedb-fuzzy
+        - doc_id: a296ad94-9965-5e4f-8822-b43924388a1a
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 256aae82-5afb-57d4-85b1-839237afe010
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 1001049a-5257-5ce6-b9a0-00e56f0ea7e3
           sources:
             - paradedb-fuzzy
             - pg-trgm
-        - doc_id: 1c3a7c85-4569-5663-a1b0-8a5c1f58ddc4
+        - doc_id: b86390c3-47f5-5692-a090-eac3c8eeb1c9
           sources:
             - paradedb-fuzzy
-        - doc_id: 34a1321b-f74b-5e69-8855-184eca7cfa51
+        - doc_id: 0ae6c1f2-29ce-5d81-9965-fc392df31b51
           sources:
             - paradedb-fuzzy
-        - doc_id: 00cbf862-ef88-5971-8fa5-a35e33e10939
+        - doc_id: 9778d0ac-63e9-5abf-bee1-30f4bc7de028
           sources:
             - paradedb-fuzzy
-        - doc_id: 8625b5fd-bd35-5767-8441-08e2497214ae
+        - doc_id: d7e3f898-2690-560f-9a93-203f31ae17e4
           sources:
             - paradedb-fuzzy
-        - doc_id: 5b50bec9-a425-547c-8377-39f3cb985cdd
+        - doc_id: 8e9e5068-e872-5072-95c4-97a20cd7b9a3
           sources:
             - paradedb-fuzzy
-        - doc_id: 00e4ca14-a993-587e-88a4-eab07bd2f60c
+        - doc_id: 75bb0f72-d663-56f1-ac66-85b5fa32cbeb
           sources:
             - paradedb-fuzzy
-        - doc_id: a552b31f-2616-58da-9527-13d712fae204
+        - doc_id: 38c9c35d-061f-5982-83de-7e382c494ebe
           sources:
             - paradedb-fuzzy
-        - doc_id: 25d67e9b-1069-5647-9f2d-137c6c59392d
+        - doc_id: 9d104a1b-b82d-566d-9c72-ca17bd7dcb8c
           sources:
             - paradedb-fuzzy
-        - doc_id: 275b5bce-a5a4-5930-a242-fee68df4270c
+        - doc_id: e8e58172-a21f-5651-89c9-d98a36ccdb60
           sources:
             - paradedb-fuzzy
-        - doc_id: 37d65a95-8a82-50a0-97a4-daaffed83097
+        - doc_id: a2648718-ea13-5101-a0df-15ba01942a4a
           sources:
             - paradedb-fuzzy
-        - doc_id: 1b649a7c-a9cb-54e1-8cad-9fb1ba947835
+        - doc_id: a632a370-1899-510f-8e41-8cd390d87741
           sources:
             - paradedb-fuzzy
-        - doc_id: fb48ab39-4748-5c02-ba71-bcbd383a7dbd
-          sources:
-            - paradedb-fuzzy
-        - doc_id: bc3690ac-53a8-57cf-b78b-ebb1619ca74e
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 6867ed7a-55f3-511a-8522-008dbe3cf522
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 4409e14e-ea3a-5006-b6d6-e94122aaa9f3
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 4613cdfc-996c-5056-8391-99cad6107265
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 4f99adc6-ef9d-5989-a7ad-3346dc43edf7
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 72260654-31c7-5d58-a94b-bb7487a5767a
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 63a75389-bcec-5454-b917-1e9d1b06edb7
-          sources:
-            - paradedb-fuzzy
-            - pg-gin
-            - pg-gin-spelled
-        - doc_id: 1d812ca4-1156-52e8-86d1-651c0d18e9a3
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 7221e8dc-3a1d-5baa-9bec-b1cb2f2c6352
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 6d332963-5a81-5d7c-ad42-49172018733f
+        - doc_id: b14d57af-7bb8-5b7c-8638-ac4c85e9d8e2
           sources:
             - paradedb-fuzzy
         - doc_id: 44300f28-4cdc-52f9-8d34-5e33105d43df
@@ -18538,6 +18352,57 @@ queries:
             - pg-gin
             - pg-gin-spelled
             - tiger
+        - doc_id: 0046ed75-5d81-53d6-919a-cc90d5238cce
+          sources:
+            - pg-fuzzy
+        - doc_id: 05307e9d-c2f6-5145-aa4f-671c91be7b9d
+          sources:
+            - pg-fuzzy
+        - doc_id: 0777f6a9-59a2-5351-ab05-1b663bbb68b7
+          sources:
+            - pg-fuzzy
+        - doc_id: 0cd977e6-1bbc-5ecf-8b82-8942b4215758
+          sources:
+            - pg-fuzzy
+        - doc_id: 10389025-3779-5abb-8764-b0cf4354f8bc
+          sources:
+            - pg-fuzzy
+        - doc_id: 421c1977-b916-5a83-84c2-99d4d3c2ae9b
+          sources:
+            - pg-fuzzy
+        - doc_id: 4fd6edb2-866e-5755-a2ae-6fad4309dc8b
+          sources:
+            - pg-fuzzy
+        - doc_id: 528f8266-65df-5b09-b35d-593af6b9e613
+          sources:
+            - pg-fuzzy
+        - doc_id: 553188bf-8ab0-5a4e-a6de-73ad09d62e0b
+          sources:
+            - pg-fuzzy
+        - doc_id: 6e936580-90a5-5cb0-b2cf-ff8befa8b0cd
+          sources:
+            - pg-fuzzy
+        - doc_id: 76ecb72f-e389-54c3-8d7a-1705eadd7485
+          sources:
+            - pg-fuzzy
+        - doc_id: 7976fde0-7703-52f8-adfc-a1f8782927a3
+          sources:
+            - pg-fuzzy
+        - doc_id: b657d3f3-2983-5a92-91b8-f1305181808f
+          sources:
+            - pg-fuzzy
+        - doc_id: c6eb6458-3792-5783-b238-38e981b288b0
+          sources:
+            - pg-fuzzy
+        - doc_id: d1cb1766-d0d7-58e0-bfce-b1d00b9c2c33
+          sources:
+            - pg-fuzzy
+        - doc_id: ea6dd419-1a30-57a8-8c49-f60ea276bc49
+          sources:
+            - pg-fuzzy
+        - doc_id: ee7c9dd3-e0c4-57b4-bb99-571df2bdc92e
+          sources:
+            - pg-fuzzy
         - doc_id: a180db5d-e935-5765-8db1-1a2b6c32805d
           sources:
             - pg-fuzzy
@@ -18728,6 +18593,10 @@ queries:
             - pg-gin
             - pg-gin-spelled
             - tiger
+        - doc_id: 63a75389-bcec-5454-b917-1e9d1b06edb7
+          sources:
+            - pg-gin
+            - pg-gin-spelled
         - doc_id: 7e00dc46-ba82-539a-941f-b4f58ab5571a
           sources:
             - pg-gin
@@ -18782,11 +18651,6 @@ queries:
             - pg-gin
             - pg-gin-spelled
             - tiger
-        - doc_id: 301628df-ddfc-5ee6-a833-b02d79181a72
-          sources:
-            - pg-gin
-            - pg-gin-spelled
-            - tiger
         - doc_id: 15b98854-6170-52b4-a5ed-07bf9e33b71b
           sources:
             - pg-gin
@@ -18815,6 +18679,9 @@ queries:
           sources:
             - pg-gin
             - pg-gin-spelled
+        - doc_id: 82840c0c-9d1f-5694-865e-7f80bfc06cfa
+          sources:
+            - pg-trgm
         - doc_id: 00c611c9-5a6e-5aae-acde-59f8234dd89a
           sources:
             - pg-trgm
@@ -18855,9 +18722,6 @@ queries:
           sources:
             - pg-trgm
         - doc_id: 0fd353b2-0ec2-58f0-80cc-1e30608edcaa
-          sources:
-            - pg-trgm
-        - doc_id: 1001049a-5257-5ce6-b9a0-00e56f0ea7e3
           sources:
             - pg-trgm
         - doc_id: 1276e9fb-0b9d-56f6-a019-47fafc8b1ff2
@@ -18966,7 +18830,7 @@ queries:
         elasticsearch: fa81109c3ff396a032da049b48fc6f6348f241780430dcf2f615523e0ca608bc
         es-fuzzy: 9748f2a1f5e52d9aace3e57a0ca8e1389ec046f4e5d2f7392a693338cb54f14f
         paradedb: 2bb7a7e6221cee3fa65594c82a84c04d4109872a674c20142af53ca5e6bb79ea
-        paradedb-fuzzy: 085301735cc5394311b9fd91b141623e9bcbdcd0aed8a2fcf8b0db5bc79f6702
+        paradedb-fuzzy: 656b72eabb046f4225120b390495b27c9b72f30e48973cbf282c2ac065c18a31
         pg-fuzzy: f937a22b1c15dbcdb45103050ddee0e6c90cb0ffb499a5ba2ea12065469eb801
         pg-gin: 21a75d16e533cdca06beb3609060d82b23d771d3302f85a968ab7398f2f12a0c
         pg-gin-spelled: 21a75d16e533cdca06beb3609060d82b23d771d3302f85a968ab7398f2f12a0c
@@ -20462,6 +20326,7 @@ queries:
             - elasticsearch
             - es-fuzzy
             - paradedb
+            - paradedb-fuzzy
             - pg-fuzzy
             - pg-gin
             - pg-gin-spelled
@@ -20575,6 +20440,7 @@ queries:
           sources:
             - elasticsearch
             - es-fuzzy
+            - paradedb-fuzzy
         - doc_id: c70f76dc-46b9-59af-8aa2-d4986f2b13d8
           sources:
             - elasticsearch
@@ -20744,6 +20610,7 @@ queries:
         - doc_id: 51b0241c-0d2d-5a32-a389-f36579cd206c
           sources:
             - paradedb
+            - paradedb-fuzzy
         - doc_id: c1f07c86-8345-55cd-be3d-f5c8babff222
           sources:
             - paradedb
@@ -20766,52 +20633,13 @@ queries:
         - doc_id: c756d235-578e-518e-b0ad-b56fa0cdddae
           sources:
             - paradedb
-        - doc_id: ca3e9fb8-a66f-5e6b-9413-d57173aac383
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 13b190c0-d3c0-5177-811a-68a9265f65c2
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin
-            - pg-gin-spelled
-        - doc_id: e31045b7-a482-539e-ad10-7a6d5b79b740
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 3316abc0-77ae-58f8-9f64-2cb2026780ca
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin
-            - pg-gin-spelled
-        - doc_id: c1518394-0cef-5cbb-a901-c28b2f99e7a7
-          sources:
-            - paradedb-fuzzy
         - doc_id: 6d8ebb2d-e7a5-51c8-9068-7726475f2afc
           sources:
             - paradedb-fuzzy
-        - doc_id: 4fb7cd0b-f93c-5017-ab01-7bac915283ee
+        - doc_id: efe00e03-6a9a-5c94-a63b-f071124f2f98
           sources:
             - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin
-            - pg-gin-spelled
-        - doc_id: 88a8791c-f86e-55e1-8e29-15621c9e318a
-          sources:
-            - paradedb-fuzzy
-        - doc_id: 168008f4-5404-582f-9b28-dbd3b78354cb
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin
-            - pg-gin-spelled
-        - doc_id: 75c39a30-ede3-52a3-9d83-bc0033af1d21
-          sources:
-            - paradedb-fuzzy
-            - pg-fuzzy
-            - pg-gin
-            - pg-gin-spelled
-        - doc_id: 2fafb70b-ec56-5072-92e3-d277cdc89b21
+        - doc_id: 733ba1c9-aaaf-5150-b6a0-4c146af2ca06
           sources:
             - paradedb-fuzzy
             - pg-fuzzy
@@ -20823,7 +20651,22 @@ queries:
         - doc_id: 54e46437-2067-5cb1-b8ea-87bb1b359928
           sources:
             - paradedb-fuzzy
-        - doc_id: efe00e03-6a9a-5c94-a63b-f071124f2f98
+        - doc_id: e2a7e978-887f-5b61-b169-4cc9fd29b630
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 5f3cd8a4-777f-58ac-a718-51ac42fbf233
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 0d104d27-ab97-527e-8690-4a11c8bdacfb
+          sources:
+            - paradedb-fuzzy
+        - doc_id: e39258ea-8046-568e-9783-f76b9b622638
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 5d4749ff-721d-54ec-b790-5d1303617f80
+          sources:
+            - paradedb-fuzzy
+        - doc_id: 31176821-b342-5a3e-90cb-aee0ec2a63fe
           sources:
             - paradedb-fuzzy
         - doc_id: 011f4d31-eaf2-5f56-8df8-df860f250982
@@ -20861,12 +20704,22 @@ queries:
             - pg-gin
             - pg-gin-spelled
             - pg-trgm
+        - doc_id: 13b190c0-d3c0-5177-811a-68a9265f65c2
+          sources:
+            - pg-fuzzy
+            - pg-gin
+            - pg-gin-spelled
         - doc_id: 14b081b9-d3fb-5cee-814d-3832ef8e5f45
           sources:
             - pg-fuzzy
             - pg-gin
             - pg-gin-spelled
             - pg-trgm
+        - doc_id: 168008f4-5404-582f-9b28-dbd3b78354cb
+          sources:
+            - pg-fuzzy
+            - pg-gin
+            - pg-gin-spelled
         - doc_id: 1729ca20-a054-5518-ab27-13a40421608c
           sources:
             - pg-fuzzy
@@ -20886,6 +20739,16 @@ queries:
             - pg-gin-spelled
             - pg-trgm
         - doc_id: 2bf96141-7234-58ee-adae-b98852a82ff7
+          sources:
+            - pg-fuzzy
+            - pg-gin
+            - pg-gin-spelled
+        - doc_id: 2fafb70b-ec56-5072-92e3-d277cdc89b21
+          sources:
+            - pg-fuzzy
+            - pg-gin
+            - pg-gin-spelled
+        - doc_id: 3316abc0-77ae-58f8-9f64-2cb2026780ca
           sources:
             - pg-fuzzy
             - pg-gin
@@ -20915,6 +20778,11 @@ queries:
             - pg-gin-spelled
             - pg-trgm
         - doc_id: 4234e76e-ed3c-506c-b9cf-56a4e94ddd54
+          sources:
+            - pg-fuzzy
+            - pg-gin
+            - pg-gin-spelled
+        - doc_id: 4fb7cd0b-f93c-5017-ab01-7bac915283ee
           sources:
             - pg-fuzzy
             - pg-gin
@@ -20959,12 +20827,12 @@ queries:
             - pg-fuzzy
             - pg-gin
             - pg-gin-spelled
-        - doc_id: 733ba1c9-aaaf-5150-b6a0-4c146af2ca06
+        - doc_id: 75bc8893-bc65-52fe-876a-2cf992bae191
           sources:
             - pg-fuzzy
             - pg-gin
             - pg-gin-spelled
-        - doc_id: 75bc8893-bc65-52fe-876a-2cf992bae191
+        - doc_id: 75c39a30-ede3-52a3-9d83-bc0033af1d21
           sources:
             - pg-fuzzy
             - pg-gin
@@ -21100,7 +20968,7 @@ queries:
         elasticsearch: eb8a1d174812a162631e5d4751fa7dae7d79e4e99c66df078180ff2e97a939e1
         es-fuzzy: bed888894555f94e6cef97eb36f98ecd98efdc465f4e38e6f11292d15224abd1
         paradedb: 633a0e2565db8d9c4865f04ada84319f4382d2a2cbb27e8f1b710e3fe1e58efb
-        paradedb-fuzzy: 17baaf81e112cf52e125ea9532db5d6fccb7991f040898a0ab6383ff8586797f
+        paradedb-fuzzy: 0001bbe9932cbcbd98662fd499cde56d6a421f55c37bb223bbc4b1400504fb6f
         pg-fuzzy: bedb3d349e385d8703663d85d7526e1b6f013ef9721cb574277b17386272c04b
         pg-gin: 50118824669a73449535cd3cd256ab69bf4dc0febf170571461dde64205966b7
         pg-gin-spelled: 50118824669a73449535cd3cd256ab69bf4dc0febf170571461dde64205966b7

@@ -2,7 +2,7 @@ schema_version: 1
 id: cc_news_fuzzy_v1
 name: "cc-news fuzzy v1"
 description: "Typo-tolerant search over cc-news: 30 queries, 10 with one misspelt word, 10 harder, 10 spelled correctly"
-version: "1.0.0"
+version: "1.1.0"
 
 corpus:
   name: cc-news-canonical@v1
@@ -273,11 +273,11 @@ queries:
         SELECT id FROM articles
         WHERE id @@@ paradedb.boolean(should => ARRAY[
             paradedb.boost(3.0, paradedb.match('title', 'flu', distance => 1)),
-            paradedb.boost(3.0, paradedb.match('title', 'vacine', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'vacine', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'flu', distance => 1)),
-            paradedb.boost(2.0, paradedb.match('description', 'vacine', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'vacine', distance => 1)),
             paradedb.match('content', 'flu', distance => 1),
-            paradedb.match('content', 'vacine', distance => 2)
+            paradedb.match('content', 'vacine', distance => 1)
         ])
         ORDER BY pdb.score(id) DESC
         LIMIT 100
@@ -317,11 +317,11 @@ queries:
       paradedb-fuzzy: |
         SELECT id FROM articles
         WHERE id @@@ paradedb.boolean(should => ARRAY[
-            paradedb.boost(3.0, paradedb.match('title', 'imigration', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'imigration', distance => 1)),
             paradedb.boost(3.0, paradedb.match('title', 'policy', distance => 2)),
-            paradedb.boost(2.0, paradedb.match('description', 'imigration', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'imigration', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'policy', distance => 2)),
-            paradedb.match('content', 'imigration', distance => 2),
+            paradedb.match('content', 'imigration', distance => 1),
             paradedb.match('content', 'policy', distance => 2)
         ])
         ORDER BY pdb.score(id) DESC
@@ -411,11 +411,11 @@ queries:
         SELECT id FROM articles
         WHERE id @@@ paradedb.boolean(should => ARRAY[
             paradedb.boost(3.0, paradedb.match('title', 'opiod', distance => 1)),
-            paradedb.boost(3.0, paradedb.match('title', 'crisis', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'crisis', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'opiod', distance => 1)),
-            paradedb.boost(2.0, paradedb.match('description', 'crisis', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'crisis', distance => 1)),
             paradedb.match('content', 'opiod', distance => 1),
-            paradedb.match('content', 'crisis', distance => 2)
+            paradedb.match('content', 'crisis', distance => 1)
         ])
         ORDER BY pdb.score(id) DESC
         LIMIT 100
@@ -590,11 +590,11 @@ queries:
       paradedb-fuzzy: |
         SELECT id FROM articles
         WHERE id @@@ paradedb.boolean(should => ARRAY[
-            paradedb.boost(3.0, paradedb.match('title', 'goverment', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'goverment', distance => 1)),
             paradedb.boost(3.0, paradedb.match('title', 'shutdwon', distance => 2)),
-            paradedb.boost(2.0, paradedb.match('description', 'goverment', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'goverment', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'shutdwon', distance => 2)),
-            paradedb.match('content', 'goverment', distance => 2),
+            paradedb.match('content', 'goverment', distance => 1),
             paradedb.match('content', 'shutdwon', distance => 2)
         ])
         ORDER BY pdb.score(id) DESC
@@ -726,14 +726,14 @@ queries:
         SELECT id FROM articles
         WHERE id @@@ paradedb.boolean(should => ARRAY[
             paradedb.boost(3.0, paradedb.match('title', 'sexual', distance => 2)),
-            paradedb.boost(3.0, paradedb.match('title', 'harasment', distance => 2)),
-            paradedb.boost(3.0, paradedb.match('title', 'alegations', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'harasment', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'alegations', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'sexual', distance => 2)),
-            paradedb.boost(2.0, paradedb.match('description', 'harasment', distance => 2)),
-            paradedb.boost(2.0, paradedb.match('description', 'alegations', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'harasment', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'alegations', distance => 1)),
             paradedb.match('content', 'sexual', distance => 2),
-            paradedb.match('content', 'harasment', distance => 2),
-            paradedb.match('content', 'alegations', distance => 2)
+            paradedb.match('content', 'harasment', distance => 1),
+            paradedb.match('content', 'alegations', distance => 1)
         ])
         ORDER BY pdb.score(id) DESC
         LIMIT 100
@@ -773,11 +773,11 @@ queries:
       paradedb-fuzzy: |
         SELECT id FROM articles
         WHERE id @@@ paradedb.boolean(should => ARRAY[
-            paradedb.boost(3.0, paradedb.match('title', 'artifical', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'artifical', distance => 1)),
             paradedb.boost(3.0, paradedb.match('title', 'inteligence', distance => 2)),
-            paradedb.boost(2.0, paradedb.match('description', 'artifical', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'artifical', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'inteligence', distance => 2)),
-            paradedb.match('content', 'artifical', distance => 2),
+            paradedb.match('content', 'artifical', distance => 1),
             paradedb.match('content', 'inteligence', distance => 2)
         ])
         ORDER BY pdb.score(id) DESC
@@ -912,13 +912,13 @@ queries:
         SELECT id FROM articles
         WHERE id @@@ paradedb.boolean(should => ARRAY[
             paradedb.boost(3.0, paradedb.match('title', 'chemcial', distance => 2)),
-            paradedb.boost(3.0, paradedb.match('title', 'wepons', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'wepons', distance => 1)),
             paradedb.boost(3.0, paradedb.match('title', 'syria', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'chemcial', distance => 2)),
-            paradedb.boost(2.0, paradedb.match('description', 'wepons', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'wepons', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'syria', distance => 1)),
             paradedb.match('content', 'chemcial', distance => 2),
-            paradedb.match('content', 'wepons', distance => 2),
+            paradedb.match('content', 'wepons', distance => 1),
             paradedb.match('content', 'syria', distance => 1)
         ])
         ORDER BY pdb.score(id) DESC
@@ -1004,13 +1004,13 @@ queries:
       paradedb-fuzzy: |
         SELECT id FROM articles
         WHERE id @@@ paradedb.boolean(should => ARRAY[
-            paradedb.boost(3.0, paradedb.match('title', 'suprme', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'suprme', distance => 1)),
             paradedb.boost(3.0, paradedb.match('title', 'cuort', distance => 1)),
             paradedb.boost(3.0, paradedb.match('title', 'nominee', distance => 2)),
-            paradedb.boost(2.0, paradedb.match('description', 'suprme', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'suprme', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'cuort', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'nominee', distance => 2)),
-            paradedb.match('content', 'suprme', distance => 2),
+            paradedb.match('content', 'suprme', distance => 1),
             paradedb.match('content', 'cuort', distance => 1),
             paradedb.match('content', 'nominee', distance => 2)
         ])
@@ -1098,11 +1098,11 @@ queries:
         SELECT id FROM articles
         WHERE id @@@ paradedb.boolean(should => ARRAY[
             paradedb.boost(3.0, paradedb.match('title', 'pyeongchang', distance => 2)),
-            paradedb.boost(3.0, paradedb.match('title', 'olympics', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'olympics', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'pyeongchang', distance => 2)),
-            paradedb.boost(2.0, paradedb.match('description', 'olympics', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'olympics', distance => 1)),
             paradedb.match('content', 'pyeongchang', distance => 2),
-            paradedb.match('content', 'olympics', distance => 2)
+            paradedb.match('content', 'olympics', distance => 1)
         ])
         ORDER BY pdb.score(id) DESC
         LIMIT 100
@@ -1143,11 +1143,11 @@ queries:
         SELECT id FROM articles
         WHERE id @@@ paradedb.boolean(should => ARRAY[
             paradedb.boost(3.0, paradedb.match('title', 'stephen', distance => 2)),
-            paradedb.boost(3.0, paradedb.match('title', 'hawking', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'hawking', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'stephen', distance => 2)),
-            paradedb.boost(2.0, paradedb.match('description', 'hawking', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'hawking', distance => 1)),
             paradedb.match('content', 'stephen', distance => 2),
-            paradedb.match('content', 'hawking', distance => 2)
+            paradedb.match('content', 'hawking', distance => 1)
         ])
         ORDER BY pdb.score(id) DESC
         LIMIT 100
@@ -1190,15 +1190,15 @@ queries:
             paradedb.boost(3.0, paradedb.match('title', 'puerto', distance => 2)),
             paradedb.boost(3.0, paradedb.match('title', 'rico', distance => 1)),
             paradedb.boost(3.0, paradedb.match('title', 'power', distance => 1)),
-            paradedb.boost(3.0, paradedb.match('title', 'outage', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'outage', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'puerto', distance => 2)),
             paradedb.boost(2.0, paradedb.match('description', 'rico', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'power', distance => 1)),
-            paradedb.boost(2.0, paradedb.match('description', 'outage', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'outage', distance => 1)),
             paradedb.match('content', 'puerto', distance => 2),
             paradedb.match('content', 'rico', distance => 1),
             paradedb.match('content', 'power', distance => 1),
-            paradedb.match('content', 'outage', distance => 2)
+            paradedb.match('content', 'outage', distance => 1)
         ])
         ORDER BY pdb.score(id) DESC
         LIMIT 100
@@ -1335,11 +1335,11 @@ queries:
         SELECT id FROM articles
         WHERE id @@@ paradedb.boolean(should => ARRAY[
             paradedb.boost(3.0, paradedb.match('title', 'paradise', distance => 2)),
-            paradedb.boost(3.0, paradedb.match('title', 'papers', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'papers', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'paradise', distance => 2)),
-            paradedb.boost(2.0, paradedb.match('description', 'papers', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'papers', distance => 1)),
             paradedb.match('content', 'paradise', distance => 2),
-            paradedb.match('content', 'papers', distance => 2)
+            paradedb.match('content', 'papers', distance => 1)
         ])
         ORDER BY pdb.score(id) DESC
         LIMIT 100
@@ -1474,15 +1474,15 @@ queries:
         WHERE id @@@ paradedb.boolean(should => ARRAY[
             paradedb.boost(3.0, paradedb.match('title', 'uber', distance => 1)),
             paradedb.boost(3.0, paradedb.match('title', 'self', distance => 1)),
-            paradedb.boost(3.0, paradedb.match('title', 'driving', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'driving', distance => 1)),
             paradedb.boost(3.0, paradedb.match('title', 'crash', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'uber', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'self', distance => 1)),
-            paradedb.boost(2.0, paradedb.match('description', 'driving', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'driving', distance => 1)),
             paradedb.boost(2.0, paradedb.match('description', 'crash', distance => 1)),
             paradedb.match('content', 'uber', distance => 1),
             paradedb.match('content', 'self', distance => 1),
-            paradedb.match('content', 'driving', distance => 2),
+            paradedb.match('content', 'driving', distance => 1),
             paradedb.match('content', 'crash', distance => 1)
         ])
         ORDER BY pdb.score(id) DESC

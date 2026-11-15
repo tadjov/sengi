@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parent.parent / "tracks/cc-news/fuzzy/suite.yaml"
@@ -165,7 +166,7 @@ HEADER = """schema_version: 1
 id: cc_news_fuzzy_v1
 name: "cc-news fuzzy v1"
 description: "Typo-tolerant search over cc-news: 30 queries, 10 with one misspelt word, 10 harder, 10 spelled correctly"
-version: "1.0.0"
+version: "1.1.0"
 
 corpus:
   name: cc-news-canonical@v1
@@ -178,11 +179,20 @@ def edits(word):
     return 0 if len(word) <= 2 else 1 if len(word) <= 5 else 2
 
 
+# ParadeDB, like Elasticsearch, fuzzes the stemmed term, so its budget comes from
+# the stem; the stems are ParadeDB's own, read from the live engine.
+def paradedb_stem(word):
+    sql = f"SELECT array_to_string('{word}'::pdb.simple('stemmer=english', 'stopwords_language=english')::text[], ' ')"
+    out = subprocess.run(["docker", "exec", "pg-parade-news", "psql", "-U", "news_user", "-d", "news_db", "-At", "-c", sql],
+                         capture_output=True, text=True, check=True)
+    return out.stdout.strip()
+
+
 def paradedb_fuzzy(typed):
     clauses = []
     for field, boost in FIELDS:
         for word in typed.split():
-            match = f"paradedb.match('{field}', '{word}', distance => {edits(word)})"
+            match = f"paradedb.match('{field}', '{word}', distance => {edits(paradedb_stem(word))})"
             clauses.append(f"paradedb.boost({boost}, {match})" if boost else match)
     body = ",\n    ".join(clauses)
     return ("SELECT id FROM articles\nWHERE id @@@ paradedb.boolean(should => ARRAY[\n    " + body + "\n])\n"
