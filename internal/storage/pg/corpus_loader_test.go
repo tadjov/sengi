@@ -474,6 +474,48 @@ func TestCorpusLoader(t *testing.T) {
 				}
 			})
 
+			t.Run("keeps autovacuum off the corpus tables while it copies them", func(t *testing.T) {
+				db := newDatabase(t, server.ConnString)
+				articles, vectors := fixture(corpusSize)
+				c := corpusOf(articles, vectors)
+				var duringCopy map[string][]string
+				var probeErr error
+				c.Articles = func(yield func(document.Article, error) bool) {
+					for i, a := range articles {
+						if i == corpusSize/2 {
+							duringCopy, probeErr = storageParameters(db)
+						}
+						if !yield(a, nil) {
+							return
+						}
+					}
+				}
+
+				_, err := load(t, db, engine, c, storage.LoadOptions{BatchSize: 100, Concurrency: 4})
+
+				require.NoError(t, err)
+				require.NoError(t, probeErr)
+				for _, relation := range []string{"articles", "articles.toast", "article_embeddings", "article_embeddings.toast"} {
+					assert.Contains(t, duringCopy[relation], "autovacuum_enabled=false", "storage parameters of %s during the copy", relation)
+				}
+			})
+
+			t.Run("vacuums the corpus words it fills", func(t *testing.T) {
+				if !fillsCorpusWords[engine] {
+					t.Skip("no corpus words table on this engine")
+				}
+				db := newDatabase(t, server.ConnString)
+				articles, vectors := fixture(corpusSize)
+				_, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
+				require.NoError(t, err)
+
+				var allVisible int
+				query(t, db, func(conn *pgx.Conn) error {
+					return conn.QueryRow(context.Background(), "SELECT relallvisible FROM pg_class WHERE oid = to_regclass('corpus_words')").Scan(&allVisible)
+				})
+				assert.Positive(t, allVisible, "corpus_words has no all-visible pages, so it was not vacuumed")
+			})
+
 			t.Run("hands the corpus tables back to autovacuum after the load", func(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 				articles, vectors := fixture(10)
@@ -683,6 +725,29 @@ func storedIDs(t *testing.T, connString, sql string) []uuid.UUID {
 		return err
 	})
 	return ids
+}
+
+// storageParameters reads the reloptions of each corpus table and its TOAST table without a *testing.T,
+// so a corpus iterator running on the loader's goroutine can call it.
+func storageParameters(connString string) (map[string][]string, error) {
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, connString)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close(ctx)
+	parameters := map[string][]string{}
+	for _, table := range []string{"articles", "article_embeddings"} {
+		var main, toast []string
+		err := conn.QueryRow(ctx, `SELECT coalesce(c.reloptions, '{}'), coalesce(t.reloptions, '{}')
+			FROM pg_class c LEFT JOIN pg_class t ON t.oid = c.reltoastrelid
+			WHERE c.oid = to_regclass($1)`, table).Scan(&main, &toast)
+		if err != nil {
+			return nil, err
+		}
+		parameters[table], parameters[table+".toast"] = main, toast
+	}
+	return parameters, nil
 }
 
 func loadRecorded(t *testing.T, connString string) bool {
