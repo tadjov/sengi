@@ -1,8 +1,8 @@
 schema_version: 1
 meta:
-    run_id: 2026-11-14T20-06-00-judge-c27330
+    run_id: 2026-11-15T03-46-39-judge-ba6c08
     tool: bench/1.0.0
-    generated_at: 2026-11-14T20:06:00.341693Z
+    generated_at: 2026-11-15T03:46:39.736278Z
     judge:
         strategy: llm
         provider: claude-cli
@@ -13,22 +13,26 @@ meta:
         invocation: claude --version 2.1.325 (Claude Code); CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1 CLAUDE_CODE_MAX_OUTPUT_TOKENS=<max-output-tokens> claude -p --safe-mode --setting-sources "" --strict-mcp-config --tools "" --disable-slash-commands --no-session-persistence --output-format json --model claude-sonnet-5-5 --effort low --system-prompt <system-prompt>
         gate_version: v1
     pool_ref: /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/pool.yaml
-    pool_run_id: 2026-11-14T20-05-34-pool-a6c70f
-    graded_count: 3716
+    pool_run_id: 2026-11-15T03-46-39-pool-064492
+    graded_count: 3699
     unjudged_count: 0
     relevance_scale:
         - 0
         - 1
         - 2
         - 3
+    carried_over:
+        judgments_run_id: 2026-11-14T20-06-00-judge-c27330
+        pool_run_id: 2026-11-14T20-05-34-pool-a6c70f
+        grades: 3667
 queries:
     - query_id: kw-net-neutrality
       docs:
-        - doc_id: 207f0b4f-33e0-5d71-ad76-13ccb6e45fc4
+        - doc_id: 2d2adffe-6b2d-5ff0-9fe4-fb9d3089cd3c
           grade: 3
         - doc_id: 33cc349c-d34f-5173-ae53-3ab33b8ebacd
           grade: 3
-        - doc_id: 2d2adffe-6b2d-5ff0-9fe4-fb9d3089cd3c
+        - doc_id: 207f0b4f-33e0-5d71-ad76-13ccb6e45fc4
           grade: 3
         - doc_id: 4aadc575-3f5a-571d-b452-79d46ba98442
           grade: 3
@@ -42,23 +46,15 @@ queries:
           grade: 3
         - doc_id: 0861f100-c2fe-5ba8-95ef-742bff862e12
           grade: 3
-        - doc_id: cafc91b7-fd87-5b51-bdf5-c527dc59c29d
-          grade: 2
-        - doc_id: 1188e77d-dd79-5736-a533-c28fe6e3dc01
-          grade: 3
         - doc_id: 0296f5af-3fbd-557c-b9c0-df8a6e6e7ec8
           grade: 3
+        - doc_id: cafc91b7-fd87-5b51-bdf5-c527dc59c29d
+          grade: 2
         - doc_id: 531e9d51-3199-596d-bfb2-153e3ec49fc1
           grade: 3
-        - doc_id: 07e19332-9322-5665-9984-032d4b7cf50a
+        - doc_id: 1188e77d-dd79-5736-a533-c28fe6e3dc01
           grade: 3
         - doc_id: e7ccdc86-4607-578e-a38c-58b47d5b6ee7
-          grade: 3
-        - doc_id: 926d1e4d-4d68-51a6-bbdc-acae3530b3c1
-          grade: 3
-        - doc_id: eba425d1-325c-5535-8bc2-6a6506452e25
-          grade: 3
-        - doc_id: 6c64f388-4443-5989-bad2-aed57848b73d
           grade: 3
         - doc_id: 79477062-20e7-57ba-ac8c-4563a48c8590
           grade: 1
@@ -66,14 +62,22 @@ queries:
           grade: 3
         - doc_id: f9b5bbbf-887e-546b-939c-31ab00d4f07c
           grade: 3
+        - doc_id: 07e19332-9322-5665-9984-032d4b7cf50a
+          grade: 3
+        - doc_id: 6c64f388-4443-5989-bad2-aed57848b73d
+          grade: 3
+        - doc_id: 33d6ace3-0872-5155-ac3a-cd3ce37041a7
+          grade: 3
+        - doc_id: 926d1e4d-4d68-51a6-bbdc-acae3530b3c1
+          grade: 3
+        - doc_id: eba425d1-325c-5535-8bc2-6a6506452e25
+          grade: 3
+        - doc_id: b6519ad9-3b58-5ad6-9af2-e815e00b4ebe
+          grade: 0
         - doc_id: a2c36705-fec8-5f24-8fb7-edd4c0f7729c
           grade: 3
         - doc_id: bf2321ab-79fd-5743-9b5d-810ca890e7e6
           grade: 3
-        - doc_id: 33d6ace3-0872-5155-ac3a-cd3ce37041a7
-          grade: 3
-        - doc_id: b6519ad9-3b58-5ad6-9af2-e815e00b4ebe
-          grade: 0
         - doc_id: b4400666-858e-5094-957c-a2f4704e8391
           grade: 3
         - doc_id: e7d243a9-dbf6-5dd1-a788-617f211acbc1
@@ -82,19 +86,7 @@ queries:
           grade: 3
         - doc_id: 4994d514-5c1a-5f52-b909-3a8e2270dec4
           grade: 0
-        - doc_id: ad7287c2-ab10-5f95-894f-613c42faf9c2
-          grade: 3
-        - doc_id: 9e2a90d3-238d-52c8-96da-1dc07d331885
-          grade: 3
-        - doc_id: 26722c86-23a5-53da-83a8-aaebb7c22669
-          grade: 3
-        - doc_id: 923163d1-3d7b-5a25-9aa1-98a00cf51b5c
-          grade: 3
         - doc_id: 3f041fa1-0ab1-57a2-8626-5c1934852d2e
-          grade: 3
-        - doc_id: e2e6a748-4b83-5c9d-a1ec-222f015b78bd
-          grade: 3
-        - doc_id: 04c6ef18-c597-5482-ba3a-604ab25df273
           grade: 3
         - doc_id: 39ee3a41-7ca3-5812-8b53-2e4859e3cb56
           grade: 2
@@ -102,33 +94,41 @@ queries:
           grade: 3
         - doc_id: 8180fd0d-d8fa-5cd5-a1c1-230aac347ea2
           grade: 3
+        - doc_id: e2e6a748-4b83-5c9d-a1ec-222f015b78bd
+          grade: 3
+        - doc_id: 04c6ef18-c597-5482-ba3a-604ab25df273
+          grade: 3
         - doc_id: 0b3a2531-13e1-5d56-8d8f-059619bf089e
           grade: 2
+        - doc_id: 923163d1-3d7b-5a25-9aa1-98a00cf51b5c
+          grade: 3
+        - doc_id: 9e2a90d3-238d-52c8-96da-1dc07d331885
+          grade: 3
+        - doc_id: 26722c86-23a5-53da-83a8-aaebb7c22669
+          grade: 3
+        - doc_id: ad7287c2-ab10-5f95-894f-613c42faf9c2
+          grade: 3
         - doc_id: 7370938b-001f-5be5-8394-2b4794ea4aec
+          grade: 3
+        - doc_id: 730ec18a-fff4-51bb-bfcd-0cb42194d49f
+          grade: 3
+        - doc_id: f209f1a7-5e70-581c-862e-db6e46842eba
           grade: 3
         - doc_id: 617f61cf-962e-5868-bbbd-503f44ba55ef
           grade: 3
         - doc_id: 9a9f825d-ba82-5671-90ec-8d473fdf8588
           grade: 3
-        - doc_id: d09a639e-e88b-5acf-bafa-21750e939fa3
-          grade: 1
-        - doc_id: 8178a7eb-2aa6-50f3-83ee-6cc04d317b17
+        - doc_id: 478a634c-96e5-5e2b-9192-40753f0fa4f2
           grade: 3
-        - doc_id: 0f250beb-a65c-5c2b-ab47-fb6e85e81268
+        - doc_id: cfa2d153-7301-5a08-9517-36b10c0815d7
           grade: 3
-        - doc_id: f209f1a7-5e70-581c-862e-db6e46842eba
-          grade: 3
-        - doc_id: 3cce2cfb-d595-5f00-bf0d-a51c5a650c81
-          grade: 3
-        - doc_id: 443586c1-0ec9-5679-8cad-c7da9f77382f
-          grade: 3
-        - doc_id: 243d0cfe-398b-5d1e-83c5-4a9265a723e1
+        - doc_id: 8a26c5b7-5d06-5a4a-b1d3-b5d7db262c80
           grade: 3
         - doc_id: 238a2659-7172-55c3-b78c-1e200be8d797
           grade: 3
         - doc_id: 71844846-7ad9-5527-bfd3-bc7f7bc574f6
           grade: 3
-        - doc_id: 478a634c-96e5-5e2b-9192-40753f0fa4f2
+        - doc_id: 8178a7eb-2aa6-50f3-83ee-6cc04d317b17
           grade: 3
         - doc_id: 0923c871-5ace-5a2d-b14c-761498d7b8c6
           grade: 2
@@ -138,11 +138,11 @@ queries:
           grade: 3
         - doc_id: e349e668-a808-59bb-a3bc-fea197c115df
           grade: 3
-        - doc_id: cfa2d153-7301-5a08-9517-36b10c0815d7
-          grade: 3
-        - doc_id: 8a26c5b7-5d06-5a4a-b1d3-b5d7db262c80
+        - doc_id: 3cce2cfb-d595-5f00-bf0d-a51c5a650c81
           grade: 3
         - doc_id: 4dd9fba6-8340-5af7-b7aa-7544e4f76fa5
+          grade: 3
+        - doc_id: 443586c1-0ec9-5679-8cad-c7da9f77382f
           grade: 3
         - doc_id: 319e5c43-3e2f-580b-a372-3300f8f14911
           grade: 3
@@ -164,8 +164,6 @@ queries:
           grade: 3
         - doc_id: 1dc51528-3a69-593e-bb35-7c380b50d3bb
           grade: 3
-        - doc_id: 730ec18a-fff4-51bb-bfcd-0cb42194d49f
-          grade: 3
         - doc_id: bb2eed70-b0d2-5e69-b100-fbcbf66c3a3a
           grade: 3
         - doc_id: a71dce0b-8258-59ee-913c-4f033b1b2363
@@ -181,6 +179,8 @@ queries:
         - doc_id: 4e235039-7e54-5e50-9278-b6d579bc5164
           grade: 3
         - doc_id: eb36af4c-3225-524a-98ce-3c437e508f92
+          grade: 3
+        - doc_id: 0f250beb-a65c-5c2b-ab47-fb6e85e81268
           grade: 3
         - doc_id: a0df8393-b468-5867-87ef-60075225be68
           grade: 3
@@ -234,6 +234,8 @@ queries:
           grade: 3
         - doc_id: 9dc7e86e-314d-5291-97b3-763952d07376
           grade: 3
+        - doc_id: cee578ee-df7d-519b-8fd2-e7a4fe5bfb30
+          grade: 3
     - query_id: kw-bitcoin-price
       docs:
         - doc_id: 1c3bde8f-3203-578f-b9bf-a6d3fd7beaff
@@ -268,19 +270,13 @@ queries:
           grade: 3
         - doc_id: 63a50d20-496c-5d47-87f1-b8bc32f6a1ed
           grade: 2
-        - doc_id: bb60ffc4-1d06-53f2-ae73-ba15ed5c7a41
-          grade: 3
-        - doc_id: ef6d175b-45d4-5845-952a-bf26db42f746
-          grade: 3
         - doc_id: 9c4f9c87-8369-563f-a8d7-0e4d32ffcc63
-          grade: 3
-        - doc_id: 38b1b0a9-6732-5b9c-969a-4178d8bde845
-          grade: 3
-        - doc_id: c3a02886-a3d6-5989-b5cd-61ff0791fe66
           grade: 3
         - doc_id: 4ade02f2-f9b7-5b61-bee0-60bc58fcb006
           grade: 3
         - doc_id: 59e54feb-2a1c-59da-b0c6-81c86e5941f5
+          grade: 3
+        - doc_id: bb60ffc4-1d06-53f2-ae73-ba15ed5c7a41
           grade: 3
         - doc_id: 9a80395c-e2e1-5139-9de6-1e1736e945f6
           grade: 3
@@ -288,21 +284,11 @@ queries:
           grade: 3
         - doc_id: 3de613e7-e686-516b-b3fb-aca7304766a4
           grade: 3
-        - doc_id: 1adc9bb6-bb03-5ed0-818f-7cfbc623d401
+        - doc_id: c3a02886-a3d6-5989-b5cd-61ff0791fe66
           grade: 3
-        - doc_id: 3c30e15e-6cf9-5951-9622-ac18598a7c95
+        - doc_id: 38b1b0a9-6732-5b9c-969a-4178d8bde845
           grade: 3
-        - doc_id: c494b42a-d6f7-5886-929f-996e98d87e63
-          grade: 3
-        - doc_id: de77c7ee-a805-5545-9980-e3d94b776dbf
-          grade: 3
-        - doc_id: daf7497c-55dc-53fb-9315-7b1fc3574365
-          grade: 2
-        - doc_id: 563ff4eb-0054-5457-a60c-1030043b0498
-          grade: 3
-        - doc_id: 6c658f89-c813-59db-8f5e-f23017d9505c
-          grade: 3
-        - doc_id: 0c17f15c-b0bc-5f4e-9f10-eb4cecfa4d8a
+        - doc_id: ef6d175b-45d4-5845-952a-bf26db42f746
           grade: 3
         - doc_id: 6e5ff90a-94ff-59c8-a7e8-06b8e01c639f
           grade: 3
@@ -310,31 +296,45 @@ queries:
           grade: 3
         - doc_id: fe1012b9-d2a2-5fe2-b873-cc1b58e1da34
           grade: 3
-        - doc_id: aef86768-55db-562d-af42-ce46b997b2ed
+        - doc_id: 6c658f89-c813-59db-8f5e-f23017d9505c
           grade: 3
-        - doc_id: 94a060f4-51c7-5cfd-834a-9fb75cbbd1cc
+        - doc_id: 0c17f15c-b0bc-5f4e-9f10-eb4cecfa4d8a
+          grade: 3
+        - doc_id: 3c30e15e-6cf9-5951-9622-ac18598a7c95
+          grade: 3
+        - doc_id: c494b42a-d6f7-5886-929f-996e98d87e63
+          grade: 3
+        - doc_id: de77c7ee-a805-5545-9980-e3d94b776dbf
+          grade: 3
+        - doc_id: 1adc9bb6-bb03-5ed0-818f-7cfbc623d401
+          grade: 3
+        - doc_id: 57791212-9c0f-5118-854a-0dbe0563073a
           grade: 3
         - doc_id: 9ef10c2d-a4c2-5f89-92cd-53d56172ee38
           grade: 1
         - doc_id: c1fab2fd-8e73-565e-8e9b-0f26e7282e7b
           grade: 1
-        - doc_id: 57791212-9c0f-5118-854a-0dbe0563073a
-          grade: 3
         - doc_id: 24b0990f-4f4a-545c-9596-94bc9c9a4cfc
           grade: 3
+        - doc_id: 94a060f4-51c7-5cfd-834a-9fb75cbbd1cc
+          grade: 3
+        - doc_id: aef86768-55db-562d-af42-ce46b997b2ed
+          grade: 3
+        - doc_id: 563ff4eb-0054-5457-a60c-1030043b0498
+          grade: 3
+        - doc_id: daf7497c-55dc-53fb-9315-7b1fc3574365
+          grade: 2
         - doc_id: 19d59a13-5dc1-5717-b006-5bdd460dc7fc
           grade: 3
         - doc_id: 353b039f-fe53-5339-9b1a-0155e7dd975d
           grade: 3
-        - doc_id: 5818c2f9-e4b2-5c38-a7ca-1cda22104886
-          grade: 3
         - doc_id: e632c05b-b73d-5db5-85a7-a0e6be85ed5d
           grade: 2
-        - doc_id: 9415fe8e-342a-5de2-8432-80e9e86f4bfa
+        - doc_id: e8b38687-fa92-5d1c-beca-05d7413ec7a2
           grade: 3
-        - doc_id: 7d7c968d-db9d-51c2-8794-35b93ed363f2
+        - doc_id: 5818c2f9-e4b2-5c38-a7ca-1cda22104886
           grade: 3
-        - doc_id: 6c408fea-4da8-5310-8016-56590b45a7c7
+        - doc_id: 785b630e-aeb6-5e55-ae14-4e68c7855c31
           grade: 3
         - doc_id: 34484996-b731-5836-b6fc-be8296625cf8
           grade: 3
@@ -360,8 +360,6 @@ queries:
           grade: 3
         - doc_id: bb741168-66be-597e-a3be-e56ac4b04314
           grade: 1
-        - doc_id: 785b630e-aeb6-5e55-ae14-4e68c7855c31
-          grade: 3
         - doc_id: d478e8bd-aa09-5ba7-8b41-fc8d339b1a73
           grade: 3
         - doc_id: d7ad2aa9-938f-52e2-90ec-0e5c58e71efa
@@ -375,8 +373,6 @@ queries:
         - doc_id: 36af8686-f827-58c1-8cbf-6fc407105601
           grade: 3
         - doc_id: a4c1531d-20f5-5ca7-9cd8-4a02ff6789cc
-          grade: 3
-        - doc_id: e8b38687-fa92-5d1c-beca-05d7413ec7a2
           grade: 3
         - doc_id: c712391e-442d-5152-82da-9fe3e5101d18
           grade: 3
@@ -403,6 +399,8 @@ queries:
         - doc_id: a89f9f38-6935-57a8-9283-6a338aef609b
           grade: 3
         - doc_id: 6e725094-77d5-5d37-a6fe-58cb237fd1e5
+          grade: 3
+        - doc_id: 6c408fea-4da8-5310-8016-56590b45a7c7
           grade: 3
         - doc_id: 3b88f587-2d62-5cd0-80ae-093b6ce2a188
           grade: 3
@@ -482,6 +480,8 @@ queries:
           grade: 3
         - doc_id: 156a5870-ca82-5353-b9c6-3854e8ecdcf0
           grade: 2
+        - doc_id: 2afac688-1bcf-5fce-9293-7ec91f07ebc8
+          grade: 3
     - query_id: kw-climate-change
       docs:
         - doc_id: 920ad181-443b-52b2-b169-6ab152429391
@@ -504,26 +504,26 @@ queries:
           grade: 2
         - doc_id: c9a20bba-f814-54ab-aae7-126832d18848
           grade: 3
+        - doc_id: fd45f819-92c0-5163-8651-7842ff1cdcc2
+          grade: 2
+        - doc_id: 769ad955-453c-5d1f-82b0-f7f13007faa3
+          grade: 3
         - doc_id: bc7b5c9a-1dd6-5bb7-a015-3a5b9b0d94b1
           grade: 2
         - doc_id: fbd424f2-d01f-501f-b72b-4a3febabcb3d
           grade: 2
         - doc_id: f8c029b9-0d72-5e90-8eb6-34450639d3ab
           grade: 3
-        - doc_id: 9de15975-d309-5e0a-bd57-99cefb45d379
-          grade: 3
-        - doc_id: fd45f819-92c0-5163-8651-7842ff1cdcc2
-          grade: 2
-        - doc_id: 769ad955-453c-5d1f-82b0-f7f13007faa3
-          grade: 3
         - doc_id: 78ca9dd6-10d4-52c4-b528-9018331acb87
+          grade: 3
+        - doc_id: 9de15975-d309-5e0a-bd57-99cefb45d379
           grade: 3
         - doc_id: fcd60e8d-9be1-5860-94de-866892a275fa
           grade: 1
-        - doc_id: 98080de4-6f0c-5441-950f-7138bee04415
-          grade: 0
         - doc_id: 32530c8e-b3a8-526e-9c9b-c678e5a37022
           grade: 2
+        - doc_id: 98080de4-6f0c-5441-950f-7138bee04415
+          grade: 0
         - doc_id: 8a11675c-425a-5d61-9b34-bb9e0d2a4a3b
           grade: 2
         - doc_id: c2b6c1fc-7fc7-5829-91bd-e78fd22ec865
@@ -534,31 +534,31 @@ queries:
           grade: 2
         - doc_id: 2508e6df-0310-5fcf-9257-55ae14116131
           grade: 2
-        - doc_id: e2ea95fb-7690-5c42-b3a8-f48095167474
-          grade: 3
-        - doc_id: e5f494a7-f9d7-5ccf-ad51-e1da63bb1baf
-          grade: 3
-        - doc_id: 89b3b744-7696-582a-8666-da88554ec529
-          grade: 3
         - doc_id: b658fb9b-282c-5754-8315-0d554f8ea7d9
           grade: 1
-        - doc_id: 8086ef25-6c62-5f42-b8c3-c8bc20de4f64
-          grade: 3
         - doc_id: 448b88ae-e368-57b6-8520-9fdf0f658a72
           grade: 3
         - doc_id: 011f2c3e-69bf-5e1f-b72f-f10290be2c50
           grade: 2
         - doc_id: d0a50bde-4989-5bd2-ae59-516a3a871c90
           grade: 2
+        - doc_id: 3bbbd236-646c-59e7-975b-e93098bbdb74
+          grade: 3
+        - doc_id: 2467378c-a78e-5b63-802d-85543d166aa6
+          grade: 3
         - doc_id: 28535bba-89f7-5f92-88e8-cf01cc590758
           grade: 3
         - doc_id: 5a0e04ee-de59-5372-8019-635c270d704b
           grade: 3
         - doc_id: 232999df-de87-53f8-8a52-03e3a72bd030
           grade: 3
-        - doc_id: 3bbbd236-646c-59e7-975b-e93098bbdb74
+        - doc_id: 8086ef25-6c62-5f42-b8c3-c8bc20de4f64
           grade: 3
-        - doc_id: 2467378c-a78e-5b63-802d-85543d166aa6
+        - doc_id: e5f494a7-f9d7-5ccf-ad51-e1da63bb1baf
+          grade: 3
+        - doc_id: e2ea95fb-7690-5c42-b3a8-f48095167474
+          grade: 3
+        - doc_id: 89b3b744-7696-582a-8666-da88554ec529
           grade: 3
         - doc_id: c31725f7-4b4f-5ae8-b7d2-21afc7b05606
           grade: 3
@@ -568,25 +568,19 @@ queries:
           grade: 3
         - doc_id: f8425828-5ee6-5aba-b1d0-4369587bdba6
           grade: 3
-        - doc_id: 474716a9-7f47-5d25-a134-5d810f9eb01f
-          grade: 2
         - doc_id: 27d644b0-ee39-5ef1-84b2-d4eee32a14d5
+          grade: 2
+        - doc_id: 135ba213-f17a-591d-88c0-8be1022b6bea
+          grade: 3
+        - doc_id: 7795b64c-33e6-5bf6-8447-22163df590e4
+          grade: 3
+        - doc_id: 9b522b2e-b14b-5889-ba39-51b51d2252d1
+          grade: 3
+        - doc_id: 474716a9-7f47-5d25-a134-5d810f9eb01f
           grade: 2
         - doc_id: fb5dbc84-1c9d-5512-a09a-e0d50b91fffc
           grade: 3
         - doc_id: 54774c6e-c770-5eb8-bc24-f2a7e633fe77
-          grade: 3
-        - doc_id: 2d2f7be5-69f4-5374-81bd-244371ae4e18
-          grade: 3
-        - doc_id: 9a0dfbb5-ba86-557c-a677-b56c00bff72a
-          grade: 3
-        - doc_id: 59c312ec-b666-5a06-94a1-afbed0581c2c
-          grade: 2
-        - doc_id: 32c508d9-9a5c-56cf-b86c-2fc6cb21493b
-          grade: 3
-        - doc_id: 135ba213-f17a-591d-88c0-8be1022b6bea
-          grade: 3
-        - doc_id: 7795b64c-33e6-5bf6-8447-22163df590e4
           grade: 3
         - doc_id: a6f28cb6-2fc3-5854-8a75-5fcd6283aac4
           grade: 3
@@ -598,8 +592,6 @@ queries:
           grade: 3
         - doc_id: f86e04c5-0c85-5361-b2b2-0c46096fb818
           grade: 2
-        - doc_id: 9b522b2e-b14b-5889-ba39-51b51d2252d1
-          grade: 3
         - doc_id: 5ccf87e0-f746-5e5b-8560-d4567d933828
           grade: 3
         - doc_id: b32841d5-02af-568c-bc1e-b7a7ef8e744f
@@ -690,6 +682,8 @@ queries:
           grade: 3
         - doc_id: f8e145f1-d92e-56da-ae92-f8478812d9aa
           grade: 3
+        - doc_id: 9a0dfbb5-ba86-557c-a677-b56c00bff72a
+          grade: 3
         - doc_id: 43b4094f-d07e-5e34-bde6-f522bc40729f
           grade: 3
         - doc_id: e98dd24b-9d8c-59c4-a971-9f69c78f2e10
@@ -721,6 +715,8 @@ queries:
         - doc_id: c66acf8b-a18f-5696-8185-64832ec0dd78
           grade: 2
         - doc_id: d645c7ac-4780-5f91-a309-c592ac4805c4
+          grade: 3
+        - doc_id: 2d2f7be5-69f4-5374-81bd-244371ae4e18
           grade: 3
         - doc_id: 6afacf9f-9141-5869-af09-25cb9d5f54fb
           grade: 2
@@ -846,6 +842,8 @@ queries:
           grade: 3
         - doc_id: 4c0506fe-f810-534f-8c25-e464e67179f6
           grade: 3
+        - doc_id: 68f14f06-6813-596f-bb79-bc70270f00e0
+          grade: 1
     - query_id: kw-opioid-epidemic
       docs:
         - doc_id: 4aa907ab-c3bc-54da-bf54-3c579ca0427b
@@ -856,14 +854,16 @@ queries:
           grade: 3
         - doc_id: a489b870-6712-5356-9ca5-9bbe590d4aa6
           grade: 3
-        - doc_id: fd90bd83-c485-5227-9eba-d0760dbbbe8e
-          grade: 3
-        - doc_id: 98a30adc-43d3-503d-884d-da894d21524d
-          grade: 3
         - doc_id: c995b4f9-4167-5d88-a643-7e81afcbf4b8
           grade: 3
         - doc_id: 864724aa-e41e-5174-a37d-4c603bf15c0d
           grade: 3
+        - doc_id: fd90bd83-c485-5227-9eba-d0760dbbbe8e
+          grade: 3
+        - doc_id: 98a30adc-43d3-503d-884d-da894d21524d
+          grade: 3
+        - doc_id: ee9ad3b6-f5a0-5a46-b366-f4a80d47d9bf
+          grade: 2
         - doc_id: b1393e66-b325-54b4-b99d-671c56f97ac8
           grade: 3
         - doc_id: 9aada7d4-ad45-5da5-ab44-3ee1aba3bede
@@ -874,63 +874,39 @@ queries:
           grade: 2
         - doc_id: 3d06ecbf-0342-5d8f-a174-c261f60b3dd4
           grade: 3
-        - doc_id: 19377b2e-afbd-53a4-8c74-792ea41f1a6b
-          grade: 3
-        - doc_id: 8c5d0721-dc28-57ac-b401-9948ce21c731
-          grade: 2
-        - doc_id: 3b735769-057f-5e19-a619-47f5c8520f94
-          grade: 3
         - doc_id: 610bc740-62a1-5f12-83f9-07a5332df89a
           grade: 1
         - doc_id: 5920176f-9077-51a8-9856-ea0722f327fb
           grade: 2
-        - doc_id: ee9ad3b6-f5a0-5a46-b366-f4a80d47d9bf
+        - doc_id: 8c5d0721-dc28-57ac-b401-9948ce21c731
           grade: 2
+        - doc_id: 19377b2e-afbd-53a4-8c74-792ea41f1a6b
+          grade: 3
         - doc_id: 35a2fdb8-2079-50d9-9902-887b23e532e7
           grade: 3
         - doc_id: 3cbe5444-cb40-5709-87d5-d8c8bc0bc39c
           grade: 2
-        - doc_id: 93e98948-97b7-5403-91c8-7e6ad0891441
-          grade: 3
-        - doc_id: f8c95372-0b25-5d9d-9ed1-75fa187c0ff6
-          grade: 2
-        - doc_id: c88c7ce0-6297-5e06-80db-38aed6233cc3
-          grade: 2
-        - doc_id: ea95649c-a2d4-54c7-8a19-767bc61c2b5d
-          grade: 3
-        - doc_id: 62fd25ee-d990-5c31-a29e-9431603e705a
-          grade: 3
-        - doc_id: e8b36542-dbc9-551d-8fc4-bd3923a997d1
-          grade: 3
-        - doc_id: 00bfa860-b87b-5a6a-871a-0d68a2bd9990
+        - doc_id: 3b735769-057f-5e19-a619-47f5c8520f94
           grade: 3
         - doc_id: 9dea4d09-e403-5ca0-a5f8-0aa0b3e6e561
           grade: 1
+        - doc_id: 93e98948-97b7-5403-91c8-7e6ad0891441
+          grade: 3
+        - doc_id: c88c7ce0-6297-5e06-80db-38aed6233cc3
+          grade: 2
+        - doc_id: f8c95372-0b25-5d9d-9ed1-75fa187c0ff6
+          grade: 2
+        - doc_id: e8b36542-dbc9-551d-8fc4-bd3923a997d1
+          grade: 3
+        - doc_id: ea95649c-a2d4-54c7-8a19-767bc61c2b5d
+          grade: 3
         - doc_id: 35549c7d-aae7-5bff-8ab7-42c66d73f443
           grade: 2
         - doc_id: 630824a7-67c2-507b-bffe-c22f476bf361
           grade: 3
-        - doc_id: 1efbf367-a23b-594b-9e04-ec9f45b8eeee
+        - doc_id: 00bfa860-b87b-5a6a-871a-0d68a2bd9990
           grade: 3
-        - doc_id: a5e9a829-ff04-58c2-a2e8-fb198580b466
-          grade: 3
-        - doc_id: 4f4af617-2ced-501e-b3d9-f47267f8065e
-          grade: 3
-        - doc_id: 62c2beb2-8ef1-5da6-b165-ce6347bc0ded
-          grade: 2
-        - doc_id: 3581c9f6-8761-5190-9189-caee1e55a877
-          grade: 3
-        - doc_id: a47ab138-bf0b-5951-8123-ba0168acae95
-          grade: 3
-        - doc_id: 1e7d5e46-fc1c-5665-8dbc-95b3bf88ff5a
-          grade: 3
-        - doc_id: a19bd917-58fe-5661-bfb0-a29cb0972828
-          grade: 3
-        - doc_id: b7a0a913-7657-5f55-9eb7-060bea739839
-          grade: 2
-        - doc_id: cc95baa0-9180-58ed-b4f1-b983f29be704
-          grade: 3
-        - doc_id: ac635247-9716-5dd9-80a5-18ede9fd9b01
+        - doc_id: 62fd25ee-d990-5c31-a29e-9431603e705a
           grade: 3
         - doc_id: 7f4bcccc-a8d4-5b43-aaae-018ada7b509b
           grade: 3
@@ -938,17 +914,41 @@ queries:
           grade: 3
         - doc_id: d433b504-ff26-51f9-ab89-d0a4ad3f308e
           grade: 3
-        - doc_id: 3237c443-7c5f-5a26-8550-aaa5d532a5b7
-          grade: 2
-        - doc_id: d00021a2-68b7-5e56-95be-d82e2cf978fe
-          grade: 3
-        - doc_id: add3822a-e2e6-59ab-a0bc-a2d61b08ef2f
-          grade: 3
         - doc_id: c596e21e-4f69-55ac-ade2-f21053452ff3
           grade: 3
         - doc_id: 4813bdf3-4063-56e1-8e23-aa5cd1895a20
           grade: 3
+        - doc_id: 1efbf367-a23b-594b-9e04-ec9f45b8eeee
+          grade: 3
+        - doc_id: a47ab138-bf0b-5951-8123-ba0168acae95
+          grade: 3
+        - doc_id: 1e7d5e46-fc1c-5665-8dbc-95b3bf88ff5a
+          grade: 3
+        - doc_id: d00021a2-68b7-5e56-95be-d82e2cf978fe
+          grade: 3
+        - doc_id: b7a0a913-7657-5f55-9eb7-060bea739839
+          grade: 2
+        - doc_id: cc95baa0-9180-58ed-b4f1-b983f29be704
+          grade: 3
+        - doc_id: 3581c9f6-8761-5190-9189-caee1e55a877
+          grade: 3
+        - doc_id: 7a1c0f57-ea60-580e-be01-48546437063c
+          grade: 3
+        - doc_id: b62f32a4-d68a-57a2-8a1e-5f346feb918b
+          grade: 3
+        - doc_id: 62c2beb2-8ef1-5da6-b165-ce6347bc0ded
+          grade: 2
+        - doc_id: a19bd917-58fe-5661-bfb0-a29cb0972828
+          grade: 3
+        - doc_id: a5e9a829-ff04-58c2-a2e8-fb198580b466
+          grade: 3
+        - doc_id: 4f4af617-2ced-501e-b3d9-f47267f8065e
+          grade: 3
+        - doc_id: add3822a-e2e6-59ab-a0bc-a2d61b08ef2f
+          grade: 3
         - doc_id: 33bfa749-06c7-5fe4-9e57-2f3191402024
+          grade: 3
+        - doc_id: ac635247-9716-5dd9-80a5-18ede9fd9b01
           grade: 3
         - doc_id: a7cd7e58-7ab1-5ccf-afd5-be5c8d1a208b
           grade: 1
@@ -958,8 +958,8 @@ queries:
           grade: 3
         - doc_id: 22955f36-b0b5-5ef2-bf93-59bb4caa3732
           grade: 3
-        - doc_id: b62f32a4-d68a-57a2-8a1e-5f346feb918b
-          grade: 3
+        - doc_id: 3237c443-7c5f-5a26-8550-aaa5d532a5b7
+          grade: 2
         - doc_id: 57974a2f-b9b6-5451-9967-8cee9e1bd83c
           grade: 3
         - doc_id: a0c3b041-7d0f-55d3-b920-bf1df29e183e
@@ -1005,8 +1005,6 @@ queries:
         - doc_id: c3bac8df-6f2e-5551-8911-21e817d098c3
           grade: 3
         - doc_id: 51b065ab-e56f-57d9-bd10-6efbb437afb3
-          grade: 3
-        - doc_id: 7a1c0f57-ea60-580e-be01-48546437063c
           grade: 3
         - doc_id: eb251563-7118-5e53-afcb-25e8091038ee
           grade: 1
@@ -1110,39 +1108,39 @@ queries:
           grade: 3
     - query_id: kw-equifax-breach
       docs:
-        - doc_id: b28e2ff4-eebb-5d75-bdad-89a019d7af2a
-          grade: 3
         - doc_id: f73ec770-06c7-5e8e-9b3a-c98b797cefdb
+          grade: 3
+        - doc_id: b28e2ff4-eebb-5d75-bdad-89a019d7af2a
           grade: 3
         - doc_id: d9426d32-6a60-57ca-9947-4591217d580c
           grade: 3
         - doc_id: 54831be3-60e8-562f-9c82-0b664d1d906a
           grade: 3
-        - doc_id: 2d46bf0c-20ac-5179-80d4-a88b30087a40
-          grade: 3
-        - doc_id: 2ed4258d-510c-5e17-a15c-01b780b4e1ef
-          grade: 3
-        - doc_id: 27d6fc88-708d-50e9-9c72-38d584b1bf3b
-          grade: 3
         - doc_id: 8181226a-a3d8-56f7-bc50-83f4ecd7b6af
           grade: 3
         - doc_id: cfd66ed8-c799-578b-827f-171e323e082b
           grade: 2
+        - doc_id: 2ed4258d-510c-5e17-a15c-01b780b4e1ef
+          grade: 3
+        - doc_id: 27d6fc88-708d-50e9-9c72-38d584b1bf3b
+          grade: 3
+        - doc_id: 2d46bf0c-20ac-5179-80d4-a88b30087a40
+          grade: 3
         - doc_id: 6ec72cf0-a5bf-5815-9c2c-9eaaf04090fa
+          grade: 3
+        - doc_id: 206e6410-e444-557f-9f3a-7d6ea942a9d5
           grade: 3
         - doc_id: 0fb323be-435a-5ec5-b42a-e9a968495c2c
           grade: 3
-        - doc_id: 206e6410-e444-557f-9f3a-7d6ea942a9d5
+        - doc_id: bb74a8f6-b3a6-5eca-ba40-0b89fc428a0e
           grade: 3
         - doc_id: c0d32bad-d6f6-5868-99f9-b9222214b7a1
           grade: 1
         - doc_id: b2a0327f-b03e-5bb0-8be2-799a8d216089
           grade: 3
-        - doc_id: bb74a8f6-b3a6-5eca-ba40-0b89fc428a0e
+        - doc_id: 1962296b-c62b-5ed2-b7c5-bf65222ac918
           grade: 3
         - doc_id: 45bf8230-311f-5bc4-98fb-33fff43c3188
-          grade: 3
-        - doc_id: 1962296b-c62b-5ed2-b7c5-bf65222ac918
           grade: 3
         - doc_id: 2ec68f90-4c25-5c9d-bab5-42ef6dbcf98c
           grade: 2
@@ -1156,27 +1154,27 @@ queries:
           grade: 2
         - doc_id: cd313fc4-0c7e-5ce8-b289-91eddc127764
           grade: 3
-        - doc_id: c4a8a6b5-298f-55b1-88f9-c7837bfe9c6e
-          grade: 1
         - doc_id: 417f37da-75fa-5555-a560-1fd88ce06986
           grade: 3
+        - doc_id: c4a8a6b5-298f-55b1-88f9-c7837bfe9c6e
+          grade: 1
         - doc_id: e179dc55-024c-5fbb-88bd-d112db4cbf96
-          grade: 2
-        - doc_id: 3285af2c-3195-5847-8172-87f68887ac2c
           grade: 2
         - doc_id: 58f0b4e7-cef3-5865-beb2-3fe4286e1f38
           grade: 2
-        - doc_id: d97e6217-f746-5a2d-b3c5-2b4e14ba7c4b
-          grade: 3
+        - doc_id: 3285af2c-3195-5847-8172-87f68887ac2c
+          grade: 2
         - doc_id: 29e9b677-c2d2-5e17-a6d5-64a346c9dfc7
           grade: 3
-        - doc_id: dd7ce254-0b75-5f48-8eed-883469afca33
-          grade: 3
-        - doc_id: 877406e1-47d9-58ab-844e-d89fdb7738fc
+        - doc_id: d97e6217-f746-5a2d-b3c5-2b4e14ba7c4b
           grade: 3
         - doc_id: 103f7044-734c-5e40-9cff-b1f1ee090505
           grade: 2
         - doc_id: f3e80c23-3d25-5a88-bdb8-65d2a14495b4
+          grade: 3
+        - doc_id: 877406e1-47d9-58ab-844e-d89fdb7738fc
+          grade: 3
+        - doc_id: dd7ce254-0b75-5f48-8eed-883469afca33
           grade: 3
         - doc_id: 161188b6-b71a-55df-918e-2914bb2b75a2
           grade: 3
@@ -1188,21 +1186,21 @@ queries:
           grade: 1
         - doc_id: 9d9deecc-0a8b-5850-bfe6-a03318cddc98
           grade: 1
-        - doc_id: 3783252d-60bd-5f9a-88f0-aea7e5f9bf9f
-          grade: 3
         - doc_id: 53aafb3d-6732-5801-b9cc-2ca453f1821d
           grade: 2
+        - doc_id: 5e99519a-036f-5596-9ea2-b2b2b4760fd9
+          grade: 2
+        - doc_id: 3783252d-60bd-5f9a-88f0-aea7e5f9bf9f
+          grade: 3
+        - doc_id: f33b5bb6-83da-5a32-a817-ae9c18087b2c
+          grade: 2
         - doc_id: 239922aa-1897-5158-87fe-cf61a1ff8f66
+          grade: 2
+        - doc_id: f9d3eb6b-26b7-5f38-9297-cb25393088ec
           grade: 2
         - doc_id: ffc15742-4776-5e5d-bb1a-e02fb1f1d144
           grade: 1
         - doc_id: 502a1dd2-6ac9-5ace-97b4-b98e80655cb4
-          grade: 2
-        - doc_id: f9d3eb6b-26b7-5f38-9297-cb25393088ec
-          grade: 2
-        - doc_id: 5e99519a-036f-5596-9ea2-b2b2b4760fd9
-          grade: 2
-        - doc_id: f33b5bb6-83da-5a32-a817-ae9c18087b2c
           grade: 2
         - doc_id: c4503cdb-c3ca-59a2-b9e9-9d2a5d214e9b
           grade: 0
@@ -1272,10 +1270,10 @@ queries:
           grade: 1
     - query_id: kw-north-korea-missile
       docs:
-        - doc_id: a0edf73c-0e7a-571a-950c-fdf8831fbc57
-          grade: 3
         - doc_id: 21ca2eb7-5af9-54f3-aeab-807a59fd7278
           grade: 2
+        - doc_id: a0edf73c-0e7a-571a-950c-fdf8831fbc57
+          grade: 3
         - doc_id: 2fd7fcf7-4761-5ce9-8052-390a47a1ff77
           grade: 2
         - doc_id: 8a182068-3dc5-5e31-a1c5-73a545f4a78b
@@ -1288,90 +1286,90 @@ queries:
           grade: 3
         - doc_id: 1470c16c-0265-5206-9c54-6cd4e8b4ac36
           grade: 3
-        - doc_id: b6f56a96-ae1b-55cc-921e-05d63bce2c61
-          grade: 3
         - doc_id: e3b0200d-90a7-5aa8-bbf8-3ad1586896df
           grade: 3
         - doc_id: 7a53e2e9-c4fb-56a9-afec-34cb4f8e89a7
           grade: 3
-        - doc_id: 77d4ef0f-a56a-5f5f-8a8c-e317253c5536
-          grade: 3
-        - doc_id: 6c297df7-559a-55fe-92eb-246075cda1d8
-          grade: 1
-        - doc_id: 6b1750e2-4f3f-5bc4-9b05-1810456db27d
-          grade: 1
         - doc_id: 41fb2d18-9721-58ef-a812-4ea1707558ed
           grade: 3
-        - doc_id: caa2d612-58d0-5b21-abe0-cdb1cf098f7f
+        - doc_id: b6f56a96-ae1b-55cc-921e-05d63bce2c61
+          grade: 3
+        - doc_id: 77d4ef0f-a56a-5f5f-8a8c-e317253c5536
           grade: 3
         - doc_id: 1b7b5865-8f1d-514f-a023-06da848a1eeb
           grade: 3
         - doc_id: 2f414735-33a5-52c6-9616-ef3afeb088da
           grade: 3
+        - doc_id: 72e3e67f-d0fc-5fe0-8dec-e148fc382e40
+          grade: 3
+        - doc_id: 6b1750e2-4f3f-5bc4-9b05-1810456db27d
+          grade: 1
+        - doc_id: 6c297df7-559a-55fe-92eb-246075cda1d8
+          grade: 1
+        - doc_id: 19c7ec34-0aa9-57cf-b6e9-91aeaeba9d2f
+          grade: 3
+        - doc_id: caa2d612-58d0-5b21-abe0-cdb1cf098f7f
+          grade: 3
+        - doc_id: e4306f8d-4a7d-5f74-9a01-87486bebf707
+          grade: 3
         - doc_id: 3e0f7407-729e-516d-bf55-a7de26b52184
           grade: 3
         - doc_id: 6bdead13-2834-590c-9a12-5487ef6d1392
           grade: 3
-        - doc_id: 72e3e67f-d0fc-5fe0-8dec-e148fc382e40
-          grade: 3
-        - doc_id: 19c7ec34-0aa9-57cf-b6e9-91aeaeba9d2f
-          grade: 3
-        - doc_id: e4306f8d-4a7d-5f74-9a01-87486bebf707
-          grade: 3
-        - doc_id: 2d7d7150-273c-5838-ada9-eb174345e3dc
-          grade: 3
-        - doc_id: b602bd7e-73f1-5166-b182-7357ac4eca3e
-          grade: 3
         - doc_id: 68ba14d8-8ad8-5eb4-8948-a1fbc88cfeb5
           grade: 3
-        - doc_id: 989dd488-08e0-516d-a8e5-5a50505fe45a
-          grade: 3
-        - doc_id: 2fc13c11-d0b6-551d-ac1d-482085360669
-          grade: 3
-        - doc_id: cf9dd1ca-aadc-538c-80df-945e686a92b2
-          grade: 3
-        - doc_id: 8015658f-dfe7-52f6-8a99-4f9455773caf
-          grade: 3
-        - doc_id: e4b0dcf1-7a77-5330-af6b-9bc88132b1df
-          grade: 3
-        - doc_id: 44dfb9ee-a3dc-5362-96b4-8d020eacd03b
-          grade: 3
-        - doc_id: 80f1bf48-bdae-588a-94dd-e1b48397d03c
-          grade: 3
-        - doc_id: 0d695343-4d7d-553f-b376-188fbbad3e19
-          grade: 2
         - doc_id: bb27fc3f-0fa5-58d5-a713-522863c41513
           grade: 3
         - doc_id: cf480134-ad7b-5f05-81bb-329affad8895
-          grade: 3
-        - doc_id: ae72b1e6-9664-50dc-9f83-027fe305b84f
-          grade: 3
-        - doc_id: 0409ff0c-7984-5c03-8f9f-887b687e7f1d
-          grade: 3
-        - doc_id: f63cbf53-856c-559e-90b1-5df401cbdab9
-          grade: 3
-        - doc_id: 4016e84d-4fdf-52e1-8556-754db0d54ba6
-          grade: 3
-        - doc_id: 075ba1c9-d961-5942-92db-301d3fc73eb1
           grade: 3
         - doc_id: 9f9272ff-fb53-5632-9474-48d3f8ec5510
           grade: 3
         - doc_id: 930dd44e-af06-5f48-9e56-7f58f33c37c4
           grade: 3
-        - doc_id: 75c7694c-1595-5d38-8662-0f1f32997edc
-          grade: 2
-        - doc_id: 53acfe1b-7412-5a23-b468-46e3d630a1c2
+        - doc_id: cf9dd1ca-aadc-538c-80df-945e686a92b2
           grade: 3
-        - doc_id: 2d8e2c36-257b-5c0b-b64a-b3a0768eaf61
+        - doc_id: 2d7d7150-273c-5838-ada9-eb174345e3dc
+          grade: 3
+        - doc_id: b602bd7e-73f1-5166-b182-7357ac4eca3e
+          grade: 3
+        - doc_id: 989dd488-08e0-516d-a8e5-5a50505fe45a
+          grade: 3
+        - doc_id: e4b0dcf1-7a77-5330-af6b-9bc88132b1df
+          grade: 3
+        - doc_id: 44dfb9ee-a3dc-5362-96b4-8d020eacd03b
+          grade: 3
+        - doc_id: 8015658f-dfe7-52f6-8a99-4f9455773caf
+          grade: 3
+        - doc_id: 53acfe1b-7412-5a23-b468-46e3d630a1c2
           grade: 3
         - doc_id: dccf6116-1700-5c6b-b08d-89b781454e52
           grade: 3
+        - doc_id: 2fc13c11-d0b6-551d-ac1d-482085360669
+          grade: 3
+        - doc_id: 2d8e2c36-257b-5c0b-b64a-b3a0768eaf61
+          grade: 3
+        - doc_id: ae72b1e6-9664-50dc-9f83-027fe305b84f
+          grade: 3
+        - doc_id: 4016e84d-4fdf-52e1-8556-754db0d54ba6
+          grade: 3
+        - doc_id: 0409ff0c-7984-5c03-8f9f-887b687e7f1d
+          grade: 3
+        - doc_id: f63cbf53-856c-559e-90b1-5df401cbdab9
+          grade: 3
+        - doc_id: 80f1bf48-bdae-588a-94dd-e1b48397d03c
+          grade: 3
+        - doc_id: 075ba1c9-d961-5942-92db-301d3fc73eb1
+          grade: 3
+        - doc_id: 75c7694c-1595-5d38-8662-0f1f32997edc
+          grade: 2
+        - doc_id: 0d695343-4d7d-553f-b376-188fbbad3e19
+          grade: 2
         - doc_id: 21b255f2-b44d-59bf-8a47-ae6a9c3dba9b
           grade: 3
         - doc_id: 76edcb54-b18a-5985-824f-439e40c20784
           grade: 3
-        - doc_id: 9b451a9a-61d8-5b83-ba72-5801eb07e3d5
-          grade: 2
+        - doc_id: 6dacb0d6-020a-576d-bc3b-599678189a8e
+          grade: 3
         - doc_id: 1a61f373-67e5-52d7-b88b-8d0e778a7fc1
           grade: 3
         - doc_id: bb887778-6f59-5fd8-ac5a-5266e7bd56a4
@@ -1448,8 +1446,6 @@ queries:
           grade: 3
         - doc_id: 49ae2d7f-2a3d-5ecf-8dee-e770be0fbf43
           grade: 3
-        - doc_id: 6dacb0d6-020a-576d-bc3b-599678189a8e
-          grade: 3
         - doc_id: 6ee02262-4c2f-5252-8eda-cdf433447d55
           grade: 3
         - doc_id: 7513313c-61c7-519a-ab00-47de04a56371
@@ -1460,6 +1456,8 @@ queries:
           grade: 3
         - doc_id: 98b98723-2e22-5623-92cb-b185f0fffdf9
           grade: 3
+        - doc_id: 9b451a9a-61d8-5b83-ba72-5801eb07e3d5
+          grade: 2
         - doc_id: 9dc3731c-6448-56b6-81d0-24cce76ed2eb
           grade: 2
         - doc_id: a2b2e8c3-19c2-57b4-9ee6-2596ec7d9a41
@@ -1608,39 +1606,31 @@ queries:
       docs:
         - doc_id: a6944645-f361-5f34-9e63-457ee5655b4d
           grade: 3
-        - doc_id: 25d9289e-332f-56dd-b388-1d08c133e83f
-          grade: 3
-        - doc_id: 0e3f14e5-2750-5701-8820-360315bae2e9
-          grade: 3
-        - doc_id: 3937bc63-cfc1-572f-884a-524e1d1de653
-          grade: 3
-        - doc_id: a9e266b3-b8c5-5ea3-9a6d-3f1cfca2b91b
-          grade: 3
-        - doc_id: ef4809ff-774d-5e98-8c02-a4018ae89d3f
-          grade: 3
-        - doc_id: 41538ca1-9360-5340-b2bc-17e9b19c6244
-          grade: 3
-        - doc_id: 992a961f-0cc1-5f3c-972d-e4bd27b7f31f
-          grade: 3
         - doc_id: b06b8c3c-b141-5cdb-8620-80d9c36a1366
           grade: 3
         - doc_id: e19cec9c-8fe8-5c35-964a-ec64c17d9d09
-          grade: 3
-        - doc_id: 3c6a1096-cbda-5056-8089-3dee062dd31e
-          grade: 1
-        - doc_id: b49ce274-78f1-58ed-9ebb-d76776be80ef
-          grade: 3
-        - doc_id: 5c58f18a-3458-53ab-aea5-5365ea6a989a
           grade: 3
         - doc_id: 3623c6db-0735-5853-a99a-534cc6a200a9
           grade: 3
         - doc_id: 9d73da56-bef0-5343-bcfb-b85b1bf84bc0
           grade: 3
+        - doc_id: 0e3f14e5-2750-5701-8820-360315bae2e9
+          grade: 3
+        - doc_id: a9e266b3-b8c5-5ea3-9a6d-3f1cfca2b91b
+          grade: 3
+        - doc_id: 25d9289e-332f-56dd-b388-1d08c133e83f
+          grade: 3
+        - doc_id: 3937bc63-cfc1-572f-884a-524e1d1de653
+          grade: 3
+        - doc_id: ef4809ff-774d-5e98-8c02-a4018ae89d3f
+          grade: 3
+        - doc_id: 41538ca1-9360-5340-b2bc-17e9b19c6244
+          grade: 3
+        - doc_id: dc0ef9c6-19f8-5ca6-ac31-f61fea88e2de
+          grade: 3
         - doc_id: e8ec3f59-7fd4-536d-998c-ef49174e2d88
           grade: 3
         - doc_id: 8f71a737-33fd-5776-a884-97bd68fcd58a
-          grade: 3
-        - doc_id: dc0ef9c6-19f8-5ca6-ac31-f61fea88e2de
           grade: 3
         - doc_id: 036e735d-c9d9-50fa-a487-55b3801c9c6e
           grade: 3
@@ -1648,52 +1638,18 @@ queries:
           grade: 3
         - doc_id: 2da26746-8934-5675-a0e3-36f1efa755eb
           grade: 3
-        - doc_id: d7ea1fe3-2dc3-50f1-9e51-924c5bd16eef
+        - doc_id: 3c6a1096-cbda-5056-8089-3dee062dd31e
+          grade: 1
+        - doc_id: b49ce274-78f1-58ed-9ebb-d76776be80ef
           grade: 3
-        - doc_id: 80c2dead-e74d-5c9f-abaa-2f72ae46cd62
+        - doc_id: 5c58f18a-3458-53ab-aea5-5365ea6a989a
+          grade: 3
+        - doc_id: 992a961f-0cc1-5f3c-972d-e4bd27b7f31f
           grade: 3
         - doc_id: 9399e7c0-4dd0-5aeb-bda2-86a1899fa735
           grade: 2
         - doc_id: b8f0b5a5-f125-50cb-be43-6d5ecae6565e
           grade: 2
-        - doc_id: d6fff495-d6a9-5745-a3a4-bf30f1367518
-          grade: 3
-        - doc_id: d85a2c1c-4411-5605-9932-d9525073787a
-          grade: 3
-        - doc_id: 8c70df04-dbf7-51fe-8b87-9815eaec820c
-          grade: 3
-        - doc_id: d3504967-6c11-53c8-90a3-08faf7b93698
-          grade: 3
-        - doc_id: 85252c13-c017-5c4a-9159-bd8b1ad614ae
-          grade: 3
-        - doc_id: 090ecada-b142-59df-9007-0a2037e00336
-          grade: 3
-        - doc_id: f7f45d92-d1bb-5803-8670-24f31c00f990
-          grade: 3
-        - doc_id: d977ca1c-0571-53cd-a880-a935abd1787e
-          grade: 3
-        - doc_id: b18ddbdc-d9e3-52b5-a227-082981d8f9ff
-          grade: 3
-        - doc_id: 30d0b677-b79f-5185-a1b0-c9d6afafc6fa
-          grade: 3
-        - doc_id: 556a5879-c948-5808-a65c-4e546f3200ea
-          grade: 3
-        - doc_id: c2abac40-6502-59a3-ab6d-923316e9a5db
-          grade: 3
-        - doc_id: 15020ad8-9bac-505b-b445-aef850263012
-          grade: 3
-        - doc_id: fd8296a2-51fc-5142-bab9-64fc482caf9a
-          grade: 3
-        - doc_id: de1f3a2f-b0c6-5af2-8342-01edb82dca5c
-          grade: 3
-        - doc_id: 2a8ca9bd-7597-5181-b1ca-5490936881c3
-          grade: 2
-        - doc_id: d6457f1c-e6fa-5987-9373-f793177ba271
-          grade: 3
-        - doc_id: 26b9b28d-2f78-57e0-aee8-fa2efeebea2c
-          grade: 3
-        - doc_id: ffd374c5-9f01-5bf8-a9a9-64e19b4f2ed4
-          grade: 3
         - doc_id: ed8cd954-4037-516d-82c5-f5cb0605069d
           grade: 3
         - doc_id: 6b9d97ef-31ec-5d2e-969e-2814495c5a11
@@ -1704,11 +1660,37 @@ queries:
           grade: 3
         - doc_id: f03dd385-adfe-5241-babc-3eef54d391a0
           grade: 3
-        - doc_id: 633d6335-24ec-508d-9935-95a5d6ec599c
+        - doc_id: d9009bdd-b9bd-521c-8476-206d710ba478
+          grade: 3
+        - doc_id: d6fff495-d6a9-5745-a3a4-bf30f1367518
+          grade: 3
+        - doc_id: d7ea1fe3-2dc3-50f1-9e51-924c5bd16eef
+          grade: 3
+        - doc_id: 80c2dead-e74d-5c9f-abaa-2f72ae46cd62
+          grade: 3
+        - doc_id: d977ca1c-0571-53cd-a880-a935abd1787e
+          grade: 3
+        - doc_id: d3504967-6c11-53c8-90a3-08faf7b93698
+          grade: 3
+        - doc_id: 85252c13-c017-5c4a-9159-bd8b1ad614ae
+          grade: 3
+        - doc_id: e0016f4f-c4a6-55ea-b04a-2645f5e6e419
+          grade: 3
+        - doc_id: c16d6b87-5ef6-566f-91f9-49619130c9d2
+          grade: 3
+        - doc_id: 4f8b31d2-ddb9-5d9a-8229-453b8326fb4d
+          grade: 3
+        - doc_id: 6b34b6a9-7589-5593-bebc-89b0e87b8c3b
+          grade: 3
+        - doc_id: a16e3c00-ed32-51ba-82eb-e6f402486e00
+          grade: 3
+        - doc_id: 090ecada-b142-59df-9007-0a2037e00336
+          grade: 3
+        - doc_id: d85a2c1c-4411-5605-9932-d9525073787a
           grade: 3
         - doc_id: 584b71c8-391d-520c-8bd4-93644077b7e1
           grade: 3
-        - doc_id: d9009bdd-b9bd-521c-8476-206d710ba478
+        - doc_id: d6457f1c-e6fa-5987-9373-f793177ba271
           grade: 3
         - doc_id: 37cb2256-bdab-5e3d-a6d8-b2e24d16e2a2
           grade: 3
@@ -1717,8 +1699,6 @@ queries:
         - doc_id: 29173b2b-1ef2-5f05-aa5d-1e6154aa7e70
           grade: 3
         - doc_id: 744198d6-4412-5978-9028-0a3327ba535a
-          grade: 3
-        - doc_id: c16d6b87-5ef6-566f-91f9-49619130c9d2
           grade: 3
         - doc_id: bf3e9ec5-31fb-5081-b1b4-5a891b245edd
           grade: 3
@@ -1731,8 +1711,6 @@ queries:
         - doc_id: d537a1a4-c3e4-554f-a810-6070e1e471b1
           grade: 3
         - doc_id: 2904b388-19c4-51fd-8829-3f2447249086
-          grade: 3
-        - doc_id: 6b34b6a9-7589-5593-bebc-89b0e87b8c3b
           grade: 3
         - doc_id: a161dc46-fe6d-5506-9d0c-58265fa1dd56
           grade: 3
@@ -1787,6 +1765,8 @@ queries:
         - doc_id: 97aced26-a587-5e4d-a671-c1a962852c6e
           grade: 3
         - doc_id: fe175477-b143-545a-8ee3-0fc502e81c57
+          grade: 3
+        - doc_id: f7f45d92-d1bb-5803-8670-24f31c00f990
           grade: 3
         - doc_id: 155a487e-b638-5e40-9e94-253a7e2e8351
           grade: 3
@@ -1892,13 +1872,9 @@ queries:
           grade: 3
         - doc_id: 8c604eae-2b41-5244-8241-a3b03d34d86a
           grade: 3
-        - doc_id: 4f8b31d2-ddb9-5d9a-8229-453b8326fb4d
-          grade: 3
         - doc_id: 01bf1aa6-e1d6-5d1d-9c15-b4a9abb9c218
           grade: 3
-        - doc_id: a16e3c00-ed32-51ba-82eb-e6f402486e00
-          grade: 3
-        - doc_id: e0016f4f-c4a6-55ea-b04a-2645f5e6e419
+        - doc_id: b18ddbdc-d9e3-52b5-a227-082981d8f9ff
           grade: 3
         - doc_id: 54a117e9-96c7-525b-af71-e45047dae86c
           grade: 1
@@ -1907,6 +1883,10 @@ queries:
         - doc_id: a1a25bdb-6a17-57d9-b8de-2278a146cbe3
           grade: 3
         - doc_id: 72a8ba7e-1007-5e0c-a649-3cf3c050efcb
+          grade: 3
+        - doc_id: 15020ad8-9bac-505b-b445-aef850263012
+          grade: 3
+        - doc_id: 556a5879-c948-5808-a65c-4e546f3200ea
           grade: 3
         - doc_id: a3ad191e-dd7a-500e-b1f1-49060fe735be
           grade: 3
@@ -1938,6 +1918,22 @@ queries:
           grade: 3
         - doc_id: 2b687b36-7eb6-5236-af6f-c1668c8c5f86
           grade: 3
+        - doc_id: 25f7b2c2-a427-5a91-bd27-c28eaae17eae
+          grade: 3
+        - doc_id: 2d26b218-829e-58c4-b05a-cbe8c9c86afa
+          grade: 2
+        - doc_id: 47c47f41-ac8e-5e08-a9fa-b47816032c76
+          grade: 3
+        - doc_id: e852d8d7-def4-52b0-b441-149436b52af7
+          grade: 3
+        - doc_id: 03b3c047-ab20-5b37-bd59-a1244744d63e
+          grade: 3
+        - doc_id: 74c940f2-f69a-5d04-9210-ef4c44add2e1
+          grade: 3
+        - doc_id: 3a820cae-7e90-5856-9052-b8c3b98c7f9d
+          grade: 3
+        - doc_id: a6d7c3e9-f933-5a46-9f87-3190285dbfc3
+          grade: 3
     - query_id: kw-hurricane-harvey
       docs:
         - doc_id: 0a3808de-4138-531d-85f8-f305930d3bc6
@@ -1956,69 +1952,69 @@ queries:
           grade: 2
         - doc_id: 39047825-60dc-5cc4-929c-1bde67898c61
           grade: 2
-        - doc_id: ca126b2b-e2ed-5b2f-91e0-5c2ed30c7da5
-          grade: 2
         - doc_id: d4946b58-517d-5fa9-b518-436037a3cc07
           grade: 2
-        - doc_id: 185876e7-5350-5324-af5c-5f35e8676147
+        - doc_id: ca126b2b-e2ed-5b2f-91e0-5c2ed30c7da5
           grade: 2
-        - doc_id: 99517df4-03e9-50a5-b7f0-eae7580d41dd
+        - doc_id: f4dde9be-2f92-5562-91d5-d351131ef09a
           grade: 2
+        - doc_id: 2e6a719a-1d72-562f-adb7-2082e6307e0c
+          grade: 3
         - doc_id: 7ca6018b-013b-517e-9a24-b7657c7107fd
           grade: 2
         - doc_id: 91b8590f-beb0-5bbb-b9c3-d1259b168197
           grade: 3
         - doc_id: 82f188b1-bd50-5a7d-8bdb-b5f1e99c5563
           grade: 2
+        - doc_id: 185876e7-5350-5324-af5c-5f35e8676147
+          grade: 2
         - doc_id: b419873b-390c-5410-9606-3ef1dd6bb492
           grade: 2
-        - doc_id: f4dde9be-2f92-5562-91d5-d351131ef09a
+        - doc_id: 99517df4-03e9-50a5-b7f0-eae7580d41dd
           grade: 2
-        - doc_id: 2e6a719a-1d72-562f-adb7-2082e6307e0c
-          grade: 3
-        - doc_id: 64aca3fd-e2a0-585a-9bbc-47d4d5182437
-          grade: 2
-        - doc_id: 7ac4e59c-2645-5661-8271-6bfab68c0cac
-          grade: 1
-        - doc_id: 26072b69-d802-5f96-8909-ddf6444d7d14
-          grade: 1
         - doc_id: 318e7f03-3533-5b01-8c6f-6bd522673055
           grade: 2
-        - doc_id: 7c05a2f7-e5dd-5a08-92b9-6c1b3b4ed43d
-          grade: 2
-        - doc_id: beb8e3ae-06bb-5963-b12b-dfbae3a5d853
-          grade: 2
-        - doc_id: 4e3c1764-da26-5371-a8e5-8fd60efb3a65
-          grade: 2
-        - doc_id: 3eb7f33a-873d-59e9-a593-d7c8b7055a74
-          grade: 0
         - doc_id: 34657622-60ac-5a74-8b60-6b628b39eb98
           grade: 2
         - doc_id: 8a9f5bb1-8615-5d85-b7f8-3b6d7df7c469
           grade: 2
+        - doc_id: 64aca3fd-e2a0-585a-9bbc-47d4d5182437
+          grade: 2
         - doc_id: cec3d041-103d-5b68-be31-1e8dfd5b56d2
           grade: 2
-        - doc_id: 85988f2c-d8c7-5b4a-9e8b-291cffe772b7
+        - doc_id: 7c05a2f7-e5dd-5a08-92b9-6c1b3b4ed43d
+          grade: 2
+        - doc_id: 3eb7f33a-873d-59e9-a593-d7c8b7055a74
+          grade: 0
+        - doc_id: 7ac4e59c-2645-5661-8271-6bfab68c0cac
+          grade: 1
+        - doc_id: 26072b69-d802-5f96-8909-ddf6444d7d14
+          grade: 1
+        - doc_id: beb8e3ae-06bb-5963-b12b-dfbae3a5d853
+          grade: 2
+        - doc_id: 4e3c1764-da26-5371-a8e5-8fd60efb3a65
+          grade: 2
+        - doc_id: 32fdfc83-7da6-5fe3-b163-c1b5d9de9394
+          grade: 1
+        - doc_id: fc0725fa-d64a-511b-ba22-97c74f5688fd
+          grade: 2
+        - doc_id: e6aeb5db-a99c-5451-a34b-58910390bd44
           grade: 2
         - doc_id: fd018ffc-660b-5cbb-8035-8b0beee6c723
           grade: 1
         - doc_id: 5e9986df-e0b1-55c4-a33d-2d4fdc58876d
           grade: 1
-        - doc_id: 32fdfc83-7da6-5fe3-b163-c1b5d9de9394
-          grade: 1
-        - doc_id: fc0725fa-d64a-511b-ba22-97c74f5688fd
-          grade: 2
         - doc_id: dec3e141-1bce-59cd-95ab-872010e273d4
           grade: 2
-        - doc_id: e6aeb5db-a99c-5451-a34b-58910390bd44
+        - doc_id: 85988f2c-d8c7-5b4a-9e8b-291cffe772b7
           grade: 2
         - doc_id: 358faf5d-b456-5c79-91c7-f15be87316f9
           grade: 3
+        - doc_id: 532cccea-95dd-5ab4-9d9d-1cf1674987bf
+          grade: 2
         - doc_id: c184f365-e94f-577b-9cfe-43271a48dc6a
           grade: 2
         - doc_id: 7c91406e-5aad-50e9-80de-6bd02978a79f
-          grade: 2
-        - doc_id: 532cccea-95dd-5ab4-9d9d-1cf1674987bf
           grade: 2
         - doc_id: bc8ee07b-32f1-50fb-a323-d5221de1d4e8
           grade: 1
@@ -2034,11 +2030,11 @@ queries:
           grade: 1
         - doc_id: 10fba4f0-a974-5d6e-ac73-4e3621a98440
           grade: 1
-        - doc_id: a8aaee0f-856a-5b27-8d05-0ba23fee9645
-          grade: 1
         - doc_id: f3e0235a-5514-5c29-9f8e-3b0c41cf3629
           grade: 1
         - doc_id: 5a5d7ff9-1613-5694-b89e-868c4e742cd2
+          grade: 1
+        - doc_id: a8aaee0f-856a-5b27-8d05-0ba23fee9645
           grade: 1
         - doc_id: 18bbf1ec-bf2c-56c1-8259-23e8863a746b
           grade: 3
@@ -2154,49 +2150,53 @@ queries:
           grade: 3
         - doc_id: 9c886bbb-a52b-5ac6-97d2-ce55218a8c33
           grade: 3
-        - doc_id: 72d3a93b-f847-55bf-a7c3-5f266ec1ff4b
-          grade: 3
         - doc_id: 95273f6c-b6f3-5369-90ee-b4ec509626c8
           grade: 3
         - doc_id: a64bb44f-7f21-5c62-ade7-27930a5c0599
           grade: 1
+        - doc_id: 72d3a93b-f847-55bf-a7c3-5f266ec1ff4b
+          grade: 3
         - doc_id: 68254976-82ec-5480-b25e-2ce9200c2292
+          grade: 3
+        - doc_id: c16bdf96-73dd-57ec-8fa8-8fcf404e3788
           grade: 3
         - doc_id: 46f9e6a9-f40e-54d8-84de-7b447264b468
           grade: 3
         - doc_id: 485cb31d-7b2c-519b-8eef-1270b634688b
           grade: 2
+        - doc_id: 1d75cf21-b1a2-5d77-bffd-8d187cccb7b1
+          grade: 3
         - doc_id: 4fe3563b-b3ad-5837-9e10-0ae3bf9cd26d
           grade: 3
         - doc_id: c7d6b37e-847d-593e-9ce8-090b1e7cc41d
           grade: 3
         - doc_id: ce4b406d-94c7-549c-a1e1-ac9d5c49a8ca
           grade: 3
-        - doc_id: c16bdf96-73dd-57ec-8fa8-8fcf404e3788
-          grade: 3
-        - doc_id: 1d75cf21-b1a2-5d77-bffd-8d187cccb7b1
-          grade: 3
-        - doc_id: 48f5150f-209b-5aab-98dc-8df449dfe161
-          grade: 2
         - doc_id: aeef9645-bfe1-5eae-8a43-ee192dfd1ed1
           grade: 2
-        - doc_id: 9a4748a7-0bf2-5b78-9b08-bc949043bc08
-          grade: 3
         - doc_id: b69d8d4e-c967-5833-8a84-a429e17aef6d
           grade: 3
         - doc_id: cb6bb201-11de-578d-b2d0-3b304cd6fb1a
           grade: 3
+        - doc_id: 48f5150f-209b-5aab-98dc-8df449dfe161
+          grade: 2
+        - doc_id: 9a4748a7-0bf2-5b78-9b08-bc949043bc08
+          grade: 3
         - doc_id: 9c1cb631-c12b-5dfd-afa7-ee9a3169a326
           grade: 3
-        - doc_id: 2bb47cc9-0a15-56f9-9088-f294d00d119b
-          grade: 3
-        - doc_id: 07bcd383-50ef-58ab-9b27-613bd40184e7
-          grade: 3
-        - doc_id: e0bda7f0-489d-541b-bd67-e1b7af0f7417
-          grade: 2
         - doc_id: c6deb16c-88ad-5fb0-91d0-d5a88486ad81
           grade: 3
         - doc_id: cbd036b8-6051-5448-b3de-5ebb50451569
+          grade: 3
+        - doc_id: a4bd1d27-6525-59af-b4f4-89d29edfd7c3
+          grade: 3
+        - doc_id: 7f46cd45-dc47-5739-b3ab-fab5b7732431
+          grade: 3
+        - doc_id: e0bda7f0-489d-541b-bd67-e1b7af0f7417
+          grade: 2
+        - doc_id: 2bb47cc9-0a15-56f9-9088-f294d00d119b
+          grade: 3
+        - doc_id: 07bcd383-50ef-58ab-9b27-613bd40184e7
           grade: 3
         - doc_id: ff22d663-38a8-54fb-9895-a2bd7dd0ff29
           grade: 3
@@ -2210,9 +2210,15 @@ queries:
           grade: 2
         - doc_id: a2bb0701-16b7-516d-a524-75f79a4d43a1
           grade: 3
-        - doc_id: 12aafde8-e165-5fbb-a78e-d8b6e652a506
+        - doc_id: ec283efb-74e3-5d71-b2cf-6f9d76e3d2e1
           grade: 3
-        - doc_id: 006bddc8-56ce-50bc-8dc0-ffca21cabda3
+        - doc_id: 87ee08d8-4f3f-5244-8707-a24da2d9068f
+          grade: 2
+        - doc_id: 247b2c41-7d6e-5695-a1a6-da5efdb45dda
+          grade: 3
+        - doc_id: ae7cab87-dd77-5968-a4e8-9daedc31d181
+          grade: 2
+        - doc_id: 8a81dfdd-8613-5d9e-976e-7a82a9d8c034
           grade: 3
         - doc_id: 47097ec0-19e1-59b1-8608-18c762f0865d
           grade: 2
@@ -2226,30 +2232,6 @@ queries:
           grade: 3
         - doc_id: c6af7fb8-f3bb-5e8f-b9bd-0db0b8f1c8b1
           grade: 3
-        - doc_id: 9a9b2cc2-51a0-5e62-8da2-6d73d17f47d4
-          grade: 3
-        - doc_id: 1fc084b4-3bf1-5121-9ffc-0d6f632a7aaa
-          grade: 3
-        - doc_id: b22204cc-e82d-5eb4-80b3-34bb0efde201
-          grade: 3
-        - doc_id: 77247119-0319-561d-9eb2-2584a0d3a6f3
-          grade: 3
-        - doc_id: 1946939c-300d-5b95-a5a5-6229f4e0c504
-          grade: 3
-        - doc_id: e66888f4-583b-5781-8b95-15c25505d583
-          grade: 3
-        - doc_id: b564564c-6205-5af0-8d35-ea1adc022d5e
-          grade: 3
-        - doc_id: a86231dc-fad8-5c1d-aa8b-87df7e8ef383
-          grade: 2
-        - doc_id: 43dacfff-8792-5deb-b590-f1f3aee5115a
-          grade: 3
-        - doc_id: 74f82f0e-cf7b-57ad-b8f5-0d5a7808d2b2
-          grade: 3
-        - doc_id: ec283efb-74e3-5d71-b2cf-6f9d76e3d2e1
-          grade: 3
-        - doc_id: 87ee08d8-4f3f-5244-8707-a24da2d9068f
-          grade: 2
         - doc_id: 8a34cf64-c4e7-56b1-b562-f2f8003c6457
           grade: 3
         - doc_id: ddd183df-5057-53e7-8137-14ed7305373d
@@ -2258,29 +2240,27 @@ queries:
           grade: 3
         - doc_id: a2707ec5-d127-5414-800b-1bdac85049d6
           grade: 3
+        - doc_id: e66888f4-583b-5781-8b95-15c25505d583
+          grade: 3
         - doc_id: f03a2216-29bd-5385-9b52-4ec3bc2fa83e
           grade: 3
         - doc_id: 4ab557c8-3825-5b44-9cdf-1b42798a90b9
           grade: 2
         - doc_id: f74a08a4-46b8-5c6c-8ebb-c0041ef39066
           grade: 3
+        - doc_id: 74f82f0e-cf7b-57ad-b8f5-0d5a7808d2b2
+          grade: 3
         - doc_id: da9da683-773f-5338-8f8b-2b0ffeddc4ec
           grade: 3
         - doc_id: 2553c0f7-1213-5f92-a6e5-1a0fbdd4b166
           grade: 3
-        - doc_id: a4bd1d27-6525-59af-b4f4-89d29edfd7c3
-          grade: 3
-        - doc_id: 7f46cd45-dc47-5739-b3ab-fab5b7732431
-          grade: 3
         - doc_id: 68a5baf2-5781-5b29-ab52-12a66805eb3c
           grade: 3
-        - doc_id: 247b2c41-7d6e-5695-a1a6-da5efdb45dda
-          grade: 3
-        - doc_id: ae7cab87-dd77-5968-a4e8-9daedc31d181
-          grade: 2
         - doc_id: 04286c91-b0d2-5a13-a985-89bc4c4dc5cc
           grade: 3
         - doc_id: 37bda80f-0801-50b8-be5f-fcf3882bafc1
+          grade: 3
+        - doc_id: 1fc084b4-3bf1-5121-9ffc-0d6f632a7aaa
           grade: 3
         - doc_id: 78707b30-bd8f-5661-9d8d-462c0b0f5661
           grade: 3
@@ -2322,8 +2302,6 @@ queries:
           grade: 3
         - doc_id: 43d8f9fb-84ad-5663-b5cf-90f92b7bf7b5
           grade: 1
-        - doc_id: 8a81dfdd-8613-5d9e-976e-7a82a9d8c034
-          grade: 3
         - doc_id: 06c54ecc-bb1d-585a-bfe8-071681de6eb4
           grade: 3
         - doc_id: 0a677f16-dc5e-50bf-b684-0a5026c7675a
@@ -2474,6 +2452,20 @@ queries:
           grade: 3
         - doc_id: 5ec6bb5c-759e-5d83-92ba-da89823560a8
           grade: 3
+        - doc_id: 15707d0e-92c1-5342-b517-902bdafdedf9
+          grade: 1
+        - doc_id: c87c2948-17fe-5b7f-9b74-162071f192d3
+          grade: 3
+        - doc_id: 7c44b53d-c3ed-553e-bfe0-6b8675c5ef15
+          grade: 3
+        - doc_id: c7cf0a70-aead-5f97-a279-501d71e2e684
+          grade: 3
+        - doc_id: 6fc2beb0-43f9-5415-ae8b-bcb68913cce6
+          grade: 3
+        - doc_id: b596d2cd-c68d-5195-9491-819b30666934
+          grade: 3
+        - doc_id: c7febad3-c046-52cb-8704-3368fede26eb
+          grade: 3
     - query_id: kw-fidget-spinner
       docs:
         - doc_id: 4685007d-c000-51c5-9886-f650bc1c1bd7
@@ -2482,30 +2474,30 @@ queries:
           grade: 3
         - doc_id: 5c8a3494-3e22-5406-9d9a-edc8b058d64e
           grade: 2
-        - doc_id: c402e850-3955-5dd6-b535-f860a95ae406
-          grade: 2
         - doc_id: 38ee7759-70f8-5376-a586-52230b495752
           grade: 3
+        - doc_id: c402e850-3955-5dd6-b535-f860a95ae406
+          grade: 2
         - doc_id: 73cbe7ec-1a0b-58f9-8542-6e5f336a7757
-          grade: 3
-        - doc_id: e193770d-219f-5cd9-a360-b32960b55802
           grade: 3
         - doc_id: 724b5349-dc0b-5d0c-8972-761605d4a21e
           grade: 2
+        - doc_id: e193770d-219f-5cd9-a360-b32960b55802
+          grade: 3
         - doc_id: 132206ad-68e4-5fcc-94bb-f6a6b63a591a
           grade: 2
         - doc_id: e2f08fe3-79a2-5d40-b3d7-c4243edc69a6
           grade: 2
-        - doc_id: bfa18597-6f95-5196-b3b6-243c2b682f7b
+        - doc_id: 755439b7-9320-5dba-b852-3bfac2ccde1c
           grade: 2
         - doc_id: a9850c31-7ba8-5f4d-a362-c299ecd66a1d
           grade: 2
-        - doc_id: 755439b7-9320-5dba-b852-3bfac2ccde1c
+        - doc_id: bfa18597-6f95-5196-b3b6-243c2b682f7b
           grade: 2
-        - doc_id: 18469b35-91d2-5759-8091-fe12384ed77a
-          grade: 3
         - doc_id: 584aedff-9e21-55ad-9d52-9527da13039e
           grade: 1
+        - doc_id: 18469b35-91d2-5759-8091-fe12384ed77a
+          grade: 3
         - doc_id: 1a638fdf-8466-5250-9559-692a5b304a4b
           grade: 1
         - doc_id: fbcdb455-5b30-5ac2-baec-09f285aa0b57
@@ -2518,9 +2510,9 @@ queries:
           grade: 0
         - doc_id: 8293396e-3406-5750-85ea-36fe51f1a0f6
           grade: 0
-        - doc_id: 9f340e23-1572-5bde-9642-8a76cc8b6b4a
-          grade: 0
         - doc_id: 6f852323-a163-538d-b890-c75edc2d2de1
+          grade: 0
+        - doc_id: 9f340e23-1572-5bde-9642-8a76cc8b6b4a
           grade: 0
         - doc_id: 0c33133c-7799-5b62-bf10-e50e8d6d557f
           grade: 0
@@ -2536,63 +2528,63 @@ queries:
           grade: 0
         - doc_id: 09932018-4876-56b4-8e2a-37239723f224
           grade: 0
-        - doc_id: f547d739-cda6-57dc-84c6-0225595d0ae6
-          grade: 0
         - doc_id: 5861f520-d334-5007-b34a-19ad407a32f0
+          grade: 0
+        - doc_id: f547d739-cda6-57dc-84c6-0225595d0ae6
           grade: 0
         - doc_id: f4b978d4-0f0b-5654-8cee-91228148f77c
           grade: 0
         - doc_id: 70b6eac2-58ba-562f-93b1-c52f8a8b93f8
           grade: 0
-        - doc_id: 510f5f34-16dd-501a-a1f7-f8f9cb2ad26a
-          grade: 0
-        - doc_id: 385a69b5-dff5-5de6-94ea-aba58ff7a740
+        - doc_id: e060b761-9b2f-598e-8897-59716af224ed
           grade: 0
         - doc_id: 7c5bb8c4-de03-58e1-a9d2-a74bad5e8fcc
           grade: 0
         - doc_id: b03a26b5-b8de-521e-9e10-c0726af14658
           grade: 0
-        - doc_id: e060b761-9b2f-598e-8897-59716af224ed
+        - doc_id: 510f5f34-16dd-501a-a1f7-f8f9cb2ad26a
+          grade: 0
+        - doc_id: 385a69b5-dff5-5de6-94ea-aba58ff7a740
           grade: 0
         - doc_id: cdd3eb4e-526e-597c-849f-b2f18377f4e8
           grade: 1
-        - doc_id: 9f0b6273-eb1e-59ca-9ebb-e29881a5f3bd
-          grade: 1
-        - doc_id: 8656126d-353a-5fe5-bc6d-15009e2ae567
-          grade: 1
-        - doc_id: 7f5b30b7-dc8c-5cee-903d-9bd6e439e24b
+        - doc_id: 8667fa1b-c159-5396-9a20-e323e8262757
           grade: 1
         - doc_id: 4c7832dd-7d72-5ea7-8cae-0f282fdb6247
           grade: 1
         - doc_id: 9e3d6f6f-1af0-5297-b372-58394cf04974
           grade: 1
-        - doc_id: 94f4b913-9f08-569d-a9e7-8bba5a2626b2
+        - doc_id: 9f0b6273-eb1e-59ca-9ebb-e29881a5f3bd
           grade: 1
-        - doc_id: 3ea7256c-6be5-5a04-8c38-b69d1476d53c
-          grade: 1
-        - doc_id: 6fd09fa4-efc7-5480-99d2-3c832e5c855a
-          grade: 1
-        - doc_id: 443411b2-a02a-5134-b2c0-9f42f48d5d5d
-          grade: 1
-        - doc_id: ed99b1ae-1ed2-5a15-9747-d919bed0d79a
-          grade: 1
-        - doc_id: 646846f2-a0ee-54ef-aa2c-855e2223be9c
-          grade: 1
-        - doc_id: 841557f8-1b77-5385-b13b-f4cc424622c7
-          grade: 0
-        - doc_id: fd05b1e7-f84c-595f-81a9-9d4a31492eb3
-          grade: 1
-        - doc_id: 8667fa1b-c159-5396-9a20-e323e8262757
+        - doc_id: 8656126d-353a-5fe5-bc6d-15009e2ae567
           grade: 1
         - doc_id: fd01062b-2d12-57ae-834b-af7f4b149b92
           grade: 1
-        - doc_id: 7b3164c9-09c1-54a4-b49c-6fa779d94218
+        - doc_id: 94f4b913-9f08-569d-a9e7-8bba5a2626b2
           grade: 1
         - doc_id: f75726ab-dd58-5bb7-afcd-bf1483289769
           grade: 1
         - doc_id: 9400a04e-3c13-5532-95c7-9255d43d61f6
           grade: 1
+        - doc_id: 3ea7256c-6be5-5a04-8c38-b69d1476d53c
+          grade: 1
+        - doc_id: 646846f2-a0ee-54ef-aa2c-855e2223be9c
+          grade: 1
+        - doc_id: 6fd09fa4-efc7-5480-99d2-3c832e5c855a
+          grade: 1
+        - doc_id: 841557f8-1b77-5385-b13b-f4cc424622c7
+          grade: 0
+        - doc_id: fd05b1e7-f84c-595f-81a9-9d4a31492eb3
+          grade: 1
+        - doc_id: 7f5b30b7-dc8c-5cee-903d-9bd6e439e24b
+          grade: 1
+        - doc_id: 7b3164c9-09c1-54a4-b49c-6fa779d94218
+          grade: 1
         - doc_id: 341f0e10-8897-5b7f-ab9a-e14f3c8668fd
+          grade: 1
+        - doc_id: 443411b2-a02a-5134-b2c0-9f42f48d5d5d
+          grade: 1
+        - doc_id: ed99b1ae-1ed2-5a15-9747-d919bed0d79a
           grade: 1
         - doc_id: 781bfd1e-bf31-5c1f-a121-418d43ea4b2d
           grade: 1
@@ -2700,21 +2692,17 @@ queries:
           grade: 3
         - doc_id: 94402867-b655-5223-b5f8-5f1dd3e8dbca
           grade: 3
-        - doc_id: 23177891-0775-5364-9368-d4fae1a86f31
-          grade: 3
         - doc_id: f7da39d4-daaf-54a9-8aa4-ae66c392a0f2
           grade: 3
-        - doc_id: 86c2a5d2-0f8a-5dfb-bf6f-e179210cfd65
+        - doc_id: 23177891-0775-5364-9368-d4fae1a86f31
           grade: 3
         - doc_id: ba0b888f-5100-5502-92fb-7e14dc7c7177
+          grade: 3
+        - doc_id: 86c2a5d2-0f8a-5dfb-bf6f-e179210cfd65
           grade: 3
         - doc_id: 6d9469af-387b-505e-83aa-5afe723baa29
           grade: 2
         - doc_id: 1e2f3acd-5633-59b5-b5ab-8243ea5f258d
-          grade: 3
-        - doc_id: 93718435-e28f-5b6f-b1f1-1ac6856c7398
-          grade: 3
-        - doc_id: b399b2a7-8bcd-50a1-80e4-cbb1a37c0ddf
           grade: 3
         - doc_id: b915e6c8-146a-5d30-abec-83971e4bf377
           grade: 3
@@ -2724,7 +2712,21 @@ queries:
           grade: 3
         - doc_id: 65a8402a-d1c8-51f6-9bf7-0c68ff2feca8
           grade: 3
+        - doc_id: b399b2a7-8bcd-50a1-80e4-cbb1a37c0ddf
+          grade: 3
+        - doc_id: 93718435-e28f-5b6f-b1f1-1ac6856c7398
+          grade: 3
         - doc_id: 23bd43e5-6d26-50ec-b8ea-6980a896ae89
+          grade: 3
+        - doc_id: 6ec82b81-cdbc-5b5b-a63c-71c1d96f8855
+          grade: 3
+        - doc_id: 2ab81116-9600-5f56-8266-e6d8aa6d5a92
+          grade: 3
+        - doc_id: 963cf6de-7485-5e5e-a1a4-911eeac27515
+          grade: 3
+        - doc_id: f4e4ea76-7bc0-5e2e-bd6d-0dd205022e48
+          grade: 3
+        - doc_id: 90b3713b-ac5b-5307-a2d0-22616bab8e10
           grade: 3
         - doc_id: d4280559-d972-5484-a4ab-71af4ac72fbf
           grade: 3
@@ -2734,68 +2736,52 @@ queries:
           grade: 3
         - doc_id: d2011e6c-6427-5226-b6d4-4268ebef7c51
           grade: 3
-        - doc_id: 90b3713b-ac5b-5307-a2d0-22616bab8e10
-          grade: 3
         - doc_id: 604bc3c3-3ca7-56b3-8b14-86f5ea02e0cd
           grade: 2
-        - doc_id: 329fb6ad-3784-553a-b921-cf17a34373c4
+        - doc_id: a7bdd5d9-6e8f-5094-8824-0d661b7b5596
+          grade: 3
+        - doc_id: aab92dd8-8a6d-586c-8fbb-99981199139d
+          grade: 1
+        - doc_id: 08e7a0a8-5954-5d96-8978-ef1e7aab812e
           grade: 3
         - doc_id: 1f1c486d-8d79-55ce-8413-bf44562ab8d8
           grade: 3
+        - doc_id: 523b6c82-3955-5981-96ad-bc42c94aabe0
+          grade: 3
+        - doc_id: 329fb6ad-3784-553a-b921-cf17a34373c4
+          grade: 3
+        - doc_id: 025809b3-937a-56eb-b007-3de3bfc0ba7a
+          grade: 3
+        - doc_id: 084d9064-251a-5bd3-9d7a-507da1a55001
+          grade: 3
+        - doc_id: b1f22adb-6618-5827-8fee-a774358c750f
+          grade: 3
+        - doc_id: 48a05d36-09f3-5671-abaa-3c6847c0dbea
+          grade: 3
         - doc_id: 3243a5ea-f866-5611-915f-f177e67d7bcd
           grade: 3
-        - doc_id: a7bdd5d9-6e8f-5094-8824-0d661b7b5596
+        - doc_id: d9858d40-a801-534d-8c78-7f47eca654c4
+          grade: 3
+        - doc_id: aba37be1-c1ff-5813-be96-6a2d7edb97f8
+          grade: 3
+        - doc_id: aa1e8be8-1163-5038-b21a-d99bb1d470ef
           grade: 3
         - doc_id: 04098de2-200f-53c0-a5e2-b022758b921a
           grade: 3
         - doc_id: 81c24759-68d5-5a28-899f-218141ac66a9
           grade: 3
-        - doc_id: 6ec82b81-cdbc-5b5b-a63c-71c1d96f8855
-          grade: 3
-        - doc_id: b1f22adb-6618-5827-8fee-a774358c750f
-          grade: 3
-        - doc_id: aa1e8be8-1163-5038-b21a-d99bb1d470ef
-          grade: 3
         - doc_id: bb5c87e3-e148-5cf5-b166-bf2ad8948a96
           grade: 3
         - doc_id: 3a02413e-da14-5d35-ad91-5f862fd86ae8
           grade: 3
-        - doc_id: 48a05d36-09f3-5671-abaa-3c6847c0dbea
+        - doc_id: e1770336-da37-5e40-a49d-c70dfd002abf
           grade: 3
-        - doc_id: 08e7a0a8-5954-5d96-8978-ef1e7aab812e
-          grade: 3
-        - doc_id: 025809b3-937a-56eb-b007-3de3bfc0ba7a
-          grade: 3
-        - doc_id: 2ab81116-9600-5f56-8266-e6d8aa6d5a92
-          grade: 3
-        - doc_id: 963cf6de-7485-5e5e-a1a4-911eeac27515
-          grade: 3
-        - doc_id: f4e4ea76-7bc0-5e2e-bd6d-0dd205022e48
-          grade: 3
-        - doc_id: 523b6c82-3955-5981-96ad-bc42c94aabe0
-          grade: 3
-        - doc_id: aba37be1-c1ff-5813-be96-6a2d7edb97f8
-          grade: 3
-        - doc_id: aab92dd8-8a6d-586c-8fbb-99981199139d
-          grade: 1
-        - doc_id: 084d9064-251a-5bd3-9d7a-507da1a55001
-          grade: 3
-        - doc_id: d9858d40-a801-534d-8c78-7f47eca654c4
-          grade: 3
-        - doc_id: 5a18d23e-b4d7-5e87-87f8-e47428673872
-          grade: 3
-        - doc_id: 31b6ea4b-2929-581d-956d-521c73eb9580
-          grade: 3
-        - doc_id: b3f36dae-6683-5caa-b99c-6897628f437c
-          grade: 3
-        - doc_id: 9cf1bee4-6dd2-597a-8599-1c6507ce3200
-          grade: 3
-        - doc_id: 7d652202-8e03-55b4-875a-42579ae96616
-          grade: 3
-        - doc_id: 5d56e846-95f9-5a0c-83bc-967a65e27917
-          grade: 2
         - doc_id: 2f191284-365a-5736-ac03-0e210f181f6f
           grade: 2
+        - doc_id: 3290c96c-4868-59ab-abf0-f9fb65c69e3f
+          grade: 3
+        - doc_id: 9b1e7321-2bdd-58f1-98a4-d4a125584b27
+          grade: 3
         - doc_id: 7f56e088-f7b9-5ac3-8c25-f138aeac3154
           grade: 3
         - doc_id: fd1700f9-0488-5056-a84b-78e474dc0ae0
@@ -2809,6 +2795,10 @@ queries:
         - doc_id: 60b79e6a-4a9a-5950-b0b8-ff56dbcdeba4
           grade: 3
         - doc_id: 74570036-db2c-54fe-9217-95800aecb4fe
+          grade: 3
+        - doc_id: 5a18d23e-b4d7-5e87-87f8-e47428673872
+          grade: 3
+        - doc_id: 7d652202-8e03-55b4-875a-42579ae96616
           grade: 3
         - doc_id: ab0d98bb-ae52-5f80-857f-e0a8f7ee36e5
           grade: 3
@@ -2828,7 +2818,7 @@ queries:
           grade: 3
         - doc_id: 1d1a33c6-fcf2-50a1-b50c-b529c79ebc7f
           grade: 3
-        - doc_id: 9b1e7321-2bdd-58f1-98a4-d4a125584b27
+        - doc_id: 9cf1bee4-6dd2-597a-8599-1c6507ce3200
           grade: 3
         - doc_id: 5cd2995d-3a81-5022-ba31-903bc551247b
           grade: 3
@@ -2852,7 +2842,9 @@ queries:
           grade: 2
         - doc_id: b4afc7de-906d-5ccd-98d3-8ed7f9d96518
           grade: 3
-        - doc_id: e1770336-da37-5e40-a49d-c70dfd002abf
+        - doc_id: 31b6ea4b-2929-581d-956d-521c73eb9580
+          grade: 3
+        - doc_id: b3f36dae-6683-5caa-b99c-6897628f437c
           grade: 3
         - doc_id: a1e21b75-68cf-527d-8b1d-1873376febc6
           grade: 3
@@ -2928,8 +2920,6 @@ queries:
           grade: 3
         - doc_id: 05733d88-83bd-5221-aab2-7921b6e518cd
           grade: 3
-        - doc_id: 3290c96c-4868-59ab-abf0-f9fb65c69e3f
-          grade: 3
         - doc_id: a8b44e03-7749-5285-ae5d-cf7a0c07ec29
           grade: 3
         - doc_id: d4c8d435-eb7e-5a44-ac8f-42a64d86141a
@@ -2952,6 +2942,10 @@ queries:
           grade: 3
         - doc_id: 3df17ffc-e9e3-5996-ba5b-bfcbb2724b79
           grade: 3
+        - doc_id: 4b0de7ff-ba63-54cf-8743-12f804f7a3d5
+          grade: 3
+        - doc_id: 471356ed-019e-576c-822e-368a345bfb01
+          grade: 1
     - query_id: ph-paris-climate-agreement
       docs:
         - doc_id: a24e2c1f-5883-5331-bb67-7248be86f76c
@@ -2962,11 +2956,9 @@ queries:
           grade: 3
         - doc_id: 5142c993-6840-5eeb-b189-c714992cffb4
           grade: 3
-        - doc_id: 10c68755-3fc1-5685-9f64-872c841f8f95
-          grade: 3
-        - doc_id: 5036c54e-79d9-5cf4-beb6-11566835e90f
-          grade: 2
         - doc_id: 3c7c26b9-1108-577c-918b-cb5892ab5ee8
+          grade: 3
+        - doc_id: 10c68755-3fc1-5685-9f64-872c841f8f95
           grade: 3
         - doc_id: 9fd627a8-8ec6-5b38-aeff-d573cc92d5b5
           grade: 3
@@ -2976,6 +2968,8 @@ queries:
           grade: 3
         - doc_id: 04f46d60-3d78-58fc-8d15-e1ecc9974e88
           grade: 3
+        - doc_id: 5036c54e-79d9-5cf4-beb6-11566835e90f
+          grade: 2
         - doc_id: da518d4d-ac09-5c63-affd-038fd4978f10
           grade: 2
         - doc_id: 20ec5ecb-7d69-5d6a-99bf-245f88195a6f
@@ -3114,33 +3108,33 @@ queries:
           grade: 3
         - doc_id: 756a9b9e-971a-5c1e-a505-dee4a07b5534
           grade: 3
-        - doc_id: f65cc9c2-b052-5d51-865b-90f3794854fd
-          grade: 3
         - doc_id: fd2e6da7-2ffc-5f54-bb58-b56c1a810e82
+          grade: 3
+        - doc_id: f65cc9c2-b052-5d51-865b-90f3794854fd
           grade: 3
         - doc_id: d0151394-13fb-554a-8bb2-eeb03fb06984
           grade: 3
         - doc_id: d8076b3d-4495-5f6c-aa88-1282edc34562
           grade: 3
-        - doc_id: acf7aff7-1aa4-5677-afaf-24caaeb9518d
-          grade: 3
         - doc_id: dd48cc3e-0974-5842-ba52-e17acdbb2ca7
           grade: 1
+        - doc_id: acf7aff7-1aa4-5677-afaf-24caaeb9518d
+          grade: 3
         - doc_id: f8368919-82cb-5f2e-805b-69c0c05bb793
           grade: 1
         - doc_id: 1de75ac9-71ad-50c7-93d4-78f0c83cd5ec
           grade: 1
         - doc_id: c7855038-8b00-5b65-9877-81ac25305363
           grade: 3
-        - doc_id: 87ca1f53-9d06-5e93-ac6e-cb3cd86f81cb
-          grade: 3
         - doc_id: 3adbded1-5290-5922-9d2a-e56704e3463e
           grade: 3
         - doc_id: 837a0b88-b49c-5471-b927-dac9c885f7e4
           grade: 3
-        - doc_id: a6c3a68c-b226-5da2-b44b-1fb13428f5cc
-          grade: 3
         - doc_id: 01d8d585-9a53-5cfc-9405-5e6d9c23ce45
+          grade: 3
+        - doc_id: 87ca1f53-9d06-5e93-ac6e-cb3cd86f81cb
+          grade: 3
+        - doc_id: a6c3a68c-b226-5da2-b44b-1fb13428f5cc
           grade: 3
         - doc_id: cd74ea7f-0f0a-5913-8967-e54c2564af1a
           grade: 1
@@ -3184,21 +3178,21 @@ queries:
           grade: 3
         - doc_id: 520eca36-0232-5f36-aeef-a44a4ab7d1e8
           grade: 3
-        - doc_id: 6f264492-55da-560e-8c9c-b2161f96e158
-          grade: 3
-        - doc_id: c16ab294-cfa2-5759-8462-81a50945aa29
-          grade: 3
         - doc_id: 99714cec-1fad-52e5-b86f-01dd470f76e7
           grade: 3
         - doc_id: f1d61715-2065-5c9f-bca3-d56f49d5aeb2
           grade: 3
         - doc_id: 73a0c1d8-620e-5657-af36-cb3ef1278afb
           grade: 3
+        - doc_id: 6f264492-55da-560e-8c9c-b2161f96e158
+          grade: 3
+        - doc_id: c16ab294-cfa2-5759-8462-81a50945aa29
+          grade: 3
         - doc_id: a51bda4d-858e-567a-bda6-3c278d95f36e
           grade: 1
-        - doc_id: 78433194-0380-51a2-8831-c6376f5f17c2
-          grade: 1
         - doc_id: dd08e277-5a02-53ac-9af5-a2dd440b5f77
+          grade: 1
+        - doc_id: 78433194-0380-51a2-8831-c6376f5f17c2
           grade: 1
         - doc_id: 52dac7fb-0753-52b3-9d92-dfba1cb13818
           grade: 3
@@ -3248,70 +3242,38 @@ queries:
           grade: 2
         - doc_id: bd75aaa1-d311-5690-8373-c23f515c2dac
           grade: 3
+        - doc_id: 1c26172b-1a92-5ce6-89fb-8c2b878ce547
+          grade: 2
         - doc_id: 093e1160-ae1c-5545-9a8b-623fee9788a8
           grade: 3
         - doc_id: f1d69256-e747-5bd7-98b4-2e94aea8a5be
           grade: 3
-        - doc_id: 67dc8b7b-af08-5ea5-83fc-ea382eca4e30
-          grade: 2
-        - doc_id: 1c26172b-1a92-5ce6-89fb-8c2b878ce547
-          grade: 2
         - doc_id: 857172a9-2bce-5f5b-a9ef-c026cc410b75
           grade: 3
-        - doc_id: 10c940c3-8080-5339-a8d3-3abec058b231
+        - doc_id: 67dc8b7b-af08-5ea5-83fc-ea382eca4e30
           grade: 2
-        - doc_id: fa02ba82-3d9d-5e97-99c2-71f8dc8411d7
+        - doc_id: f3d19786-8384-5f33-b1e2-e26ede30bcdc
           grade: 3
         - doc_id: 40259361-c87c-55fe-892e-a157b9c1e106
           grade: 2
+        - doc_id: fa02ba82-3d9d-5e97-99c2-71f8dc8411d7
+          grade: 3
+        - doc_id: 10c940c3-8080-5339-a8d3-3abec058b231
+          grade: 2
         - doc_id: 703d061a-46c5-5964-baac-2481788119ef
           grade: 1
-        - doc_id: 19a65734-4bb9-52d2-bf20-8a552b739f93
-          grade: 3
-        - doc_id: 55cd8b45-589d-5d2b-a090-32ad78ad2f86
-          grade: 3
         - doc_id: 3fb3e53c-5ad8-5835-a827-2411ae4d24d6
-          grade: 3
-        - doc_id: f3d19786-8384-5f33-b1e2-e26ede30bcdc
           grade: 3
         - doc_id: 82d63773-6b64-5d38-8f26-52c6abed0ce6
           grade: 2
-        - doc_id: e141de4d-b2d9-55f7-b256-2e3f195ff87a
+        - doc_id: 55cd8b45-589d-5d2b-a090-32ad78ad2f86
           grade: 3
-        - doc_id: 85991b71-61b5-52a0-8f74-587409510f2b
+        - doc_id: 19a65734-4bb9-52d2-bf20-8a552b739f93
           grade: 3
-        - doc_id: 6e0002fd-7161-5280-a87b-e5d84dca5ccd
-          grade: 3
-        - doc_id: 0cbebdb4-ac89-5d18-b1f2-d58e6ba70b8f
-          grade: 2
         - doc_id: e5dd08b9-7a28-5a54-8e13-0d997ba4f69a
           grade: 3
-        - doc_id: 22028b37-2da3-5ec7-bd61-5dbeef8c9059
-          grade: 2
-        - doc_id: 92f970a0-692b-520d-9e71-ed6dc40ba788
-          grade: 2
         - doc_id: a6727b8b-5dc7-561a-aa7f-82fcde01c681
           grade: 2
-        - doc_id: 2e3ca317-78b6-5c05-80bc-8d87e1d1dfe8
-          grade: 1
-        - doc_id: fd51d81e-a525-5575-a600-e22bea65dc3e
-          grade: 3
-        - doc_id: 8988287e-1ee5-527a-8c6b-48c4a602fed4
-          grade: 1
-        - doc_id: 4d808b4d-ff8d-59dd-ab6d-637b0a5857b6
-          grade: 3
-        - doc_id: a3c91e4d-b348-500a-9e0e-56c17ddd0082
-          grade: 3
-        - doc_id: a36df087-53f2-5db4-b38c-3e0e5f424110
-          grade: 3
-        - doc_id: 90fb3621-17fa-580f-b2c7-e59c5ff5947f
-          grade: 3
-        - doc_id: a0a31a69-5857-59af-a844-0f293ba01014
-          grade: 3
-        - doc_id: d40e2cd4-001d-5a8c-881c-bda45b8b173e
-          grade: 2
-        - doc_id: fd7b6869-f600-5b4c-b6f8-297b5db2a859
-          grade: 3
         - doc_id: b5afd727-4960-5abe-b69a-efef28c0e989
           grade: 3
         - doc_id: 45705d99-86c0-5d89-a061-1d52b1f82ceb
@@ -3320,7 +3282,25 @@ queries:
           grade: 3
         - doc_id: 2dff446b-0903-5781-ac9f-ebf1579aefb1
           grade: 3
+        - doc_id: 0cbebdb4-ac89-5d18-b1f2-d58e6ba70b8f
+          grade: 2
         - doc_id: 0ca99bf5-d56c-581e-bc8a-50e1c593632e
+          grade: 3
+        - doc_id: e141de4d-b2d9-55f7-b256-2e3f195ff87a
+          grade: 3
+        - doc_id: 85991b71-61b5-52a0-8f74-587409510f2b
+          grade: 3
+        - doc_id: 6e0002fd-7161-5280-a87b-e5d84dca5ccd
+          grade: 3
+        - doc_id: 8988287e-1ee5-527a-8c6b-48c4a602fed4
+          grade: 1
+        - doc_id: 92f970a0-692b-520d-9e71-ed6dc40ba788
+          grade: 2
+        - doc_id: 4d808b4d-ff8d-59dd-ab6d-637b0a5857b6
+          grade: 3
+        - doc_id: a3c91e4d-b348-500a-9e0e-56c17ddd0082
+          grade: 3
+        - doc_id: a36df087-53f2-5db4-b38c-3e0e5f424110
           grade: 3
         - doc_id: dfb4f80d-0357-5e40-885f-5bbc864fa5c6
           grade: 2
@@ -3334,16 +3314,26 @@ queries:
           grade: 3
         - doc_id: 566de8bf-4979-5206-9166-d459702e6b67
           grade: 2
-        - doc_id: 242e4bf3-47b5-5634-b57d-374c2ae9e761
+        - doc_id: 22028b37-2da3-5ec7-bd61-5dbeef8c9059
           grade: 2
-        - doc_id: 9fcfc001-8f31-5c45-aa95-e9387c5ffe94
+        - doc_id: a0a31a69-5857-59af-a844-0f293ba01014
+          grade: 3
+        - doc_id: d40e2cd4-001d-5a8c-881c-bda45b8b173e
           grade: 2
-        - doc_id: 8714af4d-b611-5204-958e-69f0dec7d4ac
+        - doc_id: fd7b6869-f600-5b4c-b6f8-297b5db2a859
           grade: 3
-        - doc_id: 27daf4d6-6173-5b05-9170-a3d14da62400
+        - doc_id: 90fb3621-17fa-580f-b2c7-e59c5ff5947f
           grade: 3
-        - doc_id: 1588d311-d286-596b-a3e0-3bd20fe450d6
+        - doc_id: 2e3ca317-78b6-5c05-80bc-8d87e1d1dfe8
           grade: 1
+        - doc_id: fd51d81e-a525-5575-a600-e22bea65dc3e
+          grade: 3
+        - doc_id: cf3ecc96-7316-5da7-8cba-a4f56b52e4df
+          grade: 2
+        - doc_id: ba92dadf-e258-55eb-a28c-8070283a8489
+          grade: 1
+        - doc_id: a18fc38f-871e-5cdc-8f8d-b1cc86e162a8
+          grade: 3
         - doc_id: bdd96152-b415-5f89-a5e2-5ab901d33213
           grade: 2
         - doc_id: 24bde6db-51d5-5a61-a71b-b12551125b8c
@@ -3356,8 +3346,6 @@ queries:
           grade: 3
         - doc_id: 552da385-7526-50c5-8613-6de019d8621e
           grade: 2
-        - doc_id: ba92dadf-e258-55eb-a28c-8070283a8489
-          grade: 1
         - doc_id: 6d5fd1e6-1b93-5533-9b75-107ff9f96046
           grade: 2
         - doc_id: 957159cf-c22b-5ebb-a29f-a822a68a3e96
@@ -3410,6 +3398,8 @@ queries:
           grade: 1
         - doc_id: d0f57c0f-f27c-502d-b0cc-b4052056bdc0
           grade: 2
+        - doc_id: 9fcfc001-8f31-5c45-aa95-e9387c5ffe94
+          grade: 2
         - doc_id: b3514fa8-1377-5d35-ac39-d317ff6c9c84
           grade: 2
         - doc_id: 961d1c64-d117-5bd7-b0f5-6edf656fe028
@@ -3432,6 +3422,8 @@ queries:
           grade: 1
         - doc_id: 230329ca-5b8a-5d89-accb-f2fd98f3fe3e
           grade: 3
+        - doc_id: 27daf4d6-6173-5b05-9170-a3d14da62400
+          grade: 3
         - doc_id: 3eaeb033-9cc1-592d-a0ab-1737f4ee446e
           grade: 1
         - doc_id: 417f9728-f9eb-5f7f-824c-9319c5436def
@@ -3448,6 +3440,8 @@ queries:
           grade: 3
         - doc_id: 7e4fdff2-b81b-5b78-af3b-7e5384cbdacf
           grade: 2
+        - doc_id: 8714af4d-b611-5204-958e-69f0dec7d4ac
+          grade: 3
         - doc_id: 8a97b8e3-784c-5c3c-8013-13d235c5155b
           grade: 2
         - doc_id: 90c3a148-5529-551a-9520-9046baed9185
@@ -3458,8 +3452,6 @@ queries:
           grade: 3
         - doc_id: a01d1aa8-030f-5b6a-a406-3be45311e8ae
           grade: 2
-        - doc_id: a18fc38f-871e-5cdc-8f8d-b1cc86e162a8
-          grade: 3
         - doc_id: aca074a7-e807-5cfe-8686-138ddde0c772
           grade: 3
         - doc_id: bea58ad6-fed3-532b-be00-97b67fb9e18f
@@ -3501,8 +3493,6 @@ queries:
         - doc_id: 4adcad73-fc03-5269-9b06-5e01b01a60bb
           grade: 2
         - doc_id: 32a39bca-0348-53e7-ab27-baf7c7a95d55
-          grade: 2
-        - doc_id: cf3ecc96-7316-5da7-8cba-a4f56b52e4df
           grade: 2
         - doc_id: 29ad312e-31fc-524a-a723-c9cb674044ed
           grade: 3
@@ -3598,14 +3588,18 @@ queries:
           grade: 3
         - doc_id: d3ed022c-3d99-5ea2-a3b1-7029b227931b
           grade: 3
+        - doc_id: 76a243d0-ea3c-5443-8f1b-4c9dae9b62b1
+          grade: 1
+        - doc_id: fe795229-d16a-5c59-87b1-3ffdcd7908e5
+          grade: 2
     - query_id: ph-universal-basic-income
       docs:
-        - doc_id: 395cfdc1-0e3b-5ef1-8de6-61786c02c81e
-          grade: 3
         - doc_id: dc1dd564-bcea-531a-a467-13129cdea06d
           grade: 3
         - doc_id: 082030f9-59a9-5a71-8be0-8c20073ee78c
           grade: 2
+        - doc_id: 395cfdc1-0e3b-5ef1-8de6-61786c02c81e
+          grade: 3
         - doc_id: c51e8023-18f1-5fdf-9bd9-55e77c47150e
           grade: 3
         - doc_id: c748db70-d697-5621-8adf-c4d054f5af52
@@ -3614,30 +3608,30 @@ queries:
           grade: 3
         - doc_id: 89aa4dc4-63c6-5b43-8be4-4363d39677ac
           grade: 3
+        - doc_id: 38ec179a-c675-5893-92ae-0a31069dc144
+          grade: 3
         - doc_id: 3e6df610-d5dd-5a14-9105-1e91a89c1177
           grade: 1
-        - doc_id: 38ec179a-c675-5893-92ae-0a31069dc144
+        - doc_id: 3353c2e6-3687-5b8c-a4f8-f9958863bee4
           grade: 3
         - doc_id: 706a9a9a-99cd-58ee-af9f-3ba06c5365f1
           grade: 1
         - doc_id: 0324e149-73af-569d-89e9-54d32879ffd0
           grade: 1
-        - doc_id: 3353c2e6-3687-5b8c-a4f8-f9958863bee4
-          grade: 3
         - doc_id: 6adde30b-b5d0-50cf-8841-6656edefe335
           grade: 3
         - doc_id: 5cf311b8-07a7-5429-8979-1a40b06b7138
           grade: 3
-        - doc_id: 7de261b2-6054-5df0-9ed5-b56a336bcc2f
-          grade: 3
         - doc_id: a7bed865-ed96-58b3-9671-b627811c8da1
           grade: 3
-        - doc_id: 8ecf2ddf-9121-544f-b869-502147337392
+        - doc_id: 7de261b2-6054-5df0-9ed5-b56a336bcc2f
           grade: 3
         - doc_id: b1d77897-cb01-5e19-964e-4370e135475b
           grade: 2
         - doc_id: 8d64fc38-a457-5762-a0ce-4081890820eb
           grade: 2
+        - doc_id: 8ecf2ddf-9121-544f-b869-502147337392
+          grade: 3
         - doc_id: f694b9ff-07bb-5c48-bfae-386b51f3f668
           grade: 3
         - doc_id: fb0b96d9-96b9-5258-8652-87957b3f00b5
@@ -3654,9 +3648,9 @@ queries:
           grade: 3
         - doc_id: d29d98d0-e78b-5c53-846c-41e553140109
           grade: 3
-        - doc_id: 36c55524-2870-5f2a-812b-fe59935f5c50
-          grade: 3
         - doc_id: 1cede197-74d6-5bd7-a1aa-9e9362a677bc
+          grade: 3
+        - doc_id: 36c55524-2870-5f2a-812b-fe59935f5c50
           grade: 3
         - doc_id: a80bcc5f-3d5d-5a24-b859-cbc0dcb6d7b4
           grade: 3
@@ -3732,23 +3726,23 @@ queries:
           grade: 3
         - doc_id: ba341be5-651c-5540-a369-4525ede2a866
           grade: 3
-        - doc_id: c4ec4274-3d70-5341-93fb-ba5764d8090f
-          grade: 3
         - doc_id: 2cba3966-6a52-5b90-83c0-8b289a185547
           grade: 3
-        - doc_id: 704b10e6-457f-5860-a007-e3d59e16cca3
+        - doc_id: c4ec4274-3d70-5341-93fb-ba5764d8090f
+          grade: 3
+        - doc_id: 780fbc78-16e3-5b4a-ad6f-3701a99b7c01
           grade: 3
         - doc_id: c7426d0f-1834-51f2-903e-f4c61d2e36f9
           grade: 3
-        - doc_id: 780fbc78-16e3-5b4a-ad6f-3701a99b7c01
+        - doc_id: 704b10e6-457f-5860-a007-e3d59e16cca3
           grade: 3
         - doc_id: 7740dce3-f76c-58fe-8688-4c4243b85997
           grade: 3
         - doc_id: 4b8a5bfa-76ce-5140-a917-b40fdb8adfed
           grade: 3
-        - doc_id: 7bbbc72a-eb7f-5a1d-aacf-a7090f70bfc6
-          grade: 3
         - doc_id: a3d6722a-f70a-5fe6-9791-67323f4779c6
+          grade: 3
+        - doc_id: 7bbbc72a-eb7f-5a1d-aacf-a7090f70bfc6
           grade: 3
         - doc_id: 25682379-4960-5ad9-a716-dcd651e5a918
           grade: 3
@@ -3806,15 +3800,13 @@ queries:
           grade: 3
         - doc_id: 16ff1280-2287-55a7-b3fb-a520594bc628
           grade: 3
-        - doc_id: e742c526-0abf-57f0-bbd0-9b3b7c902783
-          grade: 3
         - doc_id: 81a7f825-eb94-55d8-97cb-6d66149ace1e
           grade: 3
         - doc_id: 3ac22a61-1395-5e3b-a2fe-5b20005cbb7c
           grade: 3
-        - doc_id: 732807c6-64ba-54e8-8c11-9becc9d6439f
-          grade: 3
         - doc_id: cce2b297-652e-586f-afba-7e285feece20
+          grade: 3
+        - doc_id: 732807c6-64ba-54e8-8c11-9becc9d6439f
           grade: 3
         - doc_id: 1391301a-b6cc-5a14-8744-9281282b28ea
           grade: 3
@@ -3980,19 +3972,51 @@ queries:
           grade: 3
         - doc_id: 760bccf0-43cb-5d3f-8f19-b0b7b2bbe9a1
           grade: 3
+        - doc_id: e742c526-0abf-57f0-bbd0-9b3b7c902783
+          grade: 3
         - doc_id: 6ab26aee-8b1f-5263-8fcc-1bce57efd19e
           grade: 3
     - query_id: bool-facebook-privacy-not-instagram
       docs:
         - doc_id: 7df16e78-1773-57e2-94a7-94c0cb71d70d
           grade: 3
-        - doc_id: 1399ecd1-f696-5c84-8ad9-d5d74bb84cc2
-          grade: 3
-        - doc_id: fed9a254-e4ca-51ef-a666-139a6b898777
+        - doc_id: 0c1888c5-e5ac-565c-a00a-8c236c9609d8
           grade: 3
         - doc_id: 8f78506e-8e82-5fde-8eb8-c2c6a3faf8cd
           grade: 3
         - doc_id: 97ef8209-1630-503c-ab37-f810309a11b5
+          grade: 3
+        - doc_id: 1399ecd1-f696-5c84-8ad9-d5d74bb84cc2
+          grade: 3
+        - doc_id: fed9a254-e4ca-51ef-a666-139a6b898777
+          grade: 3
+        - doc_id: 16145e67-78d2-5ef5-aba3-1ab58d8b0cf0
+          grade: 3
+        - doc_id: 1312a113-a3b7-5b8d-9439-29e36ca1f36c
+          grade: 3
+        - doc_id: 2b2b1176-729f-52e2-8f41-86242b0d6ec9
+          grade: 3
+        - doc_id: e67cdcce-e6f8-5530-a484-cc6f1109c819
+          grade: 3
+        - doc_id: 229ec720-523b-5e54-b0cc-d3e776e372d7
+          grade: 3
+        - doc_id: 97e92d4c-1a69-51e3-99ef-5a1883b0ea5a
+          grade: 3
+        - doc_id: 28d63047-64ad-5b0a-b475-3b447b8e20d3
+          grade: 3
+        - doc_id: 1f0a851e-d80b-5f28-ba63-37b6a7807f21
+          grade: 3
+        - doc_id: 2856752b-97fe-5281-ac45-8f93f01b6bc1
+          grade: 3
+        - doc_id: 6a0044db-944d-5446-9eb0-82ee3c0bf3eb
+          grade: 3
+        - doc_id: 9d44415e-6231-5f1c-9a3d-5ee8fec7a85d
+          grade: 3
+        - doc_id: 1eb83762-6c4c-5c29-8034-1ad7add253c7
+          grade: 3
+        - doc_id: 764adb9a-f51f-5baa-bbec-967bc036fd76
+          grade: 3
+        - doc_id: 00c71ef7-ac5f-5f3e-b93c-5dfc93ac9522
           grade: 3
         - doc_id: d297e8b6-e736-5da8-8a41-1967af3b11db
           grade: 3
@@ -4000,41 +4024,11 @@ queries:
           grade: 3
         - doc_id: 61213829-1cca-5a2e-bcae-520d7b187d98
           grade: 3
-        - doc_id: 2b2b1176-729f-52e2-8f41-86242b0d6ec9
-          grade: 3
-        - doc_id: 273c36be-5930-5009-9700-997849b8654c
-          grade: 3
-        - doc_id: e67cdcce-e6f8-5530-a484-cc6f1109c819
-          grade: 3
-        - doc_id: 229ec720-523b-5e54-b0cc-d3e776e372d7
-          grade: 3
-        - doc_id: 00c71ef7-ac5f-5f3e-b93c-5dfc93ac9522
-          grade: 3
-        - doc_id: 16145e67-78d2-5ef5-aba3-1ab58d8b0cf0
-          grade: 3
-        - doc_id: 1312a113-a3b7-5b8d-9439-29e36ca1f36c
-          grade: 3
-        - doc_id: 1eb83762-6c4c-5c29-8034-1ad7add253c7
-          grade: 3
-        - doc_id: 764adb9a-f51f-5baa-bbec-967bc036fd76
-          grade: 3
-        - doc_id: 6a0044db-944d-5446-9eb0-82ee3c0bf3eb
-          grade: 3
-        - doc_id: 9d44415e-6231-5f1c-9a3d-5ee8fec7a85d
-          grade: 3
-        - doc_id: 28d63047-64ad-5b0a-b475-3b447b8e20d3
-          grade: 3
-        - doc_id: 0c1888c5-e5ac-565c-a00a-8c236c9609d8
-          grade: 3
         - doc_id: 1a3a562c-0c99-5bfd-ada8-107b8b9279c8
           grade: 3
-        - doc_id: 97e92d4c-1a69-51e3-99ef-5a1883b0ea5a
-          grade: 3
-        - doc_id: 1f0a851e-d80b-5f28-ba63-37b6a7807f21
-          grade: 3
-        - doc_id: 2856752b-97fe-5281-ac45-8f93f01b6bc1
-          grade: 3
         - doc_id: 4927291a-562f-5bc0-a6e2-b878710c67ad
+          grade: 3
+        - doc_id: 273c36be-5930-5009-9700-997849b8654c
           grade: 3
         - doc_id: aeeef261-a7ae-5b59-a291-78b41502c943
           grade: 3
@@ -4042,28 +4036,28 @@ queries:
           grade: 3
         - doc_id: fd25ab8b-0e57-551d-b56c-0d5042df3e58
           grade: 3
-        - doc_id: 422d117c-74f2-5e0f-a26d-e357121ff02c
-          grade: 3
-        - doc_id: cb8b37bd-11ba-58e6-8bfd-2d0a3277eba7
-          grade: 3
-        - doc_id: 6eac86e8-18cb-537c-be97-ad9bcef047fa
-          grade: 3
-        - doc_id: 67342c9d-61b1-5628-b007-af532d149b22
-          grade: 3
         - doc_id: 22972982-752d-5a85-8945-024b69fa5ffc
           grade: 3
         - doc_id: 84f72551-c9b9-5dcf-8298-e80613afb437
           grade: 3
+        - doc_id: 6eac86e8-18cb-537c-be97-ad9bcef047fa
+          grade: 3
+        - doc_id: cb8b37bd-11ba-58e6-8bfd-2d0a3277eba7
+          grade: 3
+        - doc_id: 422d117c-74f2-5e0f-a26d-e357121ff02c
+          grade: 3
+        - doc_id: 67342c9d-61b1-5628-b007-af532d149b22
+          grade: 3
         - doc_id: 80587336-8ce2-5314-a058-abafaa0263d9
-          grade: 3
-        - doc_id: 30d0b677-b79f-5185-a1b0-c9d6afafc6fa
-          grade: 3
-        - doc_id: c2abac40-6502-59a3-ab6d-923316e9a5db
           grade: 3
         - doc_id: 9aa8038d-0803-515b-9bb6-93bf88c3914c
           grade: 3
         - doc_id: 289343b1-e4c9-55f0-9828-8c82c4e9e3f4
           grade: 2
+        - doc_id: 30d0b677-b79f-5185-a1b0-c9d6afafc6fa
+          grade: 3
+        - doc_id: c2abac40-6502-59a3-ab6d-923316e9a5db
+          grade: 3
         - doc_id: 7026f674-65c7-5909-ab3a-ac9350e9ebe3
           grade: 3
         - doc_id: 168bc730-3e6e-5220-82a1-12c9f9747afc
@@ -4076,9 +4070,9 @@ queries:
           grade: 3
         - doc_id: cf1a6873-c47e-540d-9ace-861958b2707f
           grade: 3
-        - doc_id: b1931675-905f-5903-8c03-3d6df6f01e74
-          grade: 3
         - doc_id: b8fd9ec2-da47-5b28-a8fb-fd7a643e5a44
+          grade: 3
+        - doc_id: b1931675-905f-5903-8c03-3d6df6f01e74
           grade: 3
         - doc_id: e92b5dc5-f1e2-5808-b184-57e0ff3125d0
           grade: 3
@@ -4236,17 +4230,17 @@ queries:
           grade: 2
         - doc_id: bec2f141-c59e-59d3-be2f-8c7a229e63b4
           grade: 3
-        - doc_id: 6c01ea00-92bc-5ae2-8ea7-a15adf2fff7b
-          grade: 3
         - doc_id: cb5aaf2e-82f3-51e8-85a1-92bcc1744ec8
           grade: 3
         - doc_id: 9727bd2e-40fb-5198-bd00-b8a747483334
           grade: 3
-        - doc_id: d514eeb5-8aa8-58bf-881a-34212aa3f11e
-          grade: 3
         - doc_id: 00b25315-c1e9-5927-b588-baed1d338223
           grade: 3
         - doc_id: 9d0fbded-8318-5f68-ae31-d8ffa687d319
+          grade: 3
+        - doc_id: 6c01ea00-92bc-5ae2-8ea7-a15adf2fff7b
+          grade: 3
+        - doc_id: d514eeb5-8aa8-58bf-881a-34212aa3f11e
           grade: 3
         - doc_id: 1929e7e8-e9a4-5362-9eb8-04711d04754d
           grade: 3
@@ -4264,15 +4258,15 @@ queries:
           grade: 3
         - doc_id: 57bf5130-def1-5d29-a7c1-04b41b711c76
           grade: 3
-        - doc_id: 132a40db-5c2a-56be-876c-9102baa565bf
+        - doc_id: dd01085c-835c-5954-a400-b5eab06cc07c
           grade: 3
         - doc_id: 7106a37a-6405-584a-a8f8-ee1b14279c59
-          grade: 3
-        - doc_id: dd01085c-835c-5954-a400-b5eab06cc07c
           grade: 3
         - doc_id: e139b8bd-6602-51b6-920b-5be43a8cad11
           grade: 3
         - doc_id: d469f06f-b9ee-5481-8636-6f3653fc76e2
+          grade: 3
+        - doc_id: 132a40db-5c2a-56be-876c-9102baa565bf
           grade: 3
         - doc_id: 4cd2a57c-fc08-5b09-b07c-d62891d19b5f
           grade: 3
@@ -4518,11 +4512,11 @@ queries:
           grade: 3
         - doc_id: 16fb00db-2d99-53d7-87ad-ae9494bbc594
           grade: 3
-        - doc_id: af4d20fb-7577-5957-8f05-4f5c3054c0ce
-          grade: 3
         - doc_id: fdd8584d-fadc-5d77-aa43-d24b2a26d860
           grade: 3
         - doc_id: fb630255-50b8-5445-af33-3b5819c0b148
+          grade: 3
+        - doc_id: af4d20fb-7577-5957-8f05-4f5c3054c0ce
           grade: 3
         - doc_id: ad99411a-c92d-5cae-ae25-aaa2f29a207a
           grade: 3
@@ -4570,15 +4564,15 @@ queries:
           grade: 2
         - doc_id: e17370bb-629b-54d0-acb2-9effca7ac312
           grade: 3
-        - doc_id: 1f3b6c8b-c130-532f-b2ef-ce05890369d1
-          grade: 3
         - doc_id: acc1bb0a-a1c8-589a-90aa-d22e6aacb644
           grade: 3
         - doc_id: dd08e733-e0c9-5306-91c5-b15dbb76bfd4
           grade: 3
-        - doc_id: 32297f10-53d0-5eda-928e-0713fd4fe0e4
-          grade: 3
         - doc_id: ac22c83f-319a-5287-8628-49a1a73c3442
+          grade: 3
+        - doc_id: 1f3b6c8b-c130-532f-b2ef-ce05890369d1
+          grade: 3
+        - doc_id: 32297f10-53d0-5eda-928e-0713fd4fe0e4
           grade: 3
         - doc_id: c2a1ab44-66e0-5467-b0b2-1fbdd1f1ff2f
           grade: 1
@@ -4790,9 +4784,9 @@ queries:
           grade: 3
         - doc_id: 82fa2fdc-4fb3-5e4e-8174-d3973bdf252a
           grade: 3
-        - doc_id: a8820c36-3de7-5048-afae-58697cd55cc6
-          grade: 3
         - doc_id: 91e1a38d-594b-5221-ba10-fd8f921b705f
+          grade: 3
+        - doc_id: a8820c36-3de7-5048-afae-58697cd55cc6
           grade: 3
         - doc_id: 6e939573-70d0-536c-acd7-0bfdb9c8e7b6
           grade: 3
@@ -4830,13 +4824,13 @@ queries:
           grade: 1
         - doc_id: 51cc2303-37dc-5781-8a93-6747c76adf11
           grade: 2
-        - doc_id: e80d3237-4965-5b3c-8826-cf13e122bdf4
-          grade: 2
         - doc_id: 33a37ab6-015c-5ab7-8bf0-5b31de2dc552
           grade: 2
         - doc_id: 2d6f7599-ec62-5259-ab70-8cb2917116e1
           grade: 2
         - doc_id: c0cfecc2-eb05-5414-9d8c-0d2fcd0645ee
+          grade: 2
+        - doc_id: e80d3237-4965-5b3c-8826-cf13e122bdf4
           grade: 2
         - doc_id: fcd10fac-1334-5049-86ed-06f81970dc0a
           grade: 3
@@ -4996,12 +4990,6 @@ queries:
           grade: 1
         - doc_id: 43952f74-851a-52de-a9a3-d983b69b7e69
           grade: 1
-        - doc_id: ed9b7dc0-17b4-55e4-ac6c-9727a9107dc4
-          grade: 2
-        - doc_id: a945d5c3-6d41-5f24-9380-1a3ebb2e1aeb
-          grade: 2
-        - doc_id: 9b176c05-fd2f-50ee-8834-12e8288b9c5d
-          grade: 2
         - doc_id: cefee02e-7903-5459-a4ae-af32fd05d7c2
           grade: 1
         - doc_id: ddb0b4ee-a172-5980-9735-69bf43b4624b
@@ -5010,45 +4998,63 @@ queries:
           grade: 2
         - doc_id: d585b066-988e-5652-88c7-6a4a2115e58f
           grade: 0
+        - doc_id: ed9b7dc0-17b4-55e4-ac6c-9727a9107dc4
+          grade: 2
+        - doc_id: 9b176c05-fd2f-50ee-8834-12e8288b9c5d
+          grade: 2
+        - doc_id: a945d5c3-6d41-5f24-9380-1a3ebb2e1aeb
+          grade: 2
         - doc_id: d380e12a-2eef-5ce4-a53d-e06bc23691d1
           grade: 2
         - doc_id: a498a4e5-4652-5071-b3da-fe6483c56227
+          grade: 1
+        - doc_id: d90c5ac1-91b4-54dc-83cb-9306a351fff7
           grade: 1
         - doc_id: 80282166-d826-5681-85ba-6d8b940ed743
           grade: 2
         - doc_id: 56f912c8-8949-50b8-bc52-7c014e7acf09
           grade: 1
+        - doc_id: b276e6fe-a62e-5e96-b225-12df061e0ac2
+          grade: 1
+        - doc_id: 85f96313-8e7f-52d7-ae77-58d203f6c85e
+          grade: 1
         - doc_id: 3eaf72bc-2b4e-5f43-85f0-04b91f2b823d
           grade: 1
+        - doc_id: af0a68f3-b727-5ed5-91a5-1bcd5aa443e3
+          grade: 0
+        - doc_id: 4fe3b72a-520b-586d-b5ae-89ee219c34ff
+          grade: 2
+        - doc_id: 5beddac8-3d43-5971-8b67-7a07a6597808
+          grade: 0
         - doc_id: e372e464-e70e-5e91-9bcb-f9b525b29cd5
           grade: 2
         - doc_id: c9e74248-6822-5998-aece-da4b5d0e8aca
           grade: 2
-        - doc_id: d90c5ac1-91b4-54dc-83cb-9306a351fff7
-          grade: 1
-        - doc_id: 4fe3b72a-520b-586d-b5ae-89ee219c34ff
-          grade: 2
         - doc_id: 0899263c-7ab3-57ce-ba6d-dcf5567962f2
           grade: 1
-        - doc_id: b276e6fe-a62e-5e96-b225-12df061e0ac2
-          grade: 1
-        - doc_id: af0a68f3-b727-5ed5-91a5-1bcd5aa443e3
-          grade: 0
-        - doc_id: 85f96313-8e7f-52d7-ae77-58d203f6c85e
-          grade: 1
-        - doc_id: 5beddac8-3d43-5971-8b67-7a07a6597808
-          grade: 0
         - doc_id: e94f8ee6-acb5-5596-8b0f-616f34b0a201
           grade: 1
         - doc_id: a21d22c7-9cbd-5919-b1bc-af662e13cfaf
           grade: 2
+        - doc_id: 443d9fbe-d5ed-5edb-9c19-0616e249c6c0
+          grade: 0
         - doc_id: ab2465e0-97be-587c-9666-785b5259ccaa
           grade: 2
         - doc_id: 2b496275-4820-5ad5-aa1a-3175108eb826
           grade: 1
-        - doc_id: 443d9fbe-d5ed-5edb-9c19-0616e249c6c0
-          grade: 0
         - doc_id: 1589b929-3aae-5e4f-b0c4-024ea8e150ba
+          grade: 1
+        - doc_id: 3ceb6475-c172-510c-b89f-8585adae9a1e
+          grade: 1
+        - doc_id: 2ad3385f-9ca1-5b83-b38a-b90edfd62321
+          grade: 2
+        - doc_id: dad1f7fc-f6e1-5a42-9460-12902a3a0e49
+          grade: 2
+        - doc_id: e1699537-9a72-5bb2-8769-3d0d7d49e62f
+          grade: 1
+        - doc_id: 93c81170-4b71-531b-ba36-c2740b3a226f
+          grade: 0
+        - doc_id: 95f98f90-3a09-5090-ad75-3b02cf3a9b3b
           grade: 1
         - doc_id: 041e37ed-2c22-59c6-8ed6-6f3a6df43d6d
           grade: 1
@@ -5056,31 +5062,19 @@ queries:
           grade: 1
         - doc_id: 3d3b083c-2a45-541d-9b5a-43eabb2c391e
           grade: 1
-        - doc_id: 0e3e11a3-25b1-57f7-8d7b-818eceb2ddf7
+        - doc_id: 6376b7f0-41ee-5746-a93a-efc8d9d7aff2
           grade: 1
-        - doc_id: e1699537-9a72-5bb2-8769-3d0d7d49e62f
-          grade: 1
-        - doc_id: 2ad3385f-9ca1-5b83-b38a-b90edfd62321
-          grade: 2
-        - doc_id: 95f98f90-3a09-5090-ad75-3b02cf3a9b3b
-          grade: 1
-        - doc_id: 5d570b68-a542-5b31-bf60-e40761bb6436
-          grade: 1
-        - doc_id: 3ceb6475-c172-510c-b89f-8585adae9a1e
+        - doc_id: dadeae6a-bd99-5aae-91b3-b33ec75ad942
           grade: 1
         - doc_id: 85f4c11d-a92e-56d9-ae2f-8ac7f526ef76
           grade: 2
-        - doc_id: 93c81170-4b71-531b-ba36-c2740b3a226f
-          grade: 0
-        - doc_id: ae20a56e-3d3b-57b8-921a-20e843194b52
-          grade: 1
-        - doc_id: 6376b7f0-41ee-5746-a93a-efc8d9d7aff2
-          grade: 1
-        - doc_id: dad1f7fc-f6e1-5a42-9460-12902a3a0e49
-          grade: 2
-        - doc_id: dadeae6a-bd99-5aae-91b3-b33ec75ad942
-          grade: 1
         - doc_id: ab21216f-268c-5cc4-892a-d26c9645f112
+          grade: 1
+        - doc_id: 5d570b68-a542-5b31-bf60-e40761bb6436
+          grade: 1
+        - doc_id: 0e3e11a3-25b1-57f7-8d7b-818eceb2ddf7
+          grade: 1
+        - doc_id: ae20a56e-3d3b-57b8-921a-20e843194b52
           grade: 1
         - doc_id: 635d44c2-bb36-523b-8949-8234f0304029
           grade: 2
@@ -5238,53 +5232,61 @@ queries:
           grade: 2
         - doc_id: 89b03b1b-4d07-505e-9871-f1f127465312
           grade: 3
-        - doc_id: 3a7e8622-2087-5f3b-856f-35232df57148
-          grade: 0
         - doc_id: 2f6f1921-38cf-5b01-8bae-7df50fbd7420
           grade: 1
+        - doc_id: 3a7e8622-2087-5f3b-856f-35232df57148
+          grade: 0
         - doc_id: 1d9941dd-aae9-5bb8-b03a-baed010431bc
           grade: 1
         - doc_id: 6c81d266-0d2d-5905-b535-3859768a1dee
           grade: 1
         - doc_id: 25db7895-9ad5-53fc-8612-b79c48e8b66a
           grade: 1
-        - doc_id: 0b1f0179-c4b2-5589-a212-5b55ecae8de1
+        - doc_id: 243a8aaf-ebce-552d-b440-215919390cc1
           grade: 0
         - doc_id: cafb47e9-d342-5dd3-912f-2179162f2b2d
           grade: 1
         - doc_id: fd374914-247c-50b2-a772-9cbbdd443927
           grade: 1
-        - doc_id: 243a8aaf-ebce-552d-b440-215919390cc1
+        - doc_id: 0b1f0179-c4b2-5589-a212-5b55ecae8de1
           grade: 0
-        - doc_id: 5c012cb0-2ea7-516e-aa7d-bb894f681f11
-          grade: 1
         - doc_id: a774e8de-e53c-5d9a-863e-b64d80a61eee
           grade: 0
         - doc_id: 2aa63861-8327-5ffc-9e5f-751098521d47
           grade: 1
-        - doc_id: 72e99049-095c-566b-b44b-a0234254f475
-          grade: 0
-        - doc_id: a382dbb8-c2e3-5fe2-b612-469a1c844d5f
-          grade: 0
-        - doc_id: 0ba16149-12ac-5924-a9a8-179d7bb49813
-          grade: 2
-        - doc_id: eae62246-345f-5602-977a-1315acd0d3a8
-          grade: 0
-        - doc_id: d36bdca1-bbbe-5c79-a842-34d5a73e1848
-          grade: 0
         - doc_id: 4b548e6e-89f3-5c12-aa17-dd9033452778
           grade: 0
         - doc_id: d4c7d23b-1c06-5d2e-b8e0-3e030e693aeb
           grade: 1
         - doc_id: a221d9e0-e53b-5fa5-89cc-dc6a0ee1e041
           grade: 1
+        - doc_id: 7e4a1e47-9e3c-566c-80bd-c77d5974c3c5
+          grade: 0
+        - doc_id: 5c012cb0-2ea7-516e-aa7d-bb894f681f11
+          grade: 1
+        - doc_id: eae62246-345f-5602-977a-1315acd0d3a8
+          grade: 0
+        - doc_id: d36bdca1-bbbe-5c79-a842-34d5a73e1848
+          grade: 0
         - doc_id: 366192a0-9c01-5e26-a177-a1bc57db6947
           grade: 0
+        - doc_id: a382dbb8-c2e3-5fe2-b612-469a1c844d5f
+          grade: 0
+        - doc_id: d5d7bae4-c5ee-5261-bbca-b1d8bb7385a0
+          grade: 1
         - doc_id: 574f3cb0-c2e1-5776-9f7a-0b3b880fc984
           grade: 0
         - doc_id: 570fb319-17a2-56e0-a468-6f1582698a30
           grade: 1
         - doc_id: 339c6c4f-dee4-51e3-9aae-bb44c9bf3923
+          grade: 1
+        - doc_id: 72e99049-095c-566b-b44b-a0234254f475
+          grade: 0
+        - doc_id: 0bbd0c98-fd99-536b-bc2b-b4fbab28deb9
+          grade: 1
+        - doc_id: 6025fd18-3a65-506e-a0fe-a20d22659bcd
+          grade: 1
+        - doc_id: 56d3f822-53d7-5578-915a-97df381fa7d1
           grade: 1
         - doc_id: f5b819b9-5740-5509-b68f-ea0798e1a8da
           grade: 1
@@ -5294,42 +5296,32 @@ queries:
           grade: 1
         - doc_id: 21a7832a-3ba8-5a5d-a59b-55c5e580d989
           grade: 1
-        - doc_id: 6025fd18-3a65-506e-a0fe-a20d22659bcd
-          grade: 1
-        - doc_id: 56d3f822-53d7-5578-915a-97df381fa7d1
-          grade: 1
-        - doc_id: 7e4a1e47-9e3c-566c-80bd-c77d5974c3c5
-          grade: 0
-        - doc_id: d5d7bae4-c5ee-5261-bbca-b1d8bb7385a0
-          grade: 1
         - doc_id: e62e6550-7740-5bd6-b587-1079d68de3cd
           grade: 0
-        - doc_id: 0bbd0c98-fd99-536b-bc2b-b4fbab28deb9
-          grade: 1
+        - doc_id: 0ba16149-12ac-5924-a9a8-179d7bb49813
+          grade: 2
         - doc_id: e98973e6-9679-5e2f-baac-baed22914ced
           grade: 1
-        - doc_id: bc19e6d8-914e-5671-8305-a1a312bf1c22
-          grade: 1
-        - doc_id: be967a7d-19dd-5676-a505-c99e20227cdb
-          grade: 1
-        - doc_id: 441cc365-4e16-544e-ba63-a6be5f3ead59
-          grade: 0
-        - doc_id: 2d864093-eda7-58f8-92dc-d4bce595ccc3
-          grade: 1
-        - doc_id: ea5b1ff4-ae30-593b-95c8-60dd82df39da
-          grade: 0
         - doc_id: 13385aad-e7d9-5f55-b1d6-fc7451e620b3
           grade: 0
         - doc_id: 73d01608-0f28-550a-8b16-a3f9b72b3cd9
           grade: 0
-        - doc_id: feced3ff-bb26-5ee7-9591-320945b98e4e
+        - doc_id: a0ea0be0-aba8-50a3-a561-8080f22e092b
+          grade: 1
+        - doc_id: ea5b1ff4-ae30-593b-95c8-60dd82df39da
+          grade: 0
+        - doc_id: be967a7d-19dd-5676-a505-c99e20227cdb
           grade: 1
         - doc_id: 31ac0c8a-345e-5199-ae8d-aad26957faf0
           grade: 1
-        - doc_id: ba1e7d85-6157-5a8e-845e-40ba569e0dab
+        - doc_id: 2d864093-eda7-58f8-92dc-d4bce595ccc3
           grade: 1
-        - doc_id: 0ef9cc25-8c50-5484-bff2-7d044e07f8c9
+        - doc_id: 441cc365-4e16-544e-ba63-a6be5f3ead59
           grade: 0
+        - doc_id: 06fda107-ba5f-5546-a718-80e92b3b9cda
+          grade: 1
+        - doc_id: bc19e6d8-914e-5671-8305-a1a312bf1c22
+          grade: 1
         - doc_id: cb915cdf-75d5-5da5-817c-1f0671e053b3
           grade: 0
         - doc_id: f96798bc-33f0-5666-bea8-f07610dbe2d9
@@ -5348,6 +5340,10 @@ queries:
           grade: 0
         - doc_id: 39fe7a95-44c7-5a74-ae69-d9437a7f3832
           grade: 1
+        - doc_id: ba1e7d85-6157-5a8e-845e-40ba569e0dab
+          grade: 1
+        - doc_id: 0ef9cc25-8c50-5484-bff2-7d044e07f8c9
+          grade: 0
         - doc_id: 217abcfa-bd06-568a-842f-4579075ef0f7
           grade: 2
         - doc_id: 026290a4-1f35-5130-ba6b-fe06c9149a59
@@ -5368,8 +5364,6 @@ queries:
           grade: 0
         - doc_id: d8710e00-19e5-5cd6-95c6-e058370d45d3
           grade: 0
-        - doc_id: 06fda107-ba5f-5546-a718-80e92b3b9cda
-          grade: 1
         - doc_id: 536fa2f4-52f1-58a2-a2be-e273f4ce7cd9
           grade: 0
         - doc_id: 77433ecd-4aed-5b19-8590-d996e23337b7
@@ -5400,8 +5394,6 @@ queries:
           grade: 2
         - doc_id: 19282cc1-132e-5556-9d6b-320cf8da1066
           grade: 0
-        - doc_id: a0ea0be0-aba8-50a3-a561-8080f22e092b
-          grade: 1
         - doc_id: a94a4021-ff3c-5a11-a233-75b62a43dfa5
           grade: 3
         - doc_id: f25356d1-3d56-595a-a169-7da19e8cc3a8
@@ -5510,6 +5502,8 @@ queries:
           grade: 2
         - doc_id: 5575d234-ffbb-58be-b1ce-b5759814cfb1
           grade: 3
+        - doc_id: ee6f0778-1057-5371-9d7e-b48dc1de6d1c
+          grade: 1
     - query_id: mf-student-loan-debt
       docs:
         - doc_id: 8741e38c-7a79-5dee-ac37-30d89f032491
@@ -5522,29 +5516,29 @@ queries:
           grade: 2
         - doc_id: cbdd72c8-5514-5eb5-9f0a-ae97ca78e5a9
           grade: 3
-        - doc_id: 314efc0b-cc07-5ccb-93df-7a78bc18bd23
-          grade: 2
         - doc_id: c747b8d7-e8ce-527a-8d30-4265bf57af40
           grade: 2
-        - doc_id: 237e4a90-3f5b-512e-842f-35267265a2c8
+        - doc_id: 314efc0b-cc07-5ccb-93df-7a78bc18bd23
           grade: 2
         - doc_id: bb8ee914-77e4-5e01-8084-13bde8ef38c6
           grade: 3
+        - doc_id: 237e4a90-3f5b-512e-842f-35267265a2c8
+          grade: 2
         - doc_id: 5866491e-8c51-5843-af13-925732d4a5fb
           grade: 3
         - doc_id: 05cceaec-1e8b-5d5a-a419-4a5d70f5315b
           grade: 2
         - doc_id: ec50a424-8789-5d00-90e1-9267557205d3
           grade: 2
-        - doc_id: 824b552f-224d-5fc8-8dd3-55295809c716
+        - doc_id: 4c19b227-10aa-5c67-a954-5d32b1412f5f
           grade: 2
         - doc_id: 15b67887-1a58-50d1-b2a5-6a5526baa45b
-          grade: 2
-        - doc_id: 4c19b227-10aa-5c67-a954-5d32b1412f5f
           grade: 2
         - doc_id: dd3d2cf0-a539-5064-a7cb-68cb92b1c59c
           grade: 2
         - doc_id: 1fc1c200-2d73-5c18-be88-8d214795f095
+          grade: 2
+        - doc_id: 824b552f-224d-5fc8-8dd3-55295809c716
           grade: 2
         - doc_id: 2bffd952-d373-5929-893f-cccfd6d7f8f3
           grade: 3
@@ -5552,35 +5546,35 @@ queries:
           grade: 2
         - doc_id: 1400700a-2724-558f-a427-6ec2d409c992
           grade: 3
-        - doc_id: e841573d-eb7d-537c-8952-dc176ddbc88f
-          grade: 0
         - doc_id: 8ecc808e-4ef3-5b73-b2a1-37fdef4583ee
+          grade: 0
+        - doc_id: e841573d-eb7d-537c-8952-dc176ddbc88f
           grade: 0
         - doc_id: 88aaea15-7a45-5b2d-8e33-7d37a4f42053
           grade: 1
         - doc_id: 73eba867-b785-547f-8d4a-a0cc0556a4db
           grade: 2
-        - doc_id: 79bfa520-eb71-5a09-b882-57894b297b83
-          grade: 2
-        - doc_id: bc06f962-fea3-5d12-a911-2090143ca7e3
-          grade: 2
-        - doc_id: 1e2a11a1-61eb-544b-ac78-e21da22f32e6
-          grade: 2
         - doc_id: e74d0698-79b7-5282-bc93-63822413f34a
           grade: 3
         - doc_id: 12a6bc5b-3dc4-5415-af6a-fe7b15318ad6
+          grade: 2
+        - doc_id: 79bfa520-eb71-5a09-b882-57894b297b83
+          grade: 2
+        - doc_id: 1e2a11a1-61eb-544b-ac78-e21da22f32e6
+          grade: 2
+        - doc_id: bc06f962-fea3-5d12-a911-2090143ca7e3
           grade: 2
         - doc_id: 935f8764-2db4-505e-8f07-ff91b4e87d2c
           grade: 3
         - doc_id: e16a18df-804b-55b0-9133-8fbcf7b8d50f
           grade: 3
-        - doc_id: 79ad4d2f-4a84-59ff-836a-462c5e4f17d7
-          grade: 2
         - doc_id: 204d0209-e04f-5a9a-9545-3e3cc4ec893c
           grade: 2
-        - doc_id: 6cd360bf-64e1-5f7d-97d9-d7cd3857cb11
-          grade: 3
-        - doc_id: 1b402eca-94f6-54d5-a9cd-b5ca781ed8aa
+        - doc_id: 79ad4d2f-4a84-59ff-836a-462c5e4f17d7
+          grade: 2
+        - doc_id: b445084d-21d8-57ab-8619-b939d7cab218
+          grade: 2
+        - doc_id: 85937c33-5a22-52b2-92bc-e8204653d615
           grade: 3
         - doc_id: e7d120b2-ae96-5225-ab01-d57e65dca6bf
           grade: 3
@@ -5588,22 +5582,22 @@ queries:
           grade: 0
         - doc_id: 3c19d7f2-1ae3-50b3-9bfe-d354275473ab
           grade: 0
-        - doc_id: b445084d-21d8-57ab-8619-b939d7cab218
-          grade: 2
-        - doc_id: 85937c33-5a22-52b2-92bc-e8204653d615
+        - doc_id: 6cd360bf-64e1-5f7d-97d9-d7cd3857cb11
+          grade: 3
+        - doc_id: 1b402eca-94f6-54d5-a9cd-b5ca781ed8aa
           grade: 3
         - doc_id: a6f44744-4171-5973-83cd-390f8c3a3781
           grade: 3
-        - doc_id: 511982ef-074b-559c-aea1-eb77c66549fc
-          grade: 1
         - doc_id: 41026faa-241d-541d-91aa-5382485d2783
           grade: 3
         - doc_id: cc39b600-04a1-5fa5-8ed0-f8e9a624bea6
           grade: 3
-        - doc_id: ab36dcdf-8b99-5218-9c0b-4b2d57c0fceb
+        - doc_id: 511982ef-074b-559c-aea1-eb77c66549fc
           grade: 1
         - doc_id: d9d3bab1-74b0-5c04-aa72-abf5f8a67adc
           grade: 0
+        - doc_id: ab36dcdf-8b99-5218-9c0b-4b2d57c0fceb
+          grade: 1
         - doc_id: 4bd0bf3a-8dc2-58ea-b3a9-940270d149b5
           grade: 3
         - doc_id: 37eb3a96-0b10-5e02-b14b-665f4140af1a
@@ -5634,9 +5628,9 @@ queries:
           grade: 3
         - doc_id: 3f2d90c7-cf70-5d97-93e3-18a2639e7d49
           grade: 2
-        - doc_id: c28a5d94-38f6-5ab4-a09a-9495d68510ea
-          grade: 3
         - doc_id: 0af6385a-f911-5b64-9fff-f73a6a142535
+          grade: 3
+        - doc_id: c28a5d94-38f6-5ab4-a09a-9495d68510ea
           grade: 3
         - doc_id: c2dd0a9c-cbff-535a-9989-2cf3b261aaf8
           grade: 3
@@ -5738,25 +5732,25 @@ queries:
           grade: 2
         - doc_id: 167c4ecf-b4df-5f41-bf05-382000dc4156
           grade: 3
+        - doc_id: 8191850e-f2b0-55a8-91a4-ae5f930e94c2
+          grade: 3
         - doc_id: 8feb7a57-734f-54a0-8ee9-0aa2c1a604c6
           grade: 3
         - doc_id: 94aa384f-46da-59f9-aafa-a184d54593f8
           grade: 3
-        - doc_id: 8191850e-f2b0-55a8-91a4-ae5f930e94c2
-          grade: 3
         - doc_id: e09f148b-8b2b-526d-a9be-133b7ce02d57
+          grade: 3
+        - doc_id: 3917993c-5526-5f4d-952a-bf7c8fd28c45
           grade: 3
         - doc_id: 6167a47a-0813-5f38-b54e-de883d572679
           grade: 3
         - doc_id: 94c3da5e-e177-5dec-b8e0-d2434d6bbfcb
           grade: 3
-        - doc_id: 3917993c-5526-5f4d-952a-bf7c8fd28c45
+        - doc_id: 1e7fc06a-3918-5c07-9eaa-d0550788dd96
           grade: 3
         - doc_id: 59abc109-77f4-5416-a356-1fd71c773465
           grade: 3
         - doc_id: 6e281a8e-f235-56e2-be46-b07206b00562
-          grade: 3
-        - doc_id: 1e7fc06a-3918-5c07-9eaa-d0550788dd96
           grade: 3
         - doc_id: 5c755ea9-98af-5a6d-ac2e-2a0239d70cf5
           grade: 2
@@ -5778,35 +5772,35 @@ queries:
           grade: 3
         - doc_id: 7e77571d-1f7a-5da1-9fc8-c1c3cc1ee9c4
           grade: 3
-        - doc_id: e8372d35-6d23-57ea-b094-3ca86eb4a09f
-          grade: 2
         - doc_id: a5ee2702-42e9-537b-aaa1-e3260699d13a
+          grade: 2
+        - doc_id: e8372d35-6d23-57ea-b094-3ca86eb4a09f
           grade: 2
         - doc_id: 165acf21-22c1-555c-b33d-e9ecc68b4889
           grade: 3
-        - doc_id: 05c44792-c8f5-555d-ba94-4cc8a11026c2
+        - doc_id: 69741b13-cd13-5e03-a976-a33fceff78b8
           grade: 2
         - doc_id: b2012e9d-24b8-543e-8f94-c96b4273dd8f
           grade: 3
         - doc_id: 36fb0569-1210-5d94-b260-dd34e98034e8
           grade: 3
-        - doc_id: 69741b13-cd13-5e03-a976-a33fceff78b8
-          grade: 2
         - doc_id: 03400b80-4f26-56fb-9b67-e1a616288591
           grade: 3
         - doc_id: 791c1978-913b-5b39-b252-f94da442d6a1
           grade: 3
+        - doc_id: 05c44792-c8f5-555d-ba94-4cc8a11026c2
+          grade: 2
         - doc_id: f2d015bc-8eac-5baf-8e3b-d7f1ef744304
           grade: 3
         - doc_id: bbc31de3-4f59-5cde-ac5c-6a4016e71ad3
           grade: 2
-        - doc_id: 68fe981e-3812-5e00-bb8e-ddffc40e49be
-          grade: 3
         - doc_id: 07171192-0297-58cc-a7da-896ae007fbdd
           grade: 3
-        - doc_id: 14b3dba4-cc60-5bdc-887a-60022ff07bcd
+        - doc_id: 68fe981e-3812-5e00-bb8e-ddffc40e49be
           grade: 3
         - doc_id: de70a278-abc6-5510-931a-7c49718b2809
+          grade: 3
+        - doc_id: 14b3dba4-cc60-5bdc-887a-60022ff07bcd
           grade: 3
         - doc_id: 07d97489-b1c1-555e-a324-69d5034ea31b
           grade: 3
@@ -5814,20 +5808,10 @@ queries:
           grade: 1
         - doc_id: 514d59ce-445b-521e-a357-969ba73dbc47
           grade: 3
-        - doc_id: ed2467ba-001c-5fa4-862e-ed2ef5c4a106
-          grade: 3
-        - doc_id: 80e6f36c-2ab5-5cae-b015-bf9331fdb753
-          grade: 3
-        - doc_id: f5ecd106-4c6f-5807-9225-51ab08243407
-          grade: 3
-        - doc_id: 74ac4075-5548-59c4-8f5f-0c78dca2166b
-          grade: 3
-        - doc_id: ebd410b2-0bca-5278-adbe-bfbd9d144c7f
-          grade: 3
-        - doc_id: 7c8edcd2-9c5a-5d56-81d1-76ded9c8fac9
-          grade: 3
-        - doc_id: 384cf91c-2e63-5d82-86a5-c5a98289e83e
+        - doc_id: f4a08fcd-118b-5547-9f8e-35f9e8843926
           grade: 2
+        - doc_id: 41fde453-9270-5ced-a526-ab6b665da20d
+          grade: 3
         - doc_id: 854f31a3-4bc8-59df-93f0-a828f6bc3c16
           grade: 3
         - doc_id: ebc99303-4e74-531d-9314-e687f39b1d51
@@ -5863,8 +5847,6 @@ queries:
         - doc_id: 5be5e8f1-cc74-58b1-aa7b-12edb2120079
           grade: 3
         - doc_id: 3555e6bb-94bc-5fa2-84a5-2f16fe19b6cc
-          grade: 3
-        - doc_id: 41fde453-9270-5ced-a526-ab6b665da20d
           grade: 3
         - doc_id: fa47960a-4368-512b-9f3d-5b83aad9be0e
           grade: 2
@@ -5908,8 +5890,6 @@ queries:
           grade: 3
         - doc_id: 262db603-e8f8-5c81-864a-97b7196676e5
           grade: 3
-        - doc_id: f4a08fcd-118b-5547-9f8e-35f9e8843926
-          grade: 2
         - doc_id: 04102a5a-7aa2-5fc4-a0f3-c51fa61006a9
           grade: 1
         - doc_id: 94b88e95-5393-513f-8969-282188e8c102
@@ -5960,6 +5940,16 @@ queries:
           grade: 2
         - doc_id: 385aecc6-c626-5a7e-a337-db0ff6810c9f
           grade: 2
+        - doc_id: d3085c7e-e20e-5689-941c-972977568d57
+          grade: 3
+        - doc_id: f86d932c-3dd2-5f54-b8da-f223ac5a504b
+          grade: 3
+        - doc_id: 6fe8f294-91e9-591e-aee5-590e4b451d74
+          grade: 3
+        - doc_id: 76d47236-5b4f-5692-b5b0-eda660f67ae4
+          grade: 3
+        - doc_id: cf055277-d19b-57fe-ad94-9e8c6f598e84
+          grade: 2
     - query_id: mf-iran-nuclear-deal
       docs:
         - doc_id: 198ea812-2bf9-5283-b12c-adedd1e52a0c
@@ -5968,43 +5958,33 @@ queries:
           grade: 3
         - doc_id: 3c6b62f1-c48b-5179-a1a5-81eebcf282ca
           grade: 3
+        - doc_id: 35737486-424e-54d7-bf2c-2cb7a5336eee
+          grade: 3
+        - doc_id: bf730e3f-de4d-5708-af84-a3318fcebba3
+          grade: 3
         - doc_id: bb999a58-b1e1-5393-94b1-c939a158546c
           grade: 3
         - doc_id: 32e49c7e-6a82-559e-ab60-9bf7f2cd1f08
           grade: 3
-        - doc_id: bf730e3f-de4d-5708-af84-a3318fcebba3
-          grade: 3
-        - doc_id: 35737486-424e-54d7-bf2c-2cb7a5336eee
+        - doc_id: 90d5db60-a21f-5e50-8688-e9ca43d5260c
           grade: 3
         - doc_id: 5a67ce2d-8f20-5708-bb8b-f257d6924b09
-          grade: 3
-        - doc_id: 7c6c955f-f144-58da-82a4-5c6d53627161
           grade: 3
         - doc_id: ceac0e0c-7898-58df-9883-ed575075c310
           grade: 3
         - doc_id: ccfb2968-7414-53da-a91e-80c922cfacdf
           grade: 3
-        - doc_id: 90d5db60-a21f-5e50-8688-e9ca43d5260c
+        - doc_id: 799cda41-05be-50dd-9a76-827afcf240e2
+          grade: 3
+        - doc_id: 48bf9631-3bd8-566f-a744-b561dd65c90e
           grade: 3
         - doc_id: 408a80b6-0ec6-5c8d-89b6-f29ed4660114
           grade: 3
         - doc_id: 27050f1f-58ba-5d23-a1ff-3464d0d62785
           grade: 3
-        - doc_id: 799cda41-05be-50dd-9a76-827afcf240e2
+        - doc_id: 7c6c955f-f144-58da-82a4-5c6d53627161
           grade: 3
         - doc_id: 04539088-de44-55c3-aeb4-e1c36e71a53f
-          grade: 3
-        - doc_id: 48bf9631-3bd8-566f-a744-b561dd65c90e
-          grade: 3
-        - doc_id: e6e62471-2609-5d61-a1a7-c11a1c4e4554
-          grade: 3
-        - doc_id: 460a657c-b957-5bbf-ad0e-a0407f0b5d54
-          grade: 3
-        - doc_id: 1bef667d-1c66-5bbc-8ebf-738c4bd87c99
-          grade: 3
-        - doc_id: 5f54a093-80ed-5351-8f25-3485da2de7ec
-          grade: 2
-        - doc_id: a36873d8-1973-5207-bc22-bfefde541cfc
           grade: 3
         - doc_id: ac6ebd78-2e47-5cbe-bd94-466e98b6695c
           grade: 3
@@ -6018,73 +5998,77 @@ queries:
           grade: 3
         - doc_id: dd4b8616-693c-526e-abe9-c18495fcc256
           grade: 3
+        - doc_id: fef29621-b220-5597-b5c6-914f6e95a4ca
+          grade: 3
+        - doc_id: ab290fb5-523d-5675-b4c2-1bc7cdfe0bbc
+          grade: 3
+        - doc_id: 5f54a093-80ed-5351-8f25-3485da2de7ec
+          grade: 2
+        - doc_id: a36873d8-1973-5207-bc22-bfefde541cfc
+          grade: 3
+        - doc_id: 460a657c-b957-5bbf-ad0e-a0407f0b5d54
+          grade: 3
+        - doc_id: 1bef667d-1c66-5bbc-8ebf-738c4bd87c99
+          grade: 3
+        - doc_id: e6e62471-2609-5d61-a1a7-c11a1c4e4554
+          grade: 3
         - doc_id: adc7d6f7-1d8b-5c58-a853-7705ccc93f67
           grade: 3
-        - doc_id: 6884b5cf-e1a9-5b5a-a83d-146942824039
+        - doc_id: d09753e5-9e69-51e4-a6e0-81cccfcbe122
+          grade: 3
+        - doc_id: a25cdba6-8c4f-52d9-b399-feb80e5124dd
           grade: 3
         - doc_id: 46f98e08-59c0-535b-b64f-19ab5cfc5ffc
           grade: 3
         - doc_id: 638a48d0-6cf1-55d1-b446-84ef0d3a9a34
           grade: 3
-        - doc_id: 64516641-dac6-5997-8a7b-1694e37b56fc
+        - doc_id: 6884b5cf-e1a9-5b5a-a83d-146942824039
+          grade: 3
+        - doc_id: c9d9b568-bba8-5a0b-9b43-5f83a29e9043
           grade: 3
         - doc_id: 68fbb196-3634-5cdb-9439-aa54e23e40f0
           grade: 3
-        - doc_id: d09753e5-9e69-51e4-a6e0-81cccfcbe122
-          grade: 3
-        - doc_id: 8924f8bc-84fc-546d-9630-c7225384d31b
-          grade: 3
-        - doc_id: fef29621-b220-5597-b5c6-914f6e95a4ca
-          grade: 3
-        - doc_id: d6710dea-86d9-5c67-9c88-be6d28c6c289
-          grade: 3
-        - doc_id: 3c399bc7-1b39-5b52-8fc5-c328b7d16f55
-          grade: 3
-        - doc_id: 297c9cbe-882b-5b38-98ce-ee5928be5ec7
-          grade: 3
-        - doc_id: a25cdba6-8c4f-52d9-b399-feb80e5124dd
-          grade: 3
-        - doc_id: cf65bb88-ab3a-513d-bb3b-b7d258fefb8d
-          grade: 3
-        - doc_id: 223a4fd0-58f9-5410-84fd-5e5d41e25d37
-          grade: 3
-        - doc_id: 584370ca-98a8-5d5d-b590-87f857eeb143
-          grade: 3
-        - doc_id: 2194acfc-1556-589e-8b1d-a84fd1502aef
-          grade: 3
-        - doc_id: c9d9b568-bba8-5a0b-9b43-5f83a29e9043
+        - doc_id: d59b5a1f-8ea4-58a4-a2b3-2eb38317dbb7
           grade: 3
         - doc_id: 68a01100-9953-5350-9a9e-2461f9833f63
           grade: 3
         - doc_id: 421bf215-53f2-5166-840c-ef94e3456c08
           grade: 3
-        - doc_id: ab290fb5-523d-5675-b4c2-1bc7cdfe0bbc
-          grade: 3
-        - doc_id: d59b5a1f-8ea4-58a4-a2b3-2eb38317dbb7
-          grade: 3
         - doc_id: 7c4c8e86-b06c-540b-87a2-ab42daa25894
           grade: 3
+        - doc_id: 7c358ae3-bde3-5e4a-9e43-5e699c71b569
+          grade: 3
         - doc_id: f026542c-1984-5f99-84e0-5a77d7ed0356
+          grade: 3
+        - doc_id: 16ec3b82-2b43-5d9c-8bc6-3c474eeb4465
+          grade: 3
+        - doc_id: d6710dea-86d9-5c67-9c88-be6d28c6c289
+          grade: 3
+        - doc_id: 3c399bc7-1b39-5b52-8fc5-c328b7d16f55
+          grade: 3
+        - doc_id: 584370ca-98a8-5d5d-b590-87f857eeb143
+          grade: 3
+        - doc_id: 2194acfc-1556-589e-8b1d-a84fd1502aef
+          grade: 3
+        - doc_id: cf65bb88-ab3a-513d-bb3b-b7d258fefb8d
           grade: 3
         - doc_id: 63e4e359-7e6a-5dca-8f55-7153f0f6955b
           grade: 3
         - doc_id: 064350fa-9fb1-509e-9ab0-ae679d5e9714
           grade: 3
-        - doc_id: 397acb97-1eb9-5a98-a839-f8eae7f58826
-          grade: 3
         - doc_id: 5a345ec2-9338-50fe-a7c1-aa23d212fdcc
           grade: 3
         - doc_id: 3c3f9014-cd48-560a-980a-98619672c8fe
           grade: 3
-        - doc_id: 7c358ae3-bde3-5e4a-9e43-5e699c71b569
+        - doc_id: 397acb97-1eb9-5a98-a839-f8eae7f58826
+          grade: 3
+        - doc_id: 223a4fd0-58f9-5410-84fd-5e5d41e25d37
           grade: 3
         - doc_id: 29642e35-5908-5821-8b89-a407d3907ab9
           grade: 3
         - doc_id: 2fa66b57-ccfe-5ef0-864e-8ff456965d50
           grade: 3
         - doc_id: 2efb8f50-becd-5077-8461-ec1326fc7b3b
-          grade: 3
-        - doc_id: 16ec3b82-2b43-5d9c-8bc6-3c474eeb4465
           grade: 3
         - doc_id: ad305db3-b858-5201-b005-ae5771eea0b6
           grade: 3
@@ -6136,9 +6120,13 @@ queries:
           grade: 3
         - doc_id: c1bc0051-cb26-51fb-9bd0-120289d4a5c0
           grade: 3
+        - doc_id: 297c9cbe-882b-5b38-98ce-ee5928be5ec7
+          grade: 3
         - doc_id: 3d69d239-ccc7-5947-b815-5d036bcce1d4
           grade: 2
         - doc_id: 546d2fe4-2bec-508e-b5a9-e0395983c91e
+          grade: 3
+        - doc_id: 64516641-dac6-5997-8a7b-1694e37b56fc
           grade: 3
         - doc_id: 6fde09d1-1952-5907-a419-38fdc0d9c2e6
           grade: 3
@@ -6326,9 +6314,9 @@ queries:
           grade: 3
         - doc_id: 0e50a561-d79f-57ca-aa29-ebe169343b41
           grade: 3
-        - doc_id: f6660852-9846-5c55-824e-456a337334b2
-          grade: 3
         - doc_id: 2d69ebd3-f663-5d1b-8d7f-1d019a8f3b37
+          grade: 3
+        - doc_id: f6660852-9846-5c55-824e-456a337334b2
           grade: 3
         - doc_id: b49a97fc-ee14-5ee0-89e0-7f32850c0011
           grade: 0
@@ -6356,9 +6344,9 @@ queries:
           grade: 3
         - doc_id: 80fbd192-65bb-5b20-a198-8ed2f8303760
           grade: 0
-        - doc_id: 5ebe8031-f68d-5fdf-b62e-a1111ac65870
-          grade: 0
         - doc_id: 5691270c-6d25-5cc1-ab1c-af2c322acc5f
+          grade: 0
+        - doc_id: 5ebe8031-f68d-5fdf-b62e-a1111ac65870
           grade: 0
         - doc_id: fc6301a9-0b33-59ac-9c22-566a56d3eeac
           grade: 0
@@ -6368,15 +6356,15 @@ queries:
           grade: 3
         - doc_id: 5da4b6a1-f61e-5f87-ae7b-a4675e8196f2
           grade: 3
-        - doc_id: 5ea9e722-e325-5011-ab33-4934c6dfb71f
-          grade: 1
         - doc_id: 441e8b6f-47a8-5ea5-8887-947038159c9c
-          grade: 3
-        - doc_id: e3f32858-f4f3-50f7-a0a7-42abc80a6c13
           grade: 3
         - doc_id: f420fd07-a050-54b4-9868-8bc963dddbed
           grade: 3
+        - doc_id: 5ea9e722-e325-5011-ab33-4934c6dfb71f
+          grade: 1
         - doc_id: 7a136588-7a5b-52dd-9be2-978315cdcdda
+          grade: 3
+        - doc_id: e3f32858-f4f3-50f7-a0a7-42abc80a6c13
           grade: 3
         - doc_id: c2e20b5d-8128-54f8-a5b7-8799b98be9bf
           grade: 3
@@ -6396,8 +6384,6 @@ queries:
           grade: 2
         - doc_id: b9157d32-ef6a-507f-888c-ca5e29f505d6
           grade: 3
-        - doc_id: f1be0317-c32c-5f26-b2b6-75d4baad26c2
-          grade: 2
         - doc_id: b304dab6-b070-57ad-876c-df54c8eebc73
           grade: 3
         - doc_id: 9f7ac344-7430-53f5-ac7a-8d6018efaea5
@@ -6586,23 +6572,21 @@ queries:
           grade: 3
         - doc_id: 0167efd1-6202-54be-925a-7a7ba5298299
           grade: 3
+        - doc_id: 9b3e6207-29af-5620-bea9-6477445c8f6f
+          grade: 2
     - query_id: title-self-driving
       docs:
-        - doc_id: bee50f01-8033-52d8-b1d3-54425b63cbb1
-          grade: 3
         - doc_id: f63dbd81-97bf-5b7b-b4ca-ef1e8d2fda2b
+          grade: 3
+        - doc_id: bee50f01-8033-52d8-b1d3-54425b63cbb1
           grade: 3
         - doc_id: 2df86eba-99fb-53c1-ad20-4c196fb4b509
           grade: 3
-        - doc_id: 70293aa1-eebe-5101-957d-8e8417d2eb89
+        - doc_id: 5b626c05-b7d9-5a8b-b117-1bcdd1432908
           grade: 3
         - doc_id: 2ad5b08b-ea65-54f9-9466-66f0e0e6f3e0
           grade: 3
-        - doc_id: 4e13a78e-2f15-5377-a673-2ee177971cbb
-          grade: 3
-        - doc_id: b4c68d0d-abc3-594e-a876-0c52431f8b3c
-          grade: 3
-        - doc_id: 4f6e64be-ceba-5c9f-8c22-a1fc8807b029
+        - doc_id: 70293aa1-eebe-5101-957d-8e8417d2eb89
           grade: 3
         - doc_id: 00895fa2-5262-51ec-a813-783245ad8b4a
           grade: 0
@@ -6612,7 +6596,17 @@ queries:
           grade: 3
         - doc_id: 7ddf2891-cb5d-5c8f-8f4c-80517500a5a1
           grade: 3
-        - doc_id: 5b626c05-b7d9-5a8b-b117-1bcdd1432908
+        - doc_id: 4f6e64be-ceba-5c9f-8c22-a1fc8807b029
+          grade: 3
+        - doc_id: 4e13a78e-2f15-5377-a673-2ee177971cbb
+          grade: 3
+        - doc_id: b4c68d0d-abc3-594e-a876-0c52431f8b3c
+          grade: 3
+        - doc_id: b16ca797-cf9e-54cd-8a78-f560111224ce
+          grade: 3
+        - doc_id: 92380c6e-e5aa-562c-8719-192636463ab0
+          grade: 3
+        - doc_id: 3c27a76d-8c6d-5199-ae48-94973b8dee5a
           grade: 3
         - doc_id: fff152a3-7f70-5402-ba58-b72d55a5ec36
           grade: 3
@@ -6620,29 +6614,21 @@ queries:
           grade: 3
         - doc_id: e257556f-dca1-5c13-b53e-182edde5fb35
           grade: 3
-        - doc_id: 92380c6e-e5aa-562c-8719-192636463ab0
-          grade: 3
-        - doc_id: 3c27a76d-8c6d-5199-ae48-94973b8dee5a
-          grade: 3
-        - doc_id: 54a1d6ac-8027-5fd8-bc84-f26cffd40897
-          grade: 3
-        - doc_id: 9ca94f72-eb65-5e6c-8234-f9f9c532632f
-          grade: 3
-        - doc_id: 888f2c06-bd22-57dd-8d64-b25bfa374bcb
-          grade: 0
         - doc_id: 60a73a7a-c6e2-5c7f-965c-f3e0ebc7b9c6
           grade: 0
         - doc_id: f80c13f4-82ca-5c56-82ee-f6a189023ad4
-          grade: 3
-        - doc_id: 3e05fd32-c975-53f6-8c78-ebfcbe748cb6
-          grade: 3
-        - doc_id: bd991651-ae1a-50c1-b01d-7e2a8345b627
           grade: 3
         - doc_id: 744a481b-6da5-5490-995e-a40573a1c88e
           grade: 3
         - doc_id: 79cd6078-2234-557f-8b22-d9e4ccc6258d
           grade: 3
-        - doc_id: b16ca797-cf9e-54cd-8a78-f560111224ce
+        - doc_id: 54a1d6ac-8027-5fd8-bc84-f26cffd40897
+          grade: 3
+        - doc_id: 9ca94f72-eb65-5e6c-8234-f9f9c532632f
+          grade: 3
+        - doc_id: de3fd8fc-438c-5868-bfe9-e0b1d7197c87
+          grade: 3
+        - doc_id: 98d384e9-723e-522d-b45f-20ffd1130767
           grade: 3
         - doc_id: 31f2eee6-a75d-572a-84eb-c4157dea04fe
           grade: 2
@@ -6652,47 +6638,23 @@ queries:
           grade: 3
         - doc_id: a8baa809-c7b0-5a6e-a18a-719aa061df15
           grade: 2
-        - doc_id: de3fd8fc-438c-5868-bfe9-e0b1d7197c87
+        - doc_id: bd991651-ae1a-50c1-b01d-7e2a8345b627
           grade: 3
-        - doc_id: 98d384e9-723e-522d-b45f-20ffd1130767
+        - doc_id: 3e05fd32-c975-53f6-8c78-ebfcbe748cb6
           grade: 3
-        - doc_id: da82cd1f-58c8-50e7-bea5-97b6b30a9755
-          grade: 3
-        - doc_id: ec8e830c-52eb-54d7-a5a4-b024f678f1c2
-          grade: 3
-        - doc_id: 73673903-297a-50fc-8cad-e59a9a1abf0a
-          grade: 3
-        - doc_id: a8ff4f9f-b077-5297-b7c8-ff5e032b8148
-          grade: 3
-        - doc_id: ca589c6a-48fd-5c94-8c7c-33a9023a725a
-          grade: 3
-        - doc_id: e84def8b-e035-52fb-87df-dca027d66bff
-          grade: 3
-        - doc_id: 42b7b2ab-b1c2-5e5a-8a34-9d665280df73
-          grade: 3
-        - doc_id: 4e8f01c6-09c7-566d-b45c-0d0ba9282737
-          grade: 3
-        - doc_id: 7d399ebe-07f6-50ca-a05a-cb57514d2000
-          grade: 3
-        - doc_id: b9396d37-d637-5a45-94e6-6a0bf95985b4
-          grade: 3
-        - doc_id: 2742ec41-d3c3-5af5-b0cb-bec1a9740dd2
-          grade: 3
-        - doc_id: 7c52214d-dcb5-5564-a6ae-c264faf3dc7e
-          grade: 3
-        - doc_id: fcaf7a31-4497-57a1-9915-3f14603ecf3a
-          grade: 3
-        - doc_id: 989e36f3-7d5c-5a61-91ed-28d246fc9c8f
-          grade: 3
+        - doc_id: 888f2c06-bd22-57dd-8d64-b25bfa374bcb
+          grade: 0
         - doc_id: 7bdf9533-4685-572c-bcd8-9c7e087f9899
           grade: 3
         - doc_id: ab05a5ef-e48c-5fae-8058-55a2391e2eef
           grade: 3
-        - doc_id: b3bb9afb-6398-552e-be4a-55b5d79f50cc
+        - doc_id: 690d15f3-9d49-59da-9e1b-67e344f2889e
+          grade: 3
+        - doc_id: ca0e09e1-ea63-5b4b-871c-81d788f6f1fb
           grade: 3
         - doc_id: 5356ffef-6032-58b3-9034-734031deebf7
           grade: 3
-        - doc_id: ca0e09e1-ea63-5b4b-871c-81d788f6f1fb
+        - doc_id: b3bb9afb-6398-552e-be4a-55b5d79f50cc
           grade: 3
         - doc_id: 60187b24-4e6b-597a-a1b3-af6157b5f791
           grade: 2
@@ -6704,7 +6666,9 @@ queries:
           grade: 3
         - doc_id: bfc660f9-2483-52c8-90b1-0cada1f91ed1
           grade: 3
-        - doc_id: 868816c1-30f5-5443-b2b5-a96a82eab233
+        - doc_id: ec8e830c-52eb-54d7-a5a4-b024f678f1c2
+          grade: 3
+        - doc_id: b9396d37-d637-5a45-94e6-6a0bf95985b4
           grade: 3
         - doc_id: f8291231-d1ae-56a7-ba78-c6801a0963cb
           grade: 3
@@ -6713,6 +6677,8 @@ queries:
         - doc_id: 9e2b3c1b-1dd3-54e0-98c0-05710bde01e2
           grade: 3
         - doc_id: 6b499530-16a1-5b17-9644-1f2b462b61ae
+          grade: 3
+        - doc_id: 868816c1-30f5-5443-b2b5-a96a82eab233
           grade: 3
         - doc_id: 27fa4972-2934-58b4-99cb-f69c6577ea51
           grade: 3
@@ -6834,21 +6800,29 @@ queries:
           grade: 3
         - doc_id: 54798750-29c0-50fd-a84a-436598c588e5
           grade: 3
-        - doc_id: 690d15f3-9d49-59da-9e1b-67e344f2889e
-          grade: 3
         - doc_id: 6ef18bf2-f41d-506c-b3ff-8474432170a1
           grade: 3
         - doc_id: 75bc8893-bc65-52fe-876a-2cf992bae191
           grade: 3
         - doc_id: 7718f589-a605-50ea-8ff4-001539a230a3
           grade: 3
+        - doc_id: 7d399ebe-07f6-50ca-a05a-cb57514d2000
+          grade: 3
         - doc_id: 80a4709c-4ddb-5c14-883e-1396f8782571
+          grade: 3
+        - doc_id: a8ff4f9f-b077-5297-b7c8-ff5e032b8148
           grade: 3
         - doc_id: bde07da8-ab93-54f2-b8ab-4b64c3550835
           grade: 3
         - doc_id: c4de8776-1146-58de-9363-38f5fea51de4
           grade: 3
         - doc_id: e21f1e18-436e-5355-8ca2-cac1a0519e9d
+          grade: 3
+        - doc_id: 6c17a739-a279-5cf3-9ee1-2de2ed63b33f
+          grade: 3
+        - doc_id: 9ebcbae0-aadc-5c29-87db-f2e89ffe4fb0
+          grade: 3
+        - doc_id: b4c7ab1a-5d7f-5099-86d3-f25e88524799
           grade: 3
     - query_id: title-premier-league
       docs:
@@ -6860,76 +6834,78 @@ queries:
           grade: 2
         - doc_id: ace1a4a9-7296-5e80-b909-c952e9f4d008
           grade: 2
+        - doc_id: 7cf574ef-02c8-595f-84fd-19b73b18c615
+          grade: 3
         - doc_id: 0f0a383a-2bc8-5c59-b3d5-5aa696bd7c6d
           grade: 2
         - doc_id: 90d40d53-6eeb-507d-a7f5-a4d1c4947e98
           grade: 2
         - doc_id: 9a84d719-fde3-5646-a9a7-1262a5bbb0e7
           grade: 2
-        - doc_id: b9158d06-f6dc-55f5-b4cd-72aa5d25210f
-          grade: 3
         - doc_id: 3cf320e0-9c2a-53c9-8d43-804cf2a9aa82
-          grade: 2
-        - doc_id: 929d146a-7fd4-5174-bd60-d50275c664e6
-          grade: 3
-        - doc_id: 7cf574ef-02c8-595f-84fd-19b73b18c615
-          grade: 3
-        - doc_id: 177d3a74-427a-55d7-8a82-3b444a22eff3
           grade: 2
         - doc_id: bac577c3-2fa0-5f02-a388-025e2881ef64
           grade: 2
         - doc_id: 5ead718f-55f5-5de7-ad1c-fa466be7e23e
           grade: 2
+        - doc_id: 177d3a74-427a-55d7-8a82-3b444a22eff3
+          grade: 2
         - doc_id: 137260c1-5c51-5cd7-aaec-6de8e9474c45
           grade: 2
         - doc_id: 0aadf041-f054-53ed-b101-c1130838dd76
           grade: 2
+        - doc_id: 929d146a-7fd4-5174-bd60-d50275c664e6
+          grade: 3
+        - doc_id: b9158d06-f6dc-55f5-b4cd-72aa5d25210f
+          grade: 3
         - doc_id: ae965297-f207-5d23-ba65-45f9f5b03776
           grade: 3
-        - doc_id: 24d782f5-0280-5531-88cf-523d2d0b92b7
-          grade: 2
-        - doc_id: 2fd71017-e3a7-547d-9669-3d292f529561
-          grade: 0
-        - doc_id: d6ffadfc-4e13-5714-93b4-6d27065608ee
-          grade: 3
-        - doc_id: ec63dfcc-7f63-583c-a668-598c46b3d41d
-          grade: 2
-        - doc_id: 275c1eaf-4780-51e0-a196-06531408734e
-          grade: 2
-        - doc_id: 194a7d55-6958-5982-b826-7162c4e77bff
-          grade: 2
-        - doc_id: aa74c532-2f24-5e75-bcfd-fa819c9d6264
-          grade: 2
-        - doc_id: 5d864d49-5214-574b-be98-9f3a67c3fc6f
-          grade: 3
-        - doc_id: 2d0d5441-8500-5d8a-a304-d67ffa99436b
-          grade: 2
-        - doc_id: b6c4ce69-e1f1-5589-add1-2a330f23ccde
-          grade: 3
-        - doc_id: e8ca8fbc-6347-531f-a4cc-a1b02aeffd1e
-          grade: 2
-        - doc_id: fb4b205e-cf45-57d9-b672-41a584a6c42d
-          grade: 2
         - doc_id: 0aba1937-97e7-5899-80c4-143901ee04cc
           grade: 2
         - doc_id: 0e0ba70b-0c5c-534b-b6d5-5b8229b356eb
           grade: 3
         - doc_id: 05cea8ef-5d38-5bb6-90b7-69433a24e239
           grade: 2
-        - doc_id: 5d90e3a0-a093-5ad2-a607-4088bf0cad99
-          grade: 2
-        - doc_id: f65030e5-2a19-55d3-8b31-d42e3c847a65
-          grade: 2
-        - doc_id: 0fb4f2af-2e98-58b5-a0d3-5a3682d92c7a
-          grade: 2
-        - doc_id: 4424e312-bb9f-5692-b149-b7b9808991b6
+        - doc_id: 926cd20f-6a93-5f54-a12c-7d19bd15dd68
           grade: 3
-        - doc_id: 38942ed4-86f4-5844-880a-c49ff8858f6f
+        - doc_id: 24d782f5-0280-5531-88cf-523d2d0b92b7
+          grade: 2
+        - doc_id: b6c4ce69-e1f1-5589-add1-2a330f23ccde
           grade: 3
-        - doc_id: 0bf8cc6b-62ec-57f5-b153-6613a72264e2
-          grade: 3
+        - doc_id: e8ca8fbc-6347-531f-a4cc-a1b02aeffd1e
+          grade: 2
+        - doc_id: aa74c532-2f24-5e75-bcfd-fa819c9d6264
+          grade: 2
+        - doc_id: ec63dfcc-7f63-583c-a668-598c46b3d41d
+          grade: 2
         - doc_id: d94b0b4b-5672-5013-be8f-9650c299919b
           grade: 3
+        - doc_id: b2453b7d-caae-5054-9d30-95a933dc9cdc
+          grade: 2
+        - doc_id: e91a1420-6302-52c2-b30a-1d9c4435aac0
+          grade: 3
+        - doc_id: ca641127-feef-51d5-8e8a-e1eafec8b8c6
+          grade: 2
+        - doc_id: 9d3fc5a8-4ff4-5c35-9d57-5c76c85b63a1
+          grade: 3
+        - doc_id: 8b370ad8-dcfc-55ed-959d-9beddc18fd62
+          grade: 2
+        - doc_id: 16e13943-36c1-5227-b412-e925d0004423
+          grade: 2
+        - doc_id: 5d864d49-5214-574b-be98-9f3a67c3fc6f
+          grade: 3
+        - doc_id: 4416c47a-c443-5926-afeb-f100d93933d1
+          grade: 3
+        - doc_id: 2fd71017-e3a7-547d-9669-3d292f529561
+          grade: 0
+        - doc_id: d6ffadfc-4e13-5714-93b4-6d27065608ee
+          grade: 3
+        - doc_id: 03f11cdc-3389-57c6-99d0-ca57e2486efd
+          grade: 3
+        - doc_id: 5d90e3a0-a093-5ad2-a607-4088bf0cad99
+          grade: 2
+        - doc_id: a14ba47f-300f-5b30-baf3-04f344622485
+          grade: 2
         - doc_id: f5c39e09-9f1b-5bc7-918c-b8ab27304a2d
           grade: 3
         - doc_id: 40b36ba6-655e-57ad-80be-ea9c49d85a8c
@@ -6952,21 +6928,19 @@ queries:
           grade: 3
         - doc_id: bbe2a9c2-7b4a-5efa-a6a5-3b5a3674bc94
           grade: 3
-        - doc_id: 926cd20f-6a93-5f54-a12c-7d19bd15dd68
-          grade: 3
         - doc_id: 658aa49f-afe7-5357-8c23-78e6f81b9cac
           grade: 2
-        - doc_id: b2453b7d-caae-5054-9d30-95a933dc9cdc
+        - doc_id: 275c1eaf-4780-51e0-a196-06531408734e
           grade: 2
-        - doc_id: e91a1420-6302-52c2-b30a-1d9c4435aac0
-          grade: 3
-        - doc_id: ca641127-feef-51d5-8e8a-e1eafec8b8c6
+        - doc_id: 194a7d55-6958-5982-b826-7162c4e77bff
           grade: 2
-        - doc_id: 03f11cdc-3389-57c6-99d0-ca57e2486efd
+        - doc_id: f65030e5-2a19-55d3-8b31-d42e3c847a65
+          grade: 2
+        - doc_id: 0fb4f2af-2e98-58b5-a0d3-5a3682d92c7a
+          grade: 2
+        - doc_id: 4424e312-bb9f-5692-b149-b7b9808991b6
           grade: 3
-        - doc_id: 4416c47a-c443-5926-afeb-f100d93933d1
-          grade: 3
-        - doc_id: 9d3fc5a8-4ff4-5c35-9d57-5c76c85b63a1
+        - doc_id: 38942ed4-86f4-5844-880a-c49ff8858f6f
           grade: 3
         - doc_id: 33d16e47-8923-5475-a273-0ad9e9d34fda
           grade: 2
@@ -7054,12 +7028,12 @@ queries:
           grade: 3
         - doc_id: 0b79b3ca-6241-5cb6-adec-55c0d96edcb8
           grade: 2
-        - doc_id: 16e13943-36c1-5227-b412-e925d0004423
-          grade: 2
         - doc_id: 1c77b1fa-4fdc-5bb5-8581-88478ac6d8d1
           grade: 2
         - doc_id: 28c4b521-f47f-5d29-a89c-d2ad356d51df
           grade: 3
+        - doc_id: 2d0d5441-8500-5d8a-a304-d67ffa99436b
+          grade: 2
         - doc_id: 34f6f5fa-32a1-5ecd-94cb-fda409787628
           grade: 3
         - doc_id: 3ebf3067-d189-5654-a06b-b019230899fe
@@ -7076,107 +7050,103 @@ queries:
           grade: 3
         - doc_id: 6c9164ce-b6a7-5306-bae7-e897a582ae60
           grade: 3
-        - doc_id: 8b370ad8-dcfc-55ed-959d-9beddc18fd62
-          grade: 2
         - doc_id: 8fbee6c7-6c66-52d4-8e63-2d1cea57a355
           grade: 3
-        - doc_id: a14ba47f-300f-5b30-baf3-04f344622485
-          grade: 2
         - doc_id: a7c89395-8d56-55e2-831c-fc11d965df07
           grade: 1
     - query_id: title-super-bowl
       docs:
-        - doc_id: 70f10f66-7a81-55d9-a6eb-f39d378bec67
-          grade: 0
-        - doc_id: 23033bc9-36c6-5d5e-9cfa-81009a267882
-          grade: 0
         - doc_id: 73ac4996-bcba-5696-9fa1-4ff8098bcc70
           grade: 0
         - doc_id: 4a841bee-5da9-565d-adb6-74a33d941661
           grade: 0
+        - doc_id: 70f10f66-7a81-55d9-a6eb-f39d378bec67
+          grade: 0
+        - doc_id: 23033bc9-36c6-5d5e-9cfa-81009a267882
+          grade: 0
         - doc_id: d5fe674c-ccaf-57cf-aaaf-4fa721b396a1
-          grade: 3
-        - doc_id: 904bc326-11db-50d6-827d-4cf4b93530dc
           grade: 3
         - doc_id: 81a2016b-9698-542f-a1b7-9e61f3b8161a
           grade: 2
-        - doc_id: 9471fa31-fc75-5165-94e2-4bbf1b62a72f
-          grade: 3
         - doc_id: 698ff0ac-9742-5c60-bd6f-8ebd16fbb0ac
+          grade: 3
+        - doc_id: 0dbc9104-5906-5789-87de-ce0a1d9dcee9
+          grade: 3
+        - doc_id: 904bc326-11db-50d6-827d-4cf4b93530dc
           grade: 3
         - doc_id: a2d653a2-7eb0-53a6-954a-185e0e318058
           grade: 2
-        - doc_id: 0dbc9104-5906-5789-87de-ce0a1d9dcee9
-          grade: 3
-        - doc_id: 1773f595-2ee0-5a68-bba8-bb1f1b467523
+        - doc_id: 9471fa31-fc75-5165-94e2-4bbf1b62a72f
           grade: 3
         - doc_id: 178457a2-0790-5ad1-9554-25705e66aa30
           grade: 2
+        - doc_id: 1773f595-2ee0-5a68-bba8-bb1f1b467523
+          grade: 3
+        - doc_id: 9c881f7f-5f7d-5bcd-88a4-2ed62e7ef513
+          grade: 3
         - doc_id: f4268cb2-8c0c-5f43-a646-6172b778b544
           grade: 3
         - doc_id: a6d2df37-a716-5507-9cca-b16d129b8af2
           grade: 3
-        - doc_id: 9c881f7f-5f7d-5bcd-88a4-2ed62e7ef513
+        - doc_id: c94a314a-0723-527f-b9e9-7b68614ca00d
+          grade: 2
+        - doc_id: cc38b223-f0e2-51f3-a98a-12381802f031
+          grade: 1
+        - doc_id: b04d9f38-772a-5a40-9f24-2ac40071e9db
           grade: 3
-        - doc_id: 7bfe2800-f092-56a8-8f9c-2f9b79749e67
+        - doc_id: 67c861c9-1372-599d-9876-85e49d935b9e
           grade: 3
         - doc_id: a86ac122-d3e3-5b92-8251-636ea92bf5ea
           grade: 3
         - doc_id: 10d42019-eed1-5618-bd72-e85c50532bb8
           grade: 3
-        - doc_id: c94a314a-0723-527f-b9e9-7b68614ca00d
-          grade: 2
+        - doc_id: 7bfe2800-f092-56a8-8f9c-2f9b79749e67
+          grade: 3
         - doc_id: 8d87d210-2596-5026-8a2f-18247e67b870
           grade: 2
+        - doc_id: c6479a81-d3e4-59f4-b32a-5505c3dc02c9
+          grade: 3
+        - doc_id: 1ca02bb2-aa75-56f8-ad65-7319d745a935
+          grade: 1
+        - doc_id: 6005617a-a400-566f-9801-2225a2e44574
+          grade: 1
+        - doc_id: 5e1471e1-ee82-5dcb-b206-1b8a3fdda79e
+          grade: 2
+        - doc_id: 6d6e70ec-f390-501d-904a-9af2ca5a985c
+          grade: 2
+        - doc_id: c55d4356-8ac0-56da-868f-3289a7f412c2
+          grade: 3
         - doc_id: feff1881-8def-5bac-b1a3-aa1fd010b1e7
           grade: 3
         - doc_id: d8d72d01-4f69-53c6-bc1b-52cb38617a81
           grade: 2
-        - doc_id: 6855b9e9-58e4-560b-8807-f848fcef87d0
-          grade: 1
-        - doc_id: d96e716a-216a-5c4f-9581-c54f283fea6f
-          grade: 1
-        - doc_id: 5e1471e1-ee82-5dcb-b206-1b8a3fdda79e
-          grade: 2
-        - doc_id: 6005617a-a400-566f-9801-2225a2e44574
-          grade: 1
-        - doc_id: c6479a81-d3e4-59f4-b32a-5505c3dc02c9
-          grade: 3
-        - doc_id: 42fdf1ab-b817-59a8-a558-6a1765c44fe8
-          grade: 3
-        - doc_id: cc38b223-f0e2-51f3-a98a-12381802f031
+        - doc_id: 8192f512-08f8-57e5-b4ce-bdc75b03136a
           grade: 1
         - doc_id: 6334c6f3-6d18-5e41-aae0-a8dba3f3764f
           grade: 1
-        - doc_id: 3c3d958f-7e83-5261-bdbc-00782f691a9d
+        - doc_id: 16a923ea-130a-5556-b36c-d10030e81500
           grade: 3
-        - doc_id: 9c9dd4c6-c886-50ce-b128-9b3d5a85642c
-          grade: 1
-        - doc_id: 1ca02bb2-aa75-56f8-ad65-7319d745a935
-          grade: 1
         - doc_id: 0dd7560f-f993-5a8a-8e17-ec2e20bec88d
           grade: 3
         - doc_id: 522e2d63-a273-5450-939c-c3793aaf440c
           grade: 3
-        - doc_id: 16a923ea-130a-5556-b36c-d10030e81500
-          grade: 3
-        - doc_id: 6d6e70ec-f390-501d-904a-9af2ca5a985c
-          grade: 2
-        - doc_id: b04d9f38-772a-5a40-9f24-2ac40071e9db
-          grade: 3
-        - doc_id: 67c861c9-1372-599d-9876-85e49d935b9e
-          grade: 3
         - doc_id: d8d55eb4-9a79-533f-985c-cc32d52c46c2
           grade: 3
-        - doc_id: c55d4356-8ac0-56da-868f-3289a7f412c2
+        - doc_id: 3c3d958f-7e83-5261-bdbc-00782f691a9d
           grade: 3
-        - doc_id: 8192f512-08f8-57e5-b4ce-bdc75b03136a
+        - doc_id: 42fdf1ab-b817-59a8-a558-6a1765c44fe8
+          grade: 3
+        - doc_id: 6855b9e9-58e4-560b-8807-f848fcef87d0
           grade: 1
-        - doc_id: 841d878f-a38c-5945-838e-7618556bf807
-          grade: 3
+        - doc_id: d96e716a-216a-5c4f-9581-c54f283fea6f
+          grade: 1
+        - doc_id: 9c9dd4c6-c886-50ce-b128-9b3d5a85642c
+          grade: 1
         - doc_id: 7607f047-85fd-53c3-9949-8d25b862c707
           grade: 3
         - doc_id: a76ca3b3-6797-581e-bd99-49e4d25d57d6
+          grade: 3
+        - doc_id: 841d878f-a38c-5945-838e-7618556bf807
           grade: 3
         - doc_id: a530654f-e6ba-5ef6-9ec2-066bb6c16e82
           grade: 2
@@ -7294,41 +7264,29 @@ queries:
           grade: 3
         - doc_id: b6467eb8-a168-5b96-b9c3-4b086fd5287b
           grade: 0
-        - doc_id: dc576fdf-fbb5-5f44-9af7-c22349c2c6c0
-          grade: 3
         - doc_id: fdcc0106-012a-5fb4-b637-543cc73b846f
-          grade: 3
-        - doc_id: b2e4b8fc-9eb0-5c12-a42b-9b332e48b941
           grade: 3
         - doc_id: 68d22261-6c37-5d1f-ba44-b904b9272643
           grade: 3
-        - doc_id: d761d1d4-d1a8-5a5e-8a46-98db532c0d4b
+        - doc_id: dc576fdf-fbb5-5f44-9af7-c22349c2c6c0
           grade: 3
         - doc_id: 95a5f22f-6755-5e50-ab7d-f5f6571a046a
           grade: 3
         - doc_id: 910da390-23d2-5e96-a65a-de5f639ad4b5
           grade: 3
-        - doc_id: 9355e68f-58a5-5044-a8f0-5d7f65016592
+        - doc_id: d761d1d4-d1a8-5a5e-8a46-98db532c0d4b
           grade: 3
-        - doc_id: 782ef586-fd4e-5fe7-84b2-2f78810a84c4
+        - doc_id: b2e4b8fc-9eb0-5c12-a42b-9b332e48b941
+          grade: 3
+        - doc_id: 9355e68f-58a5-5044-a8f0-5d7f65016592
           grade: 3
         - doc_id: f5d38bd2-5158-50ce-95b2-655b5d907930
           grade: 3
-        - doc_id: 30d43d21-d63b-5ac5-ab51-7d6fa93ad497
-          grade: 3
-        - doc_id: 25889a0e-6e30-576c-bcd7-aef38e39eecc
-          grade: 3
-        - doc_id: 607f3ade-bc20-50af-a4a6-f0a14a365f00
-          grade: 3
-        - doc_id: 572b6eaa-b830-5aec-bd9c-1aea9c666213
-          grade: 3
-        - doc_id: f01d9d3a-c7b2-5df1-bd4a-95ae23c3bc97
-          grade: 2
-        - doc_id: 16cbc374-9fdc-5c09-a8da-9d7201433fee
-          grade: 0
-        - doc_id: 1984b19a-d0ff-5ade-b202-2c9b1c741fac
-          grade: 3
         - doc_id: 66d9912a-a687-572f-b0b5-b4e469eb25b9
+          grade: 3
+        - doc_id: 782ef586-fd4e-5fe7-84b2-2f78810a84c4
+          grade: 3
+        - doc_id: 30d43d21-d63b-5ac5-ab51-7d6fa93ad497
           grade: 3
         - doc_id: 0b76801d-67b0-557d-9503-6d1087db8c91
           grade: 3
@@ -7338,9 +7296,17 @@ queries:
           grade: 2
         - doc_id: 7d0445b0-dc95-5e3f-8d30-0c1c7c3a8da2
           grade: 3
-        - doc_id: 26c62780-1ba3-53d0-9570-b2803bac520b
+        - doc_id: 16cbc374-9fdc-5c09-a8da-9d7201433fee
+          grade: 0
+        - doc_id: 1984b19a-d0ff-5ade-b202-2c9b1c741fac
           grade: 3
-        - doc_id: 46b76f00-94a0-5e3e-92aa-c6d84053f677
+        - doc_id: 572b6eaa-b830-5aec-bd9c-1aea9c666213
+          grade: 3
+        - doc_id: f01d9d3a-c7b2-5df1-bd4a-95ae23c3bc97
+          grade: 2
+        - doc_id: 25889a0e-6e30-576c-bcd7-aef38e39eecc
+          grade: 3
+        - doc_id: 607f3ade-bc20-50af-a4a6-f0a14a365f00
           grade: 3
         - doc_id: 24071d95-5d8a-5b82-9d94-5feae02fc762
           grade: 3
@@ -7350,16 +7316,28 @@ queries:
           grade: 3
         - doc_id: e57944ae-1d58-54b1-ac59-dbef43105018
           grade: 3
+        - doc_id: fca49ca9-e7e2-5a13-b757-e8e83cbf7b4e
+          grade: 2
+        - doc_id: 502a203e-0444-502c-afc7-1a84c2f836de
+          grade: 3
+        - doc_id: 800ffd47-8ae8-5cad-890d-c7de65f18372
+          grade: 3
+        - doc_id: 161cd89e-2615-5b6d-9cf8-23de467e513f
+          grade: 3
+        - doc_id: cc92e131-281d-580b-86a6-5a2e723c193d
+          grade: 2
+        - doc_id: 26c62780-1ba3-53d0-9570-b2803bac520b
+          grade: 3
         - doc_id: e60c65f2-c876-55ec-b244-2571b5d4b775
           grade: 3
         - doc_id: 24e52d6d-a1bf-575f-92f4-b00ea3c54727
           grade: 3
-        - doc_id: b43dc785-3a34-5822-a261-455ad1a9642d
+        - doc_id: 46b76f00-94a0-5e3e-92aa-c6d84053f677
           grade: 3
-        - doc_id: 5cc734b0-cbd2-5a83-ba7f-d9a48dab28e3
+        - doc_id: 842e310d-0c6a-572d-bf57-0edaf747d638
           grade: 3
-        - doc_id: 80c67daf-1c6f-55ac-b2a8-29f368785258
-          grade: 2
+        - doc_id: 29bf0a9c-3011-55a9-a268-d8f7290a370a
+          grade: 3
         - doc_id: 6a91b944-80a2-54c1-bfcf-f9e022440d9a
           grade: 3
         - doc_id: 1d9e12c6-0454-586c-8b78-fcce3bba7ccd
@@ -7368,45 +7346,37 @@ queries:
           grade: 3
         - doc_id: 7a07c4e7-5764-508f-9098-b5afaf4b8eb3
           grade: 3
-        - doc_id: 5a18162c-310a-5245-931b-35791b1a835b
-          grade: 3
-        - doc_id: 842e310d-0c6a-572d-bf57-0edaf747d638
-          grade: 3
-        - doc_id: 29bf0a9c-3011-55a9-a268-d8f7290a370a
-          grade: 3
-        - doc_id: 95929a38-a560-53aa-87d1-236e28a0e4ce
-          grade: 3
-        - doc_id: a847c56f-dd25-5ae1-91f7-ebdca1ebbe8e
-          grade: 3
-        - doc_id: fca49ca9-e7e2-5a13-b757-e8e83cbf7b4e
-          grade: 2
-        - doc_id: 502a203e-0444-502c-afc7-1a84c2f836de
-          grade: 3
-        - doc_id: 800ffd47-8ae8-5cad-890d-c7de65f18372
-          grade: 3
-        - doc_id: f454aa48-f220-5f20-abeb-ee942324a579
+        - doc_id: b43dc785-3a34-5822-a261-455ad1a9642d
           grade: 3
         - doc_id: 76075f72-feda-5bd4-9cd0-42c796d0039d
           grade: 3
         - doc_id: 58ee0abe-e425-5e8b-9a56-c8655dc9f0f2
           grade: 3
-        - doc_id: 161cd89e-2615-5b6d-9cf8-23de467e513f
+        - doc_id: 2d8d8f9d-e3be-585d-9fb6-8fce298160f7
           grade: 3
-        - doc_id: cc92e131-281d-580b-86a6-5a2e723c193d
+        - doc_id: ca1d268d-4ee4-5a92-b4d4-3260dde4f529
+          grade: 3
+        - doc_id: 80c67daf-1c6f-55ac-b2a8-29f368785258
           grade: 2
+        - doc_id: 5a18162c-310a-5245-931b-35791b1a835b
+          grade: 3
+        - doc_id: 5cc734b0-cbd2-5a83-ba7f-d9a48dab28e3
+          grade: 3
         - doc_id: aaf69b03-5425-5bec-b6f5-a97a0fa1ceb0
           grade: 3
         - doc_id: 19c81d9d-ecc1-5de9-915e-6b470988f50b
           grade: 3
         - doc_id: 12b9dbd2-efd6-562e-8875-e6f02f3b4e23
           grade: 3
-        - doc_id: 2d8d8f9d-e3be-585d-9fb6-8fce298160f7
-          grade: 3
-        - doc_id: ca1d268d-4ee4-5a92-b4d4-3260dde4f529
+        - doc_id: f454aa48-f220-5f20-abeb-ee942324a579
           grade: 3
         - doc_id: 8190e5dc-a630-5eba-9272-02ece82e6672
           grade: 3
         - doc_id: e551590a-305a-57d2-b683-6c8ffa8af783
+          grade: 3
+        - doc_id: 95929a38-a560-53aa-87d1-236e28a0e4ce
+          grade: 3
+        - doc_id: a847c56f-dd25-5ae1-91f7-ebdca1ebbe8e
           grade: 3
         - doc_id: 004e67e1-e72f-5253-8961-cb94007234ea
           grade: 3
