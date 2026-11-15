@@ -24,15 +24,6 @@ func TrackRelative(trackDir, path string) string {
 	return filepath.ToSlash(rel)
 }
 
-// ResolveFromTrack returns the file a recorded path names: a relative one
-// starts at trackDir, an absolute one, as older artifacts recorded, stands.
-func ResolveFromTrack(trackDir, recorded string) string {
-	if recorded == "" || filepath.IsAbs(recorded) {
-		return recorded
-	}
-	return filepath.Join(trackDir, filepath.FromSlash(recorded))
-}
-
 // withoutSymlinks keeps macOS's /var and /private/var from reading as two
 // directories. A path not written yet resolves through its nearest existing
 // folder.

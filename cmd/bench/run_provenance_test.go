@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/tusker/internal/bench/judgment"
-	"github.com/tadjov/tusker/internal/bench/meta"
 )
 
 func TestRun_ReportNamesThePoolAndJudgmentsItScoredAgainst(t *testing.T) {
@@ -59,7 +58,7 @@ func canonicalPaths(t *testing.T, trackDir string, paths []string) []string {
 	t.Helper()
 	out := make([]string, 0, len(paths))
 	for _, p := range paths {
-		resolved, err := filepath.EvalSymlinks(meta.ResolveFromTrack(trackDir, p))
+		resolved, err := filepath.EvalSymlinks(filepath.Join(trackDir, p))
 		require.NoError(t, err)
 		out = append(out, resolved)
 	}

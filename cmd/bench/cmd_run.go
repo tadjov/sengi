@@ -242,7 +242,9 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 		rpt.Provenance.Judge = judgments.meta.Judge
 		rpt.Provenance.GradedCount = judgments.meta.GradedCount
 		rpt.Provenance.UnjudgedCount = &judgments.coverage.unjudged
-		rpt.Provenance.PoolRef = meta.TrackRelative(tr.Root, meta.ResolveFromTrack(tr.Root, judgments.meta.PoolRef))
+		// checkPoolBinding proved by run id that the judgments graded this
+		// track's pool, whatever path they recorded for it.
+		rpt.Provenance.PoolRef = meta.TrackRelative(tr.Root, tr.Pool)
 	}
 	rpt.Settings = report.RunSettings{
 		Warmup:       runCfg.WarmupRuns,

@@ -44,22 +44,3 @@ func TestTrackRelative_ReadsARelativePathFromTheWorkingDirectory(t *testing.T) {
 
 	assert.Equal(t, "trec/annotations.keyword.yaml", TrackRelative(track, "annotations.keyword.yaml"))
 }
-
-func TestResolveFromTrack(t *testing.T) {
-	tests := []struct {
-		name     string
-		recorded string
-		want     string
-	}{
-		{name: "relative starts at the track", recorded: "trec/pool.yaml", want: filepath.Join("/srv/tracks/fts", "trec", "pool.yaml")},
-		{name: "outside the track", recorded: "../shared/suite.yaml", want: filepath.Join("/srv/tracks", "shared", "suite.yaml")},
-		{name: "absolute, as older artifacts recorded", recorded: "/home/someone/tracks/fts/trec/pool.yaml", want: "/home/someone/tracks/fts/trec/pool.yaml"},
-		{name: "nothing recorded"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, ResolveFromTrack("/srv/tracks/fts", tt.recorded))
-		})
-	}
-}

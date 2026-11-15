@@ -115,17 +115,30 @@ func TestJudge_ManualFileNamesItsPoolRelativeToTheTrack(t *testing.T) {
 	assert.Equal(t, "trec/pool.yaml", fx.annotations(t, "manual").Meta.PoolRef)
 }
 
-func TestRun_AnAbsolutePoolRefInOlderJudgmentsIsRecordedRelativeToTheTrack(t *testing.T) {
-	tr := judgedTrack(t, nil)
-	jf, err := judgment.ReadFile(tr.judgments)
-	require.NoError(t, err)
-	jf.Meta.PoolRef = tr.poolPath()
-	require.NoError(t, judgment.WriteFile(jf, tr.judgments))
+func TestRun_ReportNamesTheTracksOwnPoolWhateverPathTheJudgmentsRecorded(t *testing.T) {
+	tests := []struct {
+		name    string
+		poolRef func(tr lineageTrack) string
+	}{
+		{name: "another machine's checkout", poolRef: func(lineageTrack) string {
+			return "/Users/someone/projects/news-hunter/tracks/x/trec/pool.yaml"
+		}},
+		{name: "this machine, absolute", poolRef: func(tr lineageTrack) string { return tr.poolPath() }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tr := judgedTrack(t, nil)
+			jf, err := judgment.ReadFile(tr.judgments)
+			require.NoError(t, err)
+			jf.Meta.PoolRef = tt.poolRef(tr)
+			require.NoError(t, judgment.WriteFile(jf, tr.judgments))
 
-	_, err = execute(t, newRunCmd(), tr.dir)
-	require.NoError(t, err)
+			_, err = execute(t, newRunCmd(), tr.dir)
+			require.NoError(t, err)
 
-	assert.Equal(t, "trec/pool.yaml", tr.latestReport(t).Provenance.PoolRef)
+			assert.Equal(t, "trec/pool.yaml", tr.latestReport(t).Provenance.PoolRef)
+		})
+	}
 }
 
 func TestRun_ATrackCopiedElsewhereStillRuns(t *testing.T) {
@@ -156,7 +169,7 @@ func TestRun_ASuiteOutsideTheTrackIsRecordedRelativeToIt(t *testing.T) {
 	require.Len(t, suites, 2)
 	assert.Equal(t, "suite.yaml", suites[0])
 	assert.False(t, filepath.IsAbs(suites[1]), suites[1])
-	recorded, err := filepath.EvalSymlinks(meta.ResolveFromTrack(tr.dir, suites[1]))
+	recorded, err := filepath.EvalSymlinks(filepath.Join(tr.dir, suites[1]))
 	require.NoError(t, err, "the recorded path resolves from the track")
 	want, err := filepath.EvalSymlinks(shared)
 	require.NoError(t, err)
