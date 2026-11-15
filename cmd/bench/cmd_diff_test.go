@@ -642,3 +642,44 @@ func TestDiffJudgments_PairsWithPGShowEachArticlesTitle(t *testing.T) {
 
 	assert.Regexp(t, `(?m)^kw\s+`+tr.k1.String()+`\s+1\s+3\s+2\s+climate one$`, out)
 }
+
+// writeGrades files grades[i] for docs[i] under one query, "hand".
+func (tr *judgmentsTrack) writeGrades(t *testing.T, name string, judge meta.Judge, docs []uuid.UUID, grades []int) {
+	t.Helper()
+	entry := judgment.Entry{QueryID: "hand"}
+	for i, doc := range docs {
+		entry.Docs = append(entry.Docs, judgment.GradedDoc{DocID: doc, Grade: grades[i]})
+	}
+	require.NoError(t, judgment.WriteFile(&judgment.File{Meta: meta.Meta{RunID: "judge-" + name, Judge: &judge}, Queries: []judgment.Entry{entry}},
+		filepath.Join(tr.root, "trec", "annotations."+name+".yaml")))
+}
+
+// Hand grades are the manual judgment set. The expected κ is sklearn's
+// cohen_kappa_score(hand, judge, weights="quadratic", labels=[0, 1, 2, 3])
+// over the six pairs both graded, 8/13.
+func TestDiffJudgments_MeasuresHandGradesAgainstAJudgeWithoutTouchingThem(t *testing.T) {
+	tr := newJudgmentsTrack(t)
+	hand := []int{2, 1, 0, 3, 3, 1, 3, judgment.GradeUnjudged}
+	judge := []int{2, 2, 0, 3, 1, 1, judgment.GradeUnjudged, 2}
+	docs := make([]uuid.UUID, len(hand))
+	for i := range docs {
+		docs[i] = uuid.New()
+	}
+	tr.writeGrades(t, "manual", judgment.NewManualStrategy().Describe(), docs, hand)
+	tr.writeGrades(t, "bm25", judgment.NewBM25Strategy().Describe(), docs, judge)
+	manual := filepath.Join(tr.root, "trec", "annotations.manual.yaml")
+	before, err := os.ReadFile(manual)
+	require.NoError(t, err)
+
+	out, err := tr.diff(t, "--judgments", "manual,bm25", "--reference", "manual")
+	require.NoError(t, err)
+
+	row := pairwiseRow(t, out, "manual vs bm25")
+	assert.Equal(t, []string{"6", "0.6667"}, row[:2])
+	assert.Equal(t, "0.6154", row[4])
+	table := out[strings.Index(out, "bm25 against manual"):]
+	assert.Regexp(t, `(?m)^3\s+0\s+1\s+0\s+1$`, table)
+	after, err := os.ReadFile(manual)
+	require.NoError(t, err)
+	assert.Equal(t, before, after)
+}
