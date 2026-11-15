@@ -9,12 +9,10 @@ import (
 
 const gradeLevels = GradeHighly + 1
 
-// GradeConfusion counts two raters' grades on the same pairs: row is the first
-// rater's grade, column the second's.
+// GradeConfusion counts paired grades: rows are the first rater's, columns the second's.
 type GradeConfusion [gradeLevels][gradeLevels]int
 
-// NewGradeConfusion tabulates paired grades; first[i] and second[i] grade the
-// same pair, and every grade must be on the 0–3 scale.
+// NewGradeConfusion tabulates paired grades on the 0–3 scale.
 func NewGradeConfusion(first, second []int) (GradeConfusion, error) {
 	var c GradeConfusion
 	if len(first) != len(second) {
@@ -40,8 +38,7 @@ func (c GradeConfusion) Pairs() int {
 	return n
 }
 
-// ExactAgreement is the share of pairs both raters graded the same; NaN
-// without pairs.
+// ExactAgreement is the share of identical grades; NaN without pairs.
 func (c GradeConfusion) ExactAgreement() float64 {
 	agreed := 0
 	for g := range gradeLevels {
@@ -50,10 +47,7 @@ func (c GradeConfusion) ExactAgreement() float64 {
 	return float64(agreed) / float64(c.Pairs())
 }
 
-// QuadraticKappa is Cohen's κ weighted by the squared grade distance over the
-// whole 0–3 scale, so a grade neither rater used still sets the distances. It
-// is NaN when chance alone predicts no disagreement: no pairs, or both raters
-// giving one and the same grade throughout.
+// QuadraticKappa is Cohen's κ weighted by squared grade distance; NaN when undefined.
 func (c GradeConfusion) QuadraticKappa() float64 {
 	n := float64(c.Pairs())
 	var firstTotals, secondTotals [gradeLevels]float64
@@ -77,8 +71,7 @@ func (c GradeConfusion) QuadraticKappa() float64 {
 	return 1 - observed/expected
 }
 
-// WithinOneAgreement is the share of pairs whose grades differ by at most
-// one; NaN without pairs.
+// WithinOneAgreement is the share of grades at most one apart; NaN without pairs.
 func (c GradeConfusion) WithinOneAgreement() float64 {
 	near := 0
 	for i := range gradeLevels {
@@ -91,15 +84,13 @@ func (c GradeConfusion) WithinOneAgreement() float64 {
 	return float64(near) / float64(c.Pairs())
 }
 
-// RelevantAgreement is the share of pairs both raters put on the same side of
-// threshold, a grade at or above it being relevant; NaN without pairs.
+// RelevantAgreement is the share of pairs on the same side of threshold; NaN without pairs.
 func (c GradeConfusion) RelevantAgreement(threshold int) float64 {
 	b := c.relevance(threshold)
 	return float64(b[0][0]+b[1][1]) / float64(c.Pairs())
 }
 
-// BinaryKappa is Cohen's κ on relevant, a grade at or above threshold,
-// against not relevant; NaN when both raters keep every pair on one side.
+// BinaryKappa is Cohen's κ on relevant (grade ≥ threshold) against not; NaN when undefined.
 func (c GradeConfusion) BinaryKappa(threshold int) float64 {
 	b := c.relevance(threshold)
 	n := float64(c.Pairs())
@@ -142,12 +133,9 @@ type KappaBootstrap struct {
 	Seed    uint64
 }
 
-// BootstrapKappa is the κ over every query's pairs with its 95% percentile
-// interval over 1,000 resamples of the queries, which the seed fixes.
-// Resamples with an undefined κ are left out.
+// BootstrapKappa is the κ with a 95% interval over 1,000 seeded resamples of the queries.
 func BootstrapKappa(b KappaBootstrap) KappaInterval {
-	// Whole queries are resampled because one query's docs share its topic, so
-	// two judges' grades on them are not independent pairs.
+	// Resample whole queries: docs of one query share a topic, so their grades aren't independent.
 	random := rand.New(rand.NewPCG(b.Seed, b.Seed))
 	resampled := make([]float64, 0, kappaResamples)
 	for range kappaResamples {

@@ -5,8 +5,7 @@ import (
 	"testing"
 )
 
-// Expected values are worked by hand as (concordant − discordant) /
-// √((pairs − pairs tied in x)(pairs − pairs tied in y)).
+// Expected values worked by hand: (concordant − discordant) / √((n − x ties)(n − y ties)).
 func TestKendallTauB(t *testing.T) {
 	tests := []struct {
 		name string

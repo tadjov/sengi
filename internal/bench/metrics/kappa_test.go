@@ -5,9 +5,7 @@ import (
 	"testing"
 )
 
-// Expected values are sklearn.metrics.cohen_kappa_score(first, second,
-// weights="quadratic", labels=[0, 1, 2, 3]). The labels fix the 0–3 scale;
-// without them sklearn renumbers the grades seen, which differs when one is unused.
+// Expected values: sklearn's quadratic cohen_kappa_score, labels=[0, 1, 2, 3] to fix the scale.
 func TestGradeConfusion_QuadraticKappaMatchesSklearn(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -99,8 +97,7 @@ func TestNewGradeConfusion_RejectsBadInput(t *testing.T) {
 	}
 }
 
-// Worked by hand: 18 of the 20 pairs sit on or next to the diagonal, and the
-// weighted disagreement is 14 observed against 992/20 expected by chance.
+// Worked by hand: 18 of 20 pairs within one; weighted disagreement 14 observed against 992/20 by chance.
 func TestGradeConfusion_WithinOneAndQuadraticKappaOnAWorkedTable(t *testing.T) {
 	c := GradeConfusion{
 		{4, 1, 1, 0},
@@ -116,8 +113,7 @@ func TestGradeConfusion_WithinOneAndQuadraticKappaOnAWorkedTable(t *testing.T) {
 	}
 }
 
-// Cohen's worked example: the 2x2 [[20, 5], [10, 15]] has κ = 0.4. The grades
-// below collapse onto it at threshold 2.
+// Cohen's worked example [[20, 5], [10, 15]] has κ = 0.4; these grades collapse onto it at threshold 2.
 func TestGradeConfusion_BinaryKappaCollapsesAtTheThreshold(t *testing.T) {
 	c := GradeConfusion{
 		{8, 4, 0, 0},

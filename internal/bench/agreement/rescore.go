@@ -55,8 +55,7 @@ type MetricRescoring struct {
 	Sets   []EngineOrder `json:"sets"`
 }
 
-// EngineOrder is each engine's mean under one set, the engines best first
-// with ties in name order, and Kendall's τ-b against the reference's means.
+// EngineOrder is the engines' means under one set, best first, with τ-b against the reference.
 type EngineOrder struct {
 	Label string             `json:"label"`
 	Means map[string]float64 `json:"means"`
@@ -64,9 +63,7 @@ type EngineOrder struct {
 	TauB  Statistic          `json:"tau_b"`
 }
 
-// Rescore ranks each job's engines by their means under each set. It rescores
-// only the metrics the report's own set reproduces, under only the sets that
-// grade every doc in each ranking's top max(KValues).
+// Rescore ranks each job's engines under every set that covers the top k.
 func Rescore(opts RescoreOptions) (Rescoring, error) {
 	if err := requireRankings(opts.Report); err != nil {
 		return Rescoring{}, err
@@ -108,9 +105,7 @@ type rescoredSet struct {
 	scores []map[cell]metrics.ScoreSet
 }
 
-// reproducedMetrics keeps the metrics the report's own set gives back for
-// every cell. One it cannot reproduce was scored some other way, and
-// rescoring it under another set would compare unlike numbers.
+// reproducedMetrics keeps metrics the report's own set reproduces, so rescores stay comparable.
 func (o RescoreOptions) reproducedMetrics(own rescoredSet) (kept []metric, leftOut []Exclusion) {
 	for _, m := range catalogue(o.KValues) {
 		if reason := o.irreproducible(m, own); reason != "" {
@@ -122,8 +117,7 @@ func (o RescoreOptions) reproducedMetrics(own rescoredSet) (kept []metric, leftO
 	return kept, leftOut
 }
 
-// ranking orders each job's engines by the kept metrics under each rescored
-// set; reference is -1 when the reference set was refused.
+// ranking orders each job's engines per set; reference is -1 when its set was refused.
 type ranking struct {
 	metrics   []metric
 	sets      []rescoredSet
@@ -166,9 +160,7 @@ func reportJudgmentsPath(r *report.Report) string {
 	return r.Provenance.Sources.Judgments
 }
 
-// requireRankings refuses a report written before rankings were stored. A
-// cell that retrieved nothing has no ranking either, so only a cell that
-// returned docs without one counts.
+// requireRankings refuses a report whose cells returned docs without a stored ranking.
 func requireRankings(r *report.Report) error {
 	for _, job := range r.Jobs {
 		for _, e := range job.PerQuery {
@@ -312,8 +304,7 @@ func judgedQueries(job report.JobReport) []string {
 	return out
 }
 
-// meanPrecision is the grid means are rounded to, so equal means that land on
-// different floats (0.1+0.2+0.3 and 0.3+0.2+0.1) tie in the order and in τ-b.
+// meanPrecision rounds means so sums that differ only in float noise tie.
 const meanPrecision = 1e12
 
 // jobGrid is a job's engines and the judged queries its means average over.
@@ -321,8 +312,7 @@ type jobGrid struct {
 	engines, queries []string
 }
 
-// engineMeans averages over the job's judged queries, a failed or missing cell
-// scoring 0, as the report's own means do.
+// engineMeans scores a failed or missing cell 0, as the report's means do.
 func (m metric) engineMeans(grid jobGrid, scores map[cell]metrics.ScoreSet) []float64 {
 	means := make([]float64, len(grid.engines))
 	for i, engine := range grid.engines {

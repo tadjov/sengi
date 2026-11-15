@@ -22,9 +22,7 @@ func ranking(docs ...uuid.UUID) []report.RankedDoc {
 	return out
 }
 
-// rescoreFixture is one job of engines a and b over q1 and q2, scored with
-// the set "own" at k = 2 and threshold 1. Its stored P@2 and RR are worked by
-// hand, and b's stored RR on q1 is wrong.
+// rescoreFixture: engines a and b on q1 and q2, k = 2, threshold 1; b's stored q1 RR is wrong.
 type rescoreFixture struct {
 	report        *report.Report
 	d1, d2, d3, e uuid.UUID
@@ -146,9 +144,7 @@ func keys(m map[string]string) []string {
 	return out
 }
 
-// Engine a finds 1, 2 and 3 relevant docs in its top 10 over q1-q3, engine b
-// 3, 2 and 1. Both means are 0.2, though 0.1+0.2+0.3 and 0.3+0.2+0.1 are
-// different floats.
+// Both means are 0.2, though 0.1+0.2+0.3 and 0.3+0.2+0.1 are different floats.
 func TestRescore_EqualMeansTieWhateverOrderTheyWereSummedIn(t *testing.T) {
 	var entries []judgment.Entry
 	var cells []report.Entry

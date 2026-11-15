@@ -1,5 +1,4 @@
-// Package agreement measures how alike judgment sets grade the same
-// (query, doc) pairs, and how alike they order the engines of a run.
+// Package agreement measures how alike judgment sets grade pairs and order a run's engines.
 package agreement
 
 import (
@@ -18,9 +17,7 @@ type Set struct {
 	File  *judgment.File
 }
 
-// Load reads each `[label=]<set name or annotations path>` entry, resolving a
-// name as bench run --judgments does. An unlabelled set goes by its judge's
-// model, else its strategy.
+// Load reads `[label=]<set or path>` entries; an unlabelled set is named after its judge's model.
 func Load(track *trackctx.Track, entries []string) ([]Set, error) {
 	if len(entries) < 2 {
 		return nil, fmt.Errorf("--judgments needs at least two sets to compare, got %d", len(entries))

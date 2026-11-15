@@ -60,14 +60,12 @@ func newDiffRunsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "runs [track]",
 		Short: "Compare two benchmark runs side by side",
-		Long: `Loads two report JSON files and shows per-engine metric deltas and the
-per-query NDCG regressions sorted by magnitude.
+		Long: `Shows per-engine metric deltas between two reports and the per-query NDCG
+regressions, largest first.
 
-Without --b, B is the report latest.json points at. Without --a, A is the
-newest earlier complete report (judged metrics, no failed queries, nothing
-recorded in settings.incomplete), or the newest earlier report, with a
-warning, when none is. --a and --b accept run IDs
-(e.g. 2026-05-26T23-39-05-run-7e0750) or direct paths to report.json files.`,
+Without --b, B is latest.json's report. Without --a, A is the newest earlier
+fully scored report, or the newest earlier one with a warning. --a and --b
+take run IDs or report paths.`,
 		Example: `  bench diff runs tracks/global-news-dataset/fts_quality                               # latest two runs
   bench diff runs tracks/global-news-dataset/fts_quality --b 2026-05-26T23-39-05-run-7e0750
   bench diff runs --a /tmp/before.json --b /tmp/after.json`,
@@ -109,8 +107,7 @@ func executeDiff(w io.Writer, f diffFlags, args []string) error {
 	return nil
 }
 
-// afterReport defaults to the report latest.json points at, or the newest
-// fully scored report when there is no pointer.
+// afterReport defaults to latest.json's report, else the newest fully scored one.
 func afterReport(tr *trackctx.Track, flag string) (*report.Report, error) {
 	if flag != "" {
 		return readExplicitReport(tr, flag)
@@ -159,8 +156,7 @@ type baselineSearch struct {
 	BeforeRunID string
 }
 
-// previousScoredReport returns the newest report in scope that is fully
-// scored, falling back to the newest readable one when none is.
+// previousScoredReport returns the newest fully scored report, else the newest readable one.
 func previousScoredReport(search baselineSearch) (*report.Report, error) {
 	dir := search.ReportsDir
 	entries, err := os.ReadDir(dir)
@@ -200,10 +196,7 @@ func previousScoredReport(search baselineSearch) (*report.Report, error) {
 	return newestReadable, nil
 }
 
-// fullyScored reports whether every job carries quality metrics, no
-// (query, engine) cell failed and bench run recorded nothing incomplete. A
-// latency-only, partial or off-spec run is not a baseline: its deltas would
-// measure the failures, not the engines.
+// fullyScored reports whether a run can be a baseline: scored, no failed cells, nothing incomplete.
 func fullyScored(r *report.Report) bool {
 	if len(r.Jobs) == 0 || len(r.Settings.Incomplete) > 0 {
 		return false
@@ -227,8 +220,6 @@ func fullyScored(r *report.Report) bool {
 	}
 	return true
 }
-
-// ─── diff rendering ───────────────────────────────────────────────────────────
 
 func printDiff(w io.Writer, a, b *report.Report) {
 	fmt.Fprintf(w, "\n%s\n", cBold.Sprint("Comparing:"))
@@ -391,16 +382,13 @@ func printQueryDiff(w io.Writer, jA, jB *report.JobReport, k int) {
 	tw.Flush()
 }
 
-// scoredNDCG is the NDCG@k a cell contributes to its engine's mean: a failed
-// judged cell scores 0, as in the aggregates. Unjudged cells are not scored.
+// scoredNDCG scores a failed judged cell 0, as the aggregates do, and skips unjudged cells.
 func scoredNDCG(e report.Entry, k int) (float64, bool) {
 	if e.Error != "" {
 		return 0, e.Judged
 	}
 	return e.NDCG[k], e.Judged
 }
-
-// ─── helpers ─────────────────────────────────────────────────────────────────
 
 func indexJobs(r *report.Report) map[string]*report.JobReport {
 	m := make(map[string]*report.JobReport, len(r.Jobs))
@@ -484,8 +472,7 @@ func fmtDurationDelta(a, b time.Duration) string {
 	return cFail.Sprint(s)
 }
 
-// largestSharedK is the largest cutoff both runs computed. A K only one run
-// has would read as a score of 0 on the other side.
+// largestSharedK is the largest cutoff both runs computed.
 func largestSharedK(a, b []int) (int, bool) {
 	shared := 0
 	for _, k := range a {
@@ -496,8 +483,7 @@ func largestSharedK(a, b []int) (int, bool) {
 	return shared, shared > 0
 }
 
-// printScoringWarnings flags runs whose metrics were computed against different
-// grades, where a delta measures the judging as much as the engine.
+// printScoringWarnings flags runs scored against different judgments.
 func printScoringWarnings(w io.Writer, a, b *report.Report) {
 	var differences []string
 	if judgeOf(a) != judgeOf(b) {
@@ -533,9 +519,7 @@ func judgeOf(r *report.Report) string {
 	return judge.String() + " prompt " + judge.PromptVersion
 }
 
-// judgmentsOf names the judgments file relative to the track, so the same
-// file in a moved track or another worktree compares equal. Reports record no
-// digest of the file, so one regraded in place still compares equal.
+// judgmentsOf names the judgments file relative to the track, so a moved track compares equal.
 func judgmentsOf(r *report.Report) string {
 	sources := r.Provenance.Sources
 	if sources == nil || sources.Judgments == "" {
@@ -583,22 +567,15 @@ func newDiffJudgmentsCmd(openReader articleReaderOpener) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "judgments [track] --judgments <[label=]set,...>",
 		Short: "Measure how alike judgment sets grade the same pairs",
-		Long: `Compares two or more judgment sets of a track over the (query, doc) pairs
-every one of them graded 0 to 3. Each --judgments entry is a set name or an
-annotations path, as bench run --judgments takes it, optionally prefixed with
-label=; without a label a set goes by its judge's model, or its strategy.
+		Long: `Compares judgment sets over the (query, doc) pairs they all graded.
 
-For each set it prints the grade distribution, and for each pair of sets the
-exact, within-one and relevant agreement and the quadratic and binary Cohen's
-kappa, each kappa with a 95% bootstrap interval over resampled queries.
-Relevant means a grade at or above the spec's metrics.relevance_threshold.
+Each --judgments entry is a set name or an annotations path, optionally
+labelled (opus=cross-judge/annotations.opus.yaml). Without a label, a set is
+named after its judge's model.
 
---reference adds each other set's 4x4 table against the reference, its two
-kinds of miss, and the agreement per query category. --pg re-runs the judges'
-phrase, boolean and filter gate on the articles and measures agreement again
-over the pairs it admits; without it, the gate's zeros are included. --pairs
-lists the pairs whose grades span at least --min-gap. --report rescores a run
-report (a path, or latest) under each set once its own set reproduces it.`,
+For each pair of sets it prints exact, within-one and relevant agreement, and
+quadratic and binary kappa with 95% intervals. Relevant uses the spec's
+relevance_threshold.`,
 		Example: `  bench diff judgments tracks/cc-news/fts --judgments sonnet=claude-cli,jev
   bench diff judgments tracks/cc-news/fts --judgments sonnet=claude-cli,jev,opus=trec/cross-judge/annotations.opus.yaml --reference opus
   bench diff judgments tracks/cc-news/fts --judgments sonnet=claude-cli,jev --pairs --min-gap 3

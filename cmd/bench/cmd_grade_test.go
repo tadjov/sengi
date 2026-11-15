@@ -29,8 +29,7 @@ import (
 
 const retrievingEngine = "engine-zeta-retriever"
 
-// gradeFixture is a track whose pool holds queries × docs pairs, each doc
-// with its own title, plus the bm25 judge file graded against that pool.
+// gradeFixture is a track of queries × docs pairs plus a bm25 judge file for that pool.
 type gradeFixture struct {
 	track    string
 	articles articleStore
@@ -124,8 +123,7 @@ func (fx *gradeFixture) gradeWithReader(t *testing.T, reader storage.Reader, std
 	return out.String(), err
 }
 
-// shown lists the pairs whose article the output displayed, in the order they
-// first appeared.
+// shown lists the displayed pairs in first-seen order.
 func (fx *gradeFixture) shown(output string) []pairKey {
 	type sighting struct {
 		at   int
@@ -197,8 +195,7 @@ func TestGrade_UnknownAnswerRepromptsForTheSamePair(t *testing.T) {
 	assert.Equal(t, judgment.GradeUnjudged, got[shown[1]])
 }
 
-// failingStore stops serving articles after the first, like a store that
-// went away mid-session.
+// failingStore stops serving after the first article, like a store lost mid-session.
 type failingStore struct {
 	articleStore
 	served int
@@ -278,8 +275,7 @@ func TestGrade_ScreenShowsTheQueryAndTheArticle(t *testing.T) {
 		"the hand grader reads the query the judge grades before its description")
 }
 
-// The judge compares instants, so a bound written in another zone shows as
-// the UTC date it falls on.
+// The judge compares instants, so a bound in another zone shows as its UTC date.
 func TestGrade_ScreenShowsAFilterBoundInUTC(t *testing.T) {
 	fx := newGradeFixture(t, 1, 1)
 	fx.pool.Queries[0].Filters = suite.Filters{PublishedAfter: time.Date(2024, 3, 1, 22, 0, 0, 0, time.FixedZone("", -2*60*60))}
@@ -294,8 +290,7 @@ func TestGrade_ScreenShowsAFilterBoundInUTC(t *testing.T) {
 	assert.Equal(t, "published_after=2024-03-02", filters[1])
 }
 
-// pgx scans published_at into the local zone; the screen shows the UTC date
-// the filters compare against.
+// pgx scans published_at in local time; the screen shows the UTC date filters compare.
 func TestGrade_ScreenShowsThePublicationDateInUTC(t *testing.T) {
 	fx := newGradeFixture(t, 1, 1)
 	eastOfUTC := time.FixedZone("UTC+2", 2*60*60)
@@ -319,8 +314,7 @@ func TestGrade_ScreenShowsNoFiltersLineForAnUnfilteredQuery(t *testing.T) {
 	assert.NotContains(t, out, "filters:")
 }
 
-// A full session graded the same way must read the same whatever the judge
-// said, down to its closing lines.
+// A session must read the same whatever the judge said, closing lines included.
 func TestGrade_SessionHidesTheJudgesGradeAndTheRetrievingEngines(t *testing.T) {
 	fx := newGradeFixture(t, 2, 3)
 	sessionAgainst := func(judgeGrade int) string {
@@ -462,8 +456,7 @@ func TestGrade_SessionEndsWithProgressOnly(t *testing.T) {
 	assert.Contains(t, complete, "bench diff judgments --judgments manual,bm25")
 }
 
-// cancelAtPrompt cancels the session's context once the prompt has been shown
-// n times, the way Ctrl-C lands while the grader is reading.
+// cancelAtPrompt cancels once the prompt has shown n times, like Ctrl-C mid-session.
 type cancelAtPrompt struct {
 	mu      sync.Mutex
 	out     bytes.Buffer

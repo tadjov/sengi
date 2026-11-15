@@ -5,9 +5,7 @@ import (
 	"math"
 )
 
-// KendallTauB is Kendall's τ-b between two scorings of the same items, x[i]
-// and y[i] scoring item i. It is NaN when either scoring ties every pair. x
-// and y must have the same length.
+// KendallTauB is Kendall's τ-b between equal-length scorings x and y; NaN when either is all ties.
 func KendallTauB(x, y []float64) float64 {
 	var concordant, discordant, tiedX, tiedY, pairs int
 	for i := range x {

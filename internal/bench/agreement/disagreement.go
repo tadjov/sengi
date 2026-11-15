@@ -15,8 +15,7 @@ type Disagreement struct {
 	Title string `json:"title,omitempty"`
 }
 
-// Disagreements returns the pairs whose highest and lowest grade are at least
-// minGap apart, the widest span first, then by query and doc.
+// Disagreements returns the pairs whose grades span at least minGap, widest first.
 func Disagreements(pairs []Pair, minGap int) []Disagreement {
 	var out []Disagreement
 	for _, p := range pairs {

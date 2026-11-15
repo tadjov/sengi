@@ -76,13 +76,11 @@ type Reference struct {
 	ByCategory []Category  `json:"by_category"`
 }
 
-// Confusion is one set's grades against the reference's, whose grades are the
-// table's rows.
+// Confusion is one set's grades against the reference's, rows being the reference's.
 type Confusion struct {
 	Label string                 `json:"label"`
 	Table metrics.GradeConfusion `json:"table"`
-	// GradedRelevant counts the ReferenceIrrelevant pairs this set graded
-	// relevant, GradedIrrelevant the ReferenceRelevant pairs it graded irrelevant.
+	// GradedRelevant counts reference-irrelevant pairs graded relevant; GradedIrrelevant the reverse.
 	ReferenceIrrelevant int `json:"reference_irrelevant"`
 	GradedRelevant      int `json:"graded_relevant"`
 	ReferenceRelevant   int `json:"reference_relevant"`
@@ -97,8 +95,7 @@ type Category struct {
 	Comparisons []Comparison   `json:"comparisons"`
 }
 
-// Summarize measures the agreement of every set over pairs, which must not be
-// empty.
+// Summarize measures every set's agreement over pairs, which must not be empty.
 func Summarize(pairs []Pair, opts SummaryOptions) (Summary, error) {
 	summary := Summary{
 		Pairs:         len(pairs),
@@ -173,8 +170,7 @@ func kappa(interval metrics.KappaInterval) Kappa {
 	return Kappa{Value: Statistic(interval.Kappa), Low: Statistic(interval.Low), High: Statistic(interval.High)}
 }
 
-// groupByQuery keeps the queries in id order, so a seed resamples the same
-// queries whatever order the pairs came in.
+// groupByQuery sorts queries by id, so a seed resamples the same queries whatever the input order.
 func groupByQuery(pairs []Pair) [][]Pair {
 	byID := make(map[string][]Pair)
 	for _, p := range pairs {

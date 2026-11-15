@@ -333,9 +333,7 @@ func TestDiffRuns_ComparesTheLatestTwoRuns(t *testing.T) {
 	assert.Regexp(t, `A \(before\):\s+2026-01-01T00-00-01-run-aaaaaa`, out.String())
 }
 
-// judgmentsTrack is a two-query track: kw (keyword "climate") with docs k1-k3
-// and ph (phrase "climate change") with p1, which holds the phrase, and p2,
-// which does not. Its spec counts grade 3 alone as relevant.
+// judgmentsTrack: kw (k1-k3), phrase query ph (p1 has the phrase, p2 not); relevant is grade 3.
 type judgmentsTrack struct {
 	root     string
 	articles articleStore
@@ -408,8 +406,7 @@ func (tr *judgmentsTrack) diff(t *testing.T, args ...string) (string, error) {
 	return out.String(), err
 }
 
-// pairwiseRow returns the numbers of a pairwise agreement row: n, exact,
-// within one, relevant, then each kappa.
+// pairwiseRow returns a pairwise row's numbers: n, exact, within one, relevant, then each kappa.
 func pairwiseRow(t *testing.T, output, pair string) []string {
 	t.Helper()
 	line := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(pair) + `\s+(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)`).FindStringSubmatch(output)
@@ -496,9 +493,7 @@ func TestDiffJudgments_SameInputsPrintTheSameBytes(t *testing.T) {
 	assert.Equal(t, first, second)
 }
 
-// addQueries rewrites the track with n more keyword queries of four docs each,
-// graded differently by first, second and bm25, so a bootstrap over the
-// queries has intervals a seed can move.
+// addQueries adds n graded keyword queries, so the bootstrap has intervals a seed can move.
 func (tr *judgmentsTrack) addQueries(t *testing.T, n int) {
 	t.Helper()
 	pf, err := pool.ReadPoolFile(filepath.Join(tr.root, "trec", "pool.yaml"))
@@ -590,8 +585,7 @@ func TestDiffJudgments_OutputNamesEverySourceItRead(t *testing.T) {
 	assert.Equal(t, "run-agreement", written.Meta.Sources.ReportRunID)
 }
 
-// writeReport records a run of engines a and b on kw, scored with "first":
-// a ranks k1, k2 (P@2 = 1/2 at threshold 3) and b ranks k3, k1 (P@2 = 1/2).
+// writeReport records engines a (k1, k2) and b (k3, k1) on kw, both P@2 = 1/2 under "first".
 func (tr *judgmentsTrack) writeReport(t *testing.T) {
 	t.Helper()
 	cell := func(engine string, docs ...uuid.UUID) report.Entry {
@@ -654,9 +648,7 @@ func (tr *judgmentsTrack) writeGrades(t *testing.T, name string, judge meta.Judg
 		filepath.Join(tr.root, "trec", "annotations."+name+".yaml")))
 }
 
-// Hand grades are the manual judgment set. The expected κ is sklearn's
-// cohen_kappa_score(hand, judge, weights="quadratic", labels=[0, 1, 2, 3])
-// over the six pairs both graded, 8/13.
+// Expected κ is sklearn's quadratic cohen_kappa_score over the six shared pairs, 8/13.
 func TestDiffJudgments_MeasuresHandGradesAgainstAJudgeWithoutTouchingThem(t *testing.T) {
 	tr := newJudgmentsTrack(t)
 	hand := []int{2, 1, 0, 3, 3, 1, 3, judgment.GradeUnjudged}

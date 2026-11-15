@@ -117,8 +117,7 @@ func (g gradeCommand) execute(cmd *cobra.Command, args []string) error {
 	if err := session.run(cmd.Context()); err != nil {
 		return err
 	}
-	// The agreement would reveal the judge's grades mid-sample, so a session
-	// reports progress only.
+	// A session reports progress only, since agreement would reveal the judge's grades.
 	w := cmd.OutOrStdout()
 	printDone(w, "Hand grades saved: "+manualPath)
 	walked := len(session.walk)
@@ -166,9 +165,7 @@ func indexGrades(jf *judgment.File) map[pairKey]*judgment.GradedDoc {
 	return grades
 }
 
-// gradingWalk orders the pairs a session visits: grouped by query, docs
-// shuffled within each query. It depends on neither the pool's order nor hand
-// grades, so the walk stays the same while a grader works through it.
+// gradingWalk groups pairs by query and shuffles docs, independent of pool order and hand grades.
 func gradingWalk(pf *pool.PoolFile, judgeGrades map[pairKey]*judgment.GradedDoc, sampleSize int, seed uint64) []gradingPair {
 	rng := rand.New(rand.NewPCG(seed, 0))
 	var pairs []gradingPair
@@ -198,9 +195,7 @@ func gradingWalk(pf *pool.PoolFile, judgeGrades map[pairKey]*judgment.GradedDoc,
 	return walk
 }
 
-// stratifiedSample draws size pairs the judge graded, an equal share per
-// grade. Strata are filled smallest first, so a grade with fewer pairs than
-// its share gives the shortfall to the grades after it.
+// stratifiedSample draws an equal share per judge grade; a grade short of its share passes the rest on.
 func stratifiedSample(pairs []gradingPair, judgeGrades map[pairKey]*judgment.GradedDoc, size int, rng *rand.Rand) []gradingPair {
 	var strata [judgment.GradeHighly + 1][]gradingPair
 	total := 0
@@ -306,8 +301,7 @@ func (s *gradingSession) setGrade(p gradingPair, grade int) error {
 	return nil
 }
 
-// readLines sends each line of r, closing the channel at end of input. A
-// session that ends early leaves the goroutine behind; it holds only stdin.
+// readLines streams r's lines; an early exit leaves the goroutine holding only stdin.
 func readLines(r io.Reader) <-chan string {
 	lines := make(chan string)
 	go func() {
@@ -320,8 +314,7 @@ func readLines(r io.Reader) <-chan string {
 	return lines
 }
 
-// readAction reads answers until one is valid. End of input or an interrupt
-// quits; every grade is already saved.
+// readAction reads until an answer is valid; end of input or an interrupt quits.
 func (s *gradingSession) readAction(ctx context.Context, canUndo bool) (gradingAction, int) {
 	for {
 		fmt.Fprint(s.out, cBold.Sprint("grade 0-3 · s skip · u undo · q quit > "))
@@ -393,8 +386,7 @@ func printField(w io.Writer, label, value string) {
 	fmt.Fprintf(w, "%s %s\n", cDim.Sprintf("%-18s", label+":"), value)
 }
 
-// publisher shows the domain beside the name, since a publisher_domain filter
-// compares the domain.
+// publisher shows the domain, which publisher_domain filters compare.
 func publisher(a document.Article) string {
 	switch {
 	case a.Metadata.PublisherName == "":

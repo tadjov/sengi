@@ -26,8 +26,7 @@ type Gated struct {
 	Titles   map[uuid.UUID]string
 }
 
-// Gate reads each pair's article and keeps the pairs the gate admits, in the
-// order given.
+// Gate keeps the pairs whose article the gate admits.
 func Gate(ctx context.Context, opts GateOptions) (Gated, error) {
 	queries := make(map[string]pool.PoolEntry, len(opts.Pool.Queries))
 	for _, entry := range opts.Pool.Queries {

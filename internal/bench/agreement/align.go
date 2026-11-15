@@ -22,9 +22,7 @@ type pairKey struct {
 	docID   uuid.UUID
 }
 
-// Align returns the pairs every set graded 0 to 3, sorted by query then doc.
-// Sets match on (query, doc) alone: a sample is pooled on its own, so its
-// pool_run_id never equals the full pool's.
+// Align returns the pairs every set graded 0 to 3, matched on (query, doc), never on pool id.
 func Align(sets []Set) ([]Pair, error) {
 	grades := make([]map[pairKey]int, len(sets))
 	for i, s := range sets {
