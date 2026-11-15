@@ -9,12 +9,14 @@ import (
 	"iter"
 	"log/slog"
 	"maps"
+	"math/rand/v2"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/elastic/go-elasticsearch/v8/typedapi/core/bulk"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/translogdurability"
 	"github.com/google/uuid"
@@ -653,6 +655,26 @@ func (b *bulkBatch) add(id uuid.UUID, doc loadedDocument) error {
 	return nil
 }
 
+const bulkRetries = 6
+
+// bulk resends a request Elasticsearch turned away whole for indexing pressure, which stored nothing.
+func (l *CorpusLoader) bulk(ctx context.Context, payload []byte) (*bulk.Response, error) {
+	for attempt := 0; ; attempt++ {
+		res, err := l.client.typed.Bulk().Index(l.client.indexName).Raw(bytes.NewReader(payload)).Do(ctx)
+		var esErr *types.ElasticsearchError
+		if attempt == bulkRetries || !errors.As(err, &esErr) || esErr.Status != http.StatusTooManyRequests {
+			return res, err
+		}
+		// Randomised exponential backoff, as Elastic's indexing guide asks of a client that sees 429.
+		backoff := rand.N(100 * time.Millisecond << attempt)
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
+
 // sendBatch encodes on the sending goroutine, so a document that cannot be encoded fails alone.
 func (l *CorpusLoader) sendBatch(ctx context.Context, batch documentBatch, tally *bulkTally) error {
 	var body bulkBatch
@@ -666,7 +688,7 @@ func (l *CorpusLoader) sendBatch(ctx context.Context, batch documentBatch, tally
 		tally.merge(writeCounts{}, rejected)
 		return nil
 	}
-	res, err := l.client.typed.Bulk().Index(l.client.indexName).Raw(&body.body).Do(ctx)
+	res, err := l.bulk(ctx, body.body.Bytes())
 	if err != nil {
 		return fmt.Errorf("bulk write %d articles from %s: %w", len(body.ids), body.ids[0], err)
 	}

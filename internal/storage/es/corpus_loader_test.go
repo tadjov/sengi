@@ -472,6 +472,22 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 		assertNoIndex(t, container.Address, index)
 	})
 
+	t.Run("rides out bulk requests elasticsearch turns away for indexing pressure", func(t *testing.T) {
+		index := "articles_indexing_pressure_test"
+		articles := testArticles(4000)
+		for i := range articles {
+			articles[i].Content = strings.Repeat(articles[i].Content+" ", 1_100)
+		}
+
+		record, err := loadCorpusWith(t, container.Address, index, corpusOf(articles, nil), storage.LoadOptions{BatchSize: 500, Concurrency: 8})
+		if err != nil {
+			t.Fatalf("LoadCorpus: %v", err)
+		}
+		if record.Articles != int64(len(articles)) {
+			t.Errorf("articles = %d, want %d", record.Articles, len(articles))
+		}
+	})
+
 	t.Run("refuses a load with no concurrency and creates no index", func(t *testing.T) {
 		index := "articles_no_concurrency_test"
 		if _, err := loadCorpusWith(t, container.Address, index, corpusOf(testArticles(2), nil), storage.LoadOptions{BatchSize: 100}); err == nil {
