@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -387,6 +388,45 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 		}
 	})
 
+	t.Run("writes with an async translog and restores request durability after", func(t *testing.T) {
+		index := "articles_async_translog_test"
+		articles := testArticles(4)
+		var duringLoad any
+		corpus := corpusOf(articles, nil)
+		corpus.Articles = func(yield func(document.Article, error) bool) {
+			for i, a := range articles {
+				if i == 2 {
+					duringLoad = flatSetting(t, container.Address, index, "index.translog.durability")
+				}
+				if !yield(a, nil) {
+					return
+				}
+			}
+		}
+		record, err := loadCorpus(t, container.Address, index, corpus, 2)
+		if err != nil {
+			t.Fatalf("LoadCorpus: %v", err)
+		}
+		if duringLoad != any("async") {
+			t.Errorf("index.translog.durability during the load = %v, want \"async\"", duringLoad)
+		}
+		if after := flatSetting(t, container.Address, index, "index.translog.durability"); after != any("request") {
+			t.Errorf("index.translog.durability after the load = %v, want \"request\"", after)
+		}
+		for key, want := range map[string]string{
+			"load.index.translog.durability": "async",
+			"load.index.refresh_interval":    "-1",
+			"index.translog.durability":      "request",
+		} {
+			if got := record.Settings[key]; got != want {
+				t.Errorf("record setting %s = %q, want %q", key, got, want)
+			}
+		}
+		if segments, err := strconv.Atoi(record.Settings["load.segments_before_force_merge"]); err != nil || segments < 1 {
+			t.Errorf("record setting load.segments_before_force_merge = %q, want a segment count", record.Settings["load.segments_before_force_merge"])
+		}
+	})
+
 	t.Run("keeps refresh off while the articles are written", func(t *testing.T) {
 		index := "articles_refresh_off_test"
 		articles := testArticles(4)
@@ -574,6 +614,15 @@ func assertNoIndex(t *testing.T, address, index string) {
 	if res.StatusCode != http.StatusNotFound {
 		t.Errorf("index %s exists (status %d), want none left behind", index, res.StatusCode)
 	}
+}
+
+func flatSetting(t *testing.T, address, index, key string) any {
+	t.Helper()
+	var settings map[string]struct {
+		Settings map[string]any `json:"settings"`
+	}
+	getJSON(t, address+"/"+index+"/_settings?flat_settings=true", &settings)
+	return settings[index].Settings[key]
 }
 
 func loadCorpus(t *testing.T, address, index string, c storage.Corpus, batchSize int) (storage.LoadRecord, error) {
