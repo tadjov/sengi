@@ -222,21 +222,11 @@ func refuseExistingVersion(dir string) error {
 
 // derivedEmbeddingsDir maps datasets/<ds>/canonical/<version>/ to datasets/<ds>/embeddings/.
 func derivedEmbeddingsDir(canonical string) (string, error) {
-	if strings.Contains(canonical, "://") {
-		return "", fmt.Errorf("canonical package %s is remote; embed a local copy under datasets/<ds>/canonical/<version>/", canonical)
-	}
-	dir := canonical
-	if filepath.Ext(dir) == ".json" {
-		dir = filepath.Dir(dir)
-	}
-	dir, err := filepath.Abs(dir)
+	root, err := datasetRoot(canonical)
 	if err != nil {
-		return "", fmt.Errorf("resolve %s: %w", canonical, err)
+		return "", fmt.Errorf("%w; embed from a local copy", err)
 	}
-	if filepath.Base(filepath.Dir(dir)) != "canonical" {
-		return "", fmt.Errorf("canonical package %s is not under datasets/<ds>/canonical/<version>/", canonical)
-	}
-	return filepath.Join(filepath.Dir(filepath.Dir(dir)), "embeddings"), nil
+	return filepath.Join(root, "embeddings"), nil
 }
 
 // publishEmbeddings stages the package so a failed or cancelled run leaves nothing behind.
