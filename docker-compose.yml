@@ -1,5 +1,5 @@
 # Every engine gets cpus: 8 and mem_limit: 7g. shared_buffers is 25% of it, effective_cache_size the rest,
-# the Elasticsearch heap 50%, and the worker counts follow the cpus.
+# Elasticsearch sizes its own heap from the limit, and the worker counts follow the cpus.
 services:
   pg-news-native:
     image: pgvector/pgvector:pg18
@@ -80,7 +80,6 @@ services:
       - cluster.name=news-cluster
       - discovery.type=single-node
       - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms3584m -Xmx3584m"
       - node.processors=8
       - xpack.security.enabled=false
       - xpack.security.enrollment.enabled=false
