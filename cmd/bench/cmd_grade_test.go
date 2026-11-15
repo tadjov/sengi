@@ -29,8 +29,7 @@ import (
 
 const retrievingEngine = "engine-zeta-retriever"
 
-// gradeFixture is a track whose pool holds queries × docs pairs, each doc
-// with its own title, plus the bm25 judge file graded against that pool.
+// gradeFixture is a track of queries × docs pairs plus a bm25 judge file for that pool.
 type gradeFixture struct {
 	track    string
 	articles articleStore
@@ -124,8 +123,7 @@ func (fx *gradeFixture) gradeWithReader(t *testing.T, reader storage.Reader, std
 	return out.String(), err
 }
 
-// shown lists the pairs whose article the output displayed, in the order they
-// first appeared.
+// shown lists the displayed pairs in first-seen order.
 func (fx *gradeFixture) shown(output string) []pairKey {
 	type sighting struct {
 		at   int
@@ -197,8 +195,7 @@ func TestGrade_UnknownAnswerRepromptsForTheSamePair(t *testing.T) {
 	assert.Equal(t, judgment.GradeUnjudged, got[shown[1]])
 }
 
-// failingStore stops serving articles after the first, like a store that
-// went away mid-session.
+// failingStore stops serving after the first article, like a store lost mid-session.
 type failingStore struct {
 	articleStore
 	served int
@@ -278,8 +275,7 @@ func TestGrade_ScreenShowsTheQueryAndTheArticle(t *testing.T) {
 		"the hand grader reads the query the judge grades before its description")
 }
 
-// The judge compares instants, so a bound written in another zone shows as
-// the UTC date it falls on.
+// The judge compares instants, so a bound in another zone shows as its UTC date.
 func TestGrade_ScreenShowsAFilterBoundInUTC(t *testing.T) {
 	fx := newGradeFixture(t, 1, 1)
 	fx.pool.Queries[0].Filters = suite.Filters{PublishedAfter: time.Date(2024, 3, 1, 22, 0, 0, 0, time.FixedZone("", -2*60*60))}
@@ -294,8 +290,7 @@ func TestGrade_ScreenShowsAFilterBoundInUTC(t *testing.T) {
 	assert.Equal(t, "published_after=2024-03-02", filters[1])
 }
 
-// pgx scans published_at into the local zone; the screen shows the UTC date
-// the filters compare against.
+// pgx scans published_at in local time; the screen shows the UTC date filters compare.
 func TestGrade_ScreenShowsThePublicationDateInUTC(t *testing.T) {
 	fx := newGradeFixture(t, 1, 1)
 	eastOfUTC := time.FixedZone("UTC+2", 2*60*60)
@@ -319,8 +314,7 @@ func TestGrade_ScreenShowsNoFiltersLineForAnUnfilteredQuery(t *testing.T) {
 	assert.NotContains(t, out, "filters:")
 }
 
-// A full session graded the same way must read the same whatever the judge
-// said, down to its closing lines.
+// A session must read the same whatever the judge said, closing lines included.
 func TestGrade_SessionHidesTheJudgesGradeAndTheRetrievingEngines(t *testing.T) {
 	fx := newGradeFixture(t, 2, 3)
 	sessionAgainst := func(judgeGrade int) string {
@@ -441,66 +435,12 @@ func gradeCounts(pairs []pairKey, grades map[pairKey]int) map[int]int {
 	return counts
 }
 
-func (fx *gradeFixture) writeHandGrades(t *testing.T, gradeOf func(n int) int) {
-	t.Helper()
-	judge := judgment.NewManualStrategy().Describe()
-	jf := &judgment.File{Meta: meta.Meta{Judge: &judge, PoolRunID: fx.pool.Meta.RunID}}
-	n := 0
-	for _, entry := range fx.pool.Queries {
-		graded := judgment.Entry{QueryID: entry.QueryID}
-		for _, doc := range entry.Docs {
-			graded.Docs = append(graded.Docs, judgment.GradedDoc{DocID: doc.DocID, Grade: gradeOf(n)})
-			n++
-		}
-		jf.Queries = append(jf.Queries, graded)
-	}
-	require.NoError(t, judgment.WriteFile(jf, filepath.Join(fx.track, "trec", "annotations.manual.yaml")))
-}
-
-func tableRow(t *testing.T, output, label string) []string {
-	t.Helper()
-	for line := range strings.SplitSeq(output, "\n") {
-		if fields := strings.Fields(line); len(fields) > 2 && fields[0]+" "+fields[1] == label {
-			return fields[2:]
-		}
-	}
-	t.Fatalf("no %q row in:\n%s", label, output)
-	return nil
-}
-
-// The expected κ is sklearn's cohen_kappa_score(hand, judge,
-// weights="quadratic", labels=[0, 1, 2, 3]) over the six pairs both graded.
-func TestGrade_ReportComparesThePairsGradedInBothFilesWithoutASession(t *testing.T) {
-	fx := newGradeFixture(t, 1, 8)
-	hand := []int{2, 1, 0, 3, 3, 1, 3, judgment.GradeUnjudged}
-	judge := []int{2, 2, 0, 3, 1, 1, judgment.GradeUnjudged, 2}
-	fx.writeJudge(t, func(n int) int { return judge[n] })
-	fx.writeHandGrades(t, func(n int) int { return hand[n] })
-	before := fx.handGrades(t)
-	noStore := func(*cobra.Command, string) (storage.Reader, error) { return nil, errors.New("no store") }
-	cmd := newGradeCmdWithReader(noStore)
-	var out bytes.Buffer
-	cmd.SetIn(strings.NewReader("0\n0\n0\n"))
-	cmd.SetOut(&out)
-	cmd.SetArgs([]string{fx.track, "--against", "bm25", "--report"})
-
-	require.NoError(t, cmd.ExecuteContext(context.Background()))
-
-	report := out.String()
-	assert.Contains(t, report, "6 pairs")
-	assert.Contains(t, report, "66.7%")
-	assert.Contains(t, report, "0.615")
-	assert.Equal(t, []string{"0", "1", "0", "1"}, tableRow(t, report, "hand 3"))
-	assert.Equal(t, before, fx.handGrades(t))
-}
-
-func TestGrade_ReportWithoutHandGradesFails(t *testing.T) {
+func TestGrade_HasNoReportFlag(t *testing.T) {
 	fx := newGradeFixture(t, 1, 2)
 
 	_, err := fx.grade(t, "", "--report")
 
-	require.Error(t, err)
-	assert.NoFileExists(t, filepath.Join(fx.track, "trec", "annotations.manual.yaml"))
+	assert.ErrorContains(t, err, "unknown flag: --report")
 }
 
 func TestGrade_SessionEndsWithProgressOnly(t *testing.T) {
@@ -512,12 +452,11 @@ func TestGrade_SessionEndsWithProgressOnly(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Contains(t, partial, "graded 2 of 3")
-	assert.NotContains(t, partial, "--report")
-	assert.Contains(t, complete, "--report")
+	assert.NotContains(t, partial, "bench diff judgments")
+	assert.Contains(t, complete, "bench diff judgments --judgments manual,bm25")
 }
 
-// cancelAtPrompt cancels the session's context once the prompt has been shown
-// n times, the way Ctrl-C lands while the grader is reading.
+// cancelAtPrompt cancels once the prompt has shown n times, like Ctrl-C mid-session.
 type cancelAtPrompt struct {
 	mu      sync.Mutex
 	out     bytes.Buffer
