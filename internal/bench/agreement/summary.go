@@ -46,8 +46,9 @@ type SummaryOptions struct {
 type Summary struct {
 	Pairs         int            `json:"pairs"`
 	Distributions []Distribution `json:"distributions"`
-	Comparisons   []Comparison   `json:"comparisons"`
-	Reference     *Reference     `json:"reference,omitempty"`
+	// Comparisons pair each set with every later one, in set order.
+	Comparisons []Comparison `json:"comparisons"`
+	Reference   *Reference   `json:"reference,omitempty"`
 }
 
 // Distribution counts one set's pairs at each grade, 0 to 3.
