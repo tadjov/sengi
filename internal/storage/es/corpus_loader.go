@@ -411,66 +411,33 @@ func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string,
 
 // readNodeBudget records the processors and heap the node runs with, and its container's cgroup limits.
 func (l *CorpusLoader) readNodeBudget(ctx context.Context, settings map[string]string) error {
-	var info struct {
-		Nodes map[string]struct {
-			Os struct {
-				AllocatedProcessors int `json:"allocated_processors"`
-			} `json:"os"`
-			Jvm struct {
-				Mem struct {
-					HeapMaxInBytes int64 `json:"heap_max_in_bytes"`
-				} `json:"mem"`
-			} `json:"jvm"`
-		} `json:"nodes"`
+	info, err := l.client.typed.Nodes.Info().Metric("os,jvm").Do(ctx)
+	if err != nil {
+		return fmt.Errorf("read node info: %w", err)
 	}
-	res, err := l.client.typed.Nodes.Info().Metric("os,jvm").Perform(ctx)
-	if err := decodeNodes(res, err, "read node info", &info); err != nil {
-		return err
-	}
-	var stats struct {
-		Nodes map[string]struct {
-			Os struct {
-				Cgroup struct {
-					Cpu struct {
-						CfsPeriodMicros int64 `json:"cfs_period_micros"`
-						CfsQuotaMicros  int64 `json:"cfs_quota_micros"`
-					} `json:"cpu"`
-					Memory struct {
-						LimitInBytes string `json:"limit_in_bytes"`
-					} `json:"memory"`
-				} `json:"cgroup"`
-			} `json:"os"`
-		} `json:"nodes"`
-	}
-	res, err = l.client.typed.Nodes.Stats().Metric("os").Perform(ctx)
-	if err := decodeNodes(res, err, "read node stats", &stats); err != nil {
-		return err
+	stats, err := l.client.typed.Nodes.Stats().Metric("os").Do(ctx)
+	if err != nil {
+		return fmt.Errorf("read node stats: %w", err)
 	}
 	if len(info.Nodes) != 1 || len(stats.Nodes) != 1 {
 		return fmt.Errorf("node budget: want one node, info lists %d and stats %d", len(info.Nodes), len(stats.Nodes))
 	}
 	for _, node := range info.Nodes {
-		settings["node.allocated_processors"] = strconv.Itoa(node.Os.AllocatedProcessors)
+		if node.Os == nil || node.Os.AllocatedProcessors == nil || node.Jvm == nil {
+			return errors.New("node info reports no allocated processors or JVM")
+		}
+		settings["node.allocated_processors"] = strconv.Itoa(*node.Os.AllocatedProcessors)
 		settings["node.heap_max_bytes"] = strconv.FormatInt(node.Jvm.Mem.HeapMaxInBytes, 10)
 	}
 	for _, node := range stats.Nodes {
+		if node.Os == nil || node.Os.Cgroup == nil || node.Os.Cgroup.Cpu == nil || node.Os.Cgroup.Memory == nil ||
+			node.Os.Cgroup.Cpu.CfsQuotaMicros == nil || node.Os.Cgroup.Cpu.CfsPeriodMicros == nil || node.Os.Cgroup.Memory.LimitInBytes == nil {
+			return errors.New("node stats report no cgroup cpu quota or memory limit")
+		}
 		cgroup := node.Os.Cgroup
-		settings[storage.ContainerCPUsSetting] = storage.ContainerCPUs(cgroup.Cpu.CfsQuotaMicros, cgroup.Cpu.CfsPeriodMicros)
-		settings[storage.ContainerMemorySetting] = cgroup.Memory.LimitInBytes
-	}
-	return nil
-}
-
-func decodeNodes(res *http.Response, err error, what string, into any) error {
-	if err != nil {
-		return fmt.Errorf("%s: %w", what, err)
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s: status %d", what, res.StatusCode)
-	}
-	if err := json.NewDecoder(res.Body).Decode(into); err != nil {
-		return fmt.Errorf("%s: %w", what, err)
+		quota := storage.CPUQuota{QuotaMicros: int64(*cgroup.Cpu.CfsQuotaMicros), PeriodMicros: int64(*cgroup.Cpu.CfsPeriodMicros)}
+		settings[storage.ContainerCPUsSetting] = quota.CPUs()
+		settings[storage.ContainerMemorySetting] = *cgroup.Memory.LimitInBytes
 	}
 	return nil
 }
@@ -505,7 +472,7 @@ func (l *CorpusLoader) writeDocuments(ctx context.Context, c storage.Corpus, opt
 	batches := make(chan documentBatch, opts.Concurrency)
 	group.Go(func() error {
 		defer close(batches)
-		return batchDocuments(ctx, c, opts.BatchSize, batches)
+		return batchDocuments(ctx, c, opts, batches)
 	})
 	for range opts.Concurrency {
 		group.Go(func() error {
@@ -532,7 +499,7 @@ type documentBatch struct {
 }
 
 // batchDocuments pairs each article with its vector in corpus order before any batch leaves.
-func batchDocuments(ctx context.Context, c storage.Corpus, batchSize int, batches chan<- documentBatch) error {
+func batchDocuments(ctx context.Context, c storage.Corpus, opts storage.LoadOptions, batches chan<- documentBatch) error {
 	vectors := vectorZip{modelTag: c.ModelTag}
 	if c.Vectors != nil {
 		next, stop := iter.Pull2(c.Vectors)
@@ -570,7 +537,7 @@ func batchDocuments(ctx context.Context, c storage.Corpus, batchSize int, batche
 
 		batch.ids = append(batch.ids, article.ID)
 		batch.docs = append(batch.docs, doc)
-		if len(batch.ids) == batchSize {
+		if len(batch.ids) == opts.BatchSize {
 			if err := send(); err != nil {
 				return err
 			}

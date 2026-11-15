@@ -300,7 +300,7 @@ func readContainerBudget(ctx context.Context, conn *pgx.Conn, settings map[strin
 	if err != nil {
 		return fmt.Errorf("cgroup cpu.max period %q: %w", period, err)
 	}
-	settings[storage.ContainerCPUsSetting] = storage.ContainerCPUs(quotaMicros, periodMicros)
+	settings[storage.ContainerCPUsSetting] = storage.CPUQuota{QuotaMicros: quotaMicros, PeriodMicros: periodMicros}.CPUs()
 	settings[storage.ContainerMemorySetting] = strings.TrimSpace(memoryMax)
 	return nil
 }
@@ -431,7 +431,7 @@ func (cp *corpusCopier) copyArticles(ctx context.Context, c storage.Corpus) ([]u
 		ids = append(ids, a.ID)
 		return insertRow(a)
 	}
-	plan := copyPlan[document.Article]{Table: "articles", Columns: ArticleColumns, Items: c.Articles, ToRow: toRow}
+	plan := copyPlan[document.Article]{Table: "articles", Columns: ArticleColumns, Items: c.Articles, ToRow: toRow, BatchSize: cp.batchSize}
 	if err := copyConcurrently(ctx, cp, plan); err != nil {
 		return nil, cp.failed(fmt.Errorf("copy articles: %w", err))
 	}
@@ -452,10 +452,11 @@ func (cp *corpusCopier) copyVectors(ctx context.Context, c storage.Corpus, ids [
 		return []any{v.ID, c.ModelTag, pgvector.NewVector(v.Embedding)}, nil
 	}
 	plan := copyPlan[embedding.Vec]{
-		Table:   "article_embeddings",
-		Columns: []string{"article_id", "model_name", "embedding"},
-		Items:   c.Vectors,
-		ToRow:   toRow,
+		Table:     "article_embeddings",
+		Columns:   []string{"article_id", "model_name", "embedding"},
+		Items:     c.Vectors,
+		ToRow:     toRow,
+		BatchSize: cp.batchSize,
 	}
 	if err := copyConcurrently(ctx, cp, plan); err != nil {
 		return 0, cp.failed(fmt.Errorf("copy embeddings: %w", err))
@@ -464,10 +465,11 @@ func (cp *corpusCopier) copyVectors(ctx context.Context, c storage.Corpus, ids [
 }
 
 type copyPlan[T any] struct {
-	Table   string
-	Columns []string
-	Items   iter.Seq2[T, error]
-	ToRow   func(T) ([]any, error)
+	Table     string
+	Columns   []string
+	Items     iter.Seq2[T, error]
+	ToRow     func(T) ([]any, error)
+	BatchSize int
 }
 
 // copyConcurrently converts rows on one goroutine, in corpus order, and copies each batch on the next free connection.
@@ -476,7 +478,7 @@ func copyConcurrently[T any](ctx context.Context, cp *corpusCopier, plan copyPla
 	batches := make(chan [][]any, cp.concurrency)
 	group.Go(func() error {
 		defer close(batches)
-		return batchRows(ctx, plan, cp.batchSize, batches)
+		return batchRows(ctx, plan, batches)
 	})
 	var copied atomic.Int64
 	for range cp.concurrency {
@@ -497,12 +499,12 @@ func copyConcurrently[T any](ctx context.Context, cp *corpusCopier, plan copyPla
 	return group.Wait()
 }
 
-func batchRows[T any](ctx context.Context, plan copyPlan[T], batchSize int, batches chan<- [][]any) error {
-	batch := make([][]any, 0, batchSize)
+func batchRows[T any](ctx context.Context, plan copyPlan[T], batches chan<- [][]any) error {
+	batch := make([][]any, 0, plan.BatchSize)
 	send := func() error {
 		select {
 		case batches <- batch:
-			batch = make([][]any, 0, batchSize)
+			batch = make([][]any, 0, plan.BatchSize)
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
@@ -517,7 +519,7 @@ func batchRows[T any](ctx context.Context, plan copyPlan[T], batchSize int, batc
 			return err
 		}
 		batch = append(batch, row)
-		if len(batch) == batchSize {
+		if len(batch) == plan.BatchSize {
 			if err := send(); err != nil {
 				return err
 			}
