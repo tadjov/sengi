@@ -208,7 +208,11 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 		return err
 	}
 	indexes := collectIndexProvenance(cmd.Context(), cmd.OutOrStdout(), executors)
-	containers := inspectContainers(cmd.Context(), cmd.OutOrStdout(), bs.Engines)
+	for name, container := range inspectContainers(cmd.Context(), cmd.OutOrStdout(), bs.Engines) {
+		provenance := indexes[name]
+		provenance.Container = &container
+		indexes[name] = provenance
+	}
 
 	r := runner.New(runCfg)
 	sp := startSpinner("Running " + tr.Name() + "…")
@@ -221,10 +225,9 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 	}
 
 	rpt := report.Generate(result, &report.GenerateOptions{
-		Spec:       bs,
-		Corpus:     corpus,
-		Indexes:    indexes,
-		Containers: containers,
+		Spec:    bs,
+		Corpus:  corpus,
+		Indexes: indexes,
 	})
 	rpt.Provenance.SpecID = bs.ID
 	rpt.Provenance.Sources = &meta.Sources{

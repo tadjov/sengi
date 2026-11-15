@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tadjov/tusker/internal/bench/engine"
 	"github.com/tadjov/tusker/internal/bench/meta"
 	"github.com/tadjov/tusker/internal/bench/metrics"
 	"github.com/tadjov/tusker/internal/bench/runner"
@@ -17,10 +16,9 @@ import (
 )
 
 type GenerateOptions struct {
-	Spec       *spec.BenchSpec
-	Corpus     CorpusInfo
-	Indexes    map[string]IndexProvenance
-	Containers map[string]engine.Container
+	Spec    *spec.BenchSpec
+	Corpus  CorpusInfo
+	Indexes map[string]IndexProvenance
 }
 
 func Generate(br *runner.BenchmarkResult, opts *GenerateOptions) *Report {
@@ -47,9 +45,6 @@ func Generate(br *runner.BenchmarkResult, opts *GenerateOptions) *Report {
 				if provenance, ok := opts.Indexes[name]; ok {
 					info.Version = provenance.Version()
 					info.Index = &provenance
-				}
-				if container, ok := opts.Containers[name]; ok {
-					info.Container = &container
 				}
 				r.Environment.Engines[name] = info
 			}

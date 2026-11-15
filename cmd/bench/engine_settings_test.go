@@ -101,10 +101,10 @@ func TestRun_ReportRecordsWhatThePostgresServerRanWith(t *testing.T) {
 	require.NotNil(t, server.Limits, "unreadable: %v", server.Unreadable)
 	assert.NotEmpty(t, server.Limits.CPUMax)
 	assert.Empty(t, server.Unreadable)
-	require.NotNil(t, info.Container)
-	assert.Equal(t, "pgvector/pgvector:pg18", info.Container.Image)
-	assert.True(t, strings.HasPrefix(info.Container.ImageID, "sha256:"), info.Container.ImageID)
-	assert.Empty(t, info.Container.Note)
+	require.NotNil(t, info.Index.Container)
+	assert.Equal(t, "pgvector/pgvector:pg18", info.Index.Container.Image)
+	assert.True(t, strings.HasPrefix(info.Index.Container.ImageID, "sha256:"), info.Index.Container.ImageID)
+	assert.Empty(t, info.Index.Container.Note)
 }
 
 func TestRun_AServerThatCannotReadItsCgroupLimitsRecordsWhyAndRuns(t *testing.T) {
@@ -164,7 +164,7 @@ func TestRun_ReportRecordsWhatTheElasticsearchClusterRanWith(t *testing.T) {
 	assert.Equal(t, "0", cluster.Settings["index.number_of_replicas"])
 	require.NotEmpty(t, cluster.Nodes)
 	assert.Equal(t, int64(512<<20), cluster.Nodes[0].HeapMaxBytes, "the container's -Xmx512m")
-	assert.Nil(t, info.Container, "the spec names no container")
+	assert.Nil(t, info.Index.Container, "the spec names no container")
 }
 
 func esRequest(t *testing.T, method, url, body string) {
@@ -187,11 +187,11 @@ func TestRun_AContainerDockerCannotInspectIsRecordedAsANote(t *testing.T) {
 
 	require.NoError(t, err, "a failing docker inspect never fails the run")
 	engines := tr.latestReport(t).Environment.Engines
-	require.NotNil(t, engines["a"].Container)
-	assert.Equal(t, missing, engines["a"].Container.Name)
-	assert.NotEmpty(t, engines["a"].Container.Note)
-	assert.Empty(t, engines["a"].Container.Image)
-	assert.Nil(t, engines["b"].Container, "b names no container")
+	require.NotNil(t, engines["a"].Index.Container)
+	assert.Equal(t, missing, engines["a"].Index.Container.Name)
+	assert.NotEmpty(t, engines["a"].Index.Container.Note)
+	assert.Empty(t, engines["a"].Index.Container.Image)
+	assert.Nil(t, engines["b"].Index.Container, "b names no container")
 }
 
 func TestRun_NoContainerNamedRecordsNothingAndWarnsNothing(t *testing.T) {
@@ -201,7 +201,7 @@ func TestRun_NoContainerNamedRecordsNothingAndWarnsNothing(t *testing.T) {
 
 	require.NoError(t, err)
 	for name, info := range tr.latestReport(t).Environment.Engines {
-		assert.Nil(t, info.Container, name)
+		assert.Nil(t, info.Index.Container, name)
 	}
 	assert.NotContains(t, out, "container of")
 }

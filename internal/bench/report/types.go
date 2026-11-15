@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/bench/engine"
 	"github.com/tadjov/tusker/internal/bench/meta"
 	"github.com/tadjov/tusker/internal/bench/metrics"
 	"github.com/tadjov/tusker/internal/bench/runner"
@@ -45,8 +44,6 @@ type EngineInfo struct {
 	Version    string `json:"version,omitempty"`
 	// Index is nil in reports written before index provenance was recorded.
 	Index *IndexProvenance `json:"index,omitempty"`
-	// Container is nil unless the spec names the engine's container.
-	Container *engine.Container `json:"container,omitempty"`
 }
 
 type CorpusInfo struct {

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/tadjov/tusker/internal/bench/engine"
@@ -15,11 +16,14 @@ import (
 )
 
 // IndexProvenance is how an engine had the corpus indexed when the run
-// started. Error is set instead of a description when it could not be read;
-// a run never fails over provenance.
+// started, what it ran with, and the container image it ran from. Error is set
+// instead of a description when it could not be read; a run never fails over
+// provenance.
 type IndexProvenance struct {
 	engine.IndexDescription
-	Error string `json:"error,omitempty"`
+	// Container is nil unless the spec names the engine's container.
+	Container *engine.Container `json:"container,omitempty"`
+	Error     string            `json:"error,omitempty"`
 }
 
 // ProvenanceField is one comparable fact from an IndexProvenance.
@@ -63,28 +67,94 @@ func (p IndexProvenance) Fields() []ProvenanceField {
 		for name, value := range d.Settings {
 			add("setting."+name, value)
 		}
+		for _, setting := range d.ServerSettings {
+			add("server_setting."+setting.Name, fmt.Sprintf("%s%s (%s)", setting.Setting, setting.Unit, setting.Source))
+		}
+		if d.Limits != nil {
+			add("cgroup.cpu_max", d.Limits.CPUMax)
+			add("cgroup.memory_max", d.Limits.MemoryMax)
+		}
+		addUnreadable(add, d.Unreadable)
 		addLoadFields(add, d.Load)
 	}
 	if d := p.Elasticsearch; d != nil {
 		add("version", d.Version)
+		add("build_hash", d.BuildHash)
 		add("index", d.Index)
 		if len(d.Analysis) > 0 {
 			add("analysis", digest(d.Analysis))
 		}
+		for key, value := range d.Settings {
+			add("setting."+key, settingValue(value))
+		}
+		if c := d.ClusterSettings; c != nil {
+			for key, value := range c.Persistent {
+				add("cluster.persistent."+key, settingValue(value))
+			}
+			for key, value := range c.Transient {
+				add("cluster.transient."+key, settingValue(value))
+			}
+		}
+		for _, node := range d.Nodes {
+			addNodeFields(add, node)
+		}
 		for path, field := range d.Fields {
 			add("field."+path, describeField(field))
 		}
+		addUnreadable(add, d.Unreadable)
 		addLoadFields(add, d.Load)
+	}
+	if c := p.Container; c != nil {
+		add("container.name", c.Name)
+		add("container.image", c.Image)
+		add("container.image_id", c.ImageID)
+		add("container.repo_digests", strings.Join(c.RepoDigests, ", "))
+		if c.Note != "" {
+			add("container.note", c.Note)
+		}
 	}
 	sort.Slice(fields, func(i, j int) bool { return fields[i].Name < fields[j].Name })
 	return fields
+}
+
+func addNodeFields(add func(name, value string), node es.NodeStats) {
+	prefix := "node." + node.Name + "."
+	add(prefix+"heap_max_bytes", strconv.FormatInt(node.HeapMaxBytes, 10))
+	if node.CPUQuotaMicros != nil {
+		add(prefix+"cpu_quota_micros", strconv.FormatInt(*node.CPUQuotaMicros, 10))
+	}
+	if node.CPUPeriodMicros != nil {
+		add(prefix+"cpu_period_micros", strconv.FormatInt(*node.CPUPeriodMicros, 10))
+	}
+	if node.MemoryLimit != "" {
+		add(prefix+"memory_limit", node.MemoryLimit)
+	}
+}
+
+func addUnreadable(add func(name, value string), unreadable []string) {
+	if len(unreadable) > 0 {
+		add("unreadable", strings.Join(unreadable, "; "))
+	}
+}
+
+// settingValue writes a setting as ES does, which is a string except for a
+// list.
+func settingValue(value any) string {
+	if s, ok := value.(string); ok {
+		return s
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Sprint(value)
+	}
+	return string(encoded)
 }
 
 // Summary is a one-line account of the provenance for `bench show report`.
 func (p IndexProvenance) Summary() string {
 	var parts []string
 	if d := p.Postgres; d != nil {
-		parts = append(parts, "postgres "+d.ServerVersion)
+		parts = append(parts, "postgres "+postgresRelease(d.ServerVersion))
 		if len(d.Extensions) > 0 {
 			extensions := make([]string, len(d.Extensions))
 			for i, ext := range d.Extensions {
@@ -96,7 +166,12 @@ func (p IndexProvenance) Summary() string {
 		if len(d.Settings) > 0 {
 			parts = append(parts, "settings: "+formatSettings(d.Settings))
 		}
+		parts = append(parts, fmt.Sprintf("server settings: %d", len(d.ServerSettings)))
+		if d.Limits != nil {
+			parts = append(parts, fmt.Sprintf("cgroup: cpu.max %s, memory.max %s", d.Limits.CPUMax, d.Limits.MemoryMax))
+		}
 		parts = appendLoadSummary(parts, d.Load)
+		parts = appendUnreadableSummary(parts, d.Unreadable)
 	}
 	if d := p.Elasticsearch; d != nil {
 		parts = append(parts, "elasticsearch "+d.Version, "index: "+d.Index)
@@ -104,7 +179,18 @@ func (p IndexProvenance) Summary() string {
 			parts = append(parts, "analyzers: "+strings.Join(analyzers, ", "))
 		}
 		parts = append(parts, fmt.Sprintf("fields: %d", len(d.Fields)))
+		for _, node := range d.Nodes {
+			parts = append(parts, fmt.Sprintf("node %s: heap %d MiB", node.Name, node.HeapMaxBytes>>20))
+		}
 		parts = appendLoadSummary(parts, d.Load)
+		parts = appendUnreadableSummary(parts, d.Unreadable)
+	}
+	if c := p.Container; c != nil {
+		if c.Note != "" {
+			parts = append(parts, "container "+c.Name+": "+c.Note)
+		} else {
+			parts = append(parts, "image: "+c.Image)
+		}
 	}
 	if p.Error != "" {
 		parts = append(parts, "error: "+p.Error)
@@ -132,6 +218,20 @@ func DiffProvenance(before, after *Report) []ProvenanceChange {
 		}
 	}
 	return changes
+}
+
+// postgresRelease cuts version() before the platform it was built on;
+// reports written before it was recorded hold the bare release.
+func postgresRelease(version string) string {
+	release, _, _ := strings.Cut(version, " on ")
+	return strings.TrimPrefix(release, "PostgreSQL ")
+}
+
+func appendUnreadableSummary(parts []string, unreadable []string) []string {
+	if len(unreadable) == 0 {
+		return parts
+	}
+	return append(parts, "unread: "+strings.Join(unreadable, "; "))
 }
 
 func addLoadFields(add func(name, value string), load *storage.LoadRecord) {

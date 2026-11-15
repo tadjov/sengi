@@ -116,3 +116,107 @@ func TestSummary_NamesTheLoadedPackagesAndTag(t *testing.T) {
 		}
 	}
 }
+
+func int64Pointer(v int64) *int64 { return &v }
+
+// recordedEnvironment is an engine provenance carrying one of each fact the
+// run records about what a Postgres or Elasticsearch engine ran with.
+func recordedEnvironment() (postgres, elasticsearch IndexProvenance) {
+	postgres = IndexProvenance{
+		IndexDescription: engine.IndexDescription{Postgres: &pg.IndexDescription{
+			ServerVersion:  "PostgreSQL 18.1 (Debian 18.1-1.pgdg12+2) on aarch64-unknown-linux-gnu",
+			Extensions:     []pg.Extension{{Name: "vector", Version: "0.8.1"}},
+			Settings:       map[string]string{"hnsw.ef_search": "200"},
+			ServerSettings: []pg.ServerSetting{{Name: "work_mem", Setting: "4096", Unit: "kB", Source: "command line"}},
+			Limits:         &pg.CgroupLimits{CPUMax: "max 100000", MemoryMax: "max"},
+		}},
+		Container: &engine.Container{Name: "pg-native-news", Image: "pgvector/pgvector:pg18", ImageID: "sha256:aaa", RepoDigests: []string{"pgvector/pgvector@sha256:bbb"}},
+	}
+	elasticsearch = IndexProvenance{IndexDescription: engine.IndexDescription{Elasticsearch: &es.IndexDescription{
+		Version:         "8.12.0",
+		BuildHash:       "1665f706",
+		Index:           "articles",
+		Settings:        map[string]any{"index.number_of_replicas": "0"},
+		ClusterSettings: &es.ClusterSettings{Persistent: map[string]any{"cluster.routing.allocation.enable": "all"}},
+		Nodes:           []es.NodeStats{{Name: "es-1", HeapMaxBytes: 512 << 20, CPUQuotaMicros: int64Pointer(-1), CPUPeriodMicros: int64Pointer(100000), MemoryLimit: "max"}},
+	}}}
+	return postgres, elasticsearch
+}
+
+func TestDiffProvenance_NamesEveryRecordedFactThatChanged(t *testing.T) {
+	tests := []struct {
+		name   string
+		change func(postgres, elasticsearch *IndexProvenance)
+		engine string
+		field  string
+	}{
+		{name: "an extension version", engine: "pg", field: "extension.vector",
+			change: func(p, _ *IndexProvenance) { p.Postgres.Extensions[0].Version = "0.8.2" }},
+		{name: "a server setting", engine: "pg", field: "server_setting.work_mem",
+			change: func(p, _ *IndexProvenance) { p.Postgres.ServerSettings[0].Setting = "8192" }},
+		{name: "a cgroup limit", engine: "pg", field: "cgroup.memory_max",
+			change: func(p, _ *IndexProvenance) { p.Postgres.Limits.MemoryMax = "8589934592" }},
+		{name: "a server read that failed", engine: "pg", field: "unreadable",
+			change: func(p, _ *IndexProvenance) { p.Postgres.Unreadable = []string{"read cgroup limits: permission denied"} }},
+		{name: "the image", engine: "pg", field: "container.image",
+			change: func(p, _ *IndexProvenance) { p.Container.Image = "pgvector/pgvector:pg17" }},
+		{name: "the image's registry digest", engine: "pg", field: "container.repo_digests",
+			change: func(p, _ *IndexProvenance) { p.Container.RepoDigests = []string{"pgvector/pgvector@sha256:ccc"} }},
+		{name: "the build", engine: "es", field: "build_hash",
+			change: func(_, e *IndexProvenance) { e.Elasticsearch.BuildHash = "0badc0de" }},
+		{name: "an index setting", engine: "es", field: "setting.index.number_of_replicas",
+			change: func(_, e *IndexProvenance) { e.Elasticsearch.Settings["index.number_of_replicas"] = "1" }},
+		{name: "a cluster setting", engine: "es", field: "cluster.persistent.cluster.routing.allocation.enable",
+			change: func(_, e *IndexProvenance) {
+				e.Elasticsearch.ClusterSettings.Persistent["cluster.routing.allocation.enable"] = "primaries"
+			}},
+		{name: "a node's heap", engine: "es", field: "node.es-1.heap_max_bytes",
+			change: func(_, e *IndexProvenance) { e.Elasticsearch.Nodes[0].HeapMaxBytes = 1 << 30 }},
+		{name: "a node's cpu quota", engine: "es", field: "node.es-1.cpu_quota_micros",
+			change: func(_, e *IndexProvenance) { e.Elasticsearch.Nodes[0].CPUQuotaMicros = int64Pointer(200000) }},
+		{name: "a node's memory limit", engine: "es", field: "node.es-1.memory_limit",
+			change: func(_, e *IndexProvenance) { e.Elasticsearch.Nodes[0].MemoryLimit = "2147483648" }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pgBefore, esBefore := recordedEnvironment()
+			pgAfter, esAfter := recordedEnvironment()
+			tt.change(&pgAfter, &esAfter)
+			report := func(postgres, elasticsearch IndexProvenance) *Report {
+				return &Report{Environment: RunEnvironment{Engines: map[string]EngineInfo{
+					"pg": {Index: &postgres}, "es": {Index: &elasticsearch},
+				}}}
+			}
+
+			changes := DiffProvenance(report(pgBefore, esBefore), report(pgAfter, esAfter))
+
+			if len(changes) != 1 || changes[0].Engine != tt.engine || changes[0].Field != tt.field {
+				t.Errorf("changes = %+v, want only %s's %s", changes, tt.engine, tt.field)
+			}
+		})
+	}
+}
+
+func TestSummary_NamesWhatTheEngineRanWith(t *testing.T) {
+	postgres, elasticsearch := recordedEnvironment()
+
+	tests := []struct {
+		name       string
+		provenance IndexProvenance
+		want       []string
+	}{
+		{name: "postgres", provenance: postgres, want: []string{"postgres 18.1 (Debian 18.1-1.pgdg12+2)", "server settings: 1", "cpu.max max 100000", "image: pgvector/pgvector:pg18"}},
+		{name: "elasticsearch", provenance: elasticsearch, want: []string{"elasticsearch 8.12.0", "node es-1: heap 512 MiB"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			summary := tt.provenance.Summary()
+			for _, want := range tt.want {
+				if !strings.Contains(summary, want) {
+					t.Errorf("summary = %q, want it to name %q", summary, want)
+				}
+			}
+		})
+	}
+}
