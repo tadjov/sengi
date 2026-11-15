@@ -36,10 +36,10 @@ var engineImages = map[storage.Engine]string{
 }
 
 var serverFlags = []string{
-	"-c", "maintenance_work_mem=4GB", "-c", "max_parallel_maintenance_workers=4",
-	"-c", "shared_buffers=1GB", "-c", "effective_cache_size=4GB", "-c", "work_mem=4MB",
+	"-c", "maintenance_work_mem=4GB", "-c", "max_parallel_maintenance_workers=7",
+	"-c", "shared_buffers=1792MB", "-c", "effective_cache_size=5376MB", "-c", "work_mem=4MB",
 	"-c", "random_page_cost=1.1", "-c", "effective_io_concurrency=200", "-c", "jit=on",
-	"-c", "max_parallel_workers_per_gather=2", "-c", "max_parallel_workers=8",
+	"-c", "max_parallel_workers_per_gather=2", "-c", "max_parallel_workers=8", "-c", "max_worker_processes=27",
 	"-c", "wal_buffers=16MB", "-c", "min_wal_size=80MB", "-c", "max_wal_size=16GB", "-c", "checkpoint_timeout=30min",
 	"-c", "default_toast_compression=pglz", "-c", "autovacuum_naptime=60s", "-c", "autovacuum_max_workers=3",
 }
@@ -99,6 +99,7 @@ func createPGContainer(ctx context.Context, cfg PGConfig) (*PGContainer, error) 
 		postgres.WithUsername(cfg.Username),
 		postgres.WithPassword(cfg.Password),
 		testcontainers.WithCmdArgs(engineServerFlags[cfg.Engine]...),
+		testcontainers.WithHostConfigModifier(engineBudget),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).

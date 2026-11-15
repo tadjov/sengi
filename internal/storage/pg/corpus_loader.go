@@ -7,6 +7,7 @@ import (
 	"iter"
 	"log/slog"
 	"slices"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -238,6 +239,7 @@ var (
 	indexBuildSettings = []string{"maintenance_work_mem", "max_parallel_maintenance_workers"}
 	walSettings        = []string{"wal_level", "max_wal_senders", "max_wal_size", "checkpoint_timeout"}
 	autovacuumSettings = []string{"autovacuum", "autovacuum_naptime", "autovacuum_max_workers"}
+	budgetSettings     = []string{"shared_buffers", "effective_cache_size", "max_parallel_workers", "max_worker_processes"}
 )
 
 // buildIndexes times each search index and each derived-table fill as its own stage; a SET or ANALYZE runs untimed.
@@ -267,13 +269,39 @@ func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record 
 			return err
 		}
 	}
-	for _, name := range slices.Concat(indexBuildSettings, walSettings, autovacuumSettings, engineKnobs[l.engine].settings) {
+	for _, name := range slices.Concat(indexBuildSettings, walSettings, autovacuumSettings, budgetSettings, engineKnobs[l.engine].settings) {
 		var value string
 		if err := conn.QueryRow(ctx, "SELECT current_setting($1)", name).Scan(&value); err != nil {
 			return fmt.Errorf("read setting %s: %w", name, err)
 		}
 		record.Settings[name] = value
 	}
+	return readContainerBudget(ctx, conn, record.Settings)
+}
+
+// readContainerBudget reads the server's cgroup v2 limits, which only a superuser may read.
+func readContainerBudget(ctx context.Context, conn *pgx.Conn, settings map[string]string) error {
+	var cpuMax, memoryMax string
+	err := conn.QueryRow(ctx, "SELECT pg_read_file('/sys/fs/cgroup/cpu.max'), pg_read_file('/sys/fs/cgroup/memory.max')").Scan(&cpuMax, &memoryMax)
+	if err != nil {
+		return fmt.Errorf("read the container's cgroup limits: %w", err)
+	}
+	quota, period, ok := strings.Cut(strings.TrimSpace(cpuMax), " ")
+	if !ok {
+		return fmt.Errorf("cgroup cpu.max %q: want a quota and a period", cpuMax)
+	}
+	quotaMicros := int64(-1)
+	if quota != "max" {
+		if quotaMicros, err = strconv.ParseInt(quota, 10, 64); err != nil {
+			return fmt.Errorf("cgroup cpu.max quota %q: %w", quota, err)
+		}
+	}
+	periodMicros, err := strconv.ParseInt(period, 10, 64)
+	if err != nil {
+		return fmt.Errorf("cgroup cpu.max period %q: %w", period, err)
+	}
+	settings[storage.ContainerCPUsSetting] = storage.ContainerCPUs(quotaMicros, periodMicros)
+	settings[storage.ContainerMemorySetting] = strings.TrimSpace(memoryMax)
 	return nil
 }
 

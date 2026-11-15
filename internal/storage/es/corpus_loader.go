@@ -401,7 +401,76 @@ func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string,
 		return nil, err
 	}
 	settings["segments"] = strconv.Itoa(segments)
+	if err := l.readNodeBudget(ctx, settings); err != nil {
+		return nil, err
+	}
 	return settings, nil
+}
+
+// readNodeBudget records the processors and heap the node runs with, and its container's cgroup limits.
+func (l *CorpusLoader) readNodeBudget(ctx context.Context, settings map[string]string) error {
+	var info struct {
+		Nodes map[string]struct {
+			Os struct {
+				AllocatedProcessors int `json:"allocated_processors"`
+			} `json:"os"`
+			Jvm struct {
+				Mem struct {
+					HeapMaxInBytes int64 `json:"heap_max_in_bytes"`
+				} `json:"mem"`
+			} `json:"jvm"`
+		} `json:"nodes"`
+	}
+	res, err := l.client.typed.Nodes.Info().Metric("os,jvm").Perform(ctx)
+	if err := decodeNodes(res, err, "read node info", &info); err != nil {
+		return err
+	}
+	var stats struct {
+		Nodes map[string]struct {
+			Os struct {
+				Cgroup struct {
+					Cpu struct {
+						CfsPeriodMicros int64 `json:"cfs_period_micros"`
+						CfsQuotaMicros  int64 `json:"cfs_quota_micros"`
+					} `json:"cpu"`
+					Memory struct {
+						LimitInBytes string `json:"limit_in_bytes"`
+					} `json:"memory"`
+				} `json:"cgroup"`
+			} `json:"os"`
+		} `json:"nodes"`
+	}
+	res, err = l.client.typed.Nodes.Stats().Metric("os").Perform(ctx)
+	if err := decodeNodes(res, err, "read node stats", &stats); err != nil {
+		return err
+	}
+	if len(info.Nodes) != 1 || len(stats.Nodes) != 1 {
+		return fmt.Errorf("node budget: want one node, info lists %d and stats %d", len(info.Nodes), len(stats.Nodes))
+	}
+	for _, node := range info.Nodes {
+		settings["node.allocated_processors"] = strconv.Itoa(node.Os.AllocatedProcessors)
+		settings["node.heap_max_bytes"] = strconv.FormatInt(node.Jvm.Mem.HeapMaxInBytes, 10)
+	}
+	for _, node := range stats.Nodes {
+		cgroup := node.Os.Cgroup
+		settings[storage.ContainerCPUsSetting] = storage.ContainerCPUs(cgroup.Cpu.CfsQuotaMicros, cgroup.Cpu.CfsPeriodMicros)
+		settings[storage.ContainerMemorySetting] = cgroup.Memory.LimitInBytes
+	}
+	return nil
+}
+
+func decodeNodes(res *http.Response, err error, what string, into any) error {
+	if err != nil {
+		return fmt.Errorf("%s: %w", what, err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("%s: status %d", what, res.StatusCode)
+	}
+	if err := json.NewDecoder(res.Body).Decode(into); err != nil {
+		return fmt.Errorf("%s: %w", what, err)
+	}
+	return nil
 }
 
 func (l *CorpusLoader) writeLoadRecord(ctx context.Context, record storage.LoadRecord) error {

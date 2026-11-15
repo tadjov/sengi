@@ -19,6 +19,7 @@ require (
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/labstack/gommon v0.4.2
 	github.com/mattn/go-isatty v0.0.20
+	github.com/moby/moby/api v1.55.0
 	github.com/parquet-go/parquet-go v0.30.1
 	github.com/pgvector/pgvector-go v0.3.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
@@ -92,7 +93,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect
-	github.com/moby/moby/api v1.55.0 // indirect
 	github.com/moby/moby/client v0.5.0 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/sys/sequential v0.7.0 // indirect

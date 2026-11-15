@@ -33,7 +33,9 @@ func NewESContainer(ctx context.Context, tb testing.TB) *ESContainer {
 			"xpack.security.enabled": "false",
 			"discovery.type":         "single-node",
 			"ES_JAVA_OPTS":           "-Xms512m -Xmx512m",
+			"node.processors":        "8",
 		}),
+		testcontainers.WithHostConfigModifier(engineBudget),
 		testcontainers.WithWaitStrategy(
 			wait.ForHTTP("/").
 				WithPort("9200").
