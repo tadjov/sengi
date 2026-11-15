@@ -40,7 +40,7 @@ var serverFlags = []string{
 	"-c", "shared_buffers=1GB", "-c", "effective_cache_size=4GB", "-c", "work_mem=4MB",
 	"-c", "random_page_cost=1.1", "-c", "effective_io_concurrency=200", "-c", "jit=on",
 	"-c", "max_parallel_workers_per_gather=2", "-c", "max_parallel_workers=8",
-	"-c", "wal_buffers=16MB", "-c", "min_wal_size=80MB",
+	"-c", "wal_buffers=16MB", "-c", "min_wal_size=80MB", "-c", "max_wal_size=16GB", "-c", "checkpoint_timeout=30min",
 	"-c", "default_toast_compression=pglz",
 }
 

@@ -86,6 +86,11 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		return storage.LoadRecord{}, err
 	}
 	defer writers.Close()
+	var synchronousCommit string
+	if err := writers.QueryRow(ctx, "SELECT current_setting('synchronous_commit')").Scan(&synchronousCommit); err != nil {
+		return storage.LoadRecord{}, fmt.Errorf("read synchronous_commit of the copy connections: %w", err)
+	}
+	record.Settings["load.synchronous_commit"] = synchronousCommit
 	copier := &corpusCopier{writers: writers, concurrency: opts.Concurrency, batchSize: opts.BatchSize}
 
 	var ids []uuid.UUID
@@ -111,6 +116,9 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		}
 	}
 	writers.Close()
+	if err := flushCommits(ctx, conn); err != nil {
+		return storage.LoadRecord{}, err
+	}
 
 	if !opts.SkipIndex {
 		if err := l.buildIndexes(ctx, conn, &record); err != nil {
@@ -220,7 +228,10 @@ func (l *CorpusLoader) refuseLoaded(ctx context.Context, conn *pgx.Conn) error {
 	return nil
 }
 
-var indexBuildSettings = []string{"maintenance_work_mem", "max_parallel_maintenance_workers"}
+var (
+	indexBuildSettings = []string{"maintenance_work_mem", "max_parallel_maintenance_workers"}
+	walSettings        = []string{"wal_level", "max_wal_senders", "max_wal_size", "checkpoint_timeout"}
+)
 
 // buildIndexes times each search index and each derived-table fill as its own stage; a SET or ANALYZE runs untimed.
 func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record *storage.LoadRecord) error {
@@ -249,7 +260,7 @@ func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record 
 			return err
 		}
 	}
-	for _, name := range slices.Concat(indexBuildSettings, engineKnobs[l.engine].settings) {
+	for _, name := range slices.Concat(indexBuildSettings, walSettings, engineKnobs[l.engine].settings) {
 		var value string
 		if err := conn.QueryRow(ctx, "SELECT current_setting($1)", name).Scan(&value); err != nil {
 			return fmt.Errorf("read setting %s: %w", name, err)
@@ -297,17 +308,27 @@ func timed(record *storage.LoadRecord, stage string, run func() error) error {
 	return nil
 }
 
-// openWriters opens the copy connections after the schema has created the vector type they register.
+// openWriters needs the schema's vector type; its connections skip the commit flush, since a crash mid-load means a fresh volume.
 func (l *CorpusLoader) openWriters(ctx context.Context, concurrency int) (*pgxpool.Pool, error) {
 	config := l.pool.conn.Config()
 	config.MaxConns = int32(concurrency)
 	config.MinConns = 0
-	config.AfterConnect = afterConnect(true, nil)
+	config.AfterConnect = afterConnect(true, map[string]string{"synchronous_commit": "off"})
 	writers, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("open %d copy connections: %w", concurrency, err)
 	}
 	return writers, nil
+}
+
+// flushCommits lets readers set hint bits and all-visible flags on the copied rows again,
+// which Postgres refuses while an asynchronous commit is not yet flushed.
+func flushCommits(ctx context.Context, conn *pgx.Conn) error {
+	// A message flushed to the WAL flushes every commit written before it.
+	if _, err := conn.Exec(ctx, "SELECT pg_logical_emit_message(false, 'tusker', 'flush', true)"); err != nil {
+		return fmt.Errorf("flush the copy connections' commits: %w", err)
+	}
+	return nil
 }
 
 // corpusCopier commits each batch in its own transaction, so a failed copy keeps the batches before it.
