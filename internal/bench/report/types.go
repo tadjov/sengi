@@ -194,15 +194,15 @@ type LatencyStats struct {
 // RoundSpread is the median of the rounds' p50, p95 and p99, each with the
 // smallest and largest round value.
 type RoundSpread struct {
-	P50 Spread
-	P95 Spread
-	P99 Spread
+	P50 Spread `json:"p50"`
+	P95 Spread `json:"p95"`
+	P99 Spread `json:"p99"`
 }
 
 type Spread struct {
-	Median time.Duration
-	Min    time.Duration
-	Max    time.Duration
+	Median time.Duration `json:"median"`
+	Min    time.Duration `json:"min"`
+	Max    time.Duration `json:"max"`
 }
 
 func fromRunnerServerLatency(s *runner.LatencyStats) *LatencyStats {

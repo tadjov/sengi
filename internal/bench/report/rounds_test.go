@@ -2,6 +2,9 @@ package report
 
 import (
 	"bytes"
+	"encoding/json"
+	"maps"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -70,4 +73,16 @@ func TestWriters_OneRoundShowsNoSpread(t *testing.T) {
 	for name, out := range map[string]string{"terminal": terminal.String(), "markdown": markdown.String(), "html": string(page)} {
 		assert.NotContains(t, out, "Latency Across Rounds", name)
 	}
+}
+
+func TestWriteJSON_NamesTheSpreadLikeTheLatencyBesideIt(t *testing.T) {
+	agg := Generate(roundsRun(10*time.Millisecond, 20*time.Millisecond), nil).Jobs[0].Aggregated[0]
+
+	encoded, err := json.Marshal(agg.AcrossRounds)
+	require.NoError(t, err)
+
+	var spread map[string]map[string]time.Duration
+	require.NoError(t, json.Unmarshal(encoded, &spread))
+	assert.ElementsMatch(t, []string{"p50", "p95", "p99"}, slices.Collect(maps.Keys(spread)))
+	assert.ElementsMatch(t, []string{"median", "min", "max"}, slices.Collect(maps.Keys(spread["p50"])))
 }
