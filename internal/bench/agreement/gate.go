@@ -33,7 +33,7 @@ func Gate(ctx context.Context, opts GateOptions) (Gated, error) {
 	for _, entry := range opts.Pool.Queries {
 		queries[entry.QueryID] = entry
 	}
-	articles, err := readArticles(ctx, opts.Reader, opts.Pairs)
+	articles, err := opts.readArticles(ctx)
 	if err != nil {
 		return Gated{}, err
 	}
@@ -61,16 +61,16 @@ func Gate(ctx context.Context, opts GateOptions) (Gated, error) {
 	return gated, nil
 }
 
-func readArticles(ctx context.Context, reader storage.Reader, pairs []Pair) (map[uuid.UUID]document.Article, error) {
-	seen := make(map[uuid.UUID]bool, len(pairs))
+func (o GateOptions) readArticles(ctx context.Context) (map[uuid.UUID]document.Article, error) {
+	seen := make(map[uuid.UUID]bool, len(o.Pairs))
 	var ids []uuid.UUID
-	for _, p := range pairs {
+	for _, p := range o.Pairs {
 		if !seen[p.DocID] {
 			seen[p.DocID] = true
 			ids = append(ids, p.DocID)
 		}
 	}
-	found, err := reader.GetByIDs(ctx, ids)
+	found, err := o.Reader.GetByIDs(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("read %d articles: %w", len(ids), err)
 	}

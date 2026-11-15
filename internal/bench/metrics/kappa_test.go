@@ -160,7 +160,7 @@ func TestBootstrapKappa_IdenticalRatersGiveAnIntervalOfOne(t *testing.T) {
 		"binary":    func(c GradeConfusion) float64 { return c.BinaryKappa(2) },
 	} {
 		t.Run(name, func(t *testing.T) {
-			got := BootstrapKappa(byQuery, kappa, 1)
+			got := BootstrapKappa(KappaBootstrap{ByQuery: byQuery, Kappa: kappa, Seed: 1})
 			if got != (KappaInterval{Kappa: 1, Low: 1, High: 1}) {
 				t.Errorf("BootstrapKappa() = %+v, want κ 1 in [1, 1]", got)
 			}
@@ -186,7 +186,7 @@ func TestBootstrapKappa_IntervalHoldsTheEstimateAndRepeatsForASeed(t *testing.T)
 		}
 	}
 
-	got := BootstrapKappa(byQuery, GradeConfusion.QuadraticKappa, 7)
+	got := BootstrapKappa(KappaBootstrap{ByQuery: byQuery, Kappa: GradeConfusion.QuadraticKappa, Seed: 7})
 
 	if math.Abs(got.Kappa-all.QuadraticKappa()) > 1e-12 {
 		t.Errorf("κ = %v, want the κ over every pair, %v", got.Kappa, all.QuadraticKappa())
@@ -194,7 +194,7 @@ func TestBootstrapKappa_IntervalHoldsTheEstimateAndRepeatsForASeed(t *testing.T)
 	if got.Low > got.Kappa || got.Kappa > got.High || got.Low == got.High {
 		t.Errorf("interval [%v, %v] does not hold κ %v with any width", got.Low, got.High, got.Kappa)
 	}
-	if again := BootstrapKappa(byQuery, GradeConfusion.QuadraticKappa, 7); again != got {
+	if again := BootstrapKappa(KappaBootstrap{ByQuery: byQuery, Kappa: GradeConfusion.QuadraticKappa, Seed: 7}); again != got {
 		t.Errorf("seed 7 gave %+v, then %+v", got, again)
 	}
 }

@@ -103,7 +103,7 @@ func Summarize(pairs []Pair, opts SummaryOptions) (Summary, error) {
 	summary := Summary{
 		Pairs:         len(pairs),
 		Distributions: distributions(pairs, opts.Labels),
-		Comparisons:   compareAll(pairs, opts),
+		Comparisons:   opts.compareAll(pairs),
 	}
 	if opts.Reference == "" {
 		return summary, nil
@@ -114,8 +114,8 @@ func Summarize(pairs []Pair, opts SummaryOptions) (Summary, error) {
 	}
 	summary.Reference = &Reference{
 		Label:      opts.Reference,
-		Against:    confusions(pairs, reference, opts),
-		ByCategory: byCategory(pairs, opts),
+		Against:    opts.confusions(pairs, reference),
+		ByCategory: opts.byCategory(pairs),
 	}
 	return summary, nil
 }
@@ -131,36 +131,41 @@ func distributions(pairs []Pair, labels []string) []Distribution {
 	return out
 }
 
-func compareAll(pairs []Pair, opts SummaryOptions) []Comparison {
+// setPair indexes two sets in SummaryOptions.Labels.
+type setPair struct {
+	first, second int
+}
+
+func (o SummaryOptions) compareAll(pairs []Pair) []Comparison {
 	byQuery := groupByQuery(pairs)
 	var out []Comparison
-	for i := range opts.Labels {
-		for j := i + 1; j < len(opts.Labels); j++ {
-			out = append(out, compare(byQuery, i, j, opts))
+	for i := range o.Labels {
+		for j := i + 1; j < len(o.Labels); j++ {
+			out = append(out, o.compare(byQuery, setPair{first: i, second: j}))
 		}
 	}
 	return out
 }
 
-func compare(byQuery [][]Pair, first, second int, opts SummaryOptions) Comparison {
+func (o SummaryOptions) compare(byQuery [][]Pair, sets setPair) Comparison {
 	tables := make([]metrics.GradeConfusion, len(byQuery))
 	var all metrics.GradeConfusion
 	for q, queryPairs := range byQuery {
 		for _, p := range queryPairs {
-			tables[q][p.Grades[first]][p.Grades[second]]++
-			all[p.Grades[first]][p.Grades[second]]++
+			tables[q][p.Grades[sets.first]][p.Grades[sets.second]]++
+			all[p.Grades[sets.first]][p.Grades[sets.second]]++
 		}
 	}
-	binary := func(c metrics.GradeConfusion) float64 { return c.BinaryKappa(opts.Threshold) }
+	binary := func(c metrics.GradeConfusion) float64 { return c.BinaryKappa(o.Threshold) }
 	return Comparison{
-		First:          opts.Labels[first],
-		Second:         opts.Labels[second],
+		First:          o.Labels[sets.first],
+		Second:         o.Labels[sets.second],
 		Pairs:          all.Pairs(),
 		Exact:          all.ExactAgreement(),
 		WithinOne:      all.WithinOneAgreement(),
-		Relevant:       all.RelevantAgreement(opts.Threshold),
-		QuadraticKappa: kappa(metrics.BootstrapKappa(tables, metrics.GradeConfusion.QuadraticKappa, opts.Seed)),
-		BinaryKappa:    kappa(metrics.BootstrapKappa(tables, binary, opts.Seed)),
+		Relevant:       all.RelevantAgreement(o.Threshold),
+		QuadraticKappa: kappa(metrics.BootstrapKappa(metrics.KappaBootstrap{ByQuery: tables, Kappa: metrics.GradeConfusion.QuadraticKappa, Seed: o.Seed})),
+		BinaryKappa:    kappa(metrics.BootstrapKappa(metrics.KappaBootstrap{ByQuery: tables, Kappa: binary, Seed: o.Seed})),
 	}
 }
 
@@ -182,9 +187,9 @@ func groupByQuery(pairs []Pair) [][]Pair {
 	return out
 }
 
-func confusions(pairs []Pair, reference int, opts SummaryOptions) []Confusion {
+func (o SummaryOptions) confusions(pairs []Pair, reference int) []Confusion {
 	var out []Confusion
-	for other, label := range opts.Labels {
+	for other, label := range o.Labels {
 		if other == reference {
 			continue
 		}
@@ -192,7 +197,7 @@ func confusions(pairs []Pair, reference int, opts SummaryOptions) []Confusion {
 		for _, p := range pairs {
 			referenceGrade, grade := p.Grades[reference], p.Grades[other]
 			c.Table[referenceGrade][grade]++
-			referenceRelevant, relevant := referenceGrade >= opts.Threshold, grade >= opts.Threshold
+			referenceRelevant, relevant := referenceGrade >= o.Threshold, grade >= o.Threshold
 			if referenceRelevant {
 				c.ReferenceRelevant++
 				if !relevant {
@@ -210,10 +215,10 @@ func confusions(pairs []Pair, reference int, opts SummaryOptions) []Confusion {
 	return out
 }
 
-func byCategory(pairs []Pair, opts SummaryOptions) []Category {
+func (o SummaryOptions) byCategory(pairs []Pair) []Category {
 	members := make(map[suite.Category][]Pair)
 	for _, p := range pairs {
-		category := opts.Categories[p.QueryID]
+		category := o.Categories[p.QueryID]
 		members[category] = append(members[category], p)
 	}
 	out := make([]Category, 0, len(members))
@@ -223,7 +228,7 @@ func byCategory(pairs []Pair, opts SummaryOptions) []Category {
 			Category:    category,
 			Queries:     len(groupByQuery(categoryPairs)),
 			Pairs:       len(categoryPairs),
-			Comparisons: compareAll(categoryPairs, opts),
+			Comparisons: o.compareAll(categoryPairs),
 		})
 	}
 	return out

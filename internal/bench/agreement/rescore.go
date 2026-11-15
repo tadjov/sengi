@@ -81,25 +81,23 @@ func Rescore(opts RescoreOptions) (Rescoring, error) {
 		grades[i] = gradesByQuery(s.File)
 	}
 	result := Rescoring{ReportRunID: opts.Report.Provenance.RunID, ReportSet: opts.Sets[own].Label}
-	var rescored []rescoredSet
+	ranked := ranking{reference: -1}
 	for i, s := range opts.Sets {
-		if reason := uncoveredTopK(opts.Report, grades[i], slices.Max(opts.KValues)); reason != "" {
+		if reason := opts.uncoveredTopK(grades[i]); reason != "" {
 			result.Refused = append(result.Refused, Exclusion{Name: s.Label, Reason: reason})
 			continue
 		}
-		rescored = append(rescored, rescoredSet{label: s.Label, scores: scoreJobs(opts.Report, grades[i], opts)})
+		ranked.sets = append(ranked.sets, rescoredSet{label: s.Label, scores: opts.scoreJobs(grades[i])})
 	}
-	kept, leftOut := reproducedMetrics(opts.Report, opts.Sets[own].Label, scoreJobs(opts.Report, grades[own], opts), opts.KValues)
-	result.LeftOut = leftOut
-	for _, m := range kept {
+	ranked.metrics, result.LeftOut = opts.reproducedMetrics(rescoredSet{label: opts.Sets[own].Label, scores: opts.scoreJobs(grades[own])})
+	for _, m := range ranked.metrics {
 		result.Metrics = append(result.Metrics, m.name)
 	}
-	reference := slices.IndexFunc(rescored, func(s rescoredSet) bool { return s.label == opts.Reference })
-	if reference >= 0 {
+	if ranked.reference = slices.IndexFunc(ranked.sets, func(s rescoredSet) bool { return s.label == opts.Reference }); ranked.reference >= 0 {
 		result.Reference = opts.Reference
 	}
 	for j, job := range opts.Report.Jobs {
-		result.Jobs = append(result.Jobs, rankJob(job, j, kept, rescored, reference))
+		result.Jobs = append(result.Jobs, ranked.job(job, j))
 	}
 	return result, nil
 }
@@ -113,9 +111,9 @@ type rescoredSet struct {
 // reproducedMetrics keeps the metrics the report's own set gives back for
 // every cell. One it cannot reproduce was scored some other way, and
 // rescoring it under another set would compare unlike numbers.
-func reproducedMetrics(r *report.Report, ownLabel string, ownScores []map[cell]metrics.ScoreSet, kValues []int) (kept []metric, leftOut []Exclusion) {
-	for _, m := range catalogue(kValues) {
-		if reason := irreproducible(m, r, ownScores, ownLabel); reason != "" {
+func (o RescoreOptions) reproducedMetrics(own rescoredSet) (kept []metric, leftOut []Exclusion) {
+	for _, m := range catalogue(o.KValues) {
+		if reason := o.irreproducible(m, own); reason != "" {
 			leftOut = append(leftOut, Exclusion{Name: m.name, Reason: reason})
 			continue
 		}
@@ -124,18 +122,24 @@ func reproducedMetrics(r *report.Report, ownLabel string, ownScores []map[cell]m
 	return kept, leftOut
 }
 
-// rankJob orders the job's engines under each rescored set; reference is -1
-// when the reference set was refused.
-func rankJob(job report.JobReport, jobIndex int, kept []metric, rescored []rescoredSet, reference int) JobRescoring {
-	queries := judgedQueries(job)
-	jr := JobRescoring{Job: job.JobName, Engines: engines(job), Queries: len(queries)}
-	for _, m := range kept {
-		means := make([][]float64, len(rescored))
-		for r, s := range rescored {
-			means[r] = engineMeans(jr.Engines, queries, s.scores[jobIndex], m)
+// ranking orders each job's engines by the kept metrics under each rescored
+// set; reference is -1 when the reference set was refused.
+type ranking struct {
+	metrics   []metric
+	sets      []rescoredSet
+	reference int
+}
+
+func (rk ranking) job(job report.JobReport, index int) JobRescoring {
+	grid := jobGrid{engines: engines(job), queries: judgedQueries(job)}
+	jr := JobRescoring{Job: job.JobName, Engines: grid.engines, Queries: len(grid.queries)}
+	for _, m := range rk.metrics {
+		means := make([][]float64, len(rk.sets))
+		for r, s := range rk.sets {
+			means[r] = m.engineMeans(grid, s.scores[index])
 		}
 		mr := MetricRescoring{Metric: m.name}
-		for r, s := range rescored {
+		for r, s := range rk.sets {
 			order := EngineOrder{
 				Label: s.label,
 				Means: make(map[string]float64, len(jr.Engines)),
@@ -145,8 +149,8 @@ func rankJob(job report.JobReport, jobIndex int, kept []metric, rescored []resco
 			for e, engine := range jr.Engines {
 				order.Means[engine] = means[r][e]
 			}
-			if reference >= 0 {
-				order.TauB = Statistic(metrics.KendallTauB(means[r], means[reference]))
+			if rk.reference >= 0 {
+				order.TauB = Statistic(metrics.KendallTauB(means[r], means[rk.reference]))
 			}
 			mr.Sets = append(mr.Sets, order)
 		}
@@ -191,13 +195,13 @@ type cell struct {
 	queryID, engine string
 }
 
-func scoreJobs(r *report.Report, grades map[string]map[uuid.UUID]int, opts RescoreOptions) []map[cell]metrics.ScoreSet {
-	out := make([]map[cell]metrics.ScoreSet, len(r.Jobs))
-	for j, job := range r.Jobs {
+func (o RescoreOptions) scoreJobs(grades map[string]map[uuid.UUID]int) []map[cell]metrics.ScoreSet {
+	out := make([]map[cell]metrics.ScoreSet, len(o.Report.Jobs))
+	for j, job := range o.Report.Jobs {
 		out[j] = make(map[cell]metrics.ScoreSet)
 		for _, e := range job.PerQuery {
 			if e.Judged && e.Error == "" {
-				out[j][cell{queryID: e.QueryID, engine: e.EngineName}] = metrics.ComputeAll(rankedIDs(e.Ranking), grades[e.QueryID], opts.KValues, opts.Threshold)
+				out[j][cell{queryID: e.QueryID, engine: e.EngineName}] = metrics.ComputeAll(rankedIDs(e.Ranking), grades[e.QueryID], o.KValues, o.Threshold)
 			}
 		}
 	}
@@ -212,9 +216,10 @@ func rankedIDs(ranking []report.RankedDoc) []uuid.UUID {
 	return ids
 }
 
-func uncoveredTopK(r *report.Report, grades map[string]map[uuid.UUID]int, k int) string {
+func (o RescoreOptions) uncoveredTopK(grades map[string]map[uuid.UUID]int) string {
+	k := slices.Max(o.KValues)
 	missing, first := 0, ""
-	for _, job := range r.Jobs {
+	for _, job := range o.Report.Jobs {
 		for _, e := range job.PerQuery {
 			if !e.Judged || e.Error != "" {
 				continue
@@ -270,8 +275,8 @@ func catalogue(kValues []int) []metric {
 	return out
 }
 
-func irreproducible(m metric, r *report.Report, ownScores []map[cell]metrics.ScoreSet, ownLabel string) string {
-	for j, job := range r.Jobs {
+func (o RescoreOptions) irreproducible(m metric, own rescoredSet) string {
+	for j, job := range o.Report.Jobs {
 		for _, e := range job.PerQuery {
 			if !e.Judged || e.Error != "" {
 				continue
@@ -281,8 +286,8 @@ func irreproducible(m metric, r *report.Report, ownScores []map[cell]metrics.Sco
 			if !ok {
 				return fmt.Sprintf("the report stores no %s for %s", m.name, where)
 			}
-			if scored := m.scored(ownScores[j][cell{queryID: e.QueryID, engine: e.EngineName}]); scored != stored {
-				return fmt.Sprintf("under %s, %s scores %v where the report stores %v", ownLabel, where, scored, stored)
+			if scored := m.scored(own.scores[j][cell{queryID: e.QueryID, engine: e.EngineName}]); scored != stored {
+				return fmt.Sprintf("under %s, %s scores %v where the report stores %v", own.label, where, scored, stored)
 			}
 		}
 	}
@@ -311,18 +316,23 @@ func judgedQueries(job report.JobReport) []string {
 // different floats (0.1+0.2+0.3 and 0.3+0.2+0.1) tie in the order and in τ-b.
 const meanPrecision = 1e12
 
+// jobGrid is a job's engines and the judged queries its means average over.
+type jobGrid struct {
+	engines, queries []string
+}
+
 // engineMeans averages over the job's judged queries, a failed or missing cell
 // scoring 0, as the report's own means do.
-func engineMeans(engines, queries []string, scores map[cell]metrics.ScoreSet, m metric) []float64 {
-	means := make([]float64, len(engines))
-	for i, engine := range engines {
+func (m metric) engineMeans(grid jobGrid, scores map[cell]metrics.ScoreSet) []float64 {
+	means := make([]float64, len(grid.engines))
+	for i, engine := range grid.engines {
 		var sum float64
-		for _, queryID := range queries {
+		for _, queryID := range grid.queries {
 			if s, ok := scores[cell{queryID: queryID, engine: engine}]; ok {
 				sum += m.scored(s)
 			}
 		}
-		means[i] = math.Round(sum/float64(len(queries))*meanPrecision) / meanPrecision
+		means[i] = math.Round(sum/float64(len(grid.queries))*meanPrecision) / meanPrecision
 	}
 	return means
 }

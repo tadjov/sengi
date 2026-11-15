@@ -134,28 +134,36 @@ type KappaInterval struct {
 	Kappa, Low, High float64
 }
 
-// BootstrapKappa is kappa over all of byQuery, one table per query, with its
-// 95% percentile interval over 1,000 resamples of the queries, which seed
-// fixes. Resamples with an undefined κ are left out. byQuery must not be empty.
-func BootstrapKappa(byQuery []GradeConfusion, kappa func(GradeConfusion) float64, seed uint64) KappaInterval {
+// KappaBootstrap configures BootstrapKappa.
+type KappaBootstrap struct {
+	// ByQuery holds one table per query and must not be empty.
+	ByQuery []GradeConfusion
+	Kappa   func(GradeConfusion) float64
+	Seed    uint64
+}
+
+// BootstrapKappa is the κ over every query's pairs with its 95% percentile
+// interval over 1,000 resamples of the queries, which the seed fixes.
+// Resamples with an undefined κ are left out.
+func BootstrapKappa(b KappaBootstrap) KappaInterval {
 	// Whole queries are resampled because one query's docs share its topic, so
 	// two judges' grades on them are not independent pairs.
-	random := rand.New(rand.NewPCG(seed, seed))
+	random := rand.New(rand.NewPCG(b.Seed, b.Seed))
 	resampled := make([]float64, 0, kappaResamples)
 	for range kappaResamples {
 		var resample GradeConfusion
-		for range byQuery {
-			resample.add(byQuery[random.IntN(len(byQuery))])
+		for range b.ByQuery {
+			resample.add(b.ByQuery[random.IntN(len(b.ByQuery))])
 		}
-		if k := kappa(resample); !math.IsNaN(k) {
+		if k := b.Kappa(resample); !math.IsNaN(k) {
 			resampled = append(resampled, k)
 		}
 	}
 	var all GradeConfusion
-	for _, c := range byQuery {
+	for _, c := range b.ByQuery {
 		all.add(c)
 	}
-	interval := KappaInterval{Kappa: kappa(all), Low: math.NaN(), High: math.NaN()}
+	interval := KappaInterval{Kappa: b.Kappa(all), Low: math.NaN(), High: math.NaN()}
 	if len(resampled) > 0 {
 		slices.Sort(resampled)
 		interval.Low = percentile(resampled, 0.025)

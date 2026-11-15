@@ -634,7 +634,7 @@ func (d diffJudgmentsCommand) execute(cmd *cobra.Command, args []string) error {
 	if d.flags.output == "" {
 		return nil
 	}
-	return writeAgreementArtifact(w, d.flags.output, c.result)
+	return c.writeArtifact(w)
 }
 
 type judgmentComparison struct {
@@ -682,9 +682,18 @@ func (d diffJudgmentsCommand) compare(cmd *cobra.Command, args []string) (judgme
 	var gate *judgeagreement.GateSummary
 	var titles map[uuid.UUID]string
 	if f.pg != "" {
-		if gate, titles, err = d.gate(cmd, pairs, pf, opts); err != nil {
+		reader, err := d.openReader(cmd, f.pg)
+		if err != nil {
 			return judgmentComparison{}, err
 		}
+		gated, err := judgeagreement.Gate(cmd.Context(), judgeagreement.GateOptions{Pairs: pairs, Pool: pf, Reader: reader})
+		if err != nil {
+			return judgmentComparison{}, err
+		}
+		if gate, err = gateSummary(gated, opts); err != nil {
+			return judgmentComparison{}, err
+		}
+		titles = gated.Titles
 	}
 	var disagreements []judgeagreement.Disagreement
 	if f.pairs {
@@ -696,10 +705,21 @@ func (d diffJudgmentsCommand) compare(cmd *cobra.Command, args []string) (judgme
 	var rescoring *judgeagreement.Rescoring
 	reportRunID := ""
 	if f.report != "" {
-		if rescoring, err = rescore(tr, bs, sets, f); err != nil {
+		rpt, err := readRescoredReport(tr, f.report)
+		if err != nil {
 			return judgmentComparison{}, err
 		}
-		reportRunID = rescoring.ReportRunID
+		rescored, err := judgeagreement.Rescore(judgeagreement.RescoreOptions{
+			Report:    rpt,
+			Sets:      sets,
+			Reference: cmp.Or(f.reference, sets[0].Label),
+			KValues:   bs.Metrics.KValues,
+			Threshold: bs.Metrics.RelevanceThreshold,
+		})
+		if err != nil {
+			return judgmentComparison{}, err
+		}
+		rescoring, reportRunID = &rescored, rescored.ReportRunID
 	}
 
 	result := judgeagreement.NewArtifact(sets, reportRunID)
@@ -708,24 +728,17 @@ func (d diffJudgmentsCommand) compare(cmd *cobra.Command, args []string) (judgme
 	return judgmentComparison{flags: f, sets: sets, result: result}, nil
 }
 
-func (d diffJudgmentsCommand) gate(cmd *cobra.Command, pairs []judgeagreement.Pair, pf *pool.PoolFile, opts judgeagreement.SummaryOptions) (*judgeagreement.GateSummary, map[uuid.UUID]string, error) {
-	reader, err := d.openReader(cmd, d.flags.pg)
-	if err != nil {
-		return nil, nil, err
-	}
-	gated, err := judgeagreement.Gate(cmd.Context(), judgeagreement.GateOptions{Pairs: pairs, Pool: pf, Reader: reader})
-	if err != nil {
-		return nil, nil, err
-	}
+func gateSummary(gated judgeagreement.Gated, opts judgeagreement.SummaryOptions) (*judgeagreement.GateSummary, error) {
 	gate := &judgeagreement.GateSummary{Refused: gated.Refused}
-	if len(gated.Admitted) > 0 {
-		admitted, err := judgeagreement.Summarize(gated.Admitted, opts)
-		if err != nil {
-			return nil, nil, err
-		}
-		gate.Admitted = &admitted
+	if len(gated.Admitted) == 0 {
+		return gate, nil
 	}
-	return gate, gated.Titles, nil
+	admitted, err := judgeagreement.Summarize(gated.Admitted, opts)
+	if err != nil {
+		return nil, err
+	}
+	gate.Admitted = &admitted
+	return gate, nil
 }
 
 func (c judgmentComparison) print(w io.Writer) {
@@ -738,13 +751,13 @@ func (c judgmentComparison) print(w io.Writer) {
 		printAgreementSummary(w, fmt.Sprintf("Agreement over all %d common pairs", r.AllPairs.Pairs), r.AllPairs)
 	} else {
 		printAgreementSummary(w, fmt.Sprintf("Agreement over all %d common pairs, gated zeros included", r.AllPairs.Pairs), r.AllPairs)
-		printGate(w, r.Gate, r.AllPairs.Pairs)
+		c.printGate(w)
 	}
 	if c.flags.pairs {
-		printDisagreements(w, r.Disagreements, setLabels(c.sets), c.flags.minGap, r.Gate != nil)
+		c.printDisagreements(w)
 	}
 	if r.Rescoring != nil {
-		printRescoring(w, r.Rescoring, cmp.Or(c.flags.reference, c.sets[0].Label))
+		c.printRescoring(w)
 	}
 }
 
@@ -767,28 +780,11 @@ func poolCategories(pf *pool.PoolFile) map[string]suite.Category {
 	return categories
 }
 
-func rescore(tr *trackctx.Track, bs *spec.BenchSpec, sets []judgeagreement.Set, f diffJudgmentsFlags) (*judgeagreement.Rescoring, error) {
-	var rpt *report.Report
-	var err error
-	if f.report == "latest" {
-		rpt, err = report.ReadLatestReport(tr.LatestReportPath())
-	} else {
-		rpt, err = report.ReadJSON(f.report)
+func readRescoredReport(tr *trackctx.Track, value string) (*report.Report, error) {
+	if value == "latest" {
+		return report.ReadLatestReport(tr.LatestReportPath())
 	}
-	if err != nil {
-		return nil, err
-	}
-	rescoring, err := judgeagreement.Rescore(judgeagreement.RescoreOptions{
-		Report:    rpt,
-		Sets:      sets,
-		Reference: cmp.Or(f.reference, sets[0].Label),
-		KValues:   bs.Metrics.KValues,
-		Threshold: bs.Metrics.RelevanceThreshold,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &rescoring, nil
+	return report.ReadJSON(value)
 }
 
 func printJudgmentSets(w io.Writer, sets []judgeagreement.Set) {
@@ -869,9 +865,10 @@ func printReference(w io.Writer, ref *judgeagreement.Reference) {
 	tw.Flush()
 }
 
-func printGate(w io.Writer, gate *judgeagreement.GateSummary, common int) {
+func (c judgmentComparison) printGate(w io.Writer) {
+	gate := c.result.Gate
 	fmt.Fprintf(w, "\nThe gate refused %d of %d common pairs on their phrase, boolean or filter: every gated judge graded those 0 without a model seeing them.\n",
-		gate.Refused, common)
+		gate.Refused, c.result.AllPairs.Pairs)
 	if gate.Admitted == nil {
 		printWarn(w, "the gate refused every common pair, so there is no agreement without its zeros")
 		return
@@ -879,10 +876,11 @@ func printGate(w io.Writer, gate *judgeagreement.GateSummary, common int) {
 	printAgreementSummary(w, fmt.Sprintf("Agreement over the %d pairs the gate admits", gate.Admitted.Pairs), *gate.Admitted)
 }
 
-func printDisagreements(w io.Writer, rows []judgeagreement.Disagreement, labels []string, minGap int, withTitles bool) {
-	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprintf("%d pairs whose grades span %d or more", len(rows), minGap))
+func (c judgmentComparison) printDisagreements(w io.Writer) {
+	rows, withTitles := c.result.Disagreements, c.result.Gate != nil
+	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprintf("%d pairs whose grades span %d or more", len(rows), c.flags.minGap))
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-	header := append([]string{"Query", "Doc", "Span"}, labels...)
+	header := append([]string{"Query", "Doc", "Span"}, setLabels(c.sets)...)
 	if withTitles {
 		header = append(header, "Title")
 	}
@@ -901,7 +899,8 @@ func printDisagreements(w io.Writer, rows []judgeagreement.Disagreement, labels 
 	tw.Flush()
 }
 
-func printRescoring(w io.Writer, r *judgeagreement.Rescoring, reference string) {
+func (c judgmentComparison) printRescoring(w io.Writer) {
+	r, reference := c.result.Rescoring, cmp.Or(c.flags.reference, c.sets[0].Label)
 	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprintf("Report %s rescored under each set", r.ReportRunID))
 	fmt.Fprintf(w, "Rescoring under %s, the set the report was scored with, gives back every stored value of: %s\n",
 		r.ReportSet, orNone(strings.Join(r.Metrics, ", ")))
@@ -923,13 +922,13 @@ func printRescoring(w io.Writer, r *judgeagreement.Rescoring, reference string) 
 		fmt.Fprintf(w, "τ-b compares each set's engine means with %s's.\n", r.Reference)
 	}
 	for _, job := range r.Jobs {
-		printJobRescoring(w, job, r.Reference)
+		c.printJobRescoring(w, job)
 	}
 }
 
 func orNone(s string) string { return cmp.Or(s, "none") }
 
-func printJobRescoring(w io.Writer, job judgeagreement.JobRescoring, reference string) {
+func (c judgmentComparison) printJobRescoring(w io.Writer, job judgeagreement.JobRescoring) {
 	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprintf("--- Job: %s (%d engines, %d judged queries) ---", job.Job, len(job.Engines), job.Queries))
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintf(tw, "Metric\tSet\t%s\tOrder\tτ-b\n", strings.Join(job.Engines, "\t"))
@@ -946,7 +945,7 @@ func printJobRescoring(w io.Writer, job judgeagreement.JobRescoring, reference s
 				cells = append(cells, fmt.Sprintf("%.4f", order.Means[engine]))
 			}
 			tau := formatStatistic(order.TauB)
-			if order.Label == reference {
+			if order.Label == c.result.Rescoring.Reference {
 				tau = "—"
 			}
 			cells = append(cells, formatEngineOrder(order), tau)
@@ -972,8 +971,9 @@ func formatEngineOrder(order judgeagreement.EngineOrder) string {
 	return b.String()
 }
 
-func writeAgreementArtifact(w io.Writer, path string, artifact judgeagreement.Artifact) error {
-	data, err := json.MarshalIndent(artifact, "", "  ")
+func (c judgmentComparison) writeArtifact(w io.Writer) error {
+	path := c.flags.output
+	data, err := json.MarshalIndent(c.result, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode %s: %w", path, err)
 	}
