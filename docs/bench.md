@@ -557,6 +557,7 @@ Key flags:
 - `--concurrency N`: parallel Grade calls (per-doc mode)
 - `--allow-unjudged`: exit 0 even when some pooled docs are left unjudged. A query with no usable terms still fails the run
 - `--force`: for `manual` only, rewrite the placeholders from scratch. Without it, `manual` keeps every existing hand grade, adds `-1` placeholders for new pool docs, and refuses a file another judge wrote
+- `--carry-over <annotations> --carry-over-pool <pool>`: after a re-pool, reuse the old grades and grade only new docs. A grade is reused when the judge and the query's text, category and filters are unchanged. Take the old pool from git (`git show <commit>:<track>/trec/pool.yaml`). Batched judges and `bm25`, `vector`, `hybrid` refuse it. The new file records where its grades came from under `carried_over`
 
 ### `bench grade [<name>] --against <S|path> [--sample N] [--seed S] [--pg <dsn>] [--report]`
 
