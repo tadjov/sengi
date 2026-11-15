@@ -81,6 +81,9 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	if err := l.refuseLoaded(ctx, conn); err != nil {
 		return storage.LoadRecord{}, err
 	}
+	if err := pauseAutovacuum(ctx, conn, record.Settings); err != nil {
+		return storage.LoadRecord{}, err
+	}
 	writers, err := l.openWriters(ctx, opts.Concurrency)
 	if err != nil {
 		return storage.LoadRecord{}, err
@@ -132,6 +135,9 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	})
 	if err != nil {
 		return storage.LoadRecord{}, fmt.Errorf("vacuum analyze: %w", err)
+	}
+	if err := resumeAutovacuum(ctx, conn); err != nil {
+		return storage.LoadRecord{}, err
 	}
 	if inspect := engineKnobs[l.engine].inspect; inspect != nil && !opts.SkipIndex {
 		if err := inspect(ctx, conn, record.Settings); err != nil {
@@ -231,6 +237,7 @@ func (l *CorpusLoader) refuseLoaded(ctx context.Context, conn *pgx.Conn) error {
 var (
 	indexBuildSettings = []string{"maintenance_work_mem", "max_parallel_maintenance_workers"}
 	walSettings        = []string{"wal_level", "max_wal_senders", "max_wal_size", "checkpoint_timeout"}
+	autovacuumSettings = []string{"autovacuum", "autovacuum_naptime", "autovacuum_max_workers"}
 )
 
 // buildIndexes times each search index and each derived-table fill as its own stage; a SET or ANALYZE runs untimed.
@@ -260,7 +267,7 @@ func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record 
 			return err
 		}
 	}
-	for _, name := range slices.Concat(indexBuildSettings, walSettings, engineKnobs[l.engine].settings) {
+	for _, name := range slices.Concat(indexBuildSettings, walSettings, autovacuumSettings, engineKnobs[l.engine].settings) {
 		var value string
 		if err := conn.QueryRow(ctx, "SELECT current_setting($1)", name).Scan(&value); err != nil {
 			return fmt.Errorf("read setting %s: %w", name, err)
@@ -305,6 +312,43 @@ func timed(record *storage.LoadRecord, stage string, run func() error) error {
 	seconds := time.Since(start).Seconds()
 	record.Stages = append(record.Stages, storage.StageTiming{Name: stage, Seconds: seconds})
 	slog.Info("corpus load stage finished", "engine", record.Engine, "stage", stage, "seconds", seconds)
+	return nil
+}
+
+var corpusTables = []string{"articles", "article_embeddings"}
+
+// pauseAutovacuum keeps autovacuum off the corpus tables, TOAST included, until the load's own vacuum.
+func pauseAutovacuum(ctx context.Context, conn *pgx.Conn, settings map[string]string) error {
+	for _, table := range corpusTables {
+		name := pgx.Identifier{table}.Sanitize()
+		if _, err := conn.Exec(ctx, "ALTER TABLE "+name+" SET (autovacuum_enabled = false, toast.autovacuum_enabled = false)"); err != nil {
+			return fmt.Errorf("pause autovacuum on %s: %w", table, err)
+		}
+		var main, toast *string
+		err := conn.QueryRow(ctx, `SELECT
+				(SELECT option_value FROM pg_options_to_table(c.reloptions) WHERE option_name = 'autovacuum_enabled'),
+				(SELECT option_value FROM pg_options_to_table(t.reloptions) WHERE option_name = 'autovacuum_enabled')
+			FROM pg_class c LEFT JOIN pg_class t ON t.oid = c.reltoastrelid
+			WHERE c.oid = to_regclass($1)`, table).Scan(&main, &toast)
+		if err != nil {
+			return fmt.Errorf("read the autovacuum setting of %s: %w", table, err)
+		}
+		if main == nil || toast == nil {
+			return fmt.Errorf("autovacuum pause on %s did not reach the table and its TOAST", table)
+		}
+		settings["load."+table+".autovacuum_enabled"] = *main
+		settings["load."+table+".toast.autovacuum_enabled"] = *toast
+	}
+	return nil
+}
+
+func resumeAutovacuum(ctx context.Context, conn *pgx.Conn) error {
+	for _, table := range corpusTables {
+		name := pgx.Identifier{table}.Sanitize()
+		if _, err := conn.Exec(ctx, "ALTER TABLE "+name+" RESET (autovacuum_enabled, toast.autovacuum_enabled)"); err != nil {
+			return fmt.Errorf("resume autovacuum on %s: %w", table, err)
+		}
+	}
 	return nil
 }
 

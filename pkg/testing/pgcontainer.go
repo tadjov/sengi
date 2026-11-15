@@ -41,7 +41,7 @@ var serverFlags = []string{
 	"-c", "random_page_cost=1.1", "-c", "effective_io_concurrency=200", "-c", "jit=on",
 	"-c", "max_parallel_workers_per_gather=2", "-c", "max_parallel_workers=8",
 	"-c", "wal_buffers=16MB", "-c", "min_wal_size=80MB", "-c", "max_wal_size=16GB", "-c", "checkpoint_timeout=30min",
-	"-c", "default_toast_compression=pglz",
+	"-c", "default_toast_compression=pglz", "-c", "autovacuum_naptime=60s", "-c", "autovacuum_max_workers=3",
 }
 
 // engineServerFlags mirrors the server-start settings in docker-compose.yml.

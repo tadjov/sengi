@@ -51,38 +51,59 @@ var filterIndexes = map[storage.Engine][]string{
 
 var declaredSettings = map[storage.Engine]map[string]string{
 	storage.PostgresNative: {
-		"maintenance_work_mem":             "4GB",
-		"max_parallel_maintenance_workers": "4",
-		"load.synchronous_commit":          "off",
-		"wal_level":                        "replica",
-		"max_wal_senders":                  "10",
-		"max_wal_size":                     "16GB",
-		"checkpoint_timeout":               "30min",
+		"maintenance_work_mem":                             "4GB",
+		"max_parallel_maintenance_workers":                 "4",
+		"load.synchronous_commit":                          "off",
+		"wal_level":                                        "replica",
+		"max_wal_senders":                                  "10",
+		"max_wal_size":                                     "16GB",
+		"checkpoint_timeout":                               "30min",
+		"autovacuum":                                       "on",
+		"autovacuum_naptime":                               "1min",
+		"autovacuum_max_workers":                           "3",
+		"load.articles.autovacuum_enabled":                 "false",
+		"load.articles.toast.autovacuum_enabled":           "false",
+		"load.article_embeddings.autovacuum_enabled":       "false",
+		"load.article_embeddings.toast.autovacuum_enabled": "false",
 	},
 	storage.ParadeDB: {
-		"maintenance_work_mem":                     "4GB",
-		"max_parallel_maintenance_workers":         "4",
-		"load.synchronous_commit":                  "off",
-		"wal_level":                                "replica",
-		"max_wal_senders":                          "10",
-		"max_wal_size":                             "16GB",
-		"checkpoint_timeout":                       "30min",
-		"idx_articles_search.target_segment_count": "1",
-		"idx_articles_search.mutable_segment_rows": "1000",
-		"idx_articles_search.segments":             "1",
+		"maintenance_work_mem":                             "4GB",
+		"max_parallel_maintenance_workers":                 "4",
+		"load.synchronous_commit":                          "off",
+		"wal_level":                                        "replica",
+		"max_wal_senders":                                  "10",
+		"max_wal_size":                                     "16GB",
+		"checkpoint_timeout":                               "30min",
+		"autovacuum":                                       "on",
+		"autovacuum_naptime":                               "1min",
+		"autovacuum_max_workers":                           "3",
+		"load.articles.autovacuum_enabled":                 "false",
+		"load.articles.toast.autovacuum_enabled":           "false",
+		"load.article_embeddings.autovacuum_enabled":       "false",
+		"load.article_embeddings.toast.autovacuum_enabled": "false",
+		"idx_articles_search.target_segment_count":         "1",
+		"idx_articles_search.mutable_segment_rows":         "1000",
+		"idx_articles_search.segments":                     "1",
 	},
 	storage.Tiger: {
-		"maintenance_work_mem":             "4GB",
-		"max_parallel_maintenance_workers": "4",
-		"load.synchronous_commit":          "off",
-		"wal_level":                        "replica",
-		"max_wal_senders":                  "10",
-		"max_wal_size":                     "16GB",
-		"checkpoint_timeout":               "30min",
-		"pg_textsearch.memory_limit":       "2GB",
-		"pg_textsearch.segments_per_level": "8",
-		"idx_articles_bm25.segments":       "1",
-		"idx_articles_title_bm25.segments": "1",
+		"maintenance_work_mem":                             "4GB",
+		"max_parallel_maintenance_workers":                 "4",
+		"load.synchronous_commit":                          "off",
+		"wal_level":                                        "replica",
+		"max_wal_senders":                                  "10",
+		"max_wal_size":                                     "16GB",
+		"checkpoint_timeout":                               "30min",
+		"autovacuum":                                       "on",
+		"autovacuum_naptime":                               "1min",
+		"autovacuum_max_workers":                           "3",
+		"load.articles.autovacuum_enabled":                 "false",
+		"load.articles.toast.autovacuum_enabled":           "false",
+		"load.article_embeddings.autovacuum_enabled":       "false",
+		"load.article_embeddings.toast.autovacuum_enabled": "false",
+		"pg_textsearch.memory_limit":                       "2GB",
+		"pg_textsearch.segments_per_level":                 "8",
+		"idx_articles_bm25.segments":                       "1",
+		"idx_articles_title_bm25.segments":                 "1",
 	},
 }
 
@@ -432,6 +453,23 @@ func TestCorpusLoader(t *testing.T) {
 					})
 					assert.Positive(t, allVisible, "%s has no all-visible pages, so it was not vacuumed", table)
 					assert.Positive(t, analyzedColumns, "%s has no column statistics, so it was not analyzed", table)
+				}
+			})
+
+			t.Run("hands the corpus tables back to autovacuum after the load", func(t *testing.T) {
+				db := newDatabase(t, server.ConnString)
+				articles, vectors := fixture(10)
+				_, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
+				require.NoError(t, err)
+
+				for _, table := range []string{"articles", "article_embeddings"} {
+					var options []string
+					query(t, db, func(conn *pgx.Conn) error {
+						return conn.QueryRow(context.Background(), `SELECT coalesce(c.reloptions, '{}') || coalesce(toast.reloptions, '{}')
+							FROM pg_class c LEFT JOIN pg_class toast ON toast.oid = c.reltoastrelid
+							WHERE c.oid = to_regclass($1)`, table).Scan(&options)
+					})
+					assert.Empty(t, options, "%s keeps storage parameters after the load", table)
 				}
 			})
 
