@@ -1,0 +1,67 @@
+{
+  "engine": "tiger",
+  "engineVersion": "PostgreSQL 18.6 (Ubuntu 18.6-1.pgdg22.04+2), fuzzystrmatch 1.2, pg_textsearch 1.5.1, pg_trgm 1.6, vector 0.8.7",
+  "startedAt": "2026-11-15T02:42:11.386716Z",
+  "finishedAt": "2026-11-15T03:24:14.735965Z",
+  "totalSeconds": 2523.349249,
+  "canonical": {
+    "name": "cc-news-canonical",
+    "version": "v1",
+    "resourceHash": "sha256:7cdf4c719dc70cd013a1eb76fa33688564dc99af03ddf8cc57d20952cd4c89a3"
+  },
+  "embeddings": {
+    "name": "cc-news-canonical-embeddings",
+    "version": "v1",
+    "resourceHash": "sha256:de08a1b41c61d01ca245e23b632fa772324013eb6087ecbe90e793078b7fdde4"
+  },
+  "modelTag": "qwen3-embedding:0.6b@1024",
+  "articles": 707910,
+  "vectors": 707910,
+  "batchSize": 5000,
+  "stages": [
+    {
+      "name": "schema",
+      "seconds": 0.063462083
+    },
+    {
+      "name": "copy_articles",
+      "seconds": 69.291305708
+    },
+    {
+      "name": "copy_embeddings",
+      "seconds": 73.940906875
+    },
+    {
+      "name": "idx_articles_bm25",
+      "seconds": 71.805534959
+    },
+    {
+      "name": "idx_articles_title_bm25",
+      "seconds": 2.179376625
+    },
+    {
+      "name": "idx_article_embedding",
+      "seconds": 216.958963125
+    },
+    {
+      "name": "fill_corpus_words",
+      "seconds": 146.524476958
+    },
+    {
+      "name": "idx_corpus_words_trgm",
+      "seconds": 0.501013083
+    },
+    {
+      "name": "vacuum_analyze",
+      "seconds": 2.556750458
+    }
+  ],
+  "settings": {
+    "idx_articles_bm25.segments": "1",
+    "idx_articles_title_bm25.segments": "1",
+    "maintenance_work_mem": "4GB",
+    "max_parallel_maintenance_workers": "4",
+    "pg_textsearch.memory_limit": "2GB",
+    "pg_textsearch.segments_per_level": "8"
+  }
+}
