@@ -35,6 +35,7 @@ The project follows a layered architecture pattern:
 - **cmd/**: Entry points for different operations
     - `datapipe/`: Unified data-pipeline CLI. The core path is **preprocess → embed → load**; every stage after the first reads the canonical package, which is what keeps article IDs identical across engines.
         - `datapipe preprocess`: Maps a raw data package (`.csv`, `.jsonl`, `.parquet` resources) through `datasets/<ds>/mapping.yaml` into a canonical data package at `datasets/<ds>/canonical/<version>/` (`--version`, default `v1`), deduplicated by id; a rerun that yields the same articles is a no-op, and one that yields different articles under an existing version is refused
+        - `datapipe embed --canonical <descriptor> [--version v1] [--batch-size 64] [--max-tokens 512] [--limit N]`: Embeds each article's `lead-v1` text through Ollama (`EMBEDDING_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIM`) into an embeddings package at `datasets/<ds>/embeddings/<tag-dir>/<version>/`, the format `embed_corpus.py` writes on a GPU; `producedBy` tells the two apart, and an existing version is refused before anything is embedded
         - `datapipe load --engine <native|paradedb|tiger|es> --canonical <descriptor> [--embeddings <descriptor>]`: Verifies the canonical package and the embeddings package built from it, loads both into an empty engine, builds the indexes afterwards as timed stages, and writes the load record to the engine and to `datasets/<ds>/loads/<engine>/` — see [docs/embeddings.md](docs/embeddings.md)
     - `news_api/`: HTTP API server for search functionality
     - `schemagen/`: Schema generation utilities
@@ -53,6 +54,7 @@ The project follows a layered architecture pattern:
         - `factory/`: Storage factory for creating storage instances
         - `pg/`: PostgreSQL storage implementation with full-text search
         - `es/`: Elasticsearch storage implementation
+    - `resilience/`: Retry policy for HTTP calls: 408, 429 and 5xx or a dropped connection, honouring `Retry-After`, else backing off with jitter; only the `jev` judge uses it today
 
 - **pkg/**: Shared packages and APIs
     - `apis/datamapping/`: Data mapping type definitions
@@ -109,7 +111,7 @@ identity:
 ### Storage Layer
 Follows idiomatic Go patterns with sub-package organization:
 - **Interfaces**: Storage contracts define clear responsibilities
-    - `FTSSearcher`: Full-text search operations
+    - `FullTextBackend` plus one searcher per full-text paradigm: `StringQuerySearcher`, `FieldSearcher`, `MultiFieldSearcher`, `PhraseSearcher`, `BooleanSearcher`
     - `Indexer`: Document indexing operations
     - `Reader`: Document retrieval operations
 - **Factory Pattern**: `storage/factory` package provides centralized creation logic
@@ -123,14 +125,6 @@ Follows idiomatic Go patterns with sub-package organization:
 - Factory pattern avoids import cycles while maintaining clean separation
 - Separate interfaces for search and indexing operations
 - Clean file naming without redundant prefixes
-
-### Pipeline Architecture
-Uses a pipeline pattern for data processing with common interfaces:
-1. Reader loads and parses source data
-2. Mapper transforms data according to configuration
-3. Collector orchestrates the process
-4. Factory creates storage instances based on configuration
-5. Storage persists the articles with bulk operations support
 
 ### Bench CLI (`cmd/bench/`)
 
@@ -146,12 +140,13 @@ TREC-style IR evaluation pipeline. Full docs: [docs/bench.md](docs/bench.md).
 - `runner/` — orchestration: warmup + measured iterations, per-query metrics
 - `report/` — aggregation, JSON output, `bench show report`
 - `metrics/` — NDCG, MAP, MRR, Bpref, P/R/F1
+- `agreement/` — how alike judgment sets grade the same pairs and rank a run's engines (`bench diff judgments`)
 - `meta/` — provenance block embedded in every artifact (run_id, tool, generated_at, sources)
 - `version/` — schema version constant + checker
 
 **Track convention**: a track is any folder holding `spec.yaml` + `suite.yaml` + `trec/` (+ `reports/`) — the layout above it is not enforced; this repo groups them as `tracks/<dataset>/<paradigm>/`. Track args are ordinary paths: absolute, relative to the track root (`--track-root` / `BENCH_TRACK_ROOT`, default cwd), a glob, or omitted to walk up from CWD.
 
-**Strategy taxonomy**: `keyword` (token-overlap), `bm25` (pool-local Okapi BM25), `vector` (embedding cosine), `hybrid` (BM25 + vector fusion), `claude-cli` / `claude-api` (LLM batched), `manual` (human placeholders). `vector`/`hybrid` read doc vectors from a storage-agnostic `storage.VectorStore` (PG `article_embeddings` now, ES stubbed; PG precedence) and take query vectors from the track's `trec/query-vectors/` package when it has one, from Ollama otherwise (`--pg` + `EMBEDDING_BASE_URL`). `validate`/`pool`/`run` fill the reserved `query_vector` arg from the same source.
+**Strategy taxonomy**: `keyword` (token-overlap), `bm25` (pool-local Okapi BM25), `vector` (embedding cosine), `hybrid` (BM25 + vector fusion), `claude-cli` / `claude-api` (LLM batched), `jev` (TypeSafe's Jev, one doc per request, a non-Anthropic cross-judge), `manual` (human placeholders). `vector`/`hybrid` read doc vectors from a storage-agnostic `storage.VectorStore` (PG `article_embeddings` now, ES stubbed; PG precedence) and take query vectors from the track's `trec/query-vectors/` package when it has one, from Ollama otherwise (`--pg` + `EMBEDDING_BASE_URL`). `validate`/`pool`/`run` fill the reserved `query_vector` arg from the same source.
 
 **Schema v1**: every artifact has `schema_version: 1` + `meta:` block. Loading without it is a hard error — no backward-compat tolerance.
 
@@ -201,7 +196,7 @@ Built with Echo framework providing:
 - **Simple API**: Application-optimized (QueryString)
 - **Explicit API**: User-controlled (Match, MultiMatch)
 - **DTO Layer**: Clean separation between API and domain
-- **Optional Interfaces**: Storage backends can optionally implement Match/MultiMatch
+- **Optional Interfaces**: A backend serves the paradigms whose searcher interfaces it implements; the API answers the rest with 404 (GET) or 400 (`_search`)
 - **Extensible**: Easy to add new query types in the future
 
 ## Development Commands
@@ -222,7 +217,7 @@ docker-compose up -d
 # Build specific command
 go build -o bin/datapipe ./cmd/datapipe
 
-# Run with environment variables (stages: preprocess, load)
+# Run with environment variables (stages: preprocess, embed, load)
 ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load --engine native --canonical <descriptor>
 
 # Build other commands
@@ -252,6 +247,13 @@ Commands expect environment variables (typically in `.env` files):
 - `ES_ADDRESSES`: Elasticsearch cluster addresses (comma-separated)
 - `ES_INDEX_NAME`: Elasticsearch index name
 - `ES_DIAL_TIMEOUT`, `ES_RESPONSE_HEADER_TIMEOUT`: Go durations bounding each Elasticsearch request, bulk flushes included (default 5s, 30s); a timed-out request is not retried
+
+**Bench (`cmd/bench/.env`)**, loaded at startup from the repo root, or name it in `ENV_PATHS`; copy `cmd/bench/.env.example`:
+- `TYPESAFE_API_KEY`: TypeSafe key for `bench judge --strategy jev`
+- `PG_CONNECTION_STRING`: Postgres the judges read pooled articles and document vectors from
+- `EMBEDDING_BASE_URL`: Ollama endpoint for query vectors when a track has no `trec/query-vectors/`
+- `BENCH_TRACK_ROOT`: where relative track paths start
+- Never `ANTHROPIC_API_KEY`: `claude -p` inherits the environment and would bill the API instead of the claude.ai login
 
 **Search API (`cmd/news_search/.env`)**:
 - `PORT`: HTTP server port (default: 8080)

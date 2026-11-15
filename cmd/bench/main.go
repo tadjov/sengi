@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,11 +11,11 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tadjov/tusker/internal/bench/judgment"
 	"github.com/tadjov/tusker/internal/bench/spec"
+	"github.com/tadjov/tusker/pkg/config/env"
 )
 
 func init() {
-	// Let the spec loader query the strategy registry without importing
-	// judgment directly (keeps spec package dep-free of judgment).
+	// spec validates judgment-set names without importing judgment.
 	spec.KnownStrategies = judgment.KnownStrategies
 }
 
@@ -36,7 +37,9 @@ Typical pipeline (pass the track path as a positional arg):
      bench export <track> --format qrels  TREC qrels for trec_eval / R / Python
 
   bench status <track>               see where you left off
-  bench diff   <track>               compare latest two runs
+  bench diff runs <track>            compare latest two runs
+  bench diff judgments <track> --judgments a,b
+                                     compare judgment sets
   bench clean  <track>               remove old report files (keep N newest)
 
 A track is any folder holding spec.yaml + suite.yaml + trec/ — nothing above it
@@ -54,6 +57,10 @@ defaulting to the current directory.
 )
 
 func main() {
+	// Loaded before the flags are defined: --track-root defaults to BENCH_TRACK_ROOT.
+	if err := env.LoadDotEnv(os.Getenv("ENV"), "cmd/bench/.env"); err != nil {
+		slog.Info("Skipping .env environment variables", "error", err)
+	}
 	root := &cobra.Command{
 		Use:           cliName,
 		Short:         cliShort,
@@ -84,8 +91,7 @@ func main() {
 		stop()
 	}()
 	if err := root.ExecuteContext(ctx); err != nil {
-		// Printed rather than logged: resolution errors carry indented hint
-		// lines, and slog would escape the newlines into one unreadable string.
+		// Printed, not logged: slog would escape the hint lines' newlines.
 		fmt.Fprintf(os.Stderr, "%s %v\n", cFail.Sprint("Error:"), err)
 		os.Exit(1)
 	}

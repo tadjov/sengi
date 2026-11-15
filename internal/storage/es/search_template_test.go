@@ -84,6 +84,7 @@ queries:
     query: '{"knn": {"field": "embedding", "query_vector": {{#toJson}}query_vector{{/toJson}}, "k": 3, "num_candidates": 10}, "size": 3}'
 queries:
   - id: sem-1
+    text: "nearest vectors"
     description: "nearest vectors"
     engines:
       elasticsearch: { template: es_knn }

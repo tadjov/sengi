@@ -5,9 +5,7 @@ import (
 	"testing"
 )
 
-// Expected values are sklearn.metrics.cohen_kappa_score(first, second,
-// weights="quadratic", labels=[0, 1, 2, 3]). The labels fix the 0–3 scale;
-// without them sklearn renumbers the grades seen, which differs when one is unused.
+// Expected values: sklearn's quadratic cohen_kappa_score, labels=[0, 1, 2, 3] to fix the scale.
 func TestGradeConfusion_QuadraticKappaMatchesSklearn(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -96,5 +94,103 @@ func TestNewGradeConfusion_RejectsBadInput(t *testing.T) {
 				t.Error("want an error")
 			}
 		})
+	}
+}
+
+// Worked by hand: 18 of 20 pairs within one; weighted disagreement 14 observed against 992/20 by chance.
+func TestGradeConfusion_WithinOneAndQuadraticKappaOnAWorkedTable(t *testing.T) {
+	c := GradeConfusion{
+		{4, 1, 1, 0},
+		{1, 3, 1, 0},
+		{0, 1, 2, 1},
+		{0, 1, 1, 3},
+	}
+	if got := c.WithinOneAgreement(); math.Abs(got-0.9) > 1e-12 {
+		t.Errorf("WithinOneAgreement() = %v, want 0.9", got)
+	}
+	if got, want := c.QuadraticKappa(), 1-14/49.6; math.Abs(got-want) > 1e-12 {
+		t.Errorf("QuadraticKappa() = %v, want %v", got, want)
+	}
+}
+
+// Cohen's worked example [[20, 5], [10, 15]] has κ = 0.4; these grades collapse onto it at threshold 2.
+func TestGradeConfusion_BinaryKappaCollapsesAtTheThreshold(t *testing.T) {
+	c := GradeConfusion{
+		{8, 4, 0, 0},
+		{3, 5, 5, 0},
+		{0, 0, 6, 4},
+		{10, 0, 0, 5},
+	}
+	if got := c.BinaryKappa(2); math.Abs(got-0.4) > 1e-12 {
+		t.Errorf("BinaryKappa(2) = %v, want 0.4", got)
+	}
+	if got := c.RelevantAgreement(2); math.Abs(got-0.7) > 1e-12 {
+		t.Errorf("RelevantAgreement(2) = %v, want 0.7", got)
+	}
+}
+
+func TestGradeConfusion_BinaryKappaIsUndefinedWhenBothRatersStayOnOneSide(t *testing.T) {
+	c := GradeConfusion{{3, 2, 0, 0}, {1, 4, 0, 0}}
+	if got := c.BinaryKappa(2); !math.IsNaN(got) {
+		t.Errorf("BinaryKappa(2) = %v, want NaN", got)
+	}
+}
+
+func confusionOf(t *testing.T, first, second []int) GradeConfusion {
+	t.Helper()
+	c, err := NewGradeConfusion(first, second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
+func TestBootstrapKappa_IdenticalRatersGiveAnIntervalOfOne(t *testing.T) {
+	byQuery := []GradeConfusion{
+		confusionOf(t, []int{0, 0, 3}, []int{0, 0, 3}),
+		confusionOf(t, []int{1, 2, 2}, []int{1, 2, 2}),
+		confusionOf(t, []int{0, 3, 3}, []int{0, 3, 3}),
+	}
+	for name, kappa := range map[string]func(GradeConfusion) float64{
+		"quadratic": GradeConfusion.QuadraticKappa,
+		"binary":    func(c GradeConfusion) float64 { return c.BinaryKappa(2) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			got := BootstrapKappa(KappaBootstrap{ByQuery: byQuery, Kappa: kappa, Seed: 1})
+			if got != (KappaInterval{Kappa: 1, Low: 1, High: 1}) {
+				t.Errorf("BootstrapKappa() = %+v, want κ 1 in [1, 1]", got)
+			}
+		})
+	}
+}
+
+func TestBootstrapKappa_IntervalHoldsTheEstimateAndRepeatsForASeed(t *testing.T) {
+	byQuery := []GradeConfusion{
+		confusionOf(t, []int{0, 1, 2, 3}, []int{0, 2, 2, 3}),
+		confusionOf(t, []int{3, 3, 2, 0}, []int{2, 3, 1, 0}),
+		confusionOf(t, []int{1, 1, 0, 0}, []int{0, 1, 0, 1}),
+		confusionOf(t, []int{2, 3, 3, 1}, []int{3, 3, 2, 1}),
+		confusionOf(t, []int{0, 0, 2, 3}, []int{0, 1, 3, 3}),
+		confusionOf(t, []int{2, 1, 0, 3}, []int{1, 1, 0, 2}),
+	}
+	var all GradeConfusion
+	for _, c := range byQuery {
+		for i := range c {
+			for j := range c[i] {
+				all[i][j] += c[i][j]
+			}
+		}
+	}
+
+	got := BootstrapKappa(KappaBootstrap{ByQuery: byQuery, Kappa: GradeConfusion.QuadraticKappa, Seed: 7})
+
+	if math.Abs(got.Kappa-all.QuadraticKappa()) > 1e-12 {
+		t.Errorf("κ = %v, want the κ over every pair, %v", got.Kappa, all.QuadraticKappa())
+	}
+	if got.Low > got.Kappa || got.Kappa > got.High || got.Low == got.High {
+		t.Errorf("interval [%v, %v] does not hold κ %v with any width", got.Low, got.High, got.Kappa)
+	}
+	if again := BootstrapKappa(KappaBootstrap{ByQuery: byQuery, Kappa: GradeConfusion.QuadraticKappa, Seed: 7}); again != got {
+		t.Errorf("seed 7 gave %+v, then %+v", got, again)
 	}
 }

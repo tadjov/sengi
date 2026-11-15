@@ -510,4 +510,11 @@ func normalizedScore(rawScore, maxScore float64) float64 {
 }
 
 // Compile-time interface assertions
-var _ storage.FtsSearcher = (*Searcher)(nil)
+var (
+	_ storage.FullTextBackend     = (*Searcher)(nil)
+	_ storage.StringQuerySearcher = (*Searcher)(nil)
+	_ storage.FieldSearcher       = (*Searcher)(nil)
+	_ storage.MultiFieldSearcher  = (*Searcher)(nil)
+	_ storage.PhraseSearcher      = (*Searcher)(nil)
+	_ storage.BooleanSearcher     = (*Searcher)(nil)
+)

@@ -1,8 +1,11 @@
 package factory
 
 import (
+	"slices"
+	"strings"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/tadjov/tusker/internal/storage"
 	"github.com/tadjov/tusker/internal/storage/es"
@@ -79,5 +82,20 @@ func TestLoadEnv_ElasticsearchTimeouts(t *testing.T) {
 				t.Errorf("LoadEnv accepted ES_RESPONSE_HEADER_TIMEOUT=%q", value)
 			}
 		})
+	}
+}
+
+func TestLoadEnv_RejectsInMemoryStorageNamingTheSupportedTypes(t *testing.T) {
+	t.Setenv("STORAGE_TYPE", "in_mem")
+
+	_, err := LoadEnv()
+	if err == nil {
+		t.Fatal("LoadEnv accepted STORAGE_TYPE=in_mem, which no searcher serves")
+	}
+	words := strings.FieldsFunc(err.Error(), func(r rune) bool { return !unicode.IsLetter(r) && r != '_' })
+	for _, supported := range []string{"es", "pg"} {
+		if !slices.Contains(words, supported) {
+			t.Errorf("error %q does not name supported type %q", err, supported)
+		}
 	}
 }

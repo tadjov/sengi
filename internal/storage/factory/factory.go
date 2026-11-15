@@ -79,8 +79,8 @@ type SearcherConfig struct {
 	Embedder *embedding.Embedder
 }
 
-// NewSearcher creates a new storage.FtsSearcher based on the storage type
-func NewSearcher(cfg SearcherConfig) (storage.FtsSearcher, error) {
+// NewSearcher creates the full-text backend for the storage type.
+func NewSearcher(cfg SearcherConfig) (storage.FullTextBackend, error) {
 	switch cfg.Type {
 	case storage.PG:
 		if cfg.Pool == nil {
@@ -93,13 +93,6 @@ func NewSearcher(cfg SearcherConfig) (storage.FtsSearcher, error) {
 			return nil, fmt.Errorf("elasticsearch client is not set")
 		}
 		return es.NewSearcher(cfg.EsClient), nil
-
-	case storage.Solr:
-		return nil, fmt.Errorf("solr reader not yet implemented")
-
-	case storage.InMem:
-		// TODO: Implement InMem when needed
-		return nil, fmt.Errorf("inmem reader not yet implemented")
 
 	default:
 		return nil, fmt.Errorf(string(storage.ErrUnsupportedStorer), cfg.Type)

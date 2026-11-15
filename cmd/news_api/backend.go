@@ -17,7 +17,7 @@ import (
 // when embeddings are disabled; close releases the shared Postgres pool or
 // Elasticsearch client.
 type searchBackend struct {
-	fts      storage.FtsSearcher
+	fts      storage.FullTextBackend
 	semantic storage.SemanticSearcher
 	hybrid   storage.HybridSearcher
 	health   pkgserver.HealthChecker

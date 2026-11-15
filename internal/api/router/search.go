@@ -16,15 +16,20 @@ import (
 )
 
 type SearchRouter struct {
-	e                *echo.Echo
-	searcher         storage.FtsSearcher
-	semanticSearcher storage.SemanticSearcher
-	hybridSearcher   storage.HybridSearcher
+	e                   *echo.Echo
+	searcher            storage.FullTextBackend
+	stringQuerySearcher storage.StringQuerySearcher
+	fieldSearcher       storage.FieldSearcher
+	multiFieldSearcher  storage.MultiFieldSearcher
+	phraseSearcher      storage.PhraseSearcher
+	booleanSearcher     storage.BooleanSearcher
+	semanticSearcher    storage.SemanticSearcher
+	hybridSearcher      storage.HybridSearcher
 }
 
 type SearchRouterOption func(*SearchRouter)
 
-func NewSearchRouter(e *echo.Echo, searcher storage.FtsSearcher, opts ...SearchRouterOption) *SearchRouter {
+func NewSearchRouter(e *echo.Echo, searcher storage.FullTextBackend, opts ...SearchRouterOption) *SearchRouter {
 	router := &SearchRouter{
 		e:        e,
 		searcher: searcher,
@@ -50,8 +55,16 @@ func WithHybridSearcher(searcher storage.HybridSearcher) SearchRouterOption {
 }
 
 func (r *SearchRouter) Bind() {
+	r.stringQuerySearcher, _ = r.searcher.(storage.StringQuerySearcher)
+	r.fieldSearcher, _ = r.searcher.(storage.FieldSearcher)
+	r.multiFieldSearcher, _ = r.searcher.(storage.MultiFieldSearcher)
+	r.phraseSearcher, _ = r.searcher.(storage.PhraseSearcher)
+	r.booleanSearcher, _ = r.searcher.(storage.BooleanSearcher)
+
 	// Simple query_string API (application-determined fields/weights)
-	r.e.GET("/v1/articles/search", r.searchHandler)
+	if r.stringQuerySearcher != nil {
+		r.e.GET("/v1/articles/search", r.searchHandler)
+	}
 
 	// Unified structured search API (match/multi_match with query wrapper)
 	r.e.POST("/v1/articles/_search", r.structuredSearchHandler)
@@ -67,9 +80,8 @@ func (r *SearchRouter) Bind() {
 
 // capabilitiesHandler reports what the running backend supports (GET)
 //
-// The full-text searcher is always wired, so query_string, match, multi_match,
-// phrase and boolean are always available; semantic and hybrid only when their
-// searchers are. full_text is what the engine itself declares it can honour.
+// A query type is available when its searcher is wired. full_text is what the
+// engine itself declares it can honour.
 //
 // @Summary Report supported query types and parameters
 // @Description Returns the query types the running backend serves and the full-text parameters its engine honours: the operator it applies when a request names none, whether it supports fuzziness, phrase slop and boosts, and the fields it can match apart from every other field. A stated parameter outside these is a 400 unless the request sends `Prefer: handling=lenient`.
@@ -80,11 +92,11 @@ func (r *SearchRouter) Bind() {
 func (r *SearchRouter) capabilitiesHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, dto.CapabilitiesResponse{
 		QueryTypes: dto.QueryTypes{
-			StringQuery: true,
-			Match:       true,
-			MultiMatch:  true,
-			Phrase:      true,
-			Boolean:     true,
+			StringQuery: r.stringQuerySearcher != nil,
+			Match:       r.fieldSearcher != nil,
+			MultiMatch:  r.multiFieldSearcher != nil,
+			Phrase:      r.phraseSearcher != nil,
+			Boolean:     r.booleanSearcher != nil,
 			Semantic:    r.semanticSearcher != nil,
 			Hybrid:      r.hybridSearcher != nil,
 		},
@@ -179,7 +191,7 @@ func (r *SearchRouter) searchHandler(c echo.Context) error {
 		return err
 	}
 
-	searchResult, err := r.searcher.SearchStringQuery(c.Request().Context(), queryString, &dquery.BaseOptions{
+	searchResult, err := r.stringQuerySearcher.SearchStringQuery(c.Request().Context(), queryString, &dquery.BaseOptions{
 		Cursor: cursor,
 		Size:   sizeInt,
 	})
@@ -301,7 +313,7 @@ func (r *SearchRouter) structuredSearchHandler(c echo.Context) error {
 
 func (r *SearchRouter) handleHybridQuery(c echo.Context, params *dto.HybridParams, options *dquery.BaseOptions) error {
 	if r.hybridSearcher == nil {
-		return apperr.NewValidation("hybrid search is not enabled on this server")
+		return notEnabled(dquery.HybridType)
 	}
 
 	domainQuery, err := params.ToDomain()
@@ -326,7 +338,15 @@ func (r *SearchRouter) handleHybridQuery(c echo.Context, params *dto.HybridParam
 	})
 }
 
+func notEnabled(queryType dquery.Kind) error {
+	return apperr.NewValidation(fmt.Sprintf("%s search is not enabled on this server", queryType))
+}
+
 func (r *SearchRouter) handleMatchQuery(c echo.Context, params *dto.MatchParams, options *dquery.BaseOptions) error {
+	if r.fieldSearcher == nil {
+		return notEnabled(dquery.MatchType)
+	}
+
 	domainQuery, err := params.ToDomain()
 	if err != nil {
 		return err
@@ -337,7 +357,7 @@ func (r *SearchRouter) handleMatchQuery(c echo.Context, params *dto.MatchParams,
 		return err
 	}
 
-	searchResult, err := r.searcher.SearchField(c.Request().Context(), domainQuery, options)
+	searchResult, err := r.fieldSearcher.SearchField(c.Request().Context(), domainQuery, options)
 	if err != nil {
 		slog.Error("Failed to execute match search", "error", err, "field", params.Field, "query", params.Query)
 		return err
@@ -350,6 +370,10 @@ func (r *SearchRouter) handleMatchQuery(c echo.Context, params *dto.MatchParams,
 }
 
 func (r *SearchRouter) handleMultiMatchQuery(c echo.Context, params *dto.MultiMatchParams, options *dquery.BaseOptions) error {
+	if r.multiFieldSearcher == nil {
+		return notEnabled(dquery.MultiMatchType)
+	}
+
 	domainQuery, err := params.ToDomain()
 	if err != nil {
 		return err
@@ -360,7 +384,7 @@ func (r *SearchRouter) handleMultiMatchQuery(c echo.Context, params *dto.MultiMa
 		return err
 	}
 
-	searchResult, err := r.searcher.SearchFields(c.Request().Context(), domainQuery, options)
+	searchResult, err := r.multiFieldSearcher.SearchFields(c.Request().Context(), domainQuery, options)
 	if err != nil {
 		slog.Error("Failed to execute multi_match search", "error", err, "fields", params.Fields, "query", params.Query)
 		return err
@@ -373,6 +397,10 @@ func (r *SearchRouter) handleMultiMatchQuery(c echo.Context, params *dto.MultiMa
 }
 
 func (r *SearchRouter) handlePhraseQuery(c echo.Context, params *dto.PhraseParams, options *dquery.BaseOptions) error {
+	if r.phraseSearcher == nil {
+		return notEnabled(dquery.PhraseType)
+	}
+
 	domainQuery, err := params.ToDomain()
 	if err != nil {
 		return err
@@ -383,7 +411,7 @@ func (r *SearchRouter) handlePhraseQuery(c echo.Context, params *dto.PhraseParam
 		return err
 	}
 
-	searchResult, err := r.searcher.SearchPhrase(c.Request().Context(), domainQuery, options)
+	searchResult, err := r.phraseSearcher.SearchPhrase(c.Request().Context(), domainQuery, options)
 	if err != nil {
 		slog.Error("Failed to execute phrase search", "error", err, "fields", params.Fields, "query", params.Query, "slop", params.Slop)
 		return err
@@ -396,6 +424,10 @@ func (r *SearchRouter) handlePhraseQuery(c echo.Context, params *dto.PhraseParam
 }
 
 func (r *SearchRouter) handleBooleanQuery(c echo.Context, params *dto.BooleanParams, options *dquery.BaseOptions) error {
+	if r.booleanSearcher == nil {
+		return notEnabled(dquery.BooleanType)
+	}
+
 	domainQuery, err := params.ToDomain()
 	if err != nil {
 		return err
@@ -406,7 +438,7 @@ func (r *SearchRouter) handleBooleanQuery(c echo.Context, params *dto.BooleanPar
 		return err
 	}
 
-	searchResult, err := r.searcher.SearchBoolean(c.Request().Context(), domainQuery, options)
+	searchResult, err := r.booleanSearcher.SearchBoolean(c.Request().Context(), domainQuery, options)
 	if err != nil {
 		slog.Error("Failed to execute boolean search", "error", err, "expression", params.Expression)
 		return err

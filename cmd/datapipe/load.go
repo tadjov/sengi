@@ -11,7 +11,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
@@ -127,21 +126,11 @@ func runLoad(ctx context.Context, out io.Writer, opts loadOptions) error {
 
 // derivedRecordsDir maps datasets/<ds>/canonical/<version>/ to datasets/<ds>/loads/<engine>/.
 func derivedRecordsDir(canonical string, engine storage.Engine) (string, error) {
-	if strings.Contains(canonical, "://") {
-		return "", fmt.Errorf("canonical package %s is remote; pass --records-dir", canonical)
-	}
-	dir := canonical
-	if filepath.Ext(dir) == ".json" {
-		dir = filepath.Dir(dir)
-	}
-	dir, err := filepath.Abs(dir)
+	root, err := datasetRoot(canonical)
 	if err != nil {
-		return "", fmt.Errorf("resolve %s: %w", canonical, err)
+		return "", fmt.Errorf("%w; pass --records-dir", err)
 	}
-	if filepath.Base(filepath.Dir(dir)) != "canonical" {
-		return "", fmt.Errorf("canonical package %s is not under datasets/<ds>/canonical/<version>/; pass --records-dir", canonical)
-	}
-	return filepath.Join(filepath.Dir(filepath.Dir(dir)), "loads", string(engine)), nil
+	return filepath.Join(root, "loads", string(engine)), nil
 }
 
 // writeLoadRecord never replaces an existing record.

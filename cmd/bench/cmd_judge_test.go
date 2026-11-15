@@ -82,8 +82,6 @@ func TestCheckResumeCompat_ModelMismatch(t *testing.T) {
 	assert.Contains(t, err.Error(), "judge mismatch")
 }
 
-// A provider swap at the same strategy and model must be caught too — the case
-// the old flat judge_model field could not express.
 func TestCheckResumeCompat_ProviderMismatch(t *testing.T) {
 	prior := fileWith(llmJudge("claude-cli", "some-model"))
 	now := llmJudge("codex-cli", "some-model")
@@ -107,8 +105,6 @@ func TestCheckResumeCompat_PromptVersionMismatch(t *testing.T) {
 	assert.Contains(t, err.Error(), "judge mismatch")
 }
 
-// A CLI judge run with other flags reads other settings, so its grades are not
-// the same judge's.
 func TestCheckResumeCompat_InvocationMismatch(t *testing.T) {
 	was := llmJudge("claude-cli", "claude-haiku-5-5")
 	was.Invocation = "claude -p --model claude-haiku-5-5"
@@ -121,8 +117,6 @@ func TestCheckResumeCompat_InvocationMismatch(t *testing.T) {
 	assert.Contains(t, err.Error(), `invocation: was "claude -p --model claude-haiku-5-5", now "claude -p --safe-mode --model claude-haiku-5-5"`)
 }
 
-// Two runs batched alike are the same judge, however each holds its
-// batching.
 func TestCheckResumeCompat_SameBatchingMatches(t *testing.T) {
 	was := llmJudge("claude-cli", "claude-haiku-5-5")
 	was.Batching = &meta.Batching{Size: 10, Seed: 0}
@@ -132,8 +126,6 @@ func TestCheckResumeCompat_SameBatchingMatches(t *testing.T) {
 	assert.NoError(t, checkResumeCompat(fileWith(was), now))
 }
 
-// Batches under another seed pair docs differently, so their grades are not
-// the same judge's.
 func TestCheckResumeCompat_BatchSeedMismatch(t *testing.T) {
 	was := llmJudge("claude-cli", "claude-haiku-5-5")
 	was.Batching = &meta.Batching{Size: 10, Seed: 1, MaxOutputTokens: 20000}
@@ -146,8 +138,6 @@ func TestCheckResumeCompat_BatchSeedMismatch(t *testing.T) {
 	assert.Contains(t, err.Error(), "batching: was size 10, seed 1, 20000 tokens, now size 10, seed 2, 20000 tokens")
 }
 
-// The same model at another effort grades differently, so it is not the same
-// judge.
 func TestCheckResumeCompat_EffortMismatch(t *testing.T) {
 	was := llmJudge("claude-api", "claude-sonnet-5-5")
 	was.Effort = "low"
@@ -161,10 +151,7 @@ func TestCheckResumeCompat_EffortMismatch(t *testing.T) {
 	assert.NotContains(t, err.Error(), "model:", "only the fields that differ")
 }
 
-// Legacy annotations (flat strategy/judge_model, no judge block) normalize to a
-// judge whose strategy is the old selector, which cannot equal the new
-// llm/claude-cli shape — so resuming onto them is correctly refused. Those
-// grades came from an unrecorded model and must not be extended.
+// Legacy grades came from an unrecorded model, so they must not be extended.
 func TestCheckResumeCompat_LegacyFileRefusesResume(t *testing.T) {
 	prior := &judgment.File{Meta: meta.Meta{
 		LegacyStrategy:   "claude-cli",
@@ -213,8 +200,6 @@ func TestRequireJudged(t *testing.T) {
 	}
 }
 
-// A heuristic file written under another rubric must not be extended: its
-// grades and this run's would follow different rules under one judge block.
 func TestCheckResumeCompat_RubricVersionMismatch(t *testing.T) {
 	prior := fileWith(meta.Judge{Strategy: string(judgment.StrategyBM25)})
 
@@ -282,8 +267,7 @@ func (s articleStore) GetByIDs(_ context.Context, ids []uuid.UUID) ([]document.A
 	return out, nil
 }
 
-// judgeFixture is a track on disk whose pool holds one query, plus the store
-// its pooled articles are read from.
+// judgeFixture is a one-query track on disk plus the store its articles come from.
 type judgeFixture struct {
 	track    string
 	articles articleStore
@@ -398,8 +382,6 @@ func TestJudge_QueryWithoutTermsFailsAfterWritingTheFile(t *testing.T) {
 	assert.NotContains(t, got, "q-gone")
 }
 
-// A resumed file is this run's artifact and must not keep the prior run's
-// provenance.
 func TestJudge_ResumedFileCarriesTheNewRunID(t *testing.T) {
 	fx := newJudgeFixture(t, "climate change", "climate change summit")
 	fx.writePriorBM25(t, "prior-run", judgment.Entry{QueryID: "q1"})
@@ -440,8 +422,6 @@ func TestJudge_ManualForceDiscardsHandGrades(t *testing.T) {
 	assert.Equal(t, judgment.GradeUnjudged, fx.annotations(t, "manual").Queries[0].Docs[0].Grade)
 }
 
-// A query dropped from the pool since the last run is no longer judged, so its
-// leftover placeholders must not fail the resumed run.
 func TestJudge_ResumeDropsQueriesThatLeftThePool(t *testing.T) {
 	fx := newJudgeFixture(t, "climate change", "climate change summit")
 	judge := judgment.NewBM25Strategy().Describe()
@@ -455,7 +435,6 @@ func TestJudge_ResumeDropsQueriesThatLeftThePool(t *testing.T) {
 	assert.NotContains(t, gradesByQuery(fx.annotations(t, "bm25")), "q-gone")
 }
 
-// Merging into another judge's file would relabel its grades as hand grades.
 func TestJudge_ManualRefusesAnotherJudgesFile(t *testing.T) {
 	fx := newJudgeFixture(t, "climate change", "climate change summit")
 	require.NoError(t, fx.judge(t, "--strategy", "bm25"))
@@ -491,8 +470,6 @@ func (s *interruptingStore) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]do
 	return s.articleStore.GetByIDs(ctx, ids)
 }
 
-// An interrupted run leaves only its intermediate flush, which must carry the
-// run's provenance, pool binding and counts like a finished file.
 func TestJudge_InterruptedRunLeavesAnIdentifiedFile(t *testing.T) {
 	fx := newJudgeFixture(t, "climate change", "climate change summit")
 	q2Doc := uuid.New()
@@ -525,10 +502,8 @@ func TestJudge_ForceOutsideManualIsRejected(t *testing.T) {
 	assert.NoFileExists(t, filepath.Join(fx.track, "trec", "annotations.bm25.yaml"))
 }
 
-// The judge grades with the package's query vectors, as pool and run rank with
-// them: the Ollama here answers with the opposite vector. The pool holds one
-// doc stored at the package's vector and ten at the opposite one, so only the
-// package's vector puts that doc among the ten nearest.
+// The Ollama here answers with the opposite vector, so only the package's vector
+// puts the one doc stored at it among the ten nearest.
 func TestJudge_VectorGradesWithTheTracksQueryVectors(t *testing.T) {
 	ctx := context.Background()
 	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
@@ -649,8 +624,6 @@ func TestJudge_ManualNeedsNoQueryText(t *testing.T) {
 	require.NoError(t, fx.judge(t, "--strategy", "manual"))
 }
 
-// keyword, bm25, vector and hybrid grade the query's text through new rules,
-// so a file their v1 rubric graded cannot be resumed.
 func TestCheckResumeCompat_RefusesTheDeterministicJudgesV1Rubric(t *testing.T) {
 	for _, strategy := range []judgment.Strategy{
 		judgment.NewKeywordStrategy(),
@@ -686,14 +659,10 @@ func TestJudge_UnparsableBooleanTextFailsAfterWritingTheFile(t *testing.T) {
 	require.NotNil(t, jf.Meta.UnjudgedCount)
 	assert.Equal(t, 0, *jf.Meta.GradedCount)
 	assert.Equal(t, 1, *jf.Meta.UnjudgedCount)
-	// Every flush already writes the same file, so only the closing line shows
-	// the command finalised it before failing.
+	// Every flush writes this file, so only the closing line shows it was finalised.
 	assert.Regexp(t, `Judgments written: \S+/trec/annotations\.bm25\.yaml`, out)
 }
 
-// The judge block names the effort of an LLM run, and the batch size and seed
-// of a batched one, seed 0 included, which the default of one doc per request
-// has none of.
 func TestJudge_LLMJudgeBlockRecordsItsEffortAndBatching(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake binary is a POSIX shell script")
@@ -726,7 +695,6 @@ func TestJudge_LLMJudgeBlockRecordsItsEffortAndBatching(t *testing.T) {
 	}
 }
 
-// writtenJudge is the judge block exactly as the annotations file holds it.
 func writtenJudge(t *testing.T, fx *judgeFixture, set string) map[string]any {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join(fx.track, "trec", "annotations."+set+".yaml"))
@@ -740,9 +708,7 @@ func writtenJudge(t *testing.T, fx *judgeFixture, set string) map[string]any {
 	return file.Meta.Judge
 }
 
-// gradingClaudeCLI is a stand-in claude binary that grades 2 every doc id its
-// prompt names, in the envelope --output-format json prints, and keeps the
-// arguments of its last grade.
+// gradingClaudeCLI is a fake claude binary that grades every doc 2 and keeps its last arguments.
 func gradingClaudeCLI(t *testing.T) string {
 	t.Helper()
 	script := `#!/bin/sh
@@ -764,10 +730,8 @@ printf '{"type":"result","is_error":false,"result":"[%s]"}\n' "$entries"
 	return path
 }
 
-// Without --model the LLM judge grades with claude-sonnet-5-5, the model of
-// the final cc-news judgments, and records that id; an explicit empty
-// --model, as an unset make variable gives, still fails naming the flag.
 func TestJudge_LLMWithoutModelGradesWithTheDefault(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	if runtime.GOOS == "windows" {
 		t.Skip("fake binary is a POSIX shell script")
 	}
@@ -798,7 +762,7 @@ func TestJudge_LLMWithoutModelGradesWithTheDefault(t *testing.T) {
 			fx := newJudgeFixture(t, "climate change", "climate change summit")
 
 			require.NoError(t, fx.judge(t, "--strategy", "llm", "--provider", provider,
-				"--api-key", "test-key", "--api-base", api.URL, "--cli-binary", cli))
+				"--api-base", api.URL, "--cli-binary", cli))
 
 			assert.Equal(t, "claude-sonnet-5-5", fx.annotations(t, provider).Judge().Model)
 		})
@@ -811,7 +775,7 @@ func TestJudge_LLMWithoutModelGradesWithTheDefault(t *testing.T) {
 			fx := newJudgeFixture(t, "climate change", "climate change summit")
 
 			err := fx.judge(t, "--strategy", "llm", "--provider", provider, "--model", "",
-				"--api-key", "test-key", "--api-base", api.URL, "--cli-binary", cli)
+				"--api-base", api.URL, "--cli-binary", cli)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "--model")
@@ -833,8 +797,6 @@ func TestJudge_LLMUnknownEffortFailsNamingTheFlag(t *testing.T) {
 	assert.NoFileExists(t, filepath.Join(fx.track, "trec", "annotations.claude-cli.yaml"))
 }
 
-// The LLM judge's v3 prompt grades the query text under one rubric, so a file
-// its v2 prompt graded cannot be resumed.
 func TestCheckResumeCompat_RefusesTheLLMJudgesV2Prompt(t *testing.T) {
 	strategy, err := judgment.NewLLMStrategy(judgment.StrategyOptions{
 		Provider: judgment.ProviderClaudeCLI, CLIBinary: gradingClaudeCLI(t), Model: "sonnet", Effort: judgment.EffortLow,
@@ -849,9 +811,6 @@ func TestCheckResumeCompat_RefusesTheLLMJudgesV2Prompt(t *testing.T) {
 	assert.Contains(t, err.Error(), fmt.Sprintf("prompt_version: was %q, now %q", "v2", judgment.PromptVersion))
 }
 
-// The keyword, bm25 and LLM judges grade through the shared phrase, boolean
-// and filter gates, so each names the gates' version, and a file graded under
-// other gates cannot be resumed.
 func TestCheckResumeCompat_RefusesAFileGradedUnderOtherGates(t *testing.T) {
 	llm, err := judgment.NewLLMStrategy(judgment.StrategyOptions{
 		Provider: judgment.ProviderClaudeCLI, CLIBinary: gradingClaudeCLI(t), Model: "sonnet", Effort: judgment.EffortLow,
@@ -859,7 +818,10 @@ func TestCheckResumeCompat_RefusesAFileGradedUnderOtherGates(t *testing.T) {
 	require.NoError(t, err)
 	gates := llm.Describe().GateVersion
 	require.NotEmpty(t, gates, "the LLM judge block names its gates")
-	for _, strategy := range []judgment.Strategy{judgment.NewKeywordStrategy(), judgment.NewBM25Strategy(), llm} {
+	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+	jev, err := judgment.NewJevStrategy(judgment.StrategyOptions{Model: "jev-1.14.0"})
+	require.NoError(t, err)
+	for _, strategy := range []judgment.Strategy{judgment.NewKeywordStrategy(), judgment.NewBM25Strategy(), llm, jev} {
 		t.Run(strategy.Name(), func(t *testing.T) {
 			now := strategy.Describe()
 			assert.Equal(t, gates, now.GateVersion, "one gate version for every judge that gates")
@@ -874,8 +836,7 @@ func TestCheckResumeCompat_RefusesAFileGradedUnderOtherGates(t *testing.T) {
 	}
 }
 
-// An empty --model, as an unset make variable gives, fails naming the flag
-// before anything is graded, so the annotations already on disk survive.
+// An unset make variable passes an empty --model.
 func TestJudge_LLMEmptyModelFailsWithoutTouchingTheAnnotations(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake binary is a POSIX shell script")
@@ -893,7 +854,6 @@ func TestJudge_LLMEmptyModelFailsWithoutTouchingTheAnnotations(t *testing.T) {
 	assert.Equal(t, "graded by hand, keep me\n", string(kept))
 }
 
-// gradingCLIFlag is the value the last grade passed gradingClaudeCLI for flag.
 func gradingCLIFlag(t *testing.T, cli, flag string) string {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join(filepath.Dir(cli), "args"))
@@ -939,4 +899,142 @@ func TestJudge_CarryOverRefusesWholePoolJudges(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "whole pool")
+}
+
+// jevAPI grades every doc 2 under the model it is asked for and records each request.
+type jevAPI struct {
+	*httptest.Server
+
+	mu    sync.Mutex
+	asked []jevAsked
+}
+
+type jevAsked struct {
+	Model string `json:"model"`
+	State string `json:"state"`
+}
+
+func newJevAPI(t *testing.T) *jevAPI {
+	t.Helper()
+	api := &jevAPI{}
+	api.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req jevAsked
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		api.mu.Lock()
+		api.asked = append(api.asked, req)
+		api.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"model":%q,"answers":{"grade":{"type":"score","score":2.0,"confidence":0.9,`+
+			`"probabilities":{"0":0.0,"1":0.0,"2":1.0,"3":0.0}}},"usage":{"input_tokens":400,"output_tokens":18}}`, req.Model)
+	}))
+	t.Cleanup(api.Close)
+	return api
+}
+
+func (a *jevAPI) requests() []jevAsked {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]jevAsked(nil), a.asked...)
+}
+
+func TestJudge_JevWithoutModelGradesWithThePinnedRelease(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+	api := newJevAPI(t)
+	fx := newJudgeFixture(t, "climate change", "climate change summit", "climate report")
+
+	require.NoError(t, fx.judge(t, "--strategy", "jev", "--api-base", api.URL))
+
+	jf := fx.annotations(t, "jev")
+	assert.Equal(t, "jev", jf.Judge().Strategy)
+	assert.Equal(t, "jev-1.14.0", jf.Judge().Model)
+	for _, grade := range gradesByQuery(jf)["q1"] {
+		assert.Equal(t, judgment.GradeRelevant, grade)
+	}
+	for _, req := range api.requests() {
+		assert.Equal(t, "jev-1.14.0", req.Model)
+	}
+}
+
+func TestJudge_JevRefusesAModelItCannotPin(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+	for _, model := range []string{"claude-sonnet-5-5", "jev-latest", ""} {
+		t.Run(model, func(t *testing.T) {
+			api := newJevAPI(t)
+			fx := newJudgeFixture(t, "climate change", "climate change summit")
+
+			err := fx.judge(t, "--strategy", "jev", "--api-base", api.URL, "--model", model)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "--model")
+			assert.Empty(t, api.requests())
+			assert.NoFileExists(t, filepath.Join(fx.track, "trec", "annotations.jev.yaml"))
+		})
+	}
+}
+
+func TestJudge_RefusesLLMFlagsOutsideLLM(t *testing.T) {
+	flags := []struct {
+		flag string
+		args []string
+	}{
+		{flag: "--batch", args: []string{"--batch", "2"}},
+		{flag: "--provider", args: []string{"--provider", "claude-api"}},
+	}
+	for _, strategy := range []string{"keyword", "bm25", "jev", "manual"} {
+		for _, tt := range flags {
+			t.Run(strategy+" "+tt.flag, func(t *testing.T) {
+				t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+				api := newJevAPI(t)
+				fx := newJudgeFixture(t, "climate change", "climate change summit")
+
+				err := fx.judge(t, append([]string{"--strategy", strategy, "--api-base", api.URL}, tt.args...)...)
+
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.flag)
+				assert.Empty(t, api.requests())
+				assert.NoFileExists(t, filepath.Join(fx.track, "trec", "annotations."+strategy+".yaml"))
+			})
+		}
+	}
+}
+
+func TestJudge_LLMWithoutProviderUsesClaudeCLI(t *testing.T) {
+	fx := newJudgeFixture(t, "climate change", "climate change summit")
+
+	require.NoError(t, fx.judge(t, "--strategy", "llm", "--cli-binary", gradingClaudeCLI(t), "--model", "claude-haiku-5-5"))
+
+	assert.Equal(t, "claude-cli", fx.annotations(t, "claude-cli").Judge().Provider)
+}
+
+func TestJudge_JevWithoutItsKeyFailsNamingIt(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", "")
+	t.Setenv("ANTHROPIC_API_KEY", "sk-ant-meant-for-claude")
+	api := newJevAPI(t)
+	fx := newJudgeFixture(t, "climate change", "climate change summit")
+
+	err := fx.judge(t, "--strategy", "jev", "--api-base", api.URL)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "TYPESAFE_API_KEY")
+	assert.Empty(t, api.requests())
+	assert.NoFileExists(t, filepath.Join(fx.track, "trec", "annotations.jev.yaml"))
+}
+
+func TestJudge_JevResumeAsksOnlyAboutUngradedDocs(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+	api := newJevAPI(t)
+	fx := newJudgeFixture(t, "climate change", "climate change summit", "climate report")
+	missing := fx.pool.Queries[0].Docs[1].DocID
+	article := fx.articles[missing]
+	delete(fx.articles, missing)
+	require.Error(t, fx.judge(t, "--strategy", "jev", "--api-base", api.URL), "one doc left unjudged")
+	fx.articles[missing] = article
+	askedBefore := len(api.requests())
+
+	require.NoError(t, fx.judge(t, "--strategy", "jev", "--api-base", api.URL, "--resume"))
+
+	resumed := api.requests()[askedBefore:]
+	require.Len(t, resumed, 1)
+	assert.Contains(t, resumed[0].State, article.Title)
+	assert.Equal(t, judgment.GradeRelevant, gradesByQuery(fx.annotations(t, "jev"))["q1"][missing])
 }
