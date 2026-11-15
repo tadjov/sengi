@@ -368,8 +368,10 @@ func printQueryDiff(w io.Writer, jA, jB *report.JobReport, k int) {
 	if len(deltas) == 0 {
 		return
 	}
-	// Sort: biggest regression first, then biggest improvement.
-	sort.Slice(deltas, func(i, j int) bool { return deltas[i].diff < deltas[j].diff })
+	// Largest regression first, then largest improvement; ties go by query, then engine.
+	slices.SortFunc(deltas, func(a, b delta) int {
+		return cmp.Or(cmp.Compare(a.diff, b.diff), cmp.Compare(a.query, b.query), cmp.Compare(a.engine, b.engine))
+	})
 
 	fmt.Fprintf(w, "%s\n\n", cBold.Sprintf("Per-Query NDCG@%d (gain %s) Deltas (largest regression first):", k, report.NDCGGain))
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)

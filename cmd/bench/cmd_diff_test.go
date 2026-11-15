@@ -683,3 +683,31 @@ func TestDiffJudgments_MeasuresHandGradesAgainstAJudgeWithoutTouchingThem(t *tes
 	require.NoError(t, err)
 	assert.Equal(t, before, after)
 }
+
+func TestPrintDiff_PerQueryDeltasThatTieGoByQueryThenEngine(t *testing.T) {
+	run := func(runID string, ndcg float64) *report.Report {
+		cell := func(query, engine string) report.Entry {
+			return report.Entry{QueryID: query, EngineName: engine, Judged: true, NDCG: map[int]float64{10: ndcg}}
+		}
+		return &report.Report{
+			SchemaVersion: 1,
+			Provenance:    meta.Meta{RunID: runID},
+			Config:        report.ReportConfig{KValues: []int{10}, RelevanceThreshold: 1},
+			Jobs: []report.JobReport{{
+				JobName:    "fts",
+				Aggregated: []report.AggregatedEntry{{EngineName: "pg", JudgedCount: 2}, {EngineName: "es", JudgedCount: 2}},
+				PerQuery:   []report.Entry{cell("q2", "pg"), cell("q1", "pg"), cell("q1", "es")},
+			}},
+		}
+	}
+
+	var out bytes.Buffer
+	printDiff(&out, run("a", 0.5), run("b", 0.7))
+
+	rows := regexp.MustCompile(`(?m)^(q\d)\s+(pg|es)\s+0\.5000`).FindAllStringSubmatch(out.String(), -1)
+	var order []string
+	for _, row := range rows {
+		order = append(order, row[1]+"/"+row[2])
+	}
+	assert.Equal(t, []string{"q1/es", "q1/pg", "q2/pg"}, order)
+}
