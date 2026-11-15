@@ -64,10 +64,9 @@ type EngineOrder struct {
 	TauB  Statistic          `json:"tau_b"`
 }
 
-// Rescore recomputes the report's per-query metrics under each set and ranks
-// each job's engines by their means. A metric is rescored only when the
-// report's own set gives back every stored value, and a set only when it
-// grades every doc in each ranking's top max(KValues).
+// Rescore ranks each job's engines by their means under each set. It rescores
+// only the metrics the report's own set reproduces, under only the sets that
+// grade every doc in each ranking's top max(KValues).
 func Rescore(opts RescoreOptions) (Rescoring, error) {
 	if err := requireRankings(opts.Report); err != nil {
 		return Rescoring{}, err
@@ -192,7 +191,6 @@ type cell struct {
 	queryID, engine string
 }
 
-// scoreJobs scores every judged cell that did not fail, per job.
 func scoreJobs(r *report.Report, grades map[string]map[uuid.UUID]int, opts RescoreOptions) []map[cell]metrics.ScoreSet {
 	out := make([]map[cell]metrics.ScoreSet, len(r.Jobs))
 	for j, job := range r.Jobs {

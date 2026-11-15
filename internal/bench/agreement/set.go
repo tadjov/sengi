@@ -18,9 +18,9 @@ type Set struct {
 	File  *judgment.File
 }
 
-// Load reads each entry, `[label=]<set name or annotations path>`, resolving
-// the set name as bench run --judgments does. An entry without a label takes
-// its judge's model, or its strategy when the judge has no model.
+// Load reads each `[label=]<set name or annotations path>` entry, resolving a
+// name as bench run --judgments does. An unlabelled set goes by its judge's
+// model, else its strategy.
 func Load(track *trackctx.Track, entries []string) ([]Set, error) {
 	if len(entries) < 2 {
 		return nil, fmt.Errorf("--judgments needs at least two sets to compare, got %d", len(entries))

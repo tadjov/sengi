@@ -637,8 +637,6 @@ func (d diffJudgmentsCommand) execute(cmd *cobra.Command, args []string) error {
 	return writeAgreementArtifact(w, d.flags.output, c.result)
 }
 
-// judgmentComparison is what bench diff judgments measured, for stdout and
-// --output alike.
 type judgmentComparison struct {
 	flags  diffJudgmentsFlags
 	sets   []judgeagreement.Set

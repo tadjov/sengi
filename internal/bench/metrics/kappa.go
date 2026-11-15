@@ -99,8 +99,7 @@ func (c GradeConfusion) RelevantAgreement(threshold int) float64 {
 }
 
 // BinaryKappa is Cohen's κ on relevant, a grade at or above threshold,
-// against not relevant. It is NaN when chance alone predicts no disagreement:
-// no pairs, or both raters keeping every pair on one side.
+// against not relevant; NaN when both raters keep every pair on one side.
 func (c GradeConfusion) BinaryKappa(threshold int) float64 {
 	b := c.relevance(threshold)
 	n := float64(c.Pairs())
@@ -135,10 +134,9 @@ type KappaInterval struct {
 	Kappa, Low, High float64
 }
 
-// BootstrapKappa is kappa over every pair of byQuery, one table per query,
-// with its 95% percentile interval over 1,000 resamples drawn from a source
-// seeded with seed, so one seed always gives the same interval. A resample
-// whose κ is undefined is left out. byQuery must not be empty.
+// BootstrapKappa is kappa over all of byQuery, one table per query, with its
+// 95% percentile interval over 1,000 resamples of the queries, which seed
+// fixes. Resamples with an undefined κ are left out. byQuery must not be empty.
 func BootstrapKappa(byQuery []GradeConfusion, kappa func(GradeConfusion) float64, seed uint64) KappaInterval {
 	// Whole queries are resampled because one query's docs share its topic, so
 	// two judges' grades on them are not independent pairs.
