@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/tusker/db/migrations"
@@ -250,6 +251,34 @@ func TestCorpusLoader(t *testing.T) {
 				require.ErrorContains(t, err, "already holds a corpus")
 			})
 
+			t.Run("a duplicate id fails the load at the primary key, names the id and records nothing", func(t *testing.T) {
+				db := newDatabase(t, server.ConnString)
+				articles, _ := fixture(corpusSize)
+				articles[1_500].ID = articles[10].ID
+
+				_, err := load(t, db, engine, corpusOf(articles, nil), storage.LoadOptions{BatchSize: 100, Concurrency: 4})
+
+				require.ErrorContains(t, err, articles[10].ID.String())
+				assert.False(t, loadRecorded(t, db), "the failed load was recorded in corpus_load")
+			})
+
+			t.Run("keeps embeddings tied to the articles they embed", func(t *testing.T) {
+				db := newDatabase(t, server.ConnString)
+				articles, vectors := fixture(10)
+				_, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
+				require.NoError(t, err)
+
+				var insertErr error
+				query(t, db, func(conn *pgx.Conn) error {
+					_, insertErr = conn.Exec(context.Background(),
+						"INSERT INTO article_embeddings VALUES ($1, $2, array_fill(0.1::real, ARRAY[1024])::vector)", uuid.New(), modelTag)
+					return nil
+				})
+				var pgErr *pgconn.PgError
+				require.ErrorAs(t, insertErr, &pgErr)
+				assert.Equal(t, "23503", pgErr.Code, "want foreign_key_violation")
+			})
+
 			t.Run("refuses a database that already holds a corpus", func(t *testing.T) {
 				db := newDatabase(t, server.ConnString)
 				articles, vectors := fixture(corpusSize)
@@ -413,7 +442,10 @@ func TestCorpusLoader(t *testing.T) {
 				assert.Contains(t, present["idx_article_embedding"], "WITH (m='16', ef_construction='64')")
 				for _, name := range filterIndexes[engine] {
 					assert.Contains(t, present, name)
-					assert.Zero(t, stages[name], "the schema builds filter index %s, so no stage times it", name)
+					assert.Equal(t, 1, stages[name], "stages timing filter index %s", name)
+				}
+				for _, name := range []string{"articles_pkey", "article_embeddings_pkey", "article_embeddings_article_id_fkey"} {
+					assert.Equal(t, 1, stages[name], "stages timing key %s", name)
 				}
 				assert.Equal(t, declaredSettings[engine], record.Settings)
 			})

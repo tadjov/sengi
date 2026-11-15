@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 	"github.com/tadjov/tusker/db/migrations"
@@ -226,7 +227,11 @@ func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record 
 	for _, s := range l.indexes {
 		run := func() error {
 			if _, err := conn.Exec(ctx, s.SQL); err != nil {
-				return fmt.Errorf("build search index %s: %w", s, err)
+				// The detail carries the offending row, such as the key a primary key found twice.
+				if pgErr := (*pgconn.PgError)(nil); errors.As(err, &pgErr) && pgErr.Detail != "" {
+					return fmt.Errorf("build %s: %w: %s", s, err, pgErr.Detail)
+				}
+				return fmt.Errorf("build %s: %w", s, err)
 			}
 			return nil
 		}

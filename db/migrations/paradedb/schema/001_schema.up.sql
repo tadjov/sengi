@@ -2,9 +2,10 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS pg_search;
 CREATE EXTENSION IF NOT EXISTS vector;
 
+-- Keys and filter indexes are built after the load, in indexes.sql.
 CREATE TABLE articles
 (
-    id               uuid        NOT NULL PRIMARY KEY,
+    id               uuid        NOT NULL,
     url              text        NOT NULL,
     title            text        NOT NULL,
     description      text        NOT NULL DEFAULT '',
@@ -14,14 +15,12 @@ CREATE TABLE articles
     publisher_domain text        NOT NULL DEFAULT '',
     metadata         jsonb       NOT NULL DEFAULT '{}'
 );
-CREATE INDEX idx_articles_published_at ON articles (published_at DESC NULLS LAST);
 
 CREATE TABLE article_embeddings
 (
-    article_id uuid         NOT NULL REFERENCES articles (id) ON DELETE CASCADE,
+    article_id uuid         NOT NULL,
     model_name text         NOT NULL,
-    embedding  vector(1024) NOT NULL,
-    PRIMARY KEY (article_id, model_name)
+    embedding  vector(1024) NOT NULL
 );
 
 CREATE TABLE corpus_load

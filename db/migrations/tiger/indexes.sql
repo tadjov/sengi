@@ -1,3 +1,9 @@
+ALTER TABLE articles ADD CONSTRAINT articles_pkey PRIMARY KEY (id);
+ALTER TABLE article_embeddings ADD CONSTRAINT article_embeddings_pkey PRIMARY KEY (article_id, model_name);
+ALTER TABLE article_embeddings ADD CONSTRAINT article_embeddings_article_id_fkey
+    FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE;
+CREATE INDEX idx_articles_published_at ON articles (published_at DESC NULLS LAST);
+CREATE INDEX idx_articles_publisher_domain ON articles (publisher_domain);
 SET pg_textsearch.segments_per_level = 8;
 CREATE INDEX idx_articles_bm25 ON articles
     USING bm25 (search_text) WITH (text_config = 'english', k1 = 1.2, b = 0.75);
