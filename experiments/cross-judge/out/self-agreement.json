@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "run_id": "2026-11-15T01-16-23-agreement-2a40f0",
+    "tool": "bench/1.0.0",
+    "generated_at": "2026-11-15T01:16:23.430629Z",
+    "sources": {
+      "judgments": [
+        {
+          "label": "run1",
+          "path": "/private/tmp/claude-501/-Users-djordjevuckovic-projects-news-hunter/9a5d76ca-d2fa-4db2-b792-6a4f87830e9a/scratchpad/sonnet-run1.yaml",
+          "run_id": "2026-11-14T19-15-44-judge-bb7768"
+        },
+        {
+          "label": "run2",
+          "path": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/annotations.claude-cli.yaml",
+          "run_id": "2026-11-14T20-06-00-judge-c27330"
+        }
+      ]
+    }
+  },
+  "relevance_threshold": 2,
+  "seed": 1,
+  "all_pairs": {
+    "pairs": 3681,
+    "distributions": [
+      {
+        "label": "run1",
+        "grades": [
+          158,
+          423,
+          768,
+          2332
+        ]
+      },
+      {
+        "label": "run2",
+        "grades": [
+          159,
+          410,
+          773,
+          2339
+        ]
+      }
+    ],
+    "comparisons": [
+      {
+        "first": "run1",
+        "second": "run2",
+        "pairs": 3681,
+        "exact": 0.986960065199674,
+        "within_one": 1,
+        "relevant": 0.995653355066558,
+        "quadratic_kappa": {
+          "value": 0.9910741484022852,
+          "low": 0.9861923105161938,
+          "high": 0.9941037487245471
+        },
+        "binary_kappa": {
+          "value": 0.9835116288705512,
+          "low": 0.9745149377768185,
+          "high": 0.9899081825080221
+        }
+      }
+    ]
+  }
+}

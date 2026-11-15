@@ -1,0 +1,866 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "run_id": "2026-11-15T01-16-23-agreement-fa2ab8",
+    "tool": "bench/1.0.0",
+    "generated_at": "2026-11-15T01:16:23.34713Z",
+    "sources": {
+      "judgments": [
+        {
+          "label": "sonnet",
+          "path": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/annotations.claude-cli.yaml",
+          "run_id": "2026-11-14T20-06-00-judge-c27330"
+        },
+        {
+          "label": "opus",
+          "path": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/cross-judge/annotations.opus.yaml",
+          "run_id": "2026-11-14T20-50-30-judge-505d38"
+        },
+        {
+          "label": "jev",
+          "path": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/cross-judge/annotations.jev.yaml",
+          "run_id": "2026-11-14T22-17-11-judge-08a9b8"
+        },
+        {
+          "label": "haiku",
+          "path": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/cross-judge/annotations.haiku.yaml",
+          "run_id": "2026-11-14T23-18-27-judge-d4c5cf"
+        }
+      ]
+    }
+  },
+  "relevance_threshold": 2,
+  "seed": 1,
+  "all_pairs": {
+    "pairs": 436,
+    "distributions": [
+      {
+        "label": "sonnet",
+        "grades": [
+          47,
+          98,
+          125,
+          166
+        ]
+      },
+      {
+        "label": "opus",
+        "grades": [
+          39,
+          97,
+          104,
+          196
+        ]
+      },
+      {
+        "label": "jev",
+        "grades": [
+          70,
+          86,
+          40,
+          240
+        ]
+      },
+      {
+        "label": "haiku",
+        "grades": [
+          29,
+          95,
+          112,
+          200
+        ]
+      }
+    ],
+    "comparisons": [
+      {
+        "first": "sonnet",
+        "second": "opus",
+        "pairs": 436,
+        "exact": 0.8004587155963303,
+        "within_one": 1,
+        "relevant": 0.9288990825688074,
+        "quadratic_kappa": {
+          "value": 0.9037082918705956,
+          "low": 0.8832104955358326,
+          "high": 0.9216483315919209
+        },
+        "binary_kappa": {
+          "value": 0.8373055996918485,
+          "low": 0.7901425954847111,
+          "high": 0.8819218388658159
+        }
+      },
+      {
+        "first": "sonnet",
+        "second": "jev",
+        "pairs": 436,
+        "exact": 0.6926605504587156,
+        "within_one": 0.9564220183486238,
+        "relevant": 0.8967889908256881,
+        "quadratic_kappa": {
+          "value": 0.7961629034492312,
+          "low": 0.7300994165101494,
+          "high": 0.8470496753270055
+        },
+        "binary_kappa": {
+          "value": 0.7718498534815573,
+          "low": 0.7047028210748854,
+          "high": 0.843060606151255
+        }
+      },
+      {
+        "first": "sonnet",
+        "second": "haiku",
+        "pairs": 436,
+        "exact": 0.658256880733945,
+        "within_one": 0.9862385321100917,
+        "relevant": 0.8784403669724771,
+        "quadratic_kappa": {
+          "value": 0.8077378060373054,
+          "low": 0.7541312353599172,
+          "high": 0.8490699550163523
+        },
+        "binary_kappa": {
+          "value": 0.7158526388274065,
+          "low": 0.6211327333771451,
+          "high": 0.8004562940297408
+        }
+      },
+      {
+        "first": "opus",
+        "second": "jev",
+        "pairs": 436,
+        "exact": 0.7247706422018348,
+        "within_one": 0.9610091743119266,
+        "relevant": 0.908256880733945,
+        "quadratic_kappa": {
+          "value": 0.8187256199498467,
+          "low": 0.7511582024915076,
+          "high": 0.8737821688232256
+        },
+        "binary_kappa": {
+          "value": 0.7945334590009425,
+          "low": 0.7242247100971406,
+          "high": 0.8541742221263736
+        }
+      },
+      {
+        "first": "opus",
+        "second": "haiku",
+        "pairs": 436,
+        "exact": 0.7064220183486238,
+        "within_one": 0.981651376146789,
+        "relevant": 0.8715596330275229,
+        "quadratic_kappa": {
+          "value": 0.8223204088089098,
+          "low": 0.7673483388190735,
+          "high": 0.8702641426331739
+        },
+        "binary_kappa": {
+          "value": 0.6933895921237693,
+          "low": 0.6006087657332347,
+          "high": 0.7795869661007138
+        }
+      },
+      {
+        "first": "jev",
+        "second": "haiku",
+        "pairs": 436,
+        "exact": 0.6146788990825688,
+        "within_one": 0.9288990825688074,
+        "relevant": 0.8394495412844036,
+        "quadratic_kappa": {
+          "value": 0.732736781151605,
+          "low": 0.6505829360356463,
+          "high": 0.8008589329362495
+        },
+        "binary_kappa": {
+          "value": 0.6340176515732924,
+          "low": 0.5269806799158379,
+          "high": 0.7520888217410087
+        }
+      }
+    ],
+    "reference": {
+      "label": "opus",
+      "against": [
+        {
+          "label": "sonnet",
+          "table": [
+            [
+              38,
+              1,
+              0,
+              0
+            ],
+            [
+              9,
+              77,
+              11,
+              0
+            ],
+            [
+              0,
+              20,
+              76,
+              8
+            ],
+            [
+              0,
+              0,
+              38,
+              158
+            ]
+          ],
+          "reference_irrelevant": 136,
+          "graded_relevant": 11,
+          "reference_relevant": 300,
+          "graded_irrelevant": 20
+        },
+        {
+          "label": "jev",
+          "table": [
+            [
+              36,
+              1,
+              0,
+              2
+            ],
+            [
+              25,
+              64,
+              4,
+              4
+            ],
+            [
+              7,
+              19,
+              30,
+              48
+            ],
+            [
+              2,
+              2,
+              6,
+              186
+            ]
+          ],
+          "reference_irrelevant": 136,
+          "graded_relevant": 10,
+          "reference_relevant": 300,
+          "graded_irrelevant": 30
+        },
+        {
+          "label": "haiku",
+          "table": [
+            [
+              22,
+              16,
+              1,
+              0
+            ],
+            [
+              6,
+              58,
+              30,
+              3
+            ],
+            [
+              1,
+              18,
+              58,
+              27
+            ],
+            [
+              0,
+              3,
+              23,
+              170
+            ]
+          ],
+          "reference_irrelevant": 136,
+          "graded_relevant": 34,
+          "reference_relevant": 300,
+          "graded_irrelevant": 22
+        }
+      ],
+      "by_category": [
+        {
+          "category": "boolean",
+          "queries": 5,
+          "pairs": 70,
+          "comparisons": [
+            {
+              "first": "sonnet",
+              "second": "opus",
+              "pairs": 70,
+              "exact": 0.8571428571428571,
+              "within_one": 1,
+              "relevant": 0.9,
+              "quadratic_kappa": {
+                "value": 0.8931623931623931,
+                "low": 0.8598798970546182,
+                "high": 0.9227088700772912
+              },
+              "binary_kappa": {
+                "value": 0.7225368063420159,
+                "low": 0.6108920627040652,
+                "high": 0.7961165048543689
+              }
+            },
+            {
+              "first": "sonnet",
+              "second": "jev",
+              "pairs": 70,
+              "exact": 0.7428571428571429,
+              "within_one": 0.9428571428571428,
+              "relevant": 0.9142857142857143,
+              "quadratic_kappa": {
+                "value": 0.7558139534883721,
+                "low": 0.5283018867924527,
+                "high": 0.868995633187773
+              },
+              "binary_kappa": {
+                "value": 0.7671840354767182,
+                "low": 0.461328125,
+                "high": 0.9353049907578558
+              }
+            },
+            {
+              "first": "sonnet",
+              "second": "haiku",
+              "pairs": 70,
+              "exact": 0.6,
+              "within_one": 0.9714285714285714,
+              "relevant": 0.8428571428571429,
+              "quadratic_kappa": {
+                "value": 0.6542707728065078,
+                "low": 0.5121837110681416,
+                "high": 0.7410442434514672
+              },
+              "binary_kappa": {
+                "value": 0.5639864099660249,
+                "low": 0.309980573093735,
+                "high": 0.75177304964539
+              }
+            },
+            {
+              "first": "opus",
+              "second": "jev",
+              "pairs": 70,
+              "exact": 0.6857142857142857,
+              "within_one": 0.9428571428571428,
+              "relevant": 0.9,
+              "quadratic_kappa": {
+                "value": 0.7166666666666666,
+                "low": 0.5842068483577918,
+                "high": 0.8057216054654142
+              },
+              "binary_kappa": {
+                "value": 0.7334058759521219,
+                "low": 0.6505823627287851,
+                "high": 0.7961165048543689
+              }
+            },
+            {
+              "first": "opus",
+              "second": "haiku",
+              "pairs": 70,
+              "exact": 0.5857142857142857,
+              "within_one": 0.9571428571428572,
+              "relevant": 0.8,
+              "quadratic_kappa": {
+                "value": 0.5991561181434599,
+                "low": 0.41549766199064797,
+                "high": 0.7482014388489209
+              },
+              "binary_kappa": {
+                "value": 0.4561598224195339,
+                "low": 0.20845624385447378,
+                "high": 0.6964064436183397
+              }
+            },
+            {
+              "first": "jev",
+              "second": "haiku",
+              "pairs": 70,
+              "exact": 0.5285714285714286,
+              "within_one": 0.9,
+              "relevant": 0.8428571428571429,
+              "quadratic_kappa": {
+                "value": 0.5694760820045558,
+                "low": 0.26049485682513207,
+                "high": 0.7899143407714316
+              },
+              "binary_kappa": {
+                "value": 0.5810663764961916,
+                "low": 0.32853717026378904,
+                "high": 0.822695035460993
+              }
+            }
+          ]
+        },
+        {
+          "category": "keyword",
+          "queries": 10,
+          "pairs": 145,
+          "comparisons": [
+            {
+              "first": "sonnet",
+              "second": "opus",
+              "pairs": 145,
+              "exact": 0.7724137931034483,
+              "within_one": 1,
+              "relevant": 0.9379310344827586,
+              "quadratic_kappa": {
+                "value": 0.8919157010232432,
+                "low": 0.8365231326390282,
+                "high": 0.9214654187696337
+              },
+              "binary_kappa": {
+                "value": 0.8544988293009254,
+                "low": 0.7721201607704852,
+                "high": 0.9197349758090394
+              }
+            },
+            {
+              "first": "sonnet",
+              "second": "jev",
+              "pairs": 145,
+              "exact": 0.7241379310344828,
+              "within_one": 0.9862068965517241,
+              "relevant": 0.9379310344827586,
+              "quadratic_kappa": {
+                "value": 0.8613478568161975,
+                "low": 0.8016718503119364,
+                "high": 0.9054910531988591
+              },
+              "binary_kappa": {
+                "value": 0.8591169167656266,
+                "low": 0.7374257126276197,
+                "high": 0.9514054425473412
+              }
+            },
+            {
+              "first": "sonnet",
+              "second": "haiku",
+              "pairs": 145,
+              "exact": 0.7310344827586207,
+              "within_one": 1,
+              "relevant": 0.9379310344827586,
+              "quadratic_kappa": {
+                "value": 0.8731863745430897,
+                "low": 0.8195768608387847,
+                "high": 0.9104008738570567
+              },
+              "binary_kappa": {
+                "value": 0.8544988293009254,
+                "low": 0.7255605407375849,
+                "high": 0.9510948508159079
+              }
+            },
+            {
+              "first": "opus",
+              "second": "jev",
+              "pairs": 145,
+              "exact": 0.7793103448275862,
+              "within_one": 0.9793103448275862,
+              "relevant": 0.9448275862068966,
+              "quadratic_kappa": {
+                "value": 0.8766418359512792,
+                "low": 0.8127363837060367,
+                "high": 0.9240047048343994
+              },
+              "binary_kappa": {
+                "value": 0.8697507298450483,
+                "low": 0.8124619549734029,
+                "high": 0.9251652384985366
+              }
+            },
+            {
+              "first": "opus",
+              "second": "haiku",
+              "pairs": 145,
+              "exact": 0.7724137931034483,
+              "within_one": 0.993103448275862,
+              "relevant": 0.9172413793103448,
+              "quadratic_kappa": {
+                "value": 0.8820978452364819,
+                "low": 0.813346521641756,
+                "high": 0.9308563805177685
+              },
+              "binary_kappa": {
+                "value": 0.7959662288930581,
+                "low": 0.6353732062230384,
+                "high": 0.9046803143093466
+              }
+            },
+            {
+              "first": "jev",
+              "second": "haiku",
+              "pairs": 145,
+              "exact": 0.7310344827586207,
+              "within_one": 0.9862068965517241,
+              "relevant": 0.903448275862069,
+              "quadratic_kappa": {
+                "value": 0.8652388525165741,
+                "low": 0.7871697204730849,
+                "high": 0.9158587133699907
+              },
+              "binary_kappa": {
+                "value": 0.7720637772288346,
+                "low": 0.602272819216182,
+                "high": 0.9112161912491373
+              }
+            }
+          ]
+        },
+        {
+          "category": "multi-field",
+          "queries": 6,
+          "pairs": 92,
+          "comparisons": [
+            {
+              "first": "sonnet",
+              "second": "opus",
+              "pairs": 92,
+              "exact": 0.7717391304347826,
+              "within_one": 1,
+              "relevant": 0.9347826086956522,
+              "quadratic_kappa": {
+                "value": 0.9071332436069987,
+                "low": 0.8736842105263158,
+                "high": 0.9298403014534362
+              },
+              "binary_kappa": {
+                "value": 0.8655625913297614,
+                "low": 0.75,
+                "high": 0.9547911547911548
+              }
+            },
+            {
+              "first": "sonnet",
+              "second": "jev",
+              "pairs": 92,
+              "exact": 0.6413043478260869,
+              "within_one": 0.967391304347826,
+              "relevant": 0.8695652173913043,
+              "quadratic_kappa": {
+                "value": 0.8264011562550185,
+                "low": 0.7224394057857702,
+                "high": 0.8876131531281318
+              },
+              "binary_kappa": {
+                "value": 0.7424171721885208,
+                "low": 0.5576923076923076,
+                "high": 0.9168925426527241
+              }
+            },
+            {
+              "first": "sonnet",
+              "second": "haiku",
+              "pairs": 92,
+              "exact": 0.6086956521739131,
+              "within_one": 0.9565217391304348,
+              "relevant": 0.8152173913043478,
+              "quadratic_kappa": {
+                "value": 0.7714285714285715,
+                "low": 0.5774130002141107,
+                "high": 0.88688831446653
+              },
+              "binary_kappa": {
+                "value": 0.6034482758620688,
+                "low": 0.343675417661098,
+                "high": 0.8473643849667128
+              }
+            },
+            {
+              "first": "opus",
+              "second": "jev",
+              "pairs": 92,
+              "exact": 0.717391304347826,
+              "within_one": 0.967391304347826,
+              "relevant": 0.8913043478260869,
+              "quadratic_kappa": {
+                "value": 0.854579941515846,
+                "low": 0.7132805788243727,
+                "high": 0.9423604757548033
+              },
+              "binary_kappa": {
+                "value": 0.7847449695835281,
+                "low": 0.6304016640298876,
+                "high": 0.9344859382203781
+              }
+            },
+            {
+              "first": "opus",
+              "second": "haiku",
+              "pairs": 92,
+              "exact": 0.6304347826086957,
+              "within_one": 0.967391304347826,
+              "relevant": 0.8152173913043478,
+              "quadratic_kappa": {
+                "value": 0.7942583732057417,
+                "low": 0.6096717588769612,
+                "high": 0.8986733001658375
+              },
+              "binary_kappa": {
+                "value": 0.6097804391217564,
+                "low": 0.37821634568383994,
+                "high": 0.8355345431585808
+              }
+            },
+            {
+              "first": "jev",
+              "second": "haiku",
+              "pairs": 92,
+              "exact": 0.5217391304347826,
+              "within_one": 0.8695652173913043,
+              "relevant": 0.75,
+              "quadratic_kappa": {
+                "value": 0.6768060836501901,
+                "low": 0.4343913774349847,
+                "high": 0.8521997034107761
+              },
+              "binary_kappa": {
+                "value": 0.511090573012939,
+                "low": 0.25605536332179957,
+                "high": 0.814249812453113
+              }
+            }
+          ]
+        },
+        {
+          "category": "phrase",
+          "queries": 5,
+          "pairs": 71,
+          "comparisons": [
+            {
+              "first": "sonnet",
+              "second": "opus",
+              "pairs": 71,
+              "exact": 0.8450704225352113,
+              "within_one": 1,
+              "relevant": 0.9436619718309859,
+              "quadratic_kappa": {
+                "value": 0.9071674789016997,
+                "low": 0.8761061946902655,
+                "high": 0.9396551724137931
+              },
+              "binary_kappa": {
+                "value": 0.8683966635773864,
+                "low": 0.7510736970792251,
+                "high": 0.967475950526798
+              }
+            },
+            {
+              "first": "sonnet",
+              "second": "jev",
+              "pairs": 71,
+              "exact": 0.7183098591549296,
+              "within_one": 0.971830985915493,
+              "relevant": 0.8873239436619719,
+              "quadratic_kappa": {
+                "value": 0.8106666666666666,
+                "low": 0.7657992565055762,
+                "high": 0.8360049321824907
+              },
+              "binary_kappa": {
+                "value": 0.7367933271547731,
+                "low": 0.6391752577319586,
+                "high": 0.8220958570268075
+              }
+            },
+            {
+              "first": "sonnet",
+              "second": "haiku",
+              "pairs": 71,
+              "exact": 0.704225352112676,
+              "within_one": 1,
+              "relevant": 0.9014084507042254,
+              "quadratic_kappa": {
+                "value": 0.8089686098654708,
+                "low": 0.7556904400606981,
+                "high": 0.864951768488746
+              },
+              "binary_kappa": {
+                "value": 0.7555336940482047,
+                "low": 0.6358381502890174,
+                "high": 0.8429319371727749
+              }
+            },
+            {
+              "first": "opus",
+              "second": "jev",
+              "pairs": 71,
+              "exact": 0.7605633802816901,
+              "within_one": 1,
+              "relevant": 0.9436619718309859,
+              "quadratic_kappa": {
+                "value": 0.8730943118494375,
+                "low": 0.8448275862068966,
+                "high": 0.9050203527815468
+              },
+              "binary_kappa": {
+                "value": 0.8647619047619047,
+                "low": 0.751269035532995,
+                "high": 0.9684210526315791
+              }
+            },
+            {
+              "first": "opus",
+              "second": "haiku",
+              "pairs": 71,
+              "exact": 0.7746478873239436,
+              "within_one": 1,
+              "relevant": 0.9014084507042254,
+              "quadratic_kappa": {
+                "value": 0.8478843063738618,
+                "low": 0.7953216374269005,
+                "high": 0.905829596412556
+              },
+              "binary_kappa": {
+                "value": 0.7457800511508952,
+                "low": 0.667063020214031,
+                "high": 0.8031496062992127
+              }
+            },
+            {
+              "first": "jev",
+              "second": "haiku",
+              "pairs": 71,
+              "exact": 0.6619718309859155,
+              "within_one": 0.9577464788732394,
+              "relevant": 0.8732394366197183,
+              "quadratic_kappa": {
+                "value": 0.7307824887969665,
+                "low": 0.6659781985083191,
+                "high": 0.7897196261682242
+              },
+              "binary_kappa": {
+                "value": 0.6731457800511508,
+                "low": 0.4768642938449152,
+                "high": 0.8518518518518517
+              }
+            }
+          ]
+        },
+        {
+          "category": "single-field",
+          "queries": 4,
+          "pairs": 58,
+          "comparisons": [
+            {
+              "first": "sonnet",
+              "second": "opus",
+              "pairs": 58,
+              "exact": 0.7931034482758621,
+              "within_one": 1,
+              "relevant": 0.9137931034482759,
+              "quadratic_kappa": {
+                "value": 0.9152046783625731,
+                "low": 0.8013513513513514,
+                "high": 0.9855072463768116
+              },
+              "binary_kappa": {
+                "value": 0.8074369189907039,
+                "low": 0.6250000000000001,
+                "high": 1
+              }
+            },
+            {
+              "first": "sonnet",
+              "second": "jev",
+              "pairs": 58,
+              "exact": 0.603448275862069,
+              "within_one": 0.8620689655172413,
+              "relevant": 0.8275862068965517,
+              "quadratic_kappa": {
+                "value": 0.60451862405862,
+                "low": 0.23352713178294582,
+                "high": 0.830028328611898
+              },
+              "binary_kappa": {
+                "value": 0.6267696267696267,
+                "low": 0.3636363636363636,
+                "high": 0.8507462686567164
+              }
+            },
+            {
+              "first": "sonnet",
+              "second": "haiku",
+              "pairs": 58,
+              "exact": 0.5689655172413793,
+              "within_one": 1,
+              "relevant": 0.8448275862068966,
+              "quadratic_kappa": {
+                "value": 0.8130961588038155,
+                "low": 0.675561797752809,
+                "high": 0.8896797153024911
+              },
+              "binary_kappa": {
+                "value": 0.6605981794538361,
+                "low": 0.4431818181818181,
+                "high": 0.8571428571428572
+              }
+            },
+            {
+              "first": "opus",
+              "second": "jev",
+              "pairs": 58,
+              "exact": 0.603448275862069,
+              "within_one": 0.8793103448275862,
+              "relevant": 0.8103448275862069,
+              "quadratic_kappa": {
+                "value": 0.6428720517637236,
+                "low": 0.22916135610502186,
+                "high": 0.8650519031141868
+              },
+              "binary_kappa": {
+                "value": 0.5763612217795484,
+                "low": 0.30000000000000004,
+                "high": 0.8507462686567164
+              }
+            },
+            {
+              "first": "opus",
+              "second": "haiku",
+              "pairs": 58,
+              "exact": 0.7241379310344828,
+              "within_one": 0.9827586206896551,
+              "relevant": 0.896551724137931,
+              "quadratic_kappa": {
+                "value": 0.8542713567839196,
+                "low": 0.7604719764011799,
+                "high": 0.9362380446333688
+              },
+              "binary_kappa": {
+                "value": 0.7654986522911051,
+                "low": 0.5930232558139534,
+                "high": 0.8676627534685164
+              }
+            },
+            {
+              "first": "jev",
+              "second": "haiku",
+              "pairs": 58,
+              "exact": 0.5172413793103449,
+              "within_one": 0.8793103448275862,
+              "relevant": 0.7758620689655172,
+              "quadratic_kappa": {
+                "value": 0.6540755467196819,
+                "low": 0.419055419055419,
+                "high": 0.8003481288076588
+              },
+              "binary_kappa": {
+                "value": 0.5097529258777633,
+                "low": 0.19879518072289148,
+                "high": 0.7669172932330827
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
