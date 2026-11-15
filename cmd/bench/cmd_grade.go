@@ -16,7 +16,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/tadjov/tusker/internal/bench/judgment"
-	"github.com/tadjov/tusker/internal/bench/meta"
 	"github.com/tadjov/tusker/internal/bench/metrics"
 	"github.com/tadjov/tusker/internal/bench/pool"
 	"github.com/tadjov/tusker/internal/bench/suite"
@@ -113,7 +112,7 @@ func (g gradeCommand) execute(cmd *cobra.Command, args []string) error {
 		}
 		return agreement{hand: manual, judge: against, judgeName: g.flags.against}.print(cmd.OutOrStdout())
 	}
-	manual, err := mergeManualJudgments(manualJudgments{pool: pf, poolRef: meta.TrackRelative(tr.Root, tr.Pool), path: manualPath})
+	manual, err := mergeManualJudgments(manualJudgments{pool: pf, poolRef: tr.Relative(tr.Pool), path: manualPath})
 	if err != nil {
 		return err
 	}

@@ -231,10 +231,10 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 	})
 	rpt.Provenance.SpecID = bs.ID
 	rpt.Provenance.Sources = &meta.Sources{
-		Spec:      meta.TrackRelative(tr.Root, tr.Spec),
+		Spec:      tr.Relative(tr.Spec),
 		Suites:    loadedSuitePaths(bs, tr),
-		Pool:      meta.TrackRelative(tr.Root, tr.Pool),
-		Judgments: meta.TrackRelative(tr.Root, judgments.path),
+		Pool:      tr.Relative(tr.Pool),
+		Judgments: tr.Relative(judgments.path),
 	}
 	if judgments.meta != nil {
 		rpt.Provenance.PoolRunID = judgments.pool.Meta.RunID
@@ -244,7 +244,7 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 		rpt.Provenance.UnjudgedCount = &judgments.coverage.unjudged
 		// checkPoolBinding proved by run id that the judgments graded this
 		// track's pool, whatever path they recorded for it.
-		rpt.Provenance.PoolRef = meta.TrackRelative(tr.Root, tr.Pool)
+		rpt.Provenance.PoolRef = tr.Relative(tr.Pool)
 	}
 	rpt.Settings = report.RunSettings{
 		Warmup:       runCfg.WarmupRuns,
@@ -334,7 +334,7 @@ func measuredAsSpecified(cfg runner.Config, bs *spec.BenchSpec) bool {
 func loadedSuitePaths(bs *spec.BenchSpec, tr *trackctx.Track) []string {
 	var suites []string
 	for _, job := range bs.Jobs {
-		if suite := meta.TrackRelative(tr.Root, job.Suite); !slices.Contains(suites, suite) {
+		if suite := tr.Relative(job.Suite); !slices.Contains(suites, suite) {
 			suites = append(suites, suite)
 		}
 	}

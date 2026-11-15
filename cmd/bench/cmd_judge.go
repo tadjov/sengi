@@ -146,7 +146,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	if err != nil {
 		return fmt.Errorf("read pool: %w", err)
 	}
-	poolRef := meta.TrackRelative(tr.Root, poolPath)
+	poolRef := tr.Relative(poolPath)
 
 	kind, provider, err := resolveJudge(f)
 	if err != nil {

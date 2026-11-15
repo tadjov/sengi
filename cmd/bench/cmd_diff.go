@@ -509,10 +509,13 @@ func judgmentsOf(r *report.Report) string {
 	if sources == nil || sources.Judgments == "" {
 		return scoringNotRecorded
 	}
+	if !filepath.IsAbs(sources.Judgments) {
+		return filepath.ToSlash(filepath.Clean(sources.Judgments))
+	}
 	if sources.Spec != "" {
-		if rel, err := filepath.Rel(filepath.Dir(sources.Spec), sources.Judgments); err == nil {
-			return rel
-		}
+		// An older report named its files absolutely, under the track it ran in.
+		ranIn := &trackctx.Track{Root: filepath.Dir(sources.Spec)}
+		return ranIn.Relative(sources.Judgments)
 	}
 	return filepath.Clean(sources.Judgments)
 }

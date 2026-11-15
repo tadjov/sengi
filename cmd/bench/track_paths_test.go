@@ -193,3 +193,24 @@ func TestPrintDiff_AnAbsoluteAndATrackRelativeReportOfOneTrackScoreAlike(t *test
 
 	assert.NotContains(t, out.String(), "WARNING")
 }
+
+func TestPrintDiff_OneJudgmentsFileReachedThroughASymlinkIsNotAWarning(t *testing.T) {
+	real := filepath.Join(t.TempDir(), "fts")
+	require.NoError(t, os.MkdirAll(filepath.Join(real, "trec"), 0o755))
+	linked := filepath.Join(t.TempDir(), "fts")
+	require.NoError(t, os.Symlink(real, linked))
+	judge := &meta.Judge{Strategy: "keyword"}
+	throughLink := diffRun{
+		runID: "a", kValues: []int{10}, ndcg: map[int]float64{10: 0.6}, threshold: 1, judge: judge,
+		spec:      filepath.Join(linked, "spec.yaml"),
+		judgments: filepath.Join(real, "trec", "annotations.keyword.yaml"),
+	}
+	direct := throughLink
+	direct.runID = "b"
+	direct.spec = filepath.Join(real, "spec.yaml")
+
+	var out bytes.Buffer
+	printDiff(&out, diffReport(throughLink), diffReport(direct))
+
+	assert.NotContains(t, out.String(), "WARNING")
+}
