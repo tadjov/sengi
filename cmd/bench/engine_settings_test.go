@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,6 +103,40 @@ func TestRun_ReportRecordsWhatThePostgresServerRanWith(t *testing.T) {
 	assert.Equal(t, "pgvector/pgvector:pg18", info.Container.Image)
 	assert.True(t, strings.HasPrefix(info.Container.ImageID, "sha256:"), info.Container.ImageID)
 	assert.Empty(t, info.Container.Note)
+}
+
+func TestRun_AServerThatCannotReadItsCgroupLimitsRecordsWhyAndRuns(t *testing.T) {
+	ctx := context.Background()
+	pg := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	conn, err := pgx.Connect(ctx, pg.ConnString)
+	require.NoError(t, err)
+	for _, stmt := range []string{
+		`INSERT INTO articles (id, title, content, url, language) VALUES (gen_random_uuid(), 'climate', 'climate', 'https://example.com/a', 'eng')`,
+		`CREATE ROLE bench_reader LOGIN PASSWORD 'reader'`,
+		`GRANT SELECT ON ALL TABLES IN SCHEMA public TO bench_reader`,
+	} {
+		_, err = conn.Exec(ctx, stmt)
+		require.NoError(t, err, stmt)
+	}
+	require.NoError(t, conn.Close(ctx))
+	reader, err := url.Parse(pg.ConnString)
+	require.NoError(t, err)
+	reader.User = url.UserPassword("bench_reader", "reader")
+	track := latencyOnlyTrack(t, "pg", fmt.Sprintf(`    type: postgres
+    connection: %q`, reader.String()), "SELECT id FROM articles LIMIT 10")
+
+	out, err := execute(t, newRunCmd(), track, "--latency-only")
+	require.NoError(t, err, out)
+
+	rpt := onlyReport(t, track)
+	info := rpt.Environment.Engines["pg"]
+	require.NotNil(t, info.Index)
+	server := info.Index.PostgresServer
+	require.NotNil(t, server, "index error: %s", info.Index.Error)
+	assert.NotEmpty(t, server.Limits.Unreadable, "a role that may not read server files says why")
+	assert.Empty(t, server.Limits.CPUMax)
+	assert.NotEmpty(t, server.Settings, "the rest of the server is still recorded")
+	assert.Nil(t, aggregatedEngine(t, rpt.Jobs[0], "pg").ServerLatency, "postgres reports no server time")
 }
 
 func TestRun_ReportRecordsWhatTheElasticsearchClusterRanWith(t *testing.T) {
