@@ -20,7 +20,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	judgeagreement "github.com/tadjov/tusker/internal/bench/agreement"
+	"github.com/tadjov/tusker/internal/bench/agreement"
 	"github.com/tadjov/tusker/internal/bench/pool"
 	"github.com/tadjov/tusker/internal/bench/report"
 	"github.com/tadjov/tusker/internal/bench/spec"
@@ -639,8 +639,8 @@ func (d diffJudgmentsCommand) execute(cmd *cobra.Command, args []string) error {
 
 type judgmentComparison struct {
 	flags  diffJudgmentsFlags
-	sets   []judgeagreement.Set
-	result judgeagreement.Artifact
+	sets   []agreement.Set
+	result agreement.Artifact
 }
 
 func (d diffJudgmentsCommand) compare(cmd *cobra.Command, args []string) (judgmentComparison, error) {
@@ -653,11 +653,11 @@ func (d diffJudgmentsCommand) compare(cmd *cobra.Command, args []string) (judgme
 	if err != nil {
 		return judgmentComparison{}, fmt.Errorf("load spec %s: %w", tr.Spec, err)
 	}
-	sets, err := judgeagreement.Load(tr, f.judgments)
+	sets, err := agreement.Load(tr, f.judgments)
 	if err != nil {
 		return judgmentComparison{}, err
 	}
-	pairs, err := judgeagreement.Align(sets)
+	pairs, err := agreement.Align(sets)
 	if err != nil {
 		return judgmentComparison{}, err
 	}
@@ -667,26 +667,26 @@ func (d diffJudgmentsCommand) compare(cmd *cobra.Command, args []string) (judgme
 			return judgmentComparison{}, fmt.Errorf("read the pool %s for each query's category and gate: %w", tr.Pool, err)
 		}
 	}
-	opts := judgeagreement.SummaryOptions{
+	opts := agreement.SummaryOptions{
 		Labels:     setLabels(sets),
 		Threshold:  bs.Metrics.RelevanceThreshold,
 		Seed:       f.seed,
 		Reference:  f.reference,
 		Categories: poolCategories(pf),
 	}
-	all, err := judgeagreement.Summarize(pairs, opts)
+	all, err := agreement.Summarize(pairs, opts)
 	if err != nil {
 		return judgmentComparison{}, err
 	}
 
-	var gate *judgeagreement.GateSummary
+	var gate *agreement.GateSummary
 	var titles map[uuid.UUID]string
 	if f.pg != "" {
 		reader, err := d.openReader(cmd, f.pg)
 		if err != nil {
 			return judgmentComparison{}, err
 		}
-		gated, err := judgeagreement.Gate(cmd.Context(), judgeagreement.GateOptions{Pairs: pairs, Pool: pf, Reader: reader})
+		gated, err := agreement.Gate(cmd.Context(), agreement.GateOptions{Pairs: pairs, Pool: pf, Reader: reader})
 		if err != nil {
 			return judgmentComparison{}, err
 		}
@@ -695,21 +695,21 @@ func (d diffJudgmentsCommand) compare(cmd *cobra.Command, args []string) (judgme
 		}
 		titles = gated.Titles
 	}
-	var disagreements []judgeagreement.Disagreement
+	var disagreements []agreement.Disagreement
 	if f.pairs {
-		disagreements = judgeagreement.Disagreements(pairs, f.minGap)
+		disagreements = agreement.Disagreements(pairs, f.minGap)
 		for i := range disagreements {
 			disagreements[i].Title = titles[disagreements[i].DocID]
 		}
 	}
-	var rescoring *judgeagreement.Rescoring
+	var rescoring *agreement.Rescoring
 	reportRunID := ""
 	if f.report != "" {
 		rpt, err := readRescoredReport(tr, f.report)
 		if err != nil {
 			return judgmentComparison{}, err
 		}
-		rescored, err := judgeagreement.Rescore(judgeagreement.RescoreOptions{
+		rescored, err := agreement.Rescore(agreement.RescoreOptions{
 			Report:    rpt,
 			Sets:      sets,
 			Reference: cmp.Or(f.reference, sets[0].Label),
@@ -722,18 +722,18 @@ func (d diffJudgmentsCommand) compare(cmd *cobra.Command, args []string) (judgme
 		rescoring, reportRunID = &rescored, rescored.ReportRunID
 	}
 
-	result := judgeagreement.NewArtifact(sets, reportRunID)
+	result := agreement.NewArtifact(sets, reportRunID)
 	result.RelevanceThreshold, result.Seed = opts.Threshold, f.seed
 	result.AllPairs, result.Gate, result.Disagreements, result.Rescoring = all, gate, disagreements, rescoring
 	return judgmentComparison{flags: f, sets: sets, result: result}, nil
 }
 
-func gateSummary(gated judgeagreement.Gated, opts judgeagreement.SummaryOptions) (*judgeagreement.GateSummary, error) {
-	gate := &judgeagreement.GateSummary{Refused: gated.Refused}
+func gateSummary(gated agreement.Gated, opts agreement.SummaryOptions) (*agreement.GateSummary, error) {
+	gate := &agreement.GateSummary{Refused: gated.Refused}
 	if len(gated.Admitted) == 0 {
 		return gate, nil
 	}
-	admitted, err := judgeagreement.Summarize(gated.Admitted, opts)
+	admitted, err := agreement.Summarize(gated.Admitted, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -761,7 +761,7 @@ func (c judgmentComparison) print(w io.Writer) {
 	}
 }
 
-func setLabels(sets []judgeagreement.Set) []string {
+func setLabels(sets []agreement.Set) []string {
 	labels := make([]string, len(sets))
 	for i, s := range sets {
 		labels[i] = s.Label
@@ -787,7 +787,7 @@ func readRescoredReport(tr *trackctx.Track, value string) (*report.Report, error
 	return report.ReadJSON(value)
 }
 
-func printJudgmentSets(w io.Writer, sets []judgeagreement.Set) {
+func printJudgmentSets(w io.Writer, sets []agreement.Set) {
 	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprint("Judgment sets"))
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "Label\tJudge\tGraded\tRun ID\tPath")
@@ -800,7 +800,7 @@ func printJudgmentSets(w io.Writer, sets []judgeagreement.Set) {
 	fmt.Fprintln(w)
 }
 
-func printAgreementSummary(w io.Writer, title string, s judgeagreement.Summary) {
+func printAgreementSummary(w io.Writer, title string, s agreement.Summary) {
 	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprint(title))
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "Set\tGrade 0\tGrade 1\tGrade 2\tGrade 3")
@@ -823,22 +823,27 @@ func printAgreementSummary(w io.Writer, title string, s judgeagreement.Summary) 
 	}
 }
 
-func comparisonName(c judgeagreement.Comparison) string { return c.First + " vs " + c.Second }
+func comparisonName(c agreement.Comparison) string { return c.First + " vs " + c.Second }
 
-func comparisonCells(c judgeagreement.Comparison) string {
+func comparisonCells(c agreement.Comparison) string {
 	return fmt.Sprintf("%d\t%.4f\t%.4f\t%.4f\t%s\t%s", c.Pairs, c.Exact, c.WithinOne, c.Relevant, formatKappa(c.QuadraticKappa), formatKappa(c.BinaryKappa))
 }
 
-func formatKappa(k judgeagreement.Kappa) string {
+func formatKappa(k agreement.Kappa) string {
 	if math.IsNaN(float64(k.Value)) {
 		return "n/a"
 	}
 	return fmt.Sprintf("%.4f [%s, %s]", k.Value, formatStatistic(k.Low), formatStatistic(k.High))
 }
 
-func formatStatistic(s judgeagreement.Statistic) string { return formatRatio(float64(s), "%.4f", 1) }
+func formatStatistic(s agreement.Statistic) string {
+	if math.IsNaN(float64(s)) {
+		return "n/a"
+	}
+	return fmt.Sprintf("%.4f", float64(s))
+}
 
-func printReference(w io.Writer, ref *judgeagreement.Reference) {
+func printReference(w io.Writer, ref *agreement.Reference) {
 	for _, c := range ref.Against {
 		fmt.Fprintf(w, "\n%s\n", cBold.Sprintf("%s against %s (rows are %s's grades)", c.Label, ref.Label, ref.Label))
 		fmt.Fprintf(w, "%s graded %d of %s's %d irrelevant pairs relevant and %d of its %d relevant pairs irrelevant\n\n",
@@ -928,7 +933,7 @@ func (c judgmentComparison) printRescoring(w io.Writer) {
 
 func orNone(s string) string { return cmp.Or(s, "none") }
 
-func (c judgmentComparison) printJobRescoring(w io.Writer, job judgeagreement.JobRescoring) {
+func (c judgmentComparison) printJobRescoring(w io.Writer, job agreement.JobRescoring) {
 	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprintf("--- Job: %s (%d engines, %d judged queries) ---", job.Job, len(job.Engines), job.Queries))
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintf(tw, "Metric\tSet\t%s\tOrder\tτ-b\n", strings.Join(job.Engines, "\t"))
@@ -956,7 +961,7 @@ func (c judgmentComparison) printJobRescoring(w io.Writer, job judgeagreement.Jo
 }
 
 // formatEngineOrder joins tied engines with =, since τ-b counts ties.
-func formatEngineOrder(order judgeagreement.EngineOrder) string {
+func formatEngineOrder(order agreement.EngineOrder) string {
 	var b strings.Builder
 	for i, engine := range order.Order {
 		if i > 0 {

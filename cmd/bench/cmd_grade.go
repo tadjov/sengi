@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"math"
 	"math/rand/v2"
 	"slices"
 	"strings"
@@ -16,7 +15,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/tadjov/tusker/internal/bench/judgment"
-	"github.com/tadjov/tusker/internal/bench/metrics"
 	"github.com/tadjov/tusker/internal/bench/pool"
 	"github.com/tadjov/tusker/internal/bench/suite"
 	"github.com/tadjov/tusker/internal/bench/trackctx"
@@ -31,7 +29,6 @@ type gradeFlags struct {
 	sample  int
 	seed    uint64
 	pg      string
-	report  bool
 }
 
 type gradeCommand struct {
@@ -45,7 +42,7 @@ func newGradeCmdWithReader(openReader articleReaderOpener) *cobra.Command {
 	var f gradeFlags
 	cmd := &cobra.Command{
 		Use:   "grade [track] --against <strategy|path>",
-		Short: "Grade pooled docs by hand and measure a judge's agreement",
+		Short: "Grade pooled docs by hand",
 		Long: `Walks the track's pool one (query, doc) pair at a time and writes each hand
 grade to trec/annotations.manual.yaml, the file bench judge --strategy manual
 creates. The file is created or merged first, so hand grades survive a re-pool.
@@ -61,11 +58,10 @@ The same pool, judge file and --seed give the same sample and order in every
 session. Without --sample every pool pair still ungraded is walked.
 
 A session never shows the judge's grades, so it ends with progress only. Once
-the walk is graded, --report prints the agreement over the pairs graded both by
-hand and by the --against judge: the exact-agreement rate, quadratic-weighted
-Cohen's kappa and the 4x4 table of hand grade against judge grade.`,
+the walk is graded, bench diff judgments --judgments manual,<set> measures the
+agreement over the pairs graded both by hand and by the judge.`,
 		Example: `  bench grade tracks/cc-news/fts --against bm25 --sample 150 --pg "$PG_CONNECTION_STRING"
-  bench grade tracks/cc-news/fts --against bm25 --report`,
+  bench diff judgments tracks/cc-news/fts --judgments manual,bm25 --reference manual`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return gradeCommand{flags: f, openReader: openReader}.execute(cmd, args)
@@ -75,7 +71,6 @@ Cohen's kappa and the 4x4 table of hand grade against judge grade.`,
 	cmd.Flags().IntVar(&f.sample, "sample", 0, "Walk a stratified sample of N pairs (0 = every ungraded pair)")
 	cmd.Flags().Uint64Var(&f.seed, "seed", 1, "Seed for the sample and the order of docs within a query")
 	cmd.Flags().StringVar(&f.pg, "pg", "", "Postgres connection for the articles (or set PG_CONNECTION_STRING)")
-	cmd.Flags().BoolVar(&f.report, "report", false, "Print the agreement without starting a session")
 	_ = cmd.MarkFlagRequired("against")
 	return cmd
 }
@@ -102,16 +97,6 @@ func (g gradeCommand) execute(cmd *cobra.Command, args []string) error {
 	}
 
 	manualPath := tr.JudgmentsPath(judgment.JudgmentSetName(judgment.StrategyManual, ""))
-	if g.flags.report {
-		manual, err := judgment.ReadFileIfExists(manualPath)
-		if err != nil {
-			return fmt.Errorf("read manual judgments: %w", err)
-		}
-		if manual == nil {
-			return fmt.Errorf("no hand grades at %s yet: run bench grade without --report first", manualPath)
-		}
-		return agreement{hand: manual, judge: against, judgeName: g.flags.against}.print(cmd.OutOrStdout())
-	}
 	manual, err := mergeManualJudgments(manualJudgments{pool: pf, poolPath: tr.Pool, path: manualPath})
 	if err != nil {
 		return err
@@ -140,59 +125,9 @@ func (g gradeCommand) execute(cmd *cobra.Command, args []string) error {
 	if left := session.remaining(); left > 0 {
 		fmt.Fprintf(w, "graded %d of %d; rerun to continue\n", walked-left, walked)
 	} else {
-		fmt.Fprintf(w, "all %d graded; run bench grade --against %s --report for the agreement\n", walked, g.flags.against)
+		fmt.Fprintf(w, "all %d graded; run bench diff judgments --judgments manual,%s for the agreement\n", walked, g.flags.against)
 	}
 	return nil
-}
-
-// agreement compares hand grades with a judge's over the pairs both graded.
-type agreement struct {
-	hand      *judgment.File
-	judge     *judgment.File
-	judgeName string
-}
-
-func (a agreement) print(w io.Writer) error {
-	handGrades := indexGrades(a.hand)
-	var hand, judge []int
-	for _, entry := range a.judge.Queries {
-		for _, doc := range entry.Docs {
-			handDoc, ok := handGrades[pairKey{queryID: entry.QueryID, docID: doc.DocID}]
-			if !ok || handDoc.Grade == judgment.GradeUnjudged || doc.Grade == judgment.GradeUnjudged {
-				continue
-			}
-			hand = append(hand, handDoc.Grade)
-			judge = append(judge, doc.Grade)
-		}
-	}
-	confusion, err := metrics.NewGradeConfusion(hand, judge)
-	if err != nil {
-		return fmt.Errorf("compare hand grades with %s: %w", a.judgeName, err)
-	}
-
-	fmt.Fprintf(w, "\n%s\n", cBold.Sprintf("Agreement with %s over %d pairs graded in both", a.judgeName, confusion.Pairs()))
-	fmt.Fprintf(w, "  exact agreement  %s\n", formatRatio(confusion.ExactAgreement(), "%.1f%%", 100))
-	fmt.Fprintf(w, "  quadratic κ      %s\n\n", formatRatio(confusion.QuadraticKappa(), "%.3f", 1))
-	fmt.Fprintf(w, "  %-8s", "")
-	for grade := range confusion {
-		fmt.Fprintf(w, "  judge %d", grade)
-	}
-	fmt.Fprintln(w)
-	for grade, row := range confusion {
-		fmt.Fprintf(w, "  %-8s", fmt.Sprintf("hand %d", grade))
-		for _, count := range row {
-			fmt.Fprintf(w, "  %7d", count)
-		}
-		fmt.Fprintln(w)
-	}
-	return nil
-}
-
-func formatRatio(value float64, format string, scale float64) string {
-	if math.IsNaN(value) {
-		return "n/a"
-	}
-	return fmt.Sprintf(format, value*scale)
 }
 
 func mergeManualJudgments(m manualJudgments) (*judgment.File, error) {

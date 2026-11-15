@@ -538,17 +538,16 @@ Key flags:
 - A 408, 429 or 5xx, or a request that got no response, is retried through `internal/resilience`: 5 attempts, waiting what `Retry-After` asks (seconds or an HTTP date), else 0.5 s doubling up to 5 s less up to 25% jitter. Each attempt times out after 30 s. Any other status fails the doc with its status, body and `x-typesafe-request-id`, and `--resume` retries it.
 - Jev is not deterministic: the same request can return other probabilities, so a rerun may grade a borderline doc differently. The same doc always sends the same bytes.
 
-### `bench grade [<name>] --against <S|path> [--sample N] [--seed S] [--pg <dsn>] [--report]`
+### `bench grade [<name>] --against <S|path> [--sample N] [--seed S] [--pg <dsn>]`
 
-Grades pool pairs by hand into `trec/annotations.manual.yaml` and reports how well the `--against` judge agrees. It creates or merges the manual file as `bench judge --strategy manual` does, so hand grades are kept per (query, doc) across re-pools, and it refuses an `--against` file graded against another pool.
+Grades pool pairs by hand into `trec/annotations.manual.yaml`, sampled from the `--against` judge's grades. It creates or merges the manual file as `bench judge --strategy manual` does, so hand grades are kept per (query, doc) across re-pools, and it refuses an `--against` file graded against another pool.
 
 Each screen shows progress, the query from the pool, and the article's title, publisher, date, description and first 800 characters of content (from Postgres, `--pg` / `PG_CONNECTION_STRING`). The judge's grade and the engines that retrieved the doc are not shown. Answer `0`–`3`, `s` to skip, `u` to undo the last grade, `q` to quit. Each grade is saved before the next pair shows, so rerunning the command resumes.
 
 - `--sample N` — walk N pairs drawn from the pairs the judge graded, an equal share per judge grade; a grade with fewer pairs than its share gives the shortfall to the others. Without it, every ungraded pool pair is walked
 - `--seed S` — fixes the sample and the order of docs within each query (default 1). The same pool, judge file and seed give the same walk every session; pairs already graded by hand are skipped
-- `--report` — print the agreement instead of starting a session; needs no `--pg`
 
-A session ends with progress only (`graded 37 of 150; rerun to continue`), never the agreement: seeing the judge's grades for the pairs just graded would calibrate the rest of the sample. Run `--report` once the walk is graded. The agreement covers the pairs graded in both files: their count, the exact-agreement rate, quadratic-weighted Cohen's κ over the fixed 0–3 scale, and the 4×4 table of hand grade against judge grade. A sampled κ weights high grades more than the pool does, because each grade gets an equal share.
+A session ends with progress only (`graded 37 of 150; rerun to continue`), never the agreement: seeing the judge's grades for the pairs just graded would calibrate the rest of the sample. Once the walk is graded, the hand grades are the `manual` judgment set, and `bench diff judgments <name> --judgments manual,<S> --reference manual` measures the agreement over the pairs graded in both: their count, exact agreement, Cohen's κ and the 4×4 table of hand grade against judge grade. A sampled κ weights high grades more than the pool does, because each grade gets an equal share.
 
 ### `bench run [<name>] [--judgments <S|path>] [--jobs <name,...>]`
 
