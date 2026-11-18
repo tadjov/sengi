@@ -107,7 +107,6 @@ type htmlJob struct {
 	Name         string
 	Aggregated   []htmlAggRow
 	Latency      []htmlLatRow
-	Rounds       []htmlRoundsRow
 	ServerTime   []htmlServerTimeRow
 	Significance []htmlSigRow
 	PerQuery     []htmlQueryRow
@@ -141,12 +140,6 @@ type htmlLatRow struct {
 	Min, P50, P75, P90, P95, P99, Max, Mean, Stddev string
 	Samples                                         int
 	ExcludedQueries                                 int
-}
-
-type htmlRoundsRow struct {
-	Engine        string
-	P50, P95, P99 string
-	Rounds        int
 }
 
 type htmlServerTimeRow struct {
@@ -270,14 +263,6 @@ func buildViewModel(r *Report) htmlReport {
 				Samples:         s.SampleCount,
 				ExcludedQueries: agg.LatencyExcludedQueries,
 			})
-		}
-
-		if measuredInRounds(jr.Aggregated) {
-			for _, agg := range jr.Aggregated {
-				row := htmlRoundsRow{Engine: agg.EngineName, Rounds: len(agg.Rounds)}
-				row.P50, row.P95, row.P99 = spreadCells(agg.AcrossRounds)
-				job.Rounds = append(job.Rounds, row)
-			}
 		}
 
 		for _, agg := range serverTimed(jr.Aggregated) {

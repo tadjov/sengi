@@ -65,25 +65,6 @@ func (l *searchLog) add(search loggedSearch) int {
 	return n
 }
 
-func (l *searchLog) reset() {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.searches = nil
-}
-
-// indexesSearchedFor lists the index of every search of queryID, in order.
-func (l *searchLog) indexesSearchedFor(queryID string) []string {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	var indexes []string
-	for _, s := range l.searches {
-		if s.queryID == queryID {
-			indexes = append(indexes, s.index)
-		}
-	}
-	return indexes
-}
-
 func (i *fakeIndex) ranking(name, queryID string) []uuid.UUID {
 	if i.log == nil {
 		return i.ranked[queryID]

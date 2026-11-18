@@ -108,3 +108,30 @@ func TestWriters_NoServerTimeSectionWhenNoEngineReportsOne(t *testing.T) {
 	assert.NotContains(t, terminal.String(), "Server Time")
 	assert.NotContains(t, markdown.String(), "Server Time")
 }
+
+func TestWriteJSON_KeepsEachCellsMedianIteration(t *testing.T) {
+	qr := answered("q1", "pg", 0.5, 0)
+	qr.Latency = runner.ComputeLatencyStats([]time.Duration{10 * time.Millisecond, 60 * time.Millisecond, 20 * time.Millisecond})
+	run := &runner.BenchmarkResult{
+		Config: runner.Config{KValues: []int{10}, RelevanceThreshold: 1},
+		Jobs: []*runner.JobResult{{
+			JobName: "median", EngineNames: []string{"pg"}, QueryOrder: []string{"q1"},
+			Results: map[string]map[string]runner.QueryResult{"q1": {"pg": qr}},
+		}},
+	}
+
+	raw, err := json.Marshal(Generate(run, nil))
+	require.NoError(t, err)
+
+	var decoded struct {
+		Jobs []struct {
+			PerQuery []struct {
+				Latency struct {
+					Median time.Duration `json:"median"`
+				}
+			}
+		}
+	}
+	require.NoError(t, json.Unmarshal(raw, &decoded))
+	assert.Equal(t, 20*time.Millisecond, decoded.Jobs[0].PerQuery[0].Latency.Median, "the middle iteration, not the 30 ms mean")
+}

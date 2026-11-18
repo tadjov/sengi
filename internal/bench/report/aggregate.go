@@ -6,7 +6,6 @@ import (
 	"math"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/tadjov/tusker/internal/bench/meta"
 	"github.com/tadjov/tusker/internal/bench/metrics"
@@ -245,7 +244,6 @@ func aggregate(scope jobScope, queryIDs []string) []AggregatedEntry {
 
 		ndcgSamples := make(map[int][]float64, len(kValues))
 		var allStats, serverStats []runner.LatencyStats
-		var roundStats [][]runner.LatencyStats
 		var gradedTopK, retrievedTopK int
 
 		for _, qID := range queryIDs {
@@ -258,12 +256,6 @@ func aggregate(scope jobScope, queryIDs []string) []AggregatedEntry {
 				allStats = append(allStats, qr.Latency)
 				if qr.ServerLatency != nil {
 					serverStats = append(serverStats, *qr.ServerLatency)
-				}
-				for round, stats := range qr.RoundLatencies {
-					if round == len(roundStats) {
-						roundStats = append(roundStats, nil)
-					}
-					roundStats[round] = append(roundStats[round], stats)
 				}
 			} else {
 				agg.LatencyExcludedQueries++
@@ -306,10 +298,6 @@ func aggregate(scope jobScope, queryIDs []string) []AggregatedEntry {
 			server := fromRunnerLatencyStats(runner.AggregateLatencyStats(serverStats))
 			agg.ServerLatency = &server
 		}
-		for _, stats := range roundStats {
-			agg.Rounds = append(agg.Rounds, fromRunnerLatencyStats(runner.AggregateLatencyStats(stats)))
-		}
-		agg.AcrossRounds = spreadAcross(agg.Rounds)
 
 		if agg.JudgedCount > 0 {
 			n := float64(agg.JudgedCount)
@@ -332,25 +320,6 @@ func aggregate(scope jobScope, queryIDs []string) []AggregatedEntry {
 	}
 
 	return entries
-}
-
-func spreadAcross(rounds []LatencyStats) *RoundSpread {
-	if len(rounds) == 0 {
-		return nil
-	}
-	spreadOf := func(percentile func(LatencyStats) time.Duration) Spread {
-		values := make([]time.Duration, len(rounds))
-		for i, round := range rounds {
-			values[i] = percentile(round)
-		}
-		stats := runner.ComputeLatencyStats(values)
-		return Spread{Median: stats.Median, Min: stats.Min, Max: stats.Max}
-	}
-	return &RoundSpread{
-		P50: spreadOf(LatencyStats.P50),
-		P95: spreadOf(LatencyStats.P95),
-		P99: spreadOf(LatencyStats.P99),
-	}
 }
 
 // computeSignificance compares every engine pair in the job on NDCG@K (all K

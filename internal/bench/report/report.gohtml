@@ -112,7 +112,6 @@ footer{text-align:center;color:#9ca3af;font-size:12px;padding-top:8px}
     <div class="glossary-entry"><dt>p (Holm)</dt><dd>The p-value Holm-adjusted across the job's engine pairs on one metric. An untestable pair counts in the family at p = 1.</dd></div>
     <div class="glossary-entry"><dt>Δ A−B [95% CI]</dt><dd>Mean per-query difference, engine A minus engine B, with its 95% percentile bootstrap interval over 10,000 resamples of the judged queries. The interval is not Holm-adjusted, so one clear of zero can still read ns.</dd></div>
     <div class="glossary-entry"><dt>NDCG ±stddev</dt><dd>Sample standard deviation of per-query NDCG values. High stddev means inconsistent ranking quality - some queries are handled well, others poorly.</dd></div>
-    <div class="glossary-entry"><dt>Latency across rounds</dt><dd>A run in rounds measures every query on every engine once per round, warmup included, rotating which engine goes first. Each cell is the median of the rounds' p50, p95 or p99, with the smallest and largest round value in brackets. The latency statistics above pool every round.</dd></div>
     <div class="glossary-entry"><dt>Server time</dt><dd>The time the engine reports it spent on the search, without the transport or the client decoding the response: Elasticsearch's took, in whole milliseconds. Engines that report none are not listed.</dd></div>
     <div class="glossary-entry"><dt>Latency chart</dt><dd>p50 (median) latency on a logarithmic scale. Log scale is used because the range spans multiple orders of magnitude (µs → seconds).</dd></div>
   </div>
@@ -192,24 +191,6 @@ footer{text-align:center;color:#9ca3af;font-size:12px;padding-top:8px}
       </tbody>
     </table>
   </div>
-
-  <!-- Latency across rounds table -->
-  {{if .Rounds}}
-  <div class="section">
-    <div class="section-title">Latency Across Rounds (median of the rounds [min, max])</div>
-    <table class="sortable">
-      <thead><tr>
-        <th>Engine</th><th>p50</th><th>p95</th><th>p99</th><th>Rounds</th>
-      </tr></thead>
-      <tbody>
-      {{range .Rounds}}<tr>
-        <td>{{.Engine}}</td>
-        <td>{{.P50}}</td><td>{{.P95}}</td><td>{{.P99}}</td><td>{{.Rounds}}</td>
-      </tr>{{end}}
-      </tbody>
-    </table>
-  </div>
-  {{end}}
 
   <!-- Server time table -->
   {{if .ServerTime}}

@@ -37,13 +37,11 @@ func WriteTable(r *Report, w io.Writer) {
 				tYellow.Sprint("WARNING:"))
 			fmt.Fprintf(w, "  Run bench pool, then bench judge.\n\n")
 			writeLatencyTable(w, &jr)
-			writeRoundsTable(w, &jr)
 			writeServerTimeTable(w, &jr)
 		} else {
 			writeAggregatedTable(w, &jr, r.Config.KValues)
 			writeCategoryTables(w, &jr, r.Config.KValues)
 			writeLatencyTable(w, &jr)
-			writeRoundsTable(w, &jr)
 			writeServerTimeTable(w, &jr)
 			writeSignificanceTable(w, &jr)
 			writePerQueryTable(w, &jr, r.Config.KValues)
@@ -102,12 +100,10 @@ func WriteMarkdown(r *Report, w io.Writer) {
 		if !hasAnyJudgments(&jr) {
 			fmt.Fprintf(w, "> ⚠️ No relevance judgments — latency only.\n\n")
 			writeMDLatencyTable(w, &jr)
-			writeMDRoundsTable(w, &jr)
 			writeMDServerTimeTable(w, &jr)
 		} else {
 			writeMDAggregatedTable(w, &jr, r.Config.KValues)
 			writeMDLatencyTable(w, &jr)
-			writeMDRoundsTable(w, &jr)
 			writeMDServerTimeTable(w, &jr)
 			writeMDSignificanceTable(w, &jr)
 		}
@@ -203,21 +199,6 @@ func writeMDLatencyTable(w io.Writer, jr *JobReport) {
 			s.SampleCount,
 			agg.LatencyExcludedQueries,
 		})
-	}
-	fmt.Fprintln(w, t.RenderMarkdown())
-	fmt.Fprintln(w)
-}
-
-func writeMDRoundsTable(w io.Writer, jr *JobReport) {
-	if !measuredInRounds(jr.Aggregated) {
-		return
-	}
-	fmt.Fprintf(w, "### %s\n\n", roundsTitle)
-
-	t := newMDTable()
-	t.AppendHeader(roundsHeader)
-	for _, agg := range jr.Aggregated {
-		t.AppendRow(roundsRow(agg))
 	}
 	fmt.Fprintln(w, t.RenderMarkdown())
 	fmt.Fprintln(w)
@@ -439,55 +420,6 @@ func writeLatencyTable(w io.Writer, jr *JobReport) {
 
 	t.Render()
 	fmt.Fprintln(w)
-}
-
-func writeRoundsTable(w io.Writer, jr *JobReport) {
-	if !measuredInRounds(jr.Aggregated) {
-		return
-	}
-	fmt.Fprintf(w, "%s\n\n", tBold.Sprint(roundsTitle))
-
-	t := newTable(w)
-	t.AppendHeader(roundsHeader)
-	t.SetColumnConfigs(rightCols(2, 3, 4, 5))
-	for _, agg := range jr.Aggregated {
-		t.AppendRow(roundsRow(agg))
-	}
-	t.Render()
-	fmt.Fprintln(w)
-}
-
-const roundsTitle = "Latency Across Rounds (median of the rounds [min, max])"
-
-var roundsHeader = table.Row{"Engine", "p50", "p95", "p99", "Rounds"}
-
-// measuredInRounds reports a job measured more than once, the only kind with
-// a spread to show.
-func measuredInRounds(aggregated []AggregatedEntry) bool {
-	for _, agg := range aggregated {
-		if len(agg.Rounds) > 1 {
-			return true
-		}
-	}
-	return false
-}
-
-func roundsRow(agg AggregatedEntry) table.Row {
-	p50, p95, p99 := spreadCells(agg.AcrossRounds)
-	return table.Row{agg.EngineName, p50, p95, p99, len(agg.Rounds)}
-}
-
-// spreadCells reads a dash for an engine that answered no query every
-// engine answered, which leaves no round to spread.
-func spreadCells(s *RoundSpread) (p50, p95, p99 string) {
-	if s == nil {
-		return "—", "—", "—"
-	}
-	return fmtSpread(s.P50), fmtSpread(s.P95), fmtSpread(s.P99)
-}
-
-func fmtSpread(s Spread) string {
-	return fmt.Sprintf("%s [%s, %s]", fmtDuration(s.Median), fmtDuration(s.Min), fmtDuration(s.Max))
 }
 
 func writeServerTimeTable(w io.Writer, jr *JobReport) {
