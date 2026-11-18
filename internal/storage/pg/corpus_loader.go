@@ -135,7 +135,7 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		return storage.LoadRecord{}, err
 	}
 
-	record.FinishedAt = now()
+	record.Finish(now())
 	// An unindexed corpus is not what a bench run measures, so corpus_load skips it.
 	if opts.SkipIndex {
 		return record, nil
@@ -221,7 +221,7 @@ func (l *CorpusLoader) refuseLoaded(ctx context.Context, conn *pgx.Conn) error {
 
 var indexBuildSettings = []string{"maintenance_work_mem", "max_parallel_maintenance_workers"}
 
-// buildIndexes times each search index as its own stage; a SET runs untimed.
+// buildIndexes times each search index and each derived-table fill as its own stage; a SET or ANALYZE runs untimed.
 func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record *storage.LoadRecord) error {
 	for _, s := range l.indexes {
 		run := func() error {
@@ -230,14 +230,14 @@ func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record 
 			}
 			return nil
 		}
-		if s.Index == "" {
+		if s.Stage == "" {
 			if err := run(); err != nil {
 				return err
 			}
 			continue
 		}
-		err := timed(record, s.Index, func() error {
-			defer storage.WatchStage(ctx, []any{"engine", record.Engine, "stage", s.Index}, l.indexBuildProgress(conn.PgConn().PID()))()
+		err := timed(record, s.Stage, func() error {
+			defer storage.WatchStage(ctx, []any{"engine", record.Engine, "stage", s.Stage}, l.indexBuildProgress(conn.PgConn().PID()))()
 			return run()
 		})
 		if err != nil {

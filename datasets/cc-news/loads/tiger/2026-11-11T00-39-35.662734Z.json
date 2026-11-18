@@ -1,0 +1,55 @@
+{
+  "engine": "tiger",
+  "engineVersion": "PostgreSQL 18.4 (Ubuntu 18.4-1.pgdg22.04+1), pg_textsearch 1.1.0, vector 0.8.2",
+  "startedAt": "2026-11-11T00:39:35.662734Z",
+  "finishedAt": "2026-11-11T00:46:42.107737Z",
+  "totalSeconds": 426.445003,
+  "canonical": {
+    "name": "cc-news-canonical",
+    "version": "v1",
+    "resourceHash": "sha256:7cdf4c719dc70cd013a1eb76fa33688564dc99af03ddf8cc57d20952cd4c89a3"
+  },
+  "embeddings": {
+    "name": "cc-news-canonical-embeddings",
+    "version": "v1",
+    "resourceHash": "sha256:de08a1b41c61d01ca245e23b632fa772324013eb6087ecbe90e793078b7fdde4"
+  },
+  "modelTag": "qwen3-embedding:0.6b@1024",
+  "articles": 707910,
+  "vectors": 707910,
+  "batchSize": 1000,
+  "stages": [
+    {
+      "name": "schema",
+      "seconds": 0.149196375
+    },
+    {
+      "name": "copy_articles",
+      "seconds": 56.475996416
+    },
+    {
+      "name": "copy_embeddings",
+      "seconds": 57.177004041000004
+    },
+    {
+      "name": "idx_articles_bm25",
+      "seconds": 62.833363792
+    },
+    {
+      "name": "idx_article_embedding",
+      "seconds": 248.125581625
+    },
+    {
+      "name": "vacuum_analyze",
+      "seconds": 1.564692083
+    }
+  ],
+  "settings": {
+    "idx_articles_bm25.segments": "1",
+    "maintenance_work_mem": "4GB",
+    "max_parallel_maintenance_workers": "4",
+    "pg_textsearch.memory_limit": "2GB",
+    "pg_textsearch.memtable_spill_threshold": "32000000",
+    "pg_textsearch.segments_per_level": "8"
+  }
+}

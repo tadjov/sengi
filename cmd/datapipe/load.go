@@ -110,6 +110,7 @@ func runLoad(ctx context.Context, out io.Writer, opts loadOptions) error {
 	for _, stage := range record.Stages {
 		fields = append(fields, cli.Field{Label: stage.Name, Value: fmt.Sprintf("%.1fs", stage.Seconds)})
 	}
+	fields = append(fields, cli.Field{Label: "total", Value: fmt.Sprintf("%.1fs", record.TotalSeconds)})
 	if opts.SkipIndex {
 		cli.Summary(out, "Corpus loaded without indexes", fields...)
 		cli.Warn(out, "no load record written, so this corpus is not benchmarkable; drop it and reload without --skip-index")

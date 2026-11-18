@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/tadjov/tusker/internal/bench/version"
 	"gopkg.in/yaml.v3"
@@ -116,6 +117,15 @@ func validate(s *BenchSpec) error {
 		if !eng.Type.Valid() {
 			return fmt.Errorf("engine %q has invalid type %q", name, eng.Type)
 		}
+		if eng.Type == EngineFusion {
+			if err := validateFusion(s, name, eng); err != nil {
+				return err
+			}
+			continue
+		}
+		if eng.Fusion != nil {
+			return fmt.Errorf("engine %q of type %s declares fusion, which only a fusion engine takes", name, eng.Type)
+		}
 		if eng.Connection == "" {
 			return fmt.Errorf("engine %q has no connection", name)
 		}
@@ -172,6 +182,45 @@ func validateQueriesFrom(s *BenchSpec, name string, eng Engine) error {
 	if target.Type != eng.Type {
 		return fmt.Errorf("engine %q (type %s) has queries_from %q (type %s): an alias must reuse a block written for its own engine type",
 			name, eng.Type, eng.QueriesFrom, target.Type)
+	}
+	return nil
+}
+
+// validateFusion checks a fusion engine names a method, a positive rank
+// constant and window, and two or more declared legs that run queries
+// themselves. It reads its legs' blocks, so it takes no connection, alias or
+// params of its own.
+func validateFusion(s *BenchSpec, name string, eng Engine) error {
+	f := eng.Fusion
+	if f == nil {
+		return fmt.Errorf("engine %q of type fusion has no fusion block", name)
+	}
+	if eng.Connection != "" || eng.QueriesFrom != "" || len(eng.Params) > 0 || len(eng.ConnectionSettings) > 0 {
+		return fmt.Errorf("engine %q of type fusion takes only a fusion block: its legs connect and hold the queries", name)
+	}
+	if _, err := ParseFusionMethod(string(f.Method)); err != nil {
+		return fmt.Errorf("engine %q: %w", name, err)
+	}
+	if f.RankConstant <= 0 {
+		return fmt.Errorf("engine %q: fusion rank_constant %d must be positive", name, f.RankConstant)
+	}
+	if f.Window <= 0 {
+		return fmt.Errorf("engine %q: fusion window %d must be positive", name, f.Window)
+	}
+	if len(f.Legs) < 2 {
+		return fmt.Errorf("engine %q: fusion needs two or more legs, got %v", name, f.Legs)
+	}
+	for i, leg := range f.Legs {
+		target, ok := s.Engines[leg]
+		if !ok {
+			return fmt.Errorf("engine %q: fusion leg %q is not a declared engine", name, leg)
+		}
+		if target.Type == EngineFusion {
+			return fmt.Errorf("engine %q: fusion leg %q is itself a fusion engine", name, leg)
+		}
+		if slices.Contains(f.Legs[:i], leg) {
+			return fmt.Errorf("engine %q: fusion leg %q is listed twice", name, leg)
+		}
 	}
 	return nil
 }

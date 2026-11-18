@@ -171,8 +171,13 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 				t.Errorf("finished %v before it started %v", record.FinishedAt, record.StartedAt)
 			}
 			var stages []string
+			var staged float64
 			for _, stage := range record.Stages {
 				stages = append(stages, stage.Name)
+				staged += stage.Seconds
+			}
+			if record.TotalSeconds < staged {
+				t.Errorf("total %.3fs is shorter than its stages, %.3fs", record.TotalSeconds, staged)
 			}
 			if want := []string{"create_index", "bulk", "refresh", "force_merge"}; !slices.Equal(stages, want) {
 				t.Errorf("stages = %q, want %q", stages, want)

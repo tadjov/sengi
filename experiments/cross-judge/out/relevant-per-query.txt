@@ -1,0 +1,2 @@
+annotations.claude-cli.yaml: 25 of 30 queries have more than 50 relevant documents (median 108, min 16, max 173)
+annotations.jev.yaml: 26 of 30 queries have more than 50 relevant documents (median 107, min 14, max 171)

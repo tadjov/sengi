@@ -36,6 +36,8 @@ type Meta struct {
 	GradedCount    *int   `yaml:"graded_count,omitempty" json:"graded_count,omitempty"`
 	UnjudgedCount  *int   `yaml:"unjudged_count,omitempty" json:"unjudged_count,omitempty"`
 	RelevanceScale []int  `yaml:"relevance_scale,omitempty" json:"relevance_scale,omitempty"`
+	// CarriedOver is set when grades were reused from older judgments.
+	CarriedOver *CarriedOver `yaml:"carried_over,omitempty" json:"carried_over,omitempty"`
 
 	// Legacy flat judgment fields, read but never written; Normalize folds them into Judge.
 	LegacyStrategy      string `yaml:"strategy,omitempty" json:"strategy,omitempty"`
@@ -45,6 +47,13 @@ type Meta struct {
 	// Report-only fields.
 	JudgmentsRunID string   `yaml:"judgments_run_id,omitempty" json:"judgments_run_id,omitempty"`
 	Sources        *Sources `yaml:"sources,omitempty" json:"sources,omitempty"`
+}
+
+// CarriedOver names where reused grades came from.
+type CarriedOver struct {
+	JudgmentsRunID string `yaml:"judgments_run_id" json:"judgments_run_id"`
+	PoolRunID      string `yaml:"pool_run_id" json:"pool_run_id"`
+	Grades         int    `yaml:"grades" json:"grades"`
 }
 
 // DroppedExecution is a (query, engine) pair whose every execution failed in an

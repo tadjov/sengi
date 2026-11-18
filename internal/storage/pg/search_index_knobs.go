@@ -20,15 +20,14 @@ type searchIndexKnobs struct {
 var engineKnobs = map[storage.Engine]searchIndexKnobs{
 	storage.ParadeDB: {inspect: inspectParadeIndex},
 	storage.Tiger: {
-		settings: []string{"pg_textsearch.memory_limit", "pg_textsearch.segments_per_level", "pg_textsearch.memtable_spill_threshold"},
+		settings: []string{"pg_textsearch.memory_limit", "pg_textsearch.segments_per_level"},
 		inspect:  inspectTigerIndex,
 	},
 }
 
-const (
-	paradeSearchIndex = "idx_articles_search"
-	tigerSearchIndex  = "idx_articles_bm25"
-)
+const paradeSearchIndex = "idx_articles_search"
+
+var tigerSearchIndexes = []string{"idx_articles_bm25", "idx_articles_title_bm25"}
 
 // inspectParadeIndex refuses more than one segment, matching Elasticsearch's force-merge to one.
 func inspectParadeIndex(ctx context.Context, conn *pgx.Conn, settings map[string]string) error {
@@ -57,19 +56,21 @@ func inspectParadeIndex(ctx context.Context, conn *pgx.Conn, settings map[string
 	return nil
 }
 
-// pg_textsearch 1.1.0 states the segment total only in bm25_summarize_index.
+// pg_textsearch states the segment total only in bm25_summarize_index.
 var tigerSegmentTotal = regexp.MustCompile(`Total: (\d+) segments`)
 
 func inspectTigerIndex(ctx context.Context, conn *pgx.Conn, settings map[string]string) error {
-	var summary string
-	if err := conn.QueryRow(ctx, "SELECT bm25_summarize_index($1)", tigerSearchIndex).Scan(&summary); err != nil {
-		return fmt.Errorf("summarize %s: %w", tigerSearchIndex, err)
+	for _, index := range tigerSearchIndexes {
+		var summary string
+		if err := conn.QueryRow(ctx, "SELECT bm25_summarize_index($1)", index).Scan(&summary); err != nil {
+			return fmt.Errorf("summarize %s: %w", index, err)
+		}
+		match := tigerSegmentTotal.FindStringSubmatch(summary)
+		if match == nil {
+			return fmt.Errorf("summary of %s states no segment total", index)
+		}
+		settings[index+".segments"] = match[1]
 	}
-	match := tigerSegmentTotal.FindStringSubmatch(summary)
-	if match == nil {
-		return fmt.Errorf("summary of %s states no segment total", tigerSearchIndex)
-	}
-	settings[tigerSearchIndex+".segments"] = match[1]
 	return nil
 }
 

@@ -1,0 +1,26 @@
+{
+  "bench_commit": "c10f64d",
+  "bootstrap_seed": 1,
+  "inputs": {
+    "tracks/cc-news/fts/trec/annotations.claude-cli.yaml": "sha256:78474e585b9cb25e053a2e76ac0cb129e4b6d55e56d74cbae03ac49bb05a67a8",
+    "tracks/cc-news/fts/trec/annotations.jev.yaml": "sha256:f4cfaea718c65a1259a1632aace0285675f4f22d63cd67fad48dde363e3ca56b",
+    "tracks/cc-news/fts/trec/cross-judge/annotations.opus.yaml": "sha256:e7f4e683981a14a1843977842bf5293b1fff0f84c990238c29a35864d70ae592",
+    "tracks/cc-news/fts/trec/cross-judge/annotations.jev.yaml": "sha256:cb8f7969c64d941eb3def96867de4114de23b85ade6d6033ad82eeb980f37dfb",
+    "tracks/cc-news/fts/trec/cross-judge/annotations.haiku.yaml": "sha256:cc966ee0f55391b0dd5b4de3aa26bf214ed3b7a7c9813433cf24d0708e844252",
+    "9cf1794:tracks/cc-news/fts/trec/annotations.claude-cli.yaml (sonnet, run 1)": "sha256:61df511c0a27718e38471404783f36a1fd9cfda444f952ae8cc5a30a7120b90f",
+    "tracks/cc-news/fts/reports/2026-11-14T20-26-29-run-183a31.json": "sha256:0db48278ad4b0e4cacf40d1022853ec3e1a3497b0d354c94c58968c744f81177",
+    "tracks/cc-news/fts/reports/2026-11-14T23-56-57-run-b2a175.json": "sha256:f254740a171911e9955ceea5c69a812f5eea1c349e348964e8c9157c9f59f65b"
+  },
+  "outputs": {
+    "relevant-per-query.txt": "sha256:91765433c99fb8f19e5ea66cc75d3c31effe641b84b87e59c06a366c613ae8cd",
+    "rescore.json": "sha256:0c69790ac9ac8c9e809b245fe42954193ef9db825bb8a5ac23af16b345951062",
+    "rescore.txt": "sha256:ba3526ca1cdc6120529bfdd3d9d784d409b4b1049fcc1e2df0766ac0e1a51fb1",
+    "sample-vs-sonnet.json": "sha256:1ccc6ace0be141eb749bd2faa653b0c4f8b61c2366798ea9b06f180113720d1b",
+    "sample-vs-sonnet.txt": "sha256:5a3b259281e5cec185080b6e18cffe2f33eb708750bc01a8a09911ef3f236e57",
+    "sample.json": "sha256:e35524a0e09f0d4c914fb070a565e2aa4e9a7c72d8496f82bd1aaab8f6e7ad2f",
+    "sample.txt": "sha256:7997680dba6930f2cfb886db551e64ad05c7a13ec30374508a4beaf9ff689bdb",
+    "self-agreement.json": "sha256:76dad816543ed34ff21a44b216f1de27fe36b5951e35fa6851532572f90c7a0c",
+    "self-agreement.txt": "sha256:e03bbe34fff8198306f0c2e9d17a581960223149a23941dce118b0926dd898ca",
+    "significance.txt": "sha256:e702e74a2e91053915360e150f19b2f2eb24e31d5f2d01aaf9526bb5b13f7ae0"
+  }
+}

@@ -52,7 +52,7 @@ func (r *Runner) RunAll(
 	if err != nil {
 		return nil, err
 	}
-	bindings := queryBindings(bs)
+	bindings := QueryBindings(bs)
 
 	for _, job := range bs.Jobs {
 		jr, err := r.RunJob(ctx, JobRequest{
@@ -95,9 +95,9 @@ func VerifyEmbeddingModel(engines map[string]spec.Engine, store storage.VectorSt
 	return nil
 }
 
-// queryBindings resolves every engine's query block and declared params once,
+// QueryBindings resolves every engine's query block and declared params once,
 // so the per-query fan-out never reaches back into the spec.
-func queryBindings(bs *spec.BenchSpec) map[string]spec.QueryBinding {
+func QueryBindings(bs *spec.BenchSpec) map[string]spec.QueryBinding {
 	bindings := make(map[string]spec.QueryBinding, len(bs.Engines))
 	for name := range bs.Engines {
 		bindings[name] = bs.QueryBinding(name)
@@ -106,9 +106,13 @@ func queryBindings(bs *spec.BenchSpec) map[string]spec.QueryBinding {
 }
 
 // Dialects maps each declared engine to the syntax its type reads params in.
+// A fusion engine has none: it sends each leg's request in the leg's dialect.
 func Dialects(bs *spec.BenchSpec) (map[string]dialect.Dialect, error) {
 	dialects := make(map[string]dialect.Dialect, len(bs.Engines))
 	for name, eng := range bs.Engines {
+		if eng.Type == spec.EngineFusion {
+			continue
+		}
 		d, err := dialect.For(eng.Type)
 		if err != nil {
 			return nil, fmt.Errorf("engine %q: %w", name, err)
@@ -136,7 +140,7 @@ func LoadSuites(bs *spec.BenchSpec) (map[string]*suite.LoadedSuite, error) {
 			suites[job.Suite] = ls
 			loaded = ls
 		}
-		for _, engName := range job.Engines {
+		for _, engName := range bs.EnginesRead(job) {
 			binding := bs.QueryBinding(engName)
 			if err := loaded.CheckArgsSupplied(binding.QuerySource, binding.Params); err != nil {
 				return nil, fmt.Errorf("job %q engine %q: %w", job.Name, engName, err)
@@ -231,7 +235,7 @@ func RegisterSearchTemplates(ctx context.Context, reg TemplateRegistration) erro
 	queued := map[templateOnEngine]bool{}
 	for _, job := range reg.Spec.Jobs {
 		ls := reg.Suites[job.Suite]
-		for _, engName := range job.Engines {
+		for _, engName := range reg.Spec.EnginesRead(job) {
 			if d := dialects[engName]; d == nil || !d.StoresTemplates() {
 				continue
 			}
@@ -426,25 +430,20 @@ func (r *Runner) prepareCells(ctx context.Context, job *jobRounds, q *suite.Quer
 		c := &cell{engine: engName, rounds: make([]execResult, job.rounds)}
 		cells = append(cells, c)
 
-		// An engine with no declared binding reads its own block; an empty
-		// QuerySource would instead match nothing and drop the query silently.
-		binding, declared := job.req.Bindings[engName]
-		if !declared {
-			binding = spec.QueryBinding{QuerySource: engName}
-		}
-		resolved, err := q.ResolveEngineQuery(suite.ResolveOptions{
-			Engine:      binding.QuerySource,
-			Registry:    job.req.Suite.Registry,
-			SuiteDir:    job.req.Suite.Dir,
-			Defaults:    binding.Params,
+		request, err := BuildRequest(RequestInput{
+			Engine:      engName,
+			Query:       q,
+			Track:       job.req.Track,
+			Suite:       job.req.Suite,
+			Bindings:    job.req.Bindings,
+			Dialects:    job.req.Dialects,
 			QueryVector: queryVector,
 		})
 		if err != nil {
-			c.unsent = fmt.Errorf("resolve query: %w", err)
+			c.unsent = err
 			slog.Warn("resolve query failed", "query", q.ID, "engine", engName, "error", err)
 			continue
 		}
-		request := job.req.Dialects[engName].Request(job.req.Track, resolved)
 		if c.digest, err = requestDigest(request); err != nil {
 			c.unsent = err
 			slog.Warn("request digest failed", "query", q.ID, "engine", engName, "error", err)
@@ -575,6 +574,59 @@ func acrossRounds(rounds []execResult) cellResult {
 		merged.serverStats = &serverStats
 	}
 	return merged
+}
+
+// RequestInput is one suite query to turn into the request one engine receives.
+type RequestInput struct {
+	Engine      string
+	Query       *suite.Query
+	Track       string
+	Suite       *suite.LoadedSuite
+	Bindings    map[string]spec.QueryBinding
+	Dialects    map[string]dialect.Dialect
+	QueryVector []float32
+}
+
+// BuildRequest resolves the engine's block for the query in the engine's
+// dialect. A fusion engine gets one leg request per leg, each built as that
+// leg would build it on its own.
+func BuildRequest(in RequestInput) (engine.Request, error) {
+	// An engine with no declared binding reads its own block; an empty
+	// QuerySource would instead match nothing and drop the query silently.
+	binding, declared := in.Bindings[in.Engine]
+	if !declared {
+		binding = spec.QueryBinding{QuerySource: in.Engine}
+	}
+	if fusion := binding.Fusion; fusion != nil {
+		legs := make([]engine.LegRequest, 0, len(fusion.Legs))
+		for _, leg := range fusion.Legs {
+			legInput := in
+			legInput.Engine = leg
+			request, err := BuildRequest(legInput)
+			if err != nil {
+				return engine.Request{}, fmt.Errorf("fusion leg %q: %w", leg, err)
+			}
+			legs = append(legs, engine.LegRequest{Engine: leg, Request: request})
+		}
+		// The params carry the merge settings into the request digest.
+		params := map[string]any{"method": string(fusion.Method), "rank_constant": fusion.RankConstant, "window": fusion.Window}
+		return engine.Request{Params: params, Legs: legs}, nil
+	}
+	resolved, err := in.Query.ResolveEngineQuery(suite.ResolveOptions{
+		Engine:      binding.QuerySource,
+		Registry:    in.Suite.Registry,
+		SuiteDir:    in.Suite.Dir,
+		Defaults:    binding.Params,
+		QueryVector: in.QueryVector,
+	})
+	if err != nil {
+		return engine.Request{}, fmt.Errorf("resolve query: %w", err)
+	}
+	d, ok := in.Dialects[in.Engine]
+	if !ok {
+		return engine.Request{}, fmt.Errorf("engine %q has no query dialect", in.Engine)
+	}
+	return d.Request(in.Track, resolved), nil
 }
 
 // queryVector looks the query's text up once when any of its blocks takes the

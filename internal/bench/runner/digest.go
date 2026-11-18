@@ -15,11 +15,26 @@ type requestContent struct {
 	Query  string         `json:"query"`
 	Args   []any          `json:"args"`
 	Params map[string]any `json:"params"`
+	// Legs is left out of a single engine's request, so its digest is unchanged.
+	Legs []legContent `json:"legs,omitempty"`
+}
+
+type legContent struct {
+	Engine  string         `json:"engine"`
+	Request requestContent `json:"request"`
+}
+
+func contentOf(request engine.Request) requestContent {
+	content := requestContent{Query: request.Query, Args: request.Args, Params: request.Params}
+	for _, leg := range request.Legs {
+		content.Legs = append(content.Legs, legContent{Engine: leg.Engine, Request: contentOf(leg.Request)})
+	}
+	return content
 }
 
 // requestDigest is the sha256 of the request's content, map keys sorted.
 func requestDigest(request engine.Request) (string, error) {
-	encoded, err := json.Marshal(requestContent{Query: request.Query, Args: request.Args, Params: request.Params})
+	encoded, err := json.Marshal(contentOf(request))
 	if err != nil {
 		return "", fmt.Errorf("encode request: %w", err)
 	}

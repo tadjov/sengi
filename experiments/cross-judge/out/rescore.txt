@@ -1,0 +1,170 @@
+
+Judgment sets
+
+Label   Judge                             Graded  Run ID                            Path
+---     ---                               ---     ---                               ---
+sonnet  llm/claude-cli claude-sonnet-5-5  3716    2026-11-14T20-06-00-judge-c27330  /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/annotations.claude-cli.yaml
+jev     jev jev-1.14.0                    3716    2026-11-14T22-17-45-judge-6002ee  /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/annotations.jev.yaml
+
+3716 (query, doc) pairs graded 0 to 3 by every set; relevant means a grade of 2 or more (metrics.relevance_threshold)
+⚠ without --pg, gated zeros are included: every gated judge grades a doc the phrase, boolean or filter gate refuses 0 without a model seeing it, which inflates agreement
+
+Agreement over all 3716 common pairs
+
+Set     Grade 0  Grade 1  Grade 2  Grade 3
+---     ---      ---      ---      ---
+sonnet  159      417      787      2353
+jev     301      400      218      2797
+
+Pair           n     Exact   Within 1  Relevant  Quadratic κ [95% CI]     Binary κ [95% CI]
+---            ---   ---     ---       ---       ---                      ---
+sonnet vs jev  3716  0.7748  0.9790    0.9325    0.8205 [0.7386, 0.8647]  0.7631 [0.6696, 0.8226]
+
+jev against sonnet (rows are sonnet's grades)
+jev graded 63 of sonnet's 576 irrelevant pairs relevant and 188 of its 3140 relevant pairs irrelevant
+
+sonnet \ jev  0    1    2    3
+---           ---  ---  ---  ---
+0             150  7    0    2
+1             108  248  31   30
+2             35   142  163  447
+3             8    3    24   2318
+
+Agreement by query category
+
+Category      Queries  Pair           n     Exact   Within 1  Relevant  Quadratic κ [95% CI]     Binary κ [95% CI]
+---           ---      ---            ---   ---     ---       ---       ---                      ---
+boolean       5        sonnet vs jev  632   0.8845  0.9889    0.9589    0.7670 [0.6873, 0.7874]  0.6538 [0.4891, 0.8006]
+keyword       10       sonnet vs jev  1325  0.7992  0.9826    0.9442    0.8323 [0.5923, 0.8980]  0.7932 [0.5717, 0.8835]
+multi-field   6        sonnet vs jev  795   0.6906  0.9849    0.9182    0.8672 [0.7497, 0.9011]  0.8162 [0.6624, 0.8828]
+phrase        5        sonnet vs jev  504   0.7421  0.9762    0.9107    0.7283 [0.6131, 0.8279]  0.6376 [0.5196, 0.7433]
+single-field  4        sonnet vs jev  460   0.7348  0.9478    0.9109    0.6054 [0.4545, 0.7835]  0.5460 [0.3423, 0.7253]
+
+Report 2026-11-14T20-26-29-run-183a31 rescored under each set
+
+Rescoring under sonnet, the set the report was scored with, gives back every stored value of: NDCG@3, NDCG@5, NDCG@10, NDCG@3 (gain rel), NDCG@5 (gain rel), NDCG@10 (gain rel), P@3, P@5, P@10, R@3, R@5, R@10, F1@3, F1@5, F1@10, MAP, MRR, Bpref
+τ-b compares each set's engine means with sonnet's.
+
+--- Job: index-ab (2 engines, 30 judged queries) ---
+
+Metric              Set     pg-noindex  pg-gin  Order                τ-b
+---                 ---     ---         ---     ---                  ---
+NDCG@3              sonnet  0.8480      0.8480  pg-gin = pg-noindex  —
+                    jev     0.9128      0.9128  pg-gin = pg-noindex  n/a
+NDCG@5              sonnet  0.8331      0.8331  pg-gin = pg-noindex  —
+                    jev     0.9110      0.9110  pg-gin = pg-noindex  n/a
+NDCG@10             sonnet  0.8210      0.8210  pg-gin = pg-noindex  —
+                    jev     0.8887      0.8887  pg-gin = pg-noindex  n/a
+NDCG@3 (gain rel)   sonnet  0.9040      0.9040  pg-gin = pg-noindex  —
+                    jev     0.9420      0.9420  pg-gin = pg-noindex  n/a
+NDCG@5 (gain rel)   sonnet  0.8954      0.8954  pg-gin = pg-noindex  —
+                    jev     0.9414      0.9414  pg-gin = pg-noindex  n/a
+NDCG@10 (gain rel)  sonnet  0.8892      0.8892  pg-gin = pg-noindex  —
+                    jev     0.9232      0.9232  pg-gin = pg-noindex  n/a
+P@3                 sonnet  0.9444      0.9444  pg-gin = pg-noindex  —
+                    jev     0.9444      0.9444  pg-gin = pg-noindex  n/a
+P@5                 sonnet  0.9333      0.9333  pg-gin = pg-noindex  —
+                    jev     0.9400      0.9400  pg-gin = pg-noindex  n/a
+P@10                sonnet  0.9100      0.9100  pg-gin = pg-noindex  —
+                    jev     0.9133      0.9133  pg-gin = pg-noindex  n/a
+R@3                 sonnet  0.0364      0.0364  pg-gin = pg-noindex  —
+                    jev     0.0403      0.0403  pg-gin = pg-noindex  n/a
+R@5                 sonnet  0.0588      0.0588  pg-gin = pg-noindex  —
+                    jev     0.0643      0.0643  pg-gin = pg-noindex  n/a
+R@10                sonnet  0.1132      0.1132  pg-gin = pg-noindex  —
+                    jev     0.1179      0.1179  pg-gin = pg-noindex  n/a
+F1@3                sonnet  0.0685      0.0685  pg-gin = pg-noindex  —
+                    jev     0.0750      0.0750  pg-gin = pg-noindex  n/a
+F1@5                sonnet  0.1067      0.1067  pg-gin = pg-noindex  —
+                    jev     0.1154      0.1154  pg-gin = pg-noindex  n/a
+F1@10               sonnet  0.1895      0.1895  pg-gin = pg-noindex  —
+                    jev     0.1968      0.1968  pg-gin = pg-noindex  n/a
+MAP                 sonnet  0.4418      0.4418  pg-gin = pg-noindex  —
+                    jev     0.4415      0.4415  pg-gin = pg-noindex  n/a
+MRR                 sonnet  0.9667      0.9667  pg-gin = pg-noindex  —
+                    jev     0.9667      0.9667  pg-gin = pg-noindex  n/a
+Bpref               sonnet  0.4097      0.4097  pg-gin = pg-noindex  —
+                    jev     0.4140      0.4140  pg-gin = pg-noindex  n/a
+
+--- Job: all-engines (5 engines, 30 judged queries) ---
+
+Metric              Set     pg-gin  pg-gin-norm  paradedb  tiger   elasticsearch  Order                                                    τ-b
+---                 ---     ---     ---          ---       ---     ---            ---                                                      ---
+NDCG@3              sonnet  0.8480  0.7186       0.8022    0.8003  0.7634         pg-gin > paradedb > tiger > elasticsearch > pg-gin-norm  —
+                    jev     0.9128  0.7116       0.8399    0.8009  0.8065         pg-gin > paradedb > elasticsearch > tiger > pg-gin-norm  0.8000
+NDCG@5              sonnet  0.8331  0.7091       0.7943    0.8110  0.7823         pg-gin > tiger > paradedb > elasticsearch > pg-gin-norm  —
+                    jev     0.9110  0.7438       0.8335    0.8114  0.8149         pg-gin > paradedb > elasticsearch > tiger > pg-gin-norm  0.6000
+NDCG@10             sonnet  0.8210  0.7336       0.8053    0.8340  0.7911         tiger > pg-gin > paradedb > elasticsearch > pg-gin-norm  —
+                    jev     0.8887  0.7739       0.8416    0.8477  0.8274         pg-gin > tiger > paradedb > elasticsearch > pg-gin-norm  0.8000
+NDCG@3 (gain rel)   sonnet  0.9040  0.8255       0.8575    0.8608  0.8321         pg-gin > tiger > paradedb > elasticsearch > pg-gin-norm  —
+                    jev     0.9420  0.7616       0.8672    0.8399  0.8314         pg-gin > paradedb > tiger > elasticsearch > pg-gin-norm  0.8000
+NDCG@5 (gain rel)   sonnet  0.8954  0.8184       0.8548    0.8702  0.8464         pg-gin > tiger > paradedb > elasticsearch > pg-gin-norm  —
+                    jev     0.9414  0.7907       0.8604    0.8504  0.8425         pg-gin > paradedb > tiger > elasticsearch > pg-gin-norm  0.8000
+NDCG@10 (gain rel)  sonnet  0.8892  0.8356       0.8642    0.8910  0.8572         tiger > pg-gin > paradedb > elasticsearch > pg-gin-norm  —
+                    jev     0.9232  0.8180       0.8675    0.8815  0.8548         pg-gin > tiger > paradedb > elasticsearch > pg-gin-norm  0.8000
+P@3                 sonnet  0.9444  0.9222       0.9000    0.9000  0.8889         pg-gin > pg-gin-norm > paradedb = tiger > elasticsearch  —
+                    jev     0.9444  0.7556       0.8444    0.8444  0.8333         pg-gin > paradedb = tiger > elasticsearch > pg-gin-norm  0.3333
+P@5                 sonnet  0.9333  0.9267       0.9000    0.9133  0.9000         pg-gin > pg-gin-norm > tiger > elasticsearch = paradedb  —
+                    jev     0.9400  0.8000       0.8533    0.8533  0.8467         pg-gin > paradedb = tiger > elasticsearch > pg-gin-norm  0.2222
+P@10                sonnet  0.9100  0.9200       0.9100    0.9500  0.9067         tiger > pg-gin-norm > paradedb = pg-gin > elasticsearch  —
+                    jev     0.9133  0.8267       0.8667    0.8967  0.8667         pg-gin > tiger > elasticsearch = paradedb > pg-gin-norm  0.0000
+R@3                 sonnet  0.0364  0.0363       0.0340    0.0341  0.0339         pg-gin > pg-gin-norm > tiger > paradedb > elasticsearch  —
+                    jev     0.0403  0.0305       0.0336    0.0355  0.0334         pg-gin > tiger > paradedb > elasticsearch > pg-gin-norm  0.4000
+R@5                 sonnet  0.0588  0.0599       0.0560    0.0574  0.0570         pg-gin-norm > pg-gin > tiger > elasticsearch > paradedb  —
+                    jev     0.0643  0.0563       0.0545    0.0600  0.0561         pg-gin > tiger > pg-gin-norm > elasticsearch > paradedb  0.6000
+R@10                sonnet  0.1132  0.1174       0.1126    0.1218  0.1131         tiger > pg-gin-norm > pg-gin > elasticsearch > paradedb  —
+                    jev     0.1179  0.1110       0.1097    0.1247  0.1118         tiger > pg-gin > elasticsearch > pg-gin-norm > paradedb  0.6000
+F1@3                sonnet  0.0685  0.0681       0.0640    0.0641  0.0637         pg-gin > pg-gin-norm > tiger > paradedb > elasticsearch  —
+                    jev     0.0750  0.0570       0.0628    0.0655  0.0627         pg-gin > tiger > paradedb > elasticsearch > pg-gin-norm  0.4000
+F1@5                sonnet  0.1067  0.1084       0.1015    0.1041  0.1032         pg-gin-norm > pg-gin > tiger > elasticsearch > paradedb  —
+                    jev     0.1154  0.1000       0.0987    0.1061  0.1013         pg-gin > tiger > elasticsearch > pg-gin-norm > paradedb  0.4000
+F1@10               sonnet  0.1895  0.1960       0.1888    0.2035  0.1893         tiger > pg-gin-norm > pg-gin > elasticsearch > paradedb  —
+                    jev     0.1968  0.1827       0.1835    0.2021  0.1867         tiger > pg-gin > elasticsearch > paradedb > pg-gin-norm  0.4000
+MAP                 sonnet  0.4418  0.4332       0.4230    0.4648  0.4124         tiger > pg-gin > pg-gin-norm > paradedb > elasticsearch  —
+                    jev     0.4415  0.4059       0.4115    0.4414  0.3992         pg-gin > tiger > paradedb > pg-gin-norm > elasticsearch  0.6000
+MRR                 sonnet  0.9667  0.9444       0.9567    0.9317  0.8956         pg-gin > paradedb > pg-gin-norm > tiger > elasticsearch  —
+                    jev     0.9667  0.8142       0.9456    0.8728  0.8633         pg-gin > paradedb > tiger > elasticsearch > pg-gin-norm  0.6000
+Bpref               sonnet  0.4097  0.3842       0.3778    0.4437  0.3552         tiger > pg-gin > pg-gin-norm > paradedb > elasticsearch  —
+                    jev     0.4140  0.3505       0.3938    0.4349  0.3707         tiger > pg-gin > paradedb > elasticsearch > pg-gin-norm  0.6000
+
+--- Job: bm25-engines (3 engines, 30 judged queries) ---
+
+Metric              Set     paradedb  tiger   elasticsearch  Order                             τ-b
+---                 ---     ---       ---     ---            ---                               ---
+NDCG@3              sonnet  0.8022    0.8003  0.7634         paradedb > tiger > elasticsearch  —
+                    jev     0.8399    0.8009  0.8065         paradedb > elasticsearch > tiger  0.3333
+NDCG@5              sonnet  0.7943    0.8110  0.7823         tiger > paradedb > elasticsearch  —
+                    jev     0.8335    0.8114  0.8149         paradedb > elasticsearch > tiger  -0.3333
+NDCG@10             sonnet  0.8053    0.8340  0.7911         tiger > paradedb > elasticsearch  —
+                    jev     0.8416    0.8477  0.8274         tiger > paradedb > elasticsearch  1.0000
+NDCG@3 (gain rel)   sonnet  0.8575    0.8608  0.8321         tiger > paradedb > elasticsearch  —
+                    jev     0.8672    0.8399  0.8314         paradedb > tiger > elasticsearch  0.3333
+NDCG@5 (gain rel)   sonnet  0.8548    0.8702  0.8464         tiger > paradedb > elasticsearch  —
+                    jev     0.8604    0.8504  0.8425         paradedb > tiger > elasticsearch  0.3333
+NDCG@10 (gain rel)  sonnet  0.8642    0.8910  0.8572         tiger > paradedb > elasticsearch  —
+                    jev     0.8675    0.8815  0.8548         tiger > paradedb > elasticsearch  1.0000
+P@3                 sonnet  0.9000    0.9000  0.8889         paradedb = tiger > elasticsearch  —
+                    jev     0.8444    0.8444  0.8333         paradedb = tiger > elasticsearch  1.0000
+P@5                 sonnet  0.9000    0.9133  0.9000         tiger > elasticsearch = paradedb  —
+                    jev     0.8533    0.8533  0.8467         paradedb = tiger > elasticsearch  0.5000
+P@10                sonnet  0.9100    0.9500  0.9067         tiger > paradedb > elasticsearch  —
+                    jev     0.8667    0.8967  0.8667         tiger > elasticsearch = paradedb  0.8165
+R@3                 sonnet  0.0340    0.0341  0.0339         tiger > paradedb > elasticsearch  —
+                    jev     0.0336    0.0355  0.0334         tiger > paradedb > elasticsearch  1.0000
+R@5                 sonnet  0.0560    0.0574  0.0570         tiger > elasticsearch > paradedb  —
+                    jev     0.0545    0.0600  0.0561         tiger > elasticsearch > paradedb  1.0000
+R@10                sonnet  0.1126    0.1218  0.1131         tiger > elasticsearch > paradedb  —
+                    jev     0.1097    0.1247  0.1118         tiger > elasticsearch > paradedb  1.0000
+F1@3                sonnet  0.0640    0.0641  0.0637         tiger > paradedb > elasticsearch  —
+                    jev     0.0628    0.0655  0.0627         tiger > paradedb > elasticsearch  1.0000
+F1@5                sonnet  0.1015    0.1041  0.1032         tiger > elasticsearch > paradedb  —
+                    jev     0.0987    0.1061  0.1013         tiger > elasticsearch > paradedb  1.0000
+F1@10               sonnet  0.1888    0.2035  0.1893         tiger > elasticsearch > paradedb  —
+                    jev     0.1835    0.2021  0.1867         tiger > elasticsearch > paradedb  1.0000
+MAP                 sonnet  0.4230    0.4648  0.4124         tiger > paradedb > elasticsearch  —
+                    jev     0.4115    0.4414  0.3992         tiger > paradedb > elasticsearch  1.0000
+MRR                 sonnet  0.9567    0.9317  0.8956         paradedb > tiger > elasticsearch  —
+                    jev     0.9456    0.8728  0.8633         paradedb > tiger > elasticsearch  1.0000
+Bpref               sonnet  0.3778    0.4437  0.3552         tiger > paradedb > elasticsearch  —
+                    jev     0.3938    0.4349  0.3707         tiger > paradedb > elasticsearch  1.0000
+✓ Wrote /Users/djordjevuckovic/projects/news-hunter/experiments/cross-judge/out/rescore.json

@@ -864,6 +864,43 @@ func gradingCLIFlag(t *testing.T, cli, flag string) string {
 	return args[i+1]
 }
 
+func TestJudge_CarryOverGradesOnlyNewDocs(t *testing.T) {
+	fx := newJudgeFixture(t, "climate change", "climate change summit")
+	oldPoolRunID, oldDoc := fx.pool.Meta.RunID, fx.pool.Queries[0].Docs[0].DocID
+	oldPool := filepath.Join(t.TempDir(), "old-pool.yaml")
+	require.NoError(t, pool.WritePoolFile(fx.pool, oldPool))
+	judge := judgment.NewKeywordStrategy().Describe()
+	old := filepath.Join(t.TempDir(), "old.yaml")
+	require.NoError(t, judgment.WriteFile(&judgment.File{
+		Meta:    meta.Meta{RunID: "old-judge", Judge: &judge, PoolRunID: oldPoolRunID},
+		Queries: []judgment.Entry{{QueryID: "q1", Docs: []judgment.GradedDoc{{DocID: oldDoc, Grade: judgment.GradeMarginally}}}},
+	}, old))
+	newDoc := uuid.New()
+	fx.articles[newDoc] = document.Article{ID: newDoc, Title: "climate change protest"}
+	fx.pool.Meta = meta.New("pool")
+	fx.pool.Queries[0].Docs = append(fx.pool.Queries[0].Docs, pool.PooledDoc{DocID: newDoc})
+	fx.writePool(t)
+
+	require.NoError(t, fx.judge(t, "--strategy", "keyword", "--carry-over", old, "--carry-over-pool", oldPool))
+
+	got := fx.annotations(t, "keyword")
+	grades := gradesByQuery(got)["q1"]
+	// Keyword would grade the old doc 3; 1 means it was reused.
+	assert.Equal(t, judgment.GradeMarginally, grades[oldDoc])
+	assert.GreaterOrEqual(t, grades[newDoc], judgment.GradeNotRelev)
+	assert.Equal(t, &meta.CarriedOver{JudgmentsRunID: "old-judge", PoolRunID: oldPoolRunID, Grades: 1}, got.Meta.CarriedOver)
+	assert.Equal(t, fx.pool.Meta.RunID, got.Meta.PoolRunID)
+}
+
+func TestJudge_CarryOverRefusesWholePoolJudges(t *testing.T) {
+	fx := newJudgeFixture(t, "climate change", "climate change summit")
+
+	err := fx.judge(t, "--strategy", "bm25", "--carry-over", "old.yaml", "--carry-over-pool", "old-pool.yaml")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "whole pool")
+}
+
 // jevAPI grades every doc 2 under the model it is asked for and records each request.
 type jevAPI struct {
 	*httptest.Server

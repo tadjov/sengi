@@ -1,0 +1,96 @@
+
+Judgment sets
+
+Label   Judge                             Graded  Run ID                            Path
+---     ---                               ---     ---                               ---
+sonnet  llm/claude-cli claude-sonnet-5-5  3716    2026-11-14T20-06-00-judge-c27330  /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/annotations.claude-cli.yaml
+opus    llm/claude-cli claude-opus-5-5    436     2026-11-14T20-50-30-judge-505d38  /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/cross-judge/annotations.opus.yaml
+jev     jev jev-1.14.0                    436     2026-11-14T22-17-11-judge-08a9b8  /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/cross-judge/annotations.jev.yaml
+haiku   llm/claude-cli claude-haiku-5-5   436     2026-11-14T23-18-27-judge-d4c5cf  /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/cross-judge/annotations.haiku.yaml
+
+436 (query, doc) pairs graded 0 to 3 by every set; relevant means a grade of 2 or more (metrics.relevance_threshold)
+⚠ without --pg, gated zeros are included: every gated judge grades a doc the phrase, boolean or filter gate refuses 0 without a model seeing it, which inflates agreement
+
+Agreement over all 436 common pairs
+
+Set     Grade 0  Grade 1  Grade 2  Grade 3
+---     ---      ---      ---      ---
+sonnet  47       98       125      166
+opus    39       97       104      196
+jev     70       86       40       240
+haiku   29       95       112      200
+
+Pair             n    Exact   Within 1  Relevant  Quadratic κ [95% CI]     Binary κ [95% CI]
+---              ---  ---     ---       ---       ---                      ---
+sonnet vs opus   436  0.8005  1.0000    0.9289    0.9037 [0.8832, 0.9216]  0.8373 [0.7901, 0.8819]
+sonnet vs jev    436  0.6927  0.9564    0.8968    0.7962 [0.7301, 0.8470]  0.7718 [0.7047, 0.8431]
+sonnet vs haiku  436  0.6583  0.9862    0.8784    0.8077 [0.7541, 0.8491]  0.7159 [0.6211, 0.8005]
+opus vs jev      436  0.7248  0.9610    0.9083    0.8187 [0.7512, 0.8738]  0.7945 [0.7242, 0.8542]
+opus vs haiku    436  0.7064  0.9817    0.8716    0.8223 [0.7673, 0.8703]  0.6934 [0.6006, 0.7796]
+jev vs haiku     436  0.6147  0.9289    0.8394    0.7327 [0.6506, 0.8009]  0.6340 [0.5270, 0.7521]
+
+opus against sonnet (rows are sonnet's grades)
+opus graded 20 of sonnet's 145 irrelevant pairs relevant and 11 of its 291 relevant pairs irrelevant
+
+sonnet \ opus  0    1    2    3
+---            ---  ---  ---  ---
+0              38   9    0    0
+1              1    77   20   0
+2              0    11   76   38
+3              0    0    8    158
+
+jev against sonnet (rows are sonnet's grades)
+jev graded 17 of sonnet's 145 irrelevant pairs relevant and 28 of its 291 relevant pairs irrelevant
+
+sonnet \ jev  0    1    2    3
+---           ---  ---  ---  ---
+0             44   1    0    2
+1             17   66   7    8
+2             6    19   31   69
+3             3    0    2    161
+
+haiku against sonnet (rows are sonnet's grades)
+haiku graded 37 of sonnet's 145 irrelevant pairs relevant and 16 of its 291 relevant pairs irrelevant
+
+sonnet \ haiku  0    1    2    3
+---             ---  ---  ---  ---
+0               26   20   1    0
+1               3    59   33   3
+2               0    14   58   53
+3               0    2    20   144
+
+Agreement by query category
+
+Category      Queries  Pair             n    Exact   Within 1  Relevant  Quadratic κ [95% CI]     Binary κ [95% CI]
+---           ---      ---              ---  ---     ---       ---       ---                      ---
+boolean       5        sonnet vs opus   70   0.8571  1.0000    0.9000    0.8932 [0.8599, 0.9227]  0.7225 [0.6109, 0.7961]
+boolean       5        sonnet vs jev    70   0.7429  0.9429    0.9143    0.7558 [0.5283, 0.8690]  0.7672 [0.4613, 0.9353]
+boolean       5        sonnet vs haiku  70   0.6000  0.9714    0.8429    0.6543 [0.5122, 0.7410]  0.5640 [0.3100, 0.7518]
+boolean       5        opus vs jev      70   0.6857  0.9429    0.9000    0.7167 [0.5842, 0.8057]  0.7334 [0.6506, 0.7961]
+boolean       5        opus vs haiku    70   0.5857  0.9571    0.8000    0.5992 [0.4155, 0.7482]  0.4562 [0.2085, 0.6964]
+boolean       5        jev vs haiku     70   0.5286  0.9000    0.8429    0.5695 [0.2605, 0.7899]  0.5811 [0.3285, 0.8227]
+keyword       10       sonnet vs opus   145  0.7724  1.0000    0.9379    0.8919 [0.8365, 0.9215]  0.8545 [0.7721, 0.9197]
+keyword       10       sonnet vs jev    145  0.7241  0.9862    0.9379    0.8613 [0.8017, 0.9055]  0.8591 [0.7374, 0.9514]
+keyword       10       sonnet vs haiku  145  0.7310  1.0000    0.9379    0.8732 [0.8196, 0.9104]  0.8545 [0.7256, 0.9511]
+keyword       10       opus vs jev      145  0.7793  0.9793    0.9448    0.8766 [0.8127, 0.9240]  0.8698 [0.8125, 0.9252]
+keyword       10       opus vs haiku    145  0.7724  0.9931    0.9172    0.8821 [0.8133, 0.9309]  0.7960 [0.6354, 0.9047]
+keyword       10       jev vs haiku     145  0.7310  0.9862    0.9034    0.8652 [0.7872, 0.9159]  0.7721 [0.6023, 0.9112]
+multi-field   6        sonnet vs opus   92   0.7717  1.0000    0.9348    0.9071 [0.8737, 0.9298]  0.8656 [0.7500, 0.9548]
+multi-field   6        sonnet vs jev    92   0.6413  0.9674    0.8696    0.8264 [0.7224, 0.8876]  0.7424 [0.5577, 0.9169]
+multi-field   6        sonnet vs haiku  92   0.6087  0.9565    0.8152    0.7714 [0.5774, 0.8869]  0.6034 [0.3437, 0.8474]
+multi-field   6        opus vs jev      92   0.7174  0.9674    0.8913    0.8546 [0.7133, 0.9424]  0.7847 [0.6304, 0.9345]
+multi-field   6        opus vs haiku    92   0.6304  0.9674    0.8152    0.7943 [0.6097, 0.8987]  0.6098 [0.3782, 0.8355]
+multi-field   6        jev vs haiku     92   0.5217  0.8696    0.7500    0.6768 [0.4344, 0.8522]  0.5111 [0.2561, 0.8142]
+phrase        5        sonnet vs opus   71   0.8451  1.0000    0.9437    0.9072 [0.8761, 0.9397]  0.8684 [0.7511, 0.9675]
+phrase        5        sonnet vs jev    71   0.7183  0.9718    0.8873    0.8107 [0.7658, 0.8360]  0.7368 [0.6392, 0.8221]
+phrase        5        sonnet vs haiku  71   0.7042  1.0000    0.9014    0.8090 [0.7557, 0.8650]  0.7555 [0.6358, 0.8429]
+phrase        5        opus vs jev      71   0.7606  1.0000    0.9437    0.8731 [0.8448, 0.9050]  0.8648 [0.7513, 0.9684]
+phrase        5        opus vs haiku    71   0.7746  1.0000    0.9014    0.8479 [0.7953, 0.9058]  0.7458 [0.6671, 0.8031]
+phrase        5        jev vs haiku     71   0.6620  0.9577    0.8732    0.7308 [0.6660, 0.7897]  0.6731 [0.4769, 0.8519]
+single-field  4        sonnet vs opus   58   0.7931  1.0000    0.9138    0.9152 [0.8014, 0.9855]  0.8074 [0.6250, 1.0000]
+single-field  4        sonnet vs jev    58   0.6034  0.8621    0.8276    0.6045 [0.2335, 0.8300]  0.6268 [0.3636, 0.8507]
+single-field  4        sonnet vs haiku  58   0.5690  1.0000    0.8448    0.8131 [0.6756, 0.8897]  0.6606 [0.4432, 0.8571]
+single-field  4        opus vs jev      58   0.6034  0.8793    0.8103    0.6429 [0.2292, 0.8651]  0.5764 [0.3000, 0.8507]
+single-field  4        opus vs haiku    58   0.7241  0.9828    0.8966    0.8543 [0.7605, 0.9362]  0.7655 [0.5930, 0.8677]
+single-field  4        jev vs haiku     58   0.5172  0.8793    0.7759    0.6541 [0.4191, 0.8003]  0.5098 [0.1988, 0.7669]
+✓ Wrote /Users/djordjevuckovic/projects/news-hunter/experiments/cross-judge/out/sample-vs-sonnet.json

@@ -1,0 +1,720 @@
+schema_version: 1
+id: cc_news_fts_v1
+name: "cc-news FTS v1"
+description: "Full-text search over cc-news: 30 queries across keyword, phrase, boolean, multi-field and single-field search"
+version: "1.1.0"
+
+corpus:
+  name: cc-news-canonical@v1
+  source: "sha256:7cdf4c719dc70cd013a1eb76fa33688564dc99af03ddf8cc57d20952cd4c89a3 (datasets/cc-news/canonical/v1/datapackage.json)"
+
+templates:
+  # `, id` breaks ts_rank ties: exact-content copies score the same, and without it
+  # the index and seq scans return tied rows in different orders.
+  - id: pg_multi_field
+    args: [terms, rank_norm, limit]
+    query: |
+      SELECT id FROM articles
+      WHERE search_vector @@ plainto_tsquery('english', $1)
+      ORDER BY ts_rank(search_vector, plainto_tsquery('english', $1), $2::int) DESC, id
+      LIMIT $3::int
+
+  - id: pg_phrase
+    args: [terms, rank_norm, limit]
+    query: |
+      SELECT id FROM articles
+      WHERE search_vector @@ phraseto_tsquery('english', $1)
+      ORDER BY ts_rank(search_vector, phraseto_tsquery('english', $1), $2::int) DESC, id
+      LIMIT $3::int
+
+  - id: pg_boolean
+    args: [tsquery_expr, rank_norm, limit]
+    query: |
+      SELECT id FROM articles
+      WHERE search_vector @@ to_tsquery('english', $1)
+      ORDER BY ts_rank(search_vector, to_tsquery('english', $1), $2::int) DESC, id
+      LIMIT $3::int
+
+  # Title lexemes carry weight A in search_vector; the outer match keeps the GIN index in play.
+  - id: pg_title
+    args: [terms, rank_norm, limit]
+    query: |
+      SELECT id FROM articles
+      WHERE search_vector @@ plainto_tsquery('english', $1)
+        AND ts_filter(search_vector, '{a}') @@ plainto_tsquery('english', $1)
+      ORDER BY ts_rank(ts_filter(search_vector, '{a}'), plainto_tsquery('english', $1), $2::int) DESC, id
+      LIMIT $3::int
+
+  - id: pdb_multi_field_boosted
+    args: [terms, limit]
+    query: |
+      SELECT id FROM articles
+      WHERE id @@@ paradedb.boolean(
+        should => ARRAY[
+          paradedb.boost(3.0, paradedb.match('title', $1)),
+          paradedb.boost(2.0, paradedb.match('description', $1)),
+          paradedb.match('content', $1)
+        ]
+      )
+      ORDER BY pdb.score(id) DESC
+      LIMIT $2::int
+
+  - id: pdb_phrase_boosted
+    args: [terms, limit]
+    query: |
+      SELECT id FROM articles
+      WHERE id @@@ paradedb.boolean(
+        should => ARRAY[
+          paradedb.boost(3.0, paradedb.parse('title:"' || $1 || '"')),
+          paradedb.boost(2.0, paradedb.parse('description:"' || $1 || '"')),
+          paradedb.parse('content:"' || $1 || '"')
+        ]
+      )
+      ORDER BY pdb.score(id) DESC
+      LIMIT $2::int
+
+  - id: pdb_title
+    args: [terms, limit]
+    query: |
+      SELECT id FROM articles
+      WHERE id @@@ paradedb.match('title', $1)
+      ORDER BY pdb.score(id) DESC
+      LIMIT $2::int
+
+  # pg_textsearch serves @@ from its bm25 index only when nothing orders by <@> in the
+  # same scan, so the CTE filters through the index and BM25 then ranks the matches.
+  # Tiger filters with the same tsquery as pg-gin, so the two differ only in the ranker.
+  # A bound parameter needs the index named explicitly.
+  - id: tiger_multi_field
+    args: [terms, limit]
+    query: |
+      WITH matched AS MATERIALIZED (
+        SELECT id, search_text FROM articles WHERE search_text @@ plainto_tsquery('english', $1)
+      )
+      SELECT id FROM matched
+      ORDER BY search_text <@> to_bm25query($1, 'idx_articles_bm25'), id
+      LIMIT $2::int
+
+  - id: tiger_phrase
+    args: [terms, limit]
+    query: |
+      WITH matched AS MATERIALIZED (
+        SELECT id, search_text FROM articles WHERE search_text @@ phraseto_tsquery('english', $1)
+      )
+      SELECT id FROM matched
+      ORDER BY search_text <@> to_bm25query($1, 'idx_articles_bm25'), id
+      LIMIT $2::int
+
+  # The BM25 query takes plain words, so it ranks by the expression's positive terms.
+  - id: tiger_boolean
+    args: [tsquery_expr, terms, limit]
+    query: |
+      WITH matched AS MATERIALIZED (
+        SELECT id, search_text FROM articles WHERE search_text @@ to_tsquery('english', $1)
+      )
+      SELECT id FROM matched
+      ORDER BY search_text <@> to_bm25query($2, 'idx_articles_bm25'), id
+      LIMIT $3::int
+
+  - id: tiger_title
+    args: [terms, limit]
+    query: |
+      WITH matched AS MATERIALIZED (
+        SELECT id, title FROM articles WHERE title @@ plainto_tsquery('english', $1)
+      )
+      SELECT id FROM matched
+      ORDER BY title <@> to_bm25query($1, 'idx_articles_title_bm25'), id
+      LIMIT $2::int
+
+  - id: es_multi_match_boosted
+    args: [terms]
+    query: |
+      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "_source": false, "track_total_hits": false}
+
+  - id: es_phrase_boosted
+    args: [terms]
+    query: |
+      {"query": {"multi_match": {"query": "{{terms}}", "type": "phrase", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "_source": false, "track_total_hits": false}
+
+  - id: es_title
+    args: [terms]
+    query: |
+      {"query": {"match": {"title": "{{terms}}"}}, "size": 100, "_source": false, "track_total_hits": false}
+
+queries:
+  - id: kw-net-neutrality
+    text: "net neutrality"
+    description: "Articles about net neutrality"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "net neutrality", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "net neutrality", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "net neutrality", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "net neutrality" }
+
+  - id: kw-bitcoin-price
+    text: "bitcoin price"
+    description: "Articles about the price of bitcoin"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "bitcoin price", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "bitcoin price", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "bitcoin price", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "bitcoin price" }
+
+  - id: kw-climate-change
+    text: "climate change"
+    description: "Articles about climate change"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "climate change", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "climate change", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "climate change", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "climate change" }
+
+  - id: kw-opioid-epidemic
+    text: "opioid epidemic"
+    description: "Articles about the opioid epidemic"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "opioid epidemic", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "opioid epidemic", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "opioid epidemic", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "opioid epidemic" }
+
+  - id: kw-equifax-breach
+    text: "equifax breach"
+    description: "Articles about the Equifax data breach"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "equifax breach", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "equifax breach", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "equifax breach", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "equifax breach" }
+
+  - id: kw-north-korea-missile
+    text: "north korea missile"
+    description: "Articles about North Korea's missile programme and tests"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "north korea missile", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "north korea missile", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "north korea missile", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "north korea missile" }
+
+  - id: kw-cambridge-analytica
+    text: "cambridge analytica"
+    description: "Articles about Cambridge Analytica"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "cambridge analytica", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "cambridge analytica", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "cambridge analytica", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "cambridge analytica" }
+
+  - id: kw-hurricane-harvey
+    text: "hurricane harvey"
+    description: "Articles about Hurricane Harvey"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "hurricane harvey", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "hurricane harvey", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "hurricane harvey", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "hurricane harvey" }
+
+  - id: kw-grenfell-tower
+    text: "grenfell tower"
+    description: "Articles about the Grenfell Tower fire"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "grenfell tower", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "grenfell tower", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "grenfell tower", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "grenfell tower" }
+
+  - id: kw-fidget-spinner
+    text: "fidget spinner"
+    description: "Articles about fidget spinners"
+    category: keyword
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "fidget spinner", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "fidget spinner", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "fidget spinner", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "fidget spinner" }
+
+  - id: ph-travel-ban
+    text: "travel ban"
+    description: "Articles about the US travel ban"
+    category: phrase
+    engines:
+      pg-gin:
+        template: pg_phrase
+        params: { terms: "travel ban", limit: 100 }
+      paradedb:
+        template: pdb_phrase_boosted
+        params: { terms: "travel ban", limit: 100 }
+      tiger:
+        template: tiger_phrase
+        params: { terms: "travel ban", limit: 100 }
+      elasticsearch:
+        template: es_phrase_boosted
+        params: { terms: "travel ban" }
+
+  - id: ph-paris-climate-agreement
+    text: "paris climate agreement"
+    description: "Articles about the Paris climate agreement"
+    category: phrase
+    engines:
+      pg-gin:
+        template: pg_phrase
+        params: { terms: "paris climate agreement", limit: 100 }
+      paradedb:
+        template: pdb_phrase_boosted
+        params: { terms: "paris climate agreement", limit: 100 }
+      tiger:
+        template: tiger_phrase
+        params: { terms: "paris climate agreement", limit: 100 }
+      elasticsearch:
+        template: es_phrase_boosted
+        params: { terms: "paris climate agreement" }
+
+  - id: ph-supreme-court-nominee
+    text: "supreme court nominee"
+    description: "Articles about a Supreme Court nominee"
+    category: phrase
+    engines:
+      pg-gin:
+        template: pg_phrase
+        params: { terms: "supreme court nominee", limit: 100 }
+      paradedb:
+        template: pdb_phrase_boosted
+        params: { terms: "supreme court nominee", limit: 100 }
+      tiger:
+        template: tiger_phrase
+        params: { terms: "supreme court nominee", limit: 100 }
+      elasticsearch:
+        template: es_phrase_boosted
+        params: { terms: "supreme court nominee" }
+
+  - id: ph-las-vegas-shooting
+    text: "las vegas shooting"
+    description: "Articles about the Las Vegas shooting"
+    category: phrase
+    engines:
+      pg-gin:
+        template: pg_phrase
+        params: { terms: "las vegas shooting", limit: 100 }
+      paradedb:
+        template: pdb_phrase_boosted
+        params: { terms: "las vegas shooting", limit: 100 }
+      tiger:
+        template: tiger_phrase
+        params: { terms: "las vegas shooting", limit: 100 }
+      elasticsearch:
+        template: es_phrase_boosted
+        params: { terms: "las vegas shooting" }
+
+  - id: ph-universal-basic-income
+    text: "universal basic income"
+    description: "Articles about universal basic income"
+    category: phrase
+    engines:
+      pg-gin:
+        template: pg_phrase
+        params: { terms: "universal basic income", limit: 100 }
+      paradedb:
+        template: pdb_phrase_boosted
+        params: { terms: "universal basic income", limit: 100 }
+      tiger:
+        template: tiger_phrase
+        params: { terms: "universal basic income", limit: 100 }
+      elasticsearch:
+        template: es_phrase_boosted
+        params: { terms: "universal basic income" }
+
+  - id: bool-tesla-musk-or-model
+    text: "tesla AND (musk OR model)"
+    description: "Articles about Tesla that mention Musk or a Tesla model"
+    category: boolean
+    engines:
+      pg-gin:
+        template: pg_boolean
+        params: { tsquery_expr: "tesla & (musk | model)", limit: 100 }
+      paradedb: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(
+          must => ARRAY[
+            paradedb.boolean(should => ARRAY[paradedb.match('title', 'tesla'), paradedb.match('description', 'tesla'), paradedb.match('content', 'tesla')]),
+            paradedb.boolean(should => ARRAY[paradedb.boolean(should => ARRAY[paradedb.match('title', 'musk'), paradedb.match('description', 'musk'), paradedb.match('content', 'musk')]), paradedb.boolean(should => ARRAY[paradedb.match('title', 'model'), paradedb.match('description', 'model'), paradedb.match('content', 'model')])])
+          ]
+        )
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      tiger:
+        template: tiger_boolean
+        params: { tsquery_expr: "tesla & (musk | model)", terms: "tesla musk model", limit: 100 }
+      elasticsearch: |
+        {"query": {"bool": {"must": [{"multi_match": {"query": "tesla", "fields": ["title", "description", "content"]}}, {"bool": {"should": [{"multi_match": {"query": "musk", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "model", "fields": ["title", "description", "content"]}}], "minimum_should_match": 1}}]}}, "size": 100, "_source": false, "track_total_hits": false}
+
+  - id: bool-facebook-privacy-not-instagram
+    text: "facebook AND privacy AND NOT instagram"
+    description: "Articles about Facebook and privacy that do not mention Instagram"
+    category: boolean
+    engines:
+      pg-gin:
+        template: pg_boolean
+        params: { tsquery_expr: "facebook & privacy & !instagram", limit: 100 }
+      paradedb: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(
+          must => ARRAY[
+            paradedb.boolean(should => ARRAY[paradedb.match('title', 'facebook'), paradedb.match('description', 'facebook'), paradedb.match('content', 'facebook')]),
+            paradedb.boolean(should => ARRAY[paradedb.match('title', 'privacy'), paradedb.match('description', 'privacy'), paradedb.match('content', 'privacy')])
+          ],
+          must_not => ARRAY[
+            paradedb.boolean(should => ARRAY[paradedb.match('title', 'instagram'), paradedb.match('description', 'instagram'), paradedb.match('content', 'instagram')])
+          ]
+        )
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      tiger:
+        template: tiger_boolean
+        params: { tsquery_expr: "facebook & privacy & !instagram", terms: "facebook privacy", limit: 100 }
+      elasticsearch: |
+        {"query": {"bool": {"must": [{"multi_match": {"query": "facebook", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "privacy", "fields": ["title", "description", "content"]}}], "must_not": [{"multi_match": {"query": "instagram", "fields": ["title", "description", "content"]}}]}}, "size": 100, "_source": false, "track_total_hits": false}
+
+  - id: bool-storm-puerto-rico
+    text: "(hurricane OR storm) AND puerto AND rico"
+    description: "Articles about a hurricane or storm in Puerto Rico"
+    category: boolean
+    engines:
+      pg-gin:
+        template: pg_boolean
+        params: { tsquery_expr: "(hurricane | storm) & puerto & rico", limit: 100 }
+      paradedb: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(
+          must => ARRAY[
+            paradedb.boolean(should => ARRAY[paradedb.boolean(should => ARRAY[paradedb.match('title', 'hurricane'), paradedb.match('description', 'hurricane'), paradedb.match('content', 'hurricane')]), paradedb.boolean(should => ARRAY[paradedb.match('title', 'storm'), paradedb.match('description', 'storm'), paradedb.match('content', 'storm')])]),
+            paradedb.boolean(should => ARRAY[paradedb.match('title', 'puerto'), paradedb.match('description', 'puerto'), paradedb.match('content', 'puerto')]),
+            paradedb.boolean(should => ARRAY[paradedb.match('title', 'rico'), paradedb.match('description', 'rico'), paradedb.match('content', 'rico')])
+          ]
+        )
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      tiger:
+        template: tiger_boolean
+        params: { tsquery_expr: "(hurricane | storm) & puerto & rico", terms: "hurricane storm puerto rico", limit: 100 }
+      elasticsearch: |
+        {"query": {"bool": {"must": [{"bool": {"should": [{"multi_match": {"query": "hurricane", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "storm", "fields": ["title", "description", "content"]}}], "minimum_should_match": 1}}, {"multi_match": {"query": "puerto", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "rico", "fields": ["title", "description", "content"]}}]}}, "size": 100, "_source": false, "track_total_hits": false}
+
+  - id: bool-uber-lyft-driver-not-taxi
+    text: "(uber OR lyft) AND driver AND NOT taxi"
+    description: "Articles about Uber or Lyft drivers that do not mention taxis"
+    category: boolean
+    engines:
+      pg-gin:
+        template: pg_boolean
+        params: { tsquery_expr: "(uber | lyft) & driver & !taxi", limit: 100 }
+      paradedb: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(
+          must => ARRAY[
+            paradedb.boolean(should => ARRAY[paradedb.boolean(should => ARRAY[paradedb.match('title', 'uber'), paradedb.match('description', 'uber'), paradedb.match('content', 'uber')]), paradedb.boolean(should => ARRAY[paradedb.match('title', 'lyft'), paradedb.match('description', 'lyft'), paradedb.match('content', 'lyft')])]),
+            paradedb.boolean(should => ARRAY[paradedb.match('title', 'driver'), paradedb.match('description', 'driver'), paradedb.match('content', 'driver')])
+          ],
+          must_not => ARRAY[
+            paradedb.boolean(should => ARRAY[paradedb.match('title', 'taxi'), paradedb.match('description', 'taxi'), paradedb.match('content', 'taxi')])
+          ]
+        )
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      tiger:
+        template: tiger_boolean
+        params: { tsquery_expr: "(uber | lyft) & driver & !taxi", terms: "uber lyft driver", limit: 100 }
+      elasticsearch: |
+        {"query": {"bool": {"must": [{"bool": {"should": [{"multi_match": {"query": "uber", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "lyft", "fields": ["title", "description", "content"]}}], "minimum_should_match": 1}}, {"multi_match": {"query": "driver", "fields": ["title", "description", "content"]}}], "must_not": [{"multi_match": {"query": "taxi", "fields": ["title", "description", "content"]}}]}}, "size": 100, "_source": false, "track_total_hits": false}
+
+  - id: bool-flu-vaccine
+    text: "(flu OR influenza) AND vaccine"
+    description: "Articles about flu or influenza vaccines"
+    category: boolean
+    engines:
+      pg-gin:
+        template: pg_boolean
+        params: { tsquery_expr: "(flu | influenza) & vaccine", limit: 100 }
+      paradedb: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(
+          must => ARRAY[
+            paradedb.boolean(should => ARRAY[paradedb.boolean(should => ARRAY[paradedb.match('title', 'flu'), paradedb.match('description', 'flu'), paradedb.match('content', 'flu')]), paradedb.boolean(should => ARRAY[paradedb.match('title', 'influenza'), paradedb.match('description', 'influenza'), paradedb.match('content', 'influenza')])]),
+            paradedb.boolean(should => ARRAY[paradedb.match('title', 'vaccine'), paradedb.match('description', 'vaccine'), paradedb.match('content', 'vaccine')])
+          ]
+        )
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      tiger:
+        template: tiger_boolean
+        params: { tsquery_expr: "(flu | influenza) & vaccine", terms: "flu influenza vaccine", limit: 100 }
+      elasticsearch: |
+        {"query": {"bool": {"must": [{"bool": {"should": [{"multi_match": {"query": "flu", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "influenza", "fields": ["title", "description", "content"]}}], "minimum_should_match": 1}}, {"multi_match": {"query": "vaccine", "fields": ["title", "description", "content"]}}]}}, "size": 100, "_source": false, "track_total_hits": false}
+
+  - id: mf-solar-power-cost
+    text: "solar power cost"
+    description: "Articles about the cost of solar power"
+    category: multi-field
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "solar power cost", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "solar power cost", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "solar power cost", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "solar power cost" }
+
+  - id: mf-ai-jobs
+    text: "artificial intelligence jobs"
+    description: "Articles about artificial intelligence and jobs"
+    category: multi-field
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "artificial intelligence jobs", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "artificial intelligence jobs", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "artificial intelligence jobs", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "artificial intelligence jobs" }
+
+  - id: mf-student-loan-debt
+    text: "student loan debt"
+    description: "Articles about student loan debt"
+    category: multi-field
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "student loan debt", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "student loan debt", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "student loan debt", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "student loan debt" }
+
+  - id: mf-minimum-wage-increase
+    text: "minimum wage increase"
+    description: "Articles about minimum wage increases"
+    category: multi-field
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "minimum wage increase", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "minimum wage increase", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "minimum wage increase", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "minimum wage increase" }
+
+  - id: mf-iran-nuclear-deal
+    text: "iran nuclear deal"
+    description: "Articles about the Iran nuclear deal"
+    category: multi-field
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "iran nuclear deal", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "iran nuclear deal", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "iran nuclear deal", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "iran nuclear deal" }
+
+  - id: mf-housing-market-prices
+    text: "housing market prices"
+    description: "Articles about housing market prices"
+    category: multi-field
+    engines:
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "housing market prices", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "housing market prices", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "housing market prices", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "housing market prices" }
+
+  - id: title-self-driving
+    text: "self-driving"
+    description: "Articles whose title is about self-driving vehicles"
+    category: single-field
+    engines:
+      pg-gin:
+        template: pg_title
+        params: { terms: "self-driving", limit: 100 }
+      paradedb:
+        template: pdb_title
+        params: { terms: "self-driving", limit: 100 }
+      tiger:
+        template: tiger_title
+        params: { terms: "self-driving", limit: 100 }
+      elasticsearch:
+        template: es_title
+        params: { terms: "self-driving" }
+
+  - id: title-premier-league
+    text: "premier league"
+    description: "Articles whose title is about the Premier League"
+    category: single-field
+    engines:
+      pg-gin:
+        template: pg_title
+        params: { terms: "premier league", limit: 100 }
+      paradedb:
+        template: pdb_title
+        params: { terms: "premier league", limit: 100 }
+      tiger:
+        template: tiger_title
+        params: { terms: "premier league", limit: 100 }
+      elasticsearch:
+        template: es_title
+        params: { terms: "premier league" }
+
+  - id: title-super-bowl
+    text: "super bowl"
+    description: "Articles whose title is about the Super Bowl"
+    category: single-field
+    engines:
+      pg-gin:
+        template: pg_title
+        params: { terms: "super bowl", limit: 100 }
+      paradedb:
+        template: pdb_title
+        params: { terms: "super bowl", limit: 100 }
+      tiger:
+        template: tiger_title
+        params: { terms: "super bowl", limit: 100 }
+      elasticsearch:
+        template: es_title
+        params: { terms: "super bowl" }
+
+  - id: title-wildfire
+    text: "wildfire"
+    description: "Articles whose title is about a wildfire"
+    category: single-field
+    engines:
+      pg-gin:
+        template: pg_title
+        params: { terms: "wildfire", limit: 100 }
+      paradedb:
+        template: pdb_title
+        params: { terms: "wildfire", limit: 100 }
+      tiger:
+        template: tiger_title
+        params: { terms: "wildfire", limit: 100 }
+      elasticsearch:
+        template: es_title
+        params: { terms: "wildfire" }
