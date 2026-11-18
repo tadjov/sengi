@@ -7,7 +7,7 @@
 ```bash
 go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 ```
-- Each Postgres engine (`native`, `paradedb`, `tiger`) has a schema migration under `db/migrations/<engine>/schema/` (tables and generated columns) and its keys, filter indexes and search indexes in `db/migrations/<engine>/indexes.sql`. `datapipe load` applies the schema, copies the data, then builds each key and index as a timed stage. To migrate the schema by hand against the Docker engines:
+- Each Postgres engine (`native`, `paradedb`, `tiger`) has a schema migration under `db/migrations/<engine>/schema/` (tables, generated columns and filter indexes) and its search indexes in `db/migrations/<engine>/indexes.sql`. `datapipe load` applies the schema, copies the data, then builds each search index as a timed stage. To migrate the schema by hand against the Docker engines:
 ```bash
 make migrate-schema-native     # or -paradedb, -tiger, -all
 make migrate-down-native       # drops the schema and every index with it

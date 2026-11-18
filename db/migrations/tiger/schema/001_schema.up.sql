@@ -5,10 +5,9 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- Keys and filter indexes are built after the load, in indexes.sql.
 CREATE TABLE articles
 (
-    id               uuid        NOT NULL,
+    id               uuid        NOT NULL PRIMARY KEY,
     url              text        NOT NULL,
     title            text        NOT NULL,
     description      text        NOT NULL DEFAULT '',
@@ -22,12 +21,15 @@ CREATE TABLE articles
         title || ' ' || description || ' ' || content
     ) STORED
 );
+CREATE INDEX idx_articles_published_at ON articles (published_at DESC NULLS LAST);
+CREATE INDEX idx_articles_publisher_domain ON articles (publisher_domain);
 
 CREATE TABLE article_embeddings
 (
-    article_id uuid         NOT NULL,
+    article_id uuid         NOT NULL REFERENCES articles (id) ON DELETE CASCADE,
     model_name text         NOT NULL,
-    embedding  vector(1024) NOT NULL
+    embedding  vector(1024) NOT NULL,
+    PRIMARY KEY (article_id, model_name)
 );
 
 -- The fuzzy track expands each query word to the corpus words within its edit

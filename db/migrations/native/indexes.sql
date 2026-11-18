@@ -1,9 +1,3 @@
-ALTER TABLE articles ADD CONSTRAINT articles_pkey PRIMARY KEY (id);
-ALTER TABLE article_embeddings ADD CONSTRAINT article_embeddings_pkey PRIMARY KEY (article_id, model_name);
-ALTER TABLE article_embeddings ADD CONSTRAINT article_embeddings_article_id_fkey
-    FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE;
-CREATE INDEX idx_articles_published_at ON articles (published_at DESC NULLS LAST);
-CREATE INDEX idx_articles_publisher_domain ON articles (publisher_domain);
 CREATE INDEX idx_articles_search_vector ON articles USING gin (search_vector);
 CREATE INDEX idx_articles_title_trgm ON articles USING gin (title gin_trgm_ops);
 CREATE INDEX idx_articles_title_desc_trgm ON articles

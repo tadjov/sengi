@@ -225,7 +225,7 @@ func (l *CorpusLoader) refuseLoaded(ctx context.Context, conn *pgx.Conn) error {
 		return fmt.Errorf("check for existing search indexes: %w", err)
 	}
 	if len(built) > 0 {
-		return fmt.Errorf("indexes and keys %s already exist; drop the schema before loading", strings.Join(built, ", "))
+		return fmt.Errorf("search indexes %s already exist; drop the schema before loading", strings.Join(built, ", "))
 	}
 	var loaded bool
 	err = conn.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM articles) OR EXISTS (SELECT 1 FROM corpus_load)").Scan(&loaded)
