@@ -28,7 +28,7 @@ templates:
           paradedb.match('content', $1)
         ]
       )
-      ORDER BY pdb.score(id) DESC
+      ORDER BY pdb.score(id) DESC, id
       LIMIT $2::int
 
   - id: tiger_multi_field
@@ -144,7 +144,7 @@ queries:
             paradedb.match('content', 'hurricane', distance => 2),
             paradedb.match('content', 'harvy', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -189,7 +189,7 @@ queries:
             paradedb.match('content', 'brexit', distance => 2),
             paradedb.match('content', 'negociations', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -234,7 +234,7 @@ queries:
             paradedb.match('content', 'facebok', distance => 2),
             paradedb.match('content', 'privacy', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -279,7 +279,7 @@ queries:
             paradedb.match('content', 'flu', distance => 1),
             paradedb.match('content', 'vacine', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -324,7 +324,7 @@ queries:
             paradedb.match('content', 'imigration', distance => 1),
             paradedb.match('content', 'policy', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -372,7 +372,7 @@ queries:
             paradedb.match('content', 'nuclar', distance => 2),
             paradedb.match('content', 'deal', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -417,7 +417,7 @@ queries:
             paradedb.match('content', 'opiod', distance => 1),
             paradedb.match('content', 'crisis', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -462,7 +462,7 @@ queries:
             paradedb.match('content', 'tesla', distance => 1),
             paradedb.match('content', 'autopilt', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -507,7 +507,7 @@ queries:
             paradedb.match('content', 'global', distance => 2),
             paradedb.match('content', 'warmng', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -552,7 +552,7 @@ queries:
             paradedb.match('content', 'syrian', distance => 2),
             paradedb.match('content', 'refugess', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -597,7 +597,7 @@ queries:
             paradedb.match('content', 'goverment', distance => 1),
             paradedb.match('content', 'shutdwon', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -642,7 +642,7 @@ queries:
             paradedb.match('content', 'bitcion', distance => 2),
             paradedb.match('content', 'pirce', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -687,7 +687,7 @@ queries:
             paradedb.match('content', 'presidental', distance => 2),
             paradedb.match('content', 'eletcion', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -735,7 +735,7 @@ queries:
             paradedb.match('content', 'harasment', distance => 1),
             paradedb.match('content', 'alegations', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -780,7 +780,7 @@ queries:
             paradedb.match('content', 'artifical', distance => 1),
             paradedb.match('content', 'inteligence', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -828,7 +828,7 @@ queries:
             paradedb.match('content', 'evacuaton', distance => 2),
             paradedb.match('content', 'califronia', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -873,7 +873,7 @@ queries:
             paradedb.match('content', 'cryptocurency', distance => 2),
             paradedb.match('content', 'exchnage', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -921,7 +921,7 @@ queries:
             paradedb.match('content', 'wepons', distance => 1),
             paradedb.match('content', 'syria', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -966,7 +966,7 @@ queries:
             paradedb.match('content', 'renewble', distance => 2),
             paradedb.match('content', 'enrgy', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -1014,7 +1014,7 @@ queries:
             paradedb.match('content', 'cuort', distance => 1),
             paradedb.match('content', 'nominee', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -1059,7 +1059,7 @@ queries:
             paradedb.match('content', 'solar', distance => 1),
             paradedb.match('content', 'eclipse', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -1104,7 +1104,7 @@ queries:
             paradedb.match('content', 'pyeongchang', distance => 2),
             paradedb.match('content', 'olympics', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -1149,7 +1149,7 @@ queries:
             paradedb.match('content', 'stephen', distance => 2),
             paradedb.match('content', 'hawking', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -1200,7 +1200,7 @@ queries:
             paradedb.match('content', 'power', distance => 1),
             paradedb.match('content', 'outage', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -1248,7 +1248,7 @@ queries:
             paradedb.match('content', 'anthem', distance => 2),
             paradedb.match('content', 'protests', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -1296,7 +1296,7 @@ queries:
             paradedb.match('content', 'whole', distance => 1),
             paradedb.match('content', 'foods', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -1341,7 +1341,7 @@ queries:
             paradedb.match('content', 'paradise', distance => 2),
             paradedb.match('content', 'papers', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -1389,7 +1389,7 @@ queries:
             paradedb.match('content', 'fox', distance => 1),
             paradedb.match('content', 'deal', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -1434,7 +1434,7 @@ queries:
             paradedb.match('content', 'starbucks', distance => 2),
             paradedb.match('content', 'arrests', distance => 2)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy
@@ -1485,7 +1485,7 @@ queries:
             paradedb.match('content', 'driving', distance => 1),
             paradedb.match('content', 'crash', distance => 1)
         ])
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       es-fuzzy:
         template: es_fuzzy

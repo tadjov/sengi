@@ -67,7 +67,7 @@ TEMPLATES = """templates:
           paradedb.match('content', $1)
         ]
       )
-      ORDER BY pdb.score(id) DESC
+      ORDER BY pdb.score(id) DESC, id
       LIMIT $2::int
 
   - id: tiger_multi_field
@@ -196,7 +196,7 @@ def paradedb_fuzzy(typed):
             clauses.append(f"paradedb.boost({boost}, {match})" if boost else match)
     body = ",\n    ".join(clauses)
     return ("SELECT id FROM articles\nWHERE id @@@ paradedb.boolean(should => ARRAY[\n    " + body + "\n])\n"
-            "ORDER BY pdb.score(id) DESC\nLIMIT 100")
+            "ORDER BY pdb.score(id) DESC, id\nLIMIT 100")
 
 
 def templated(name, template, params):

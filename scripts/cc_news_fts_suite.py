@@ -100,7 +100,7 @@ TEMPLATES = """templates:
           paradedb.match('content', $1)
         ]
       )
-      ORDER BY pdb.score(id) DESC
+      ORDER BY pdb.score(id) DESC, id
       LIMIT $2::int
 
   - id: pdb_phrase_boosted
@@ -114,7 +114,7 @@ TEMPLATES = """templates:
           paradedb.parse('content:"' || $1 || '"')
         ]
       )
-      ORDER BY pdb.score(id) DESC
+      ORDER BY pdb.score(id) DESC, id
       LIMIT $2::int
 
   - id: pdb_title
@@ -122,7 +122,7 @@ TEMPLATES = """templates:
     query: |
       SELECT id FROM articles
       WHERE id @@@ paradedb.match('title', $1)
-      ORDER BY pdb.score(id) DESC
+      ORDER BY pdb.score(id) DESC, id
       LIMIT $2::int
 
   # pg_textsearch serves @@ from its bm25 index only when nothing orders by <@> in the
@@ -247,7 +247,7 @@ def pdb_boolean(spec):
     if spec["must_not"]:
         parts.append("  must_not => ARRAY[\n    " + ",\n    ".join(pdb_any_field(t) for t in spec["must_not"]) + "\n  ]")
     return ("SELECT id FROM articles\nWHERE id @@@ paradedb.boolean(\n" + ",\n".join(parts) + "\n)\n"
-            "ORDER BY pdb.score(id) DESC\nLIMIT 100")
+            "ORDER BY pdb.score(id) DESC, id\nLIMIT 100")
 
 
 def es_boolean(spec):

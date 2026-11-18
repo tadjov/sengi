@@ -65,7 +65,7 @@ TEMPLATES = """templates:
           paradedb.match('content', $1)
         ]
       )
-      ORDER BY pdb.score(id) DESC
+      ORDER BY pdb.score(id) DESC, id
       LIMIT $2::int
 
   - id: tiger_multi_field
@@ -150,7 +150,7 @@ TEMPLATES = """templates:
               paradedb.match('content', $1)
             ]
           )
-          ORDER BY pdb.score(id) DESC
+          ORDER BY pdb.score(id) DESC, id
           LIMIT $4::int
         ) top
       ),

@@ -56,7 +56,7 @@ templates:
           paradedb.match('content', $1)
         ]
       )
-      ORDER BY pdb.score(id) DESC
+      ORDER BY pdb.score(id) DESC, id
       LIMIT $2::int
 
   - id: pdb_phrase_boosted
@@ -70,7 +70,7 @@ templates:
           paradedb.parse('content:"' || $1 || '"')
         ]
       )
-      ORDER BY pdb.score(id) DESC
+      ORDER BY pdb.score(id) DESC, id
       LIMIT $2::int
 
   - id: pdb_title
@@ -78,7 +78,7 @@ templates:
     query: |
       SELECT id FROM articles
       WHERE id @@@ paradedb.match('title', $1)
-      ORDER BY pdb.score(id) DESC
+      ORDER BY pdb.score(id) DESC, id
       LIMIT $2::int
 
   # pg_textsearch serves @@ from its bm25 index only when nothing orders by <@> in the
@@ -428,7 +428,7 @@ queries:
             paradedb.boolean(should => ARRAY[paradedb.boolean(should => ARRAY[paradedb.match('title', 'musk'), paradedb.match('description', 'musk'), paradedb.match('content', 'musk')]), paradedb.boolean(should => ARRAY[paradedb.match('title', 'model'), paradedb.match('description', 'model'), paradedb.match('content', 'model')])])
           ]
         )
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       tiger:
         template: tiger_boolean
@@ -455,7 +455,7 @@ queries:
             paradedb.boolean(should => ARRAY[paradedb.match('title', 'instagram'), paradedb.match('description', 'instagram'), paradedb.match('content', 'instagram')])
           ]
         )
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       tiger:
         template: tiger_boolean
@@ -480,7 +480,7 @@ queries:
             paradedb.boolean(should => ARRAY[paradedb.match('title', 'rico'), paradedb.match('description', 'rico'), paradedb.match('content', 'rico')])
           ]
         )
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       tiger:
         template: tiger_boolean
@@ -507,7 +507,7 @@ queries:
             paradedb.boolean(should => ARRAY[paradedb.match('title', 'taxi'), paradedb.match('description', 'taxi'), paradedb.match('content', 'taxi')])
           ]
         )
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       tiger:
         template: tiger_boolean
@@ -531,7 +531,7 @@ queries:
             paradedb.boolean(should => ARRAY[paradedb.match('title', 'vaccine'), paradedb.match('description', 'vaccine'), paradedb.match('content', 'vaccine')])
           ]
         )
-        ORDER BY pdb.score(id) DESC
+        ORDER BY pdb.score(id) DESC, id
         LIMIT 100
       tiger:
         template: tiger_boolean
