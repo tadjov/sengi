@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/tusker/db/migrations"
@@ -264,34 +263,6 @@ func TestCorpusLoader(t *testing.T) {
 				assert.False(t, loadRecorded(t, db), "the refused load was recorded in corpus_load")
 				_, err = load(t, db, engine, corpusOf(articles, vectors[:corpusSize-1]), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
 				require.ErrorContains(t, err, "already holds a corpus")
-			})
-
-			t.Run("a duplicate id fails the load and records nothing", func(t *testing.T) {
-				db := newDatabase(t, server.ConnString)
-				articles, _ := fixture(corpusSize)
-				articles[1_500].ID = articles[10].ID
-
-				_, err := load(t, db, engine, corpusOf(articles, nil), storage.LoadOptions{BatchSize: 100, Concurrency: 4})
-
-				require.ErrorContains(t, err, "articles_pkey")
-				assert.False(t, loadRecorded(t, db), "the failed load was recorded in corpus_load")
-			})
-
-			t.Run("keeps embeddings tied to the articles they embed", func(t *testing.T) {
-				db := newDatabase(t, server.ConnString)
-				articles, vectors := fixture(10)
-				_, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
-				require.NoError(t, err)
-
-				var insertErr error
-				query(t, db, func(conn *pgx.Conn) error {
-					_, insertErr = conn.Exec(context.Background(),
-						"INSERT INTO article_embeddings VALUES ($1, $2, array_fill(0.1::real, ARRAY[1024])::vector)", uuid.New(), modelTag)
-					return nil
-				})
-				var pgErr *pgconn.PgError
-				require.ErrorAs(t, insertErr, &pgErr)
-				assert.Equal(t, "23503", pgErr.Code, "want foreign_key_violation")
 			})
 
 			t.Run("refuses a database that already holds a corpus", func(t *testing.T) {

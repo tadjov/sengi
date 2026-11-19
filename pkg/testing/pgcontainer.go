@@ -99,7 +99,6 @@ func createPGContainer(ctx context.Context, cfg PGConfig) (*PGContainer, error) 
 		postgres.WithUsername(cfg.Username),
 		postgres.WithPassword(cfg.Password),
 		testcontainers.WithCmdArgs(engineServerFlags[cfg.Engine]...),
-		testcontainers.WithHostConfigModifier(engineBudget),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).

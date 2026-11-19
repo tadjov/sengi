@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"iter"
 	"log/slog"
-	"maps"
 	"math/rand/v2"
 	"net/http"
 	"strconv"
@@ -18,7 +17,6 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/bulk"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/translogdurability"
 	"github.com/google/uuid"
 	"github.com/tadjov/tusker/internal/embedding"
 	"github.com/tadjov/tusker/internal/storage"
@@ -118,10 +116,6 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 			err = errors.Join(err, l.deleteIndex(ctx))
 		}
 	}()
-	loadSettings, err := l.loadOnlySettings(ctx)
-	if err != nil {
-		return storage.LoadRecord{}, err
-	}
 
 	var written writeCounts
 	if err := timed("bulk", func() (err error) {
@@ -136,11 +130,6 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	}); err != nil {
 		return storage.LoadRecord{}, err
 	}
-	segments, err := l.searchSegments(ctx)
-	if err != nil {
-		return storage.LoadRecord{}, err
-	}
-	loadSettings["load.segments_before_force_merge"] = strconv.Itoa(segments)
 	if err := timed("force_merge", func() error {
 		defer storage.WatchStage(ctx, []any{"index", index, "stage", "force_merge"}, nil)()
 		return l.forceMerge(ctx)
@@ -152,7 +141,6 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	if err != nil {
 		return storage.LoadRecord{}, err
 	}
-	maps.Copy(settings, loadSettings)
 	record = storage.LoadRecord{
 		Engine:        string(storage.ES),
 		EngineVersion: info.Version.Int,
@@ -201,7 +189,6 @@ func (l *CorpusLoader) createIndex(ctx context.Context, lang language.Code) erro
 	builder := NewIndexBuilder()
 	settings := builder.buildSettings()
 	settings.RefreshInterval = "-1"
-	settings.Translog = &types.Translog{Durability: &translogdurability.Async}
 	mappings := builder.buildMapping(lang.Analysis().ElasticsearchAnalyzer)
 	if _, err := l.client.typed.Indices.Create(index).Settings(&settings).Mappings(&mappings).Do(ctx); err != nil {
 		var esErr *types.ElasticsearchError
@@ -224,12 +211,9 @@ func (l *CorpusLoader) deleteIndex(ctx context.Context) error {
 
 func (l *CorpusLoader) refresh(ctx context.Context, stored int64) error {
 	index := l.client.indexName
-	restored := types.IndexSettings{
-		RefreshInterval: refreshIntervalAfterLoad,
-		Translog:        &types.Translog{Durability: &translogdurability.Request},
-	}
+	restored := types.IndexSettings{RefreshInterval: refreshIntervalAfterLoad}
 	if _, err := l.client.typed.Indices.PutSettings().Indices(index).Settings(&restored).Do(ctx); err != nil {
-		return fmt.Errorf("restore the refresh interval and translog durability of %s: %w", index, err)
+		return fmt.Errorf("restore refresh interval of %s: %w", index, err)
 	}
 	if _, err := l.client.typed.Indices.Refresh().Index(index).Do(ctx); err != nil {
 		return fmt.Errorf("refresh %s: %w", index, err)
@@ -336,23 +320,6 @@ func (l *CorpusLoader) indexSettings(ctx context.Context) (map[string]any, error
 	return byIndex[index].Settings, nil
 }
 
-// loadOnlySettings records what the bulk writes run under, before the load restores it.
-func (l *CorpusLoader) loadOnlySettings(ctx context.Context) (map[string]string, error) {
-	declared, err := l.indexSettings(ctx)
-	if err != nil {
-		return nil, err
-	}
-	settings := make(map[string]string)
-	for _, key := range []string{"index.refresh_interval", "index.translog.durability"} {
-		value, ok := declared[key].(string)
-		if !ok {
-			return nil, fmt.Errorf("settings of %s do not declare %s for the load", l.client.indexName, key)
-		}
-		settings["load."+key] = value
-	}
-	return settings, nil
-}
-
 // declaredSettings reads the settings back from the index, not from the request.
 func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string, error) {
 	index := l.client.indexName
@@ -364,13 +331,12 @@ func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string,
 	settings := make(map[string]string)
 	similarityPrefix := "index.similarity." + textSimilarity + "."
 	for key, recorded := range map[string]string{
-		"index.number_of_shards":    "index.number_of_shards",
-		"index.number_of_replicas":  "index.number_of_replicas",
-		"index.max_result_window":   "index.max_result_window",
-		"index.refresh_interval":    "index.refresh_interval",
-		"index.translog.durability": "index.translog.durability",
-		similarityPrefix + "k1":     "similarity.k1",
-		similarityPrefix + "b":      "similarity.b",
+		"index.number_of_shards":   "index.number_of_shards",
+		"index.number_of_replicas": "index.number_of_replicas",
+		"index.max_result_window":  "index.max_result_window",
+		"index.refresh_interval":   "index.refresh_interval",
+		similarityPrefix + "k1":    "similarity.k1",
+		similarityPrefix + "b":     "similarity.b",
 	} {
 		value, ok := declared[key].(string)
 		if !ok {
