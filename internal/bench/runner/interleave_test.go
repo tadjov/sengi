@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/tusker/internal/bench/engine"
@@ -202,4 +203,50 @@ func TestRunAll_NoTwoMeasuredExecutionsOverlap(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Zero(t, overlaps.Load())
+}
+
+// rerankingExecutor returns first before its rerankAfter-th call and then
+// afterwards, as an unstable tie would.
+type rerankingExecutor struct {
+	name        string
+	first, then []uuid.UUID
+	rerankAfter int
+	calls       int
+}
+
+func (e *rerankingExecutor) Execute(context.Context, engine.Request) (*engine.Execution, error) {
+	e.calls++
+	ranked := e.first
+	if e.calls > e.rerankAfter {
+		ranked = e.then
+	}
+	return &engine.Execution{RankedDocIDs: ranked, Latency: time.Millisecond}, nil
+}
+
+func (e *rerankingExecutor) Name() string { return e.name }
+func (e *rerankingExecutor) Close() error { return nil }
+
+func TestRunAll_NamesTheIterationsWhoseRankingDiffersFromTheFirst(t *testing.T) {
+	a, b := uuid.New(), uuid.New()
+	tests := []struct {
+		name        string
+		rerankAfter int
+		want        []int
+	}{
+		{name: "changes in iteration 2", rerankAfter: 2, want: []int{2, 3}},
+		{name: "changes in iteration 3", rerankAfter: 3, want: []int{3}},
+		{name: "never changes", rerankAfter: 10},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// One warmup call precedes the three iterations.
+			pg := &rerankingExecutor{name: "pg", first: []uuid.UUID{a, b}, then: []uuid.UUID{b, a}, rerankAfter: tt.rerankAfter}
+
+			result, err := New(benchRunConfig(1, 1, 3)).RunAll(context.Background(),
+				oneJobTrack(t, onePostgresQuery, map[string]spec.Engine{"pg": postgres}, nil), map[string]engine.Executor{"pg": pg})
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, result.Jobs[0].Results["q1"]["pg"].UnstableIterations)
+		})
+	}
 }

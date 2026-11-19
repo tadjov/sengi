@@ -65,6 +65,12 @@ func (l *searchLog) add(search loggedSearch) int {
 	return n
 }
 
+func (l *searchLog) reset() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.searches = nil
+}
+
 func (i *fakeIndex) ranking(name, queryID string) []uuid.UUID {
 	if i.log == nil {
 		return i.ranked[queryID]

@@ -18,7 +18,10 @@ type QueryResult struct {
 	// ServerLatency is the server time the engine reported for each measured
 	// iteration; nil when it reports none.
 	ServerLatency *LatencyStats
-	Error         error
+	// UnstableIterations lists the measured iterations, counted from 1, whose
+	// ranking differs from the first iteration's.
+	UnstableIterations []int
+	Error              error
 }
 
 type JobResult struct {

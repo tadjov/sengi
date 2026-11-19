@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -62,6 +63,8 @@ report is marked latency_only and never becomes latest.json.
 The report is always written. bench run then exits non-zero and leaves
 latest.json alone when the run failed:
   • a (query, engine) execution errored
+  • a (query, engine) cell ranked differently in a later iteration than in
+    the first
   • it measured a (query, engine) cell the pool dropped (--allow-partial)
   • it ran a query the pool holds no entry for
   • it measured an engine the pool never saw
@@ -446,6 +449,10 @@ func runFailures(result *runner.BenchmarkResult, judgments *runJudgments, suiteQ
 	if cells := erroredCells(result); len(cells) > 0 {
 		failures = append(failures, fmt.Sprintf("%d (query, engine) executions errored: %s", len(cells), strings.Join(cells, ", ")))
 	}
+	if cells := unstableRankings(result); len(cells) > 0 {
+		failures = append(failures, fmt.Sprintf("%d (query, engine) cells ranked differently in a later iteration than in the first: %s; an unstable tie or a corpus that changed under the run",
+			len(cells), strings.Join(cells, ", ")))
+	}
 	if judgments.meta != nil {
 		if engines := unpooledEngines(result, judgments); len(engines) > 0 {
 			failures = append(failures, fmt.Sprintf("engines %s were never pooled, so none of their results are judged; re-pool and re-judge the track",
@@ -650,6 +657,26 @@ func erroredCells(result *runner.BenchmarkResult) []string {
 				if qr, ok := jr.Results[queryID][engineName]; ok && qr.Error != nil {
 					cells = append(cells, fmt.Sprintf("%s:%s/%s", jr.JobName, queryID, engineName))
 				}
+			}
+		}
+	}
+	return cells
+}
+
+func unstableRankings(result *runner.BenchmarkResult) []string {
+	var cells []string
+	for _, jr := range result.Jobs {
+		for _, queryID := range jr.QueryOrder {
+			for _, engineName := range jr.EngineNames {
+				qr, ok := jr.Results[queryID][engineName]
+				if !ok || len(qr.UnstableIterations) == 0 {
+					continue
+				}
+				iterations := make([]string, len(qr.UnstableIterations))
+				for i, iteration := range qr.UnstableIterations {
+					iterations[i] = strconv.Itoa(iteration)
+				}
+				cells = append(cells, fmt.Sprintf("%s:%s/%s (iteration %s)", jr.JobName, queryID, engineName, strings.Join(iterations, ", ")))
 			}
 		}
 	}

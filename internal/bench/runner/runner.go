@@ -534,17 +534,18 @@ func (r *Runner) queryResult(q *suite.Query, c *cell) QueryResult {
 		scores = metrics.ComputeAll(measured.rankedIDs, judgments, r.config.KValues, r.config.RelevanceThreshold)
 	}
 	return QueryResult{
-		QueryID:       q.ID,
-		Category:      string(q.Category),
-		EngineName:    c.engine,
-		RequestDigest: c.digest,
-		Scores:        scores,
-		RankedDocIDs:  measured.rankedIDs,
-		ReturnedCount: measured.returnedCount,
-		CorpusMatches: measured.corpusMatches,
-		Latency:       measured.latencyStats,
-		ServerLatency: measured.serverStats,
-		Error:         measured.err,
+		QueryID:            q.ID,
+		Category:           string(q.Category),
+		EngineName:         c.engine,
+		RequestDigest:      c.digest,
+		Scores:             scores,
+		RankedDocIDs:       measured.rankedIDs,
+		ReturnedCount:      measured.returnedCount,
+		CorpusMatches:      measured.corpusMatches,
+		Latency:            measured.latencyStats,
+		ServerLatency:      measured.serverStats,
+		UnstableIterations: measured.unstableIterations,
+		Error:              measured.err,
 	}
 }
 
@@ -641,12 +642,13 @@ func (r *Runner) judgmentsFor(q *suite.Query) map[uuid.UUID]int {
 }
 
 type execResult struct {
-	rankedIDs     []uuid.UUID
-	returnedCount int
-	corpusMatches *int64
-	latencyStats  LatencyStats
-	serverStats   *LatencyStats
-	err           error
+	rankedIDs          []uuid.UUID
+	returnedCount      int
+	corpusMatches      *int64
+	latencyStats       LatencyStats
+	serverStats        *LatencyStats
+	unstableIterations []int
+	err                error
 }
 
 // measurement is one query on one engine, executed for warmup and then for the
@@ -681,6 +683,7 @@ type iterationLog struct {
 	iterations  int
 	latencies   []time.Duration
 	serverTimes []time.Duration
+	rankings    [][]uuid.UUID
 	last        *engine.Execution
 	err         error
 }
@@ -691,13 +694,16 @@ func (l *iterationLog) record(iteration int, exec *engine.Execution, err error) 
 		return
 	}
 	l.last = exec
+	l.rankings = append(l.rankings, exec.RankedDocIDs)
 	l.latencies = append(l.latencies, exec.Latency)
 	if exec.ServerTime != nil {
 		l.serverTimes = append(l.serverTimes, *exec.ServerTime)
 	}
 }
 
-// result scores the last iteration's ranking, cut at depth when depth is set.
+// result scores the last iteration's ranking, cut at depth when depth is set,
+// and names the iterations whose ranking, cut the same way, differs from the
+// first's.
 func (l *iterationLog) result(depth int) execResult {
 	if l.err != nil {
 		return execResult{err: l.err}
@@ -714,6 +720,12 @@ func (l *iterationLog) result(depth int) execResult {
 	if len(l.serverTimes) > 0 {
 		serverStats := ComputeLatencyStats(l.serverTimes)
 		measured.serverStats = &serverStats
+	}
+	first := cutRanking(l.rankings[0], depth)
+	for i, ranking := range l.rankings[1:] {
+		if !slices.Equal(cutRanking(ranking, depth), first) {
+			measured.unstableIterations = append(measured.unstableIterations, i+2)
+		}
 	}
 	return measured
 }
