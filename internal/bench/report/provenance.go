@@ -50,6 +50,9 @@ func (p IndexProvenance) Fields() []ProvenanceField {
 	if p.Error != "" {
 		add("error", p.Error)
 	}
+	if d := p.Fusion; d != nil {
+		add("fusion.legs", strings.Join(d.Legs, ", "))
+	}
 	if d := p.Postgres; d != nil {
 		add("server_version", d.ServerVersion)
 		for _, ext := range d.Extensions {

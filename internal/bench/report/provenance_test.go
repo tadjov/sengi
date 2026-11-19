@@ -2,6 +2,7 @@ package report
 
 import (
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -101,6 +102,24 @@ func TestDiffProvenance_NamesALoadOfOtherEmbeddings(t *testing.T) {
 	}
 	if same := DiffProvenance(before, before); len(same) != 0 {
 		t.Errorf("identical loads differ: %+v", same)
+	}
+}
+
+func TestDiffProvenance_NamesAFusionEnginesChangedLegs(t *testing.T) {
+	fusing := func(legs ...string) *Report {
+		return &Report{Environment: RunEnvironment{Engines: map[string]EngineInfo{
+			"hybrid": {Index: &IndexProvenance{IndexDescription: engine.IndexDescription{Fusion: &engine.FusionDescription{Legs: legs}}}},
+		}}}
+	}
+
+	changes := DiffProvenance(fusing("a", "b"), fusing("a", "c"))
+
+	want := []ProvenanceChange{{Engine: "hybrid", Field: "fusion.legs", Before: "a, b", After: "a, c"}}
+	if !reflect.DeepEqual(changes, want) {
+		t.Errorf("changes = %+v, want %+v", changes, want)
+	}
+	if same := DiffProvenance(fusing("a", "b"), fusing("a", "b")); len(same) != 0 {
+		t.Errorf("identical legs differ: %+v", same)
 	}
 }
 
