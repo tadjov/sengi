@@ -2,12 +2,11 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"maps"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"slices"
@@ -120,7 +119,7 @@ func newRunConfig(f runFlags, bs *spec.BenchSpec, ks []int, kFromFlag bool) runn
 		RelevanceThreshold: bs.Metrics.RelevanceThreshold,
 		WarmupRuns:         firstNonZero(f.warmup, bs.Runs.Warmup),
 		Runs:               firstNonZero(f.iters, bs.Runs.Iterations),
-		Seed:               newRunSeed(),
+		Seed:               rand.Uint64(),
 		QueryParallelism:   runner.QueryParallelismSerial,
 		EngineParallelism:  runner.EngineParallelismSerial,
 	}
@@ -827,16 +826,6 @@ func inspectContainers(ctx context.Context, w io.Writer, engines map[string]spec
 		containers[name] = container
 	}
 	return containers
-}
-
-// newRunSeed draws the seed a run's engine order comes from.
-func newRunSeed() uint64 {
-	var seed [8]byte
-	if _, err := rand.Read(seed[:]); err != nil {
-		// crypto/rand does not fail in practice; any fixed seed still interleaves.
-		return 1
-	}
-	return binary.LittleEndian.Uint64(seed[:])
 }
 
 func firstNonZero(a, b int) int {
