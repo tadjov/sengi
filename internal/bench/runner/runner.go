@@ -356,22 +356,32 @@ func (r *Runner) runQueries(ctx context.Context, jr *JobResult, req JobRequest) 
 	}
 	engineSem := make(chan struct{}, ep)
 
+	runQuery := func(q *suite.Query) {
+		if ctx.Err() != nil {
+			return
+		}
+		cells := r.prepareCells(ctx, req, jr.EngineNames, q)
+		r.measureQuery(ctx, queryCells{query: q, cells: cells}, engineSem)
+		for _, c := range cells {
+			jr.Results[q.ID][c.engine] = r.queryResult(q, c)
+		}
+	}
+	// Goroutines would take the one query slot in the scheduler's order, so
+	// two runs of a spec would measure their queries in different sequences.
+	if qp == QueryParallelismSerial {
+		for i := range queries {
+			runQuery(&queries[i])
+		}
+		return
+	}
 	var wg sync.WaitGroup
 	for i := range queries {
-		q := &queries[i]
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			querySem <- struct{}{}
 			defer func() { <-querySem }()
-			if ctx.Err() != nil {
-				return
-			}
-			cells := r.prepareCells(ctx, req, jr.EngineNames, q)
-			r.measureQuery(ctx, queryCells{query: q, cells: cells}, engineSem)
-			for _, c := range cells {
-				jr.Results[q.ID][c.engine] = r.queryResult(q, c)
-			}
+			runQuery(&queries[i])
 		}()
 	}
 	wg.Wait()

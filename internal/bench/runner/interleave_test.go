@@ -2,7 +2,9 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -275,4 +277,21 @@ func TestRunAll_ComparesRankingsCutAtTheRankingDepth(t *testing.T) {
 			assert.Equal(t, tt.want, result.Jobs[0].Results["q1"]["pg"].UnstableIterations)
 		})
 	}
+}
+
+func TestRunAll_RunsTheQueriesInSuiteOrderOneAtATime(t *testing.T) {
+	var suite strings.Builder
+	suite.WriteString("queries:\n")
+	var want []string
+	for i := 1; i <= 8; i++ {
+		fmt.Fprintf(&suite, "  - id: q%d\n    engines:\n      pg: { query: \"SELECT id FROM articles WHERE %d = %d\" }\n", i, i, i)
+		want = append(want, fmt.Sprintf("SELECT id FROM articles WHERE %d = %d", i, i))
+	}
+	pg := &recordingExecutor{name: "pg"}
+
+	_, err := New(benchRunConfig(1, 0, 1)).RunAll(context.Background(),
+		oneJobTrack(t, suite.String(), map[string]spec.Engine{"pg": postgres}, nil), map[string]engine.Executor{"pg": pg})
+
+	require.NoError(t, err)
+	assert.Equal(t, want, pg.seen)
 }
