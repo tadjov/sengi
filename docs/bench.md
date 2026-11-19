@@ -672,7 +672,7 @@ Measured elasticsearch templates should set `"track_total_hits": false` until it
 
 `bench run` measures one execution at a time and interleaves a query's engines. For each query it first runs every engine's `runs.warmup` executions, then measured iteration 1 on every engine, then iteration 2, and so on through `runs.iterations`, so a slow stretch of the host spreads over the engines instead of landing on whichever runs first. Each pass, warmup or measured, runs the engines in a random permutation drawn from the run's seed, the query id and the pass. The seed is drawn per run and recorded as `settings.seed`, so the order of every pass can be drawn again from the report. A fusion engine is one execution like any other, its legs running back to back inside it. A cell that fails an iteration stops there, as above, while the other engines carry on. `bench pool` keeps running engines side by side.
 
-Reports made before this change ran each engine's warmup and iterations back to back, in whatever order the Go scheduler picked, which put the last-declared engine first for nearly every query, so their latency carries another position bias than reports made since.
+Reports whose `settings.seed` is 0 ran each engine's warmup and iterations back to back, in whatever order the Go scheduler picked, which put the last-declared engine first for nearly every query, so their latency carries another position bias than reports made since.
 
 Each per-query entry keeps its cell's latency over every iteration under `Latency`, `median` included, and engine latency is p50 to p99 over every sample of the queries every engine answered.
 
