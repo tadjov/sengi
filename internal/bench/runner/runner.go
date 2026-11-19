@@ -505,9 +505,7 @@ func BuildRequest(in RequestInput) (engine.Request, error) {
 			}
 			legs = append(legs, engine.LegRequest{Engine: leg, Request: request})
 		}
-		// The params carry the merge settings into the request digest.
-		params := map[string]any{"method": string(fusion.Method), "rank_constant": fusion.RankConstant, "window": fusion.Window}
-		return engine.Request{Params: params, Legs: legs}, nil
+		return engine.Request{Legs: legs, Fusion: fusion}, nil
 	}
 	resolved, err := in.Query.ResolveEngineQuery(suite.ResolveOptions{
 		Engine:      binding.QuerySource,

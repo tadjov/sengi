@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tadjov/tusker/internal/bench/spec"
 )
 
 // Request is one suite query as an engine receives it.
@@ -19,6 +20,8 @@ type Request struct {
 	Params           map[string]any
 	// Legs are a fusion engine's requests to its leg engines, in leg order.
 	Legs []LegRequest
+	// Fusion is how a fusion engine merges what its legs return.
+	Fusion *spec.Fusion
 }
 
 // LegRequest is the request one leg engine of a fusion engine receives.

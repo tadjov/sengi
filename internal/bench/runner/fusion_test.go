@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -78,7 +79,7 @@ func TestRunJob_AFusionEngineFusesWhatEachLegsOwnBlockReturns(t *testing.T) {
 	lexical := &rankingExecutor{ranking: []uuid.UUID{a, b}}
 	vector := &rankingExecutor{ranking: []uuid.UUID{c, b}}
 	executors := map[string]engine.Executor{"lexical": lexical, "vector": vector}
-	executors["hybrid"] = engine.NewFusionExecutor("hybrid", rrf60, executors)
+	executors["hybrid"] = engine.NewFusionExecutor("hybrid", rrf60.Legs, executors)
 
 	result, err := New(DefaultConfig()).RunJob(context.Background(), JobRequest{
 		Track:     bs.ID,
@@ -127,4 +128,94 @@ func TestRequestDigest_AFusionRequestChangesWithItsMergeSettings(t *testing.T) {
 	}
 
 	assert.NotEqual(t, digestWith(60), digestWith(10))
+}
+
+func TestRequestDigest_AFusionRequestChangesWithItsLegs(t *testing.T) {
+	const lexicalBlock = "SELECT id FROM articles WHERE lexical"
+	digestOf := func(t *testing.T, lexical string, legs []string) string {
+		t.Helper()
+		bs := fusionTrack(t, fmt.Sprintf(`queries:
+  - id: q1
+    engines:
+      lexical: %q
+      vector: "SELECT id FROM articles WHERE vector"
+`, lexical))
+		suites, err := LoadSuites(bs)
+		require.NoError(t, err)
+		dialects, err := Dialects(bs)
+		require.NoError(t, err)
+		ls := suites[bs.Jobs[0].Suite]
+		fusion := rrf60
+		fusion.Legs = legs
+		bindings := QueryBindings(bs)
+		bindings["hybrid"] = spec.QueryBinding{Fusion: &fusion}
+		request, err := BuildRequest(RequestInput{
+			Engine: "hybrid", Query: &ls.Suite.Queries[0], Track: bs.ID, Suite: ls, Bindings: bindings, Dialects: dialects,
+		})
+		require.NoError(t, err)
+		digest, err := requestDigest(request)
+		require.NoError(t, err)
+		return digest
+	}
+	declared := digestOf(t, lexicalBlock, []string{"lexical", "vector"})
+
+	tests := []struct {
+		name    string
+		lexical string
+		legs    []string
+	}{
+		{name: "a leg's request changes", lexical: lexicalBlock + " AND recent", legs: []string{"lexical", "vector"}},
+		{name: "the legs swap order", lexical: lexicalBlock, legs: []string{"vector", "lexical"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.NotEqual(t, declared, digestOf(t, tt.lexical, tt.legs))
+		})
+	}
+}
+
+// The digest is the run's record of what a fusion engine was asked, so the
+// merge it runs must be the one the request carries.
+func TestFusionRequest_TheMergeItRunsIsTheOneItsDigestRecords(t *testing.T) {
+	bs := fusionTrack(t, `queries:
+  - id: q1
+    engines:
+      lexical: "SELECT id FROM articles WHERE lexical"
+      vector: "SELECT id FROM articles WHERE vector"
+`)
+	suites, err := LoadSuites(bs)
+	require.NoError(t, err)
+	dialects, err := Dialects(bs)
+	require.NoError(t, err)
+	ls := suites[bs.Jobs[0].Suite]
+	a, b, c := uuid.UUID{0xa}, uuid.UUID{0xb}, uuid.UUID{0xc}
+	executors := map[string]engine.Executor{
+		"lexical": &rankingExecutor{ranking: []uuid.UUID{a, b}},
+		"vector":  &rankingExecutor{ranking: []uuid.UUID{c, b}},
+	}
+	executors["hybrid"] = engine.NewFusionExecutor("hybrid", rrf60.Legs, executors)
+	runWithWindow := func(window int) (string, []uuid.UUID) {
+		fusion := rrf60
+		fusion.Window = window
+		bindings := QueryBindings(bs)
+		bindings["hybrid"] = spec.QueryBinding{Fusion: &fusion}
+		request, err := BuildRequest(RequestInput{
+			Engine: "hybrid", Query: &ls.Suite.Queries[0], Track: bs.ID, Suite: ls, Bindings: bindings, Dialects: dialects,
+		})
+		require.NoError(t, err)
+		digest, err := requestDigest(request)
+		require.NoError(t, err)
+		exec, err := executors["hybrid"].Execute(context.Background(), request)
+		require.NoError(t, err)
+		return digest, exec.RankedDocIDs
+	}
+
+	wideDigest, wide := runWithWindow(100)
+	narrowDigest, narrow := runWithWindow(1)
+
+	assert.NotEqual(t, wideDigest, narrowDigest)
+	// b is second in both legs: 2/62 beats a and c, which tie at 1/61.
+	assert.Equal(t, []uuid.UUID{b, a, c}, wide)
+	// Window 1 keeps a and c, the top of each leg, tied at 1/61, and then a.
+	assert.Equal(t, []uuid.UUID{a}, narrow)
 }
