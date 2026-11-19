@@ -129,17 +129,17 @@ templates:
   - id: es_multi_match_boosted
     args: [terms]
     query: |
-      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "_source": false, "track_total_hits": false}
+      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   - id: es_phrase_boosted
     args: [terms]
     query: |
-      {"query": {"multi_match": {"query": "{{terms}}", "type": "phrase", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "_source": false, "track_total_hits": false}
+      {"query": {"multi_match": {"query": "{{terms}}", "type": "phrase", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   - id: es_title
     args: [terms]
     query: |
-      {"query": {"match": {"title": "{{terms}}"}}, "size": 100, "_source": false, "track_total_hits": false}
+      {"query": {"match": {"title": "{{terms}}"}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
 queries:
   - id: kw-net-neutrality
@@ -434,7 +434,7 @@ queries:
         template: tiger_boolean
         params: { tsquery_expr: "tesla & (musk | model)", terms: "tesla musk model", limit: 100 }
       elasticsearch: |
-        {"query": {"bool": {"must": [{"multi_match": {"query": "tesla", "fields": ["title", "description", "content"]}}, {"bool": {"should": [{"multi_match": {"query": "musk", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "model", "fields": ["title", "description", "content"]}}], "minimum_should_match": 1}}]}}, "size": 100, "_source": false, "track_total_hits": false}
+        {"query": {"bool": {"must": [{"multi_match": {"query": "tesla", "fields": ["title", "description", "content"]}}, {"bool": {"should": [{"multi_match": {"query": "musk", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "model", "fields": ["title", "description", "content"]}}], "minimum_should_match": 1}}]}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   - id: bool-facebook-privacy-not-instagram
     text: "facebook AND privacy AND NOT instagram"
@@ -461,7 +461,7 @@ queries:
         template: tiger_boolean
         params: { tsquery_expr: "facebook & privacy & !instagram", terms: "facebook privacy", limit: 100 }
       elasticsearch: |
-        {"query": {"bool": {"must": [{"multi_match": {"query": "facebook", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "privacy", "fields": ["title", "description", "content"]}}], "must_not": [{"multi_match": {"query": "instagram", "fields": ["title", "description", "content"]}}]}}, "size": 100, "_source": false, "track_total_hits": false}
+        {"query": {"bool": {"must": [{"multi_match": {"query": "facebook", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "privacy", "fields": ["title", "description", "content"]}}], "must_not": [{"multi_match": {"query": "instagram", "fields": ["title", "description", "content"]}}]}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   - id: bool-storm-puerto-rico
     text: "(hurricane OR storm) AND puerto AND rico"
@@ -486,7 +486,7 @@ queries:
         template: tiger_boolean
         params: { tsquery_expr: "(hurricane | storm) & puerto & rico", terms: "hurricane storm puerto rico", limit: 100 }
       elasticsearch: |
-        {"query": {"bool": {"must": [{"bool": {"should": [{"multi_match": {"query": "hurricane", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "storm", "fields": ["title", "description", "content"]}}], "minimum_should_match": 1}}, {"multi_match": {"query": "puerto", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "rico", "fields": ["title", "description", "content"]}}]}}, "size": 100, "_source": false, "track_total_hits": false}
+        {"query": {"bool": {"must": [{"bool": {"should": [{"multi_match": {"query": "hurricane", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "storm", "fields": ["title", "description", "content"]}}], "minimum_should_match": 1}}, {"multi_match": {"query": "puerto", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "rico", "fields": ["title", "description", "content"]}}]}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   - id: bool-uber-lyft-driver-not-taxi
     text: "(uber OR lyft) AND driver AND NOT taxi"
@@ -513,7 +513,7 @@ queries:
         template: tiger_boolean
         params: { tsquery_expr: "(uber | lyft) & driver & !taxi", terms: "uber lyft driver", limit: 100 }
       elasticsearch: |
-        {"query": {"bool": {"must": [{"bool": {"should": [{"multi_match": {"query": "uber", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "lyft", "fields": ["title", "description", "content"]}}], "minimum_should_match": 1}}, {"multi_match": {"query": "driver", "fields": ["title", "description", "content"]}}], "must_not": [{"multi_match": {"query": "taxi", "fields": ["title", "description", "content"]}}]}}, "size": 100, "_source": false, "track_total_hits": false}
+        {"query": {"bool": {"must": [{"bool": {"should": [{"multi_match": {"query": "uber", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "lyft", "fields": ["title", "description", "content"]}}], "minimum_should_match": 1}}, {"multi_match": {"query": "driver", "fields": ["title", "description", "content"]}}], "must_not": [{"multi_match": {"query": "taxi", "fields": ["title", "description", "content"]}}]}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   - id: bool-flu-vaccine
     text: "(flu OR influenza) AND vaccine"
@@ -537,7 +537,7 @@ queries:
         template: tiger_boolean
         params: { tsquery_expr: "(flu | influenza) & vaccine", terms: "flu influenza vaccine", limit: 100 }
       elasticsearch: |
-        {"query": {"bool": {"must": [{"bool": {"should": [{"multi_match": {"query": "flu", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "influenza", "fields": ["title", "description", "content"]}}], "minimum_should_match": 1}}, {"multi_match": {"query": "vaccine", "fields": ["title", "description", "content"]}}]}}, "size": 100, "_source": false, "track_total_hits": false}
+        {"query": {"bool": {"must": [{"bool": {"should": [{"multi_match": {"query": "flu", "fields": ["title", "description", "content"]}}, {"multi_match": {"query": "influenza", "fields": ["title", "description", "content"]}}], "minimum_should_match": 1}}, {"multi_match": {"query": "vaccine", "fields": ["title", "description", "content"]}}]}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   - id: mf-solar-power-cost
     text: "solar power cost"

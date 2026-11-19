@@ -173,17 +173,17 @@ TEMPLATES = """templates:
   - id: es_multi_match_boosted
     args: [terms]
     query: |
-      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "_source": false, "track_total_hits": false}
+      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   - id: es_phrase_boosted
     args: [terms]
     query: |
-      {"query": {"multi_match": {"query": "{{terms}}", "type": "phrase", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "_source": false, "track_total_hits": false}
+      {"query": {"multi_match": {"query": "{{terms}}", "type": "phrase", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   - id: es_title
     args: [terms]
     query: |
-      {"query": {"match": {"title": "{{terms}}"}}, "size": 100, "_source": false, "track_total_hits": false}
+      {"query": {"match": {"title": "{{terms}}"}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 """
 
 HEADER = """schema_version: 1
@@ -257,7 +257,7 @@ def es_boolean(spec):
     query = {"bool": {"must": must}}
     if spec["must_not"]:
         query["bool"]["must_not"] = [mm(t) for t in spec["must_not"]]
-    return json.dumps({"query": query, "size": 100, "_source": False, "track_total_hits": False})
+    return json.dumps({"query": query, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": False, "track_total_hits": False})
 
 
 def boolean(qid, description, spec):
