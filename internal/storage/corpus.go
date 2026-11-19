@@ -32,8 +32,9 @@ type PackageRef struct {
 }
 
 type LoadOptions struct {
-	BatchSize int
-	SkipIndex bool
+	BatchSize   int
+	Concurrency int
+	SkipIndex   bool
 }
 
 type StageTiming struct {
@@ -54,6 +55,7 @@ type LoadRecord struct {
 	Articles      int64             `json:"articles"`
 	Vectors       int64             `json:"vectors"`
 	BatchSize     int               `json:"batchSize"`
+	Concurrency   int               `json:"concurrency"`
 	Stages        []StageTiming     `json:"stages"`
 	Settings      map[string]string `json:"settings"`
 }
