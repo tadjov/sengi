@@ -7,7 +7,6 @@ import (
 	"iter"
 	"log/slog"
 	"slices"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -82,23 +81,15 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	if err := l.refuseLoaded(ctx, conn); err != nil {
 		return storage.LoadRecord{}, err
 	}
-	if err := readContainerBudget(ctx, conn, record.Settings); err != nil {
-		return storage.LoadRecord{}, err
-	}
 	if err := pauseAutovacuum(ctx, conn); err != nil {
 		return storage.LoadRecord{}, err
 	}
-	writers, err := l.openWriters(ctx, opts.Concurrency)
+	copyPool, err := l.openCopyPool(ctx, opts.Concurrency)
 	if err != nil {
 		return storage.LoadRecord{}, err
 	}
-	defer writers.Close()
-	var synchronousCommit string
-	if err := writers.QueryRow(ctx, "SELECT current_setting('synchronous_commit')").Scan(&synchronousCommit); err != nil {
-		return storage.LoadRecord{}, fmt.Errorf("read synchronous_commit of the copy connections: %w", err)
-	}
-	record.Settings["load.synchronous_commit"] = synchronousCommit
-	copier := &corpusCopier{writers: writers, concurrency: opts.Concurrency, batchSize: opts.BatchSize}
+	defer copyPool.Close()
+	copier := &corpusCopier{pool: copyPool, concurrency: opts.Concurrency, batchSize: opts.BatchSize}
 
 	var ids []uuid.UUID
 	err = timed(&record, "copy_articles", func() error {
@@ -122,10 +113,7 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 			return storage.LoadRecord{}, err
 		}
 	}
-	writers.Close()
-	if err := flushCommits(ctx, conn); err != nil {
-		return storage.LoadRecord{}, err
-	}
+	copyPool.Close()
 
 	if !opts.SkipIndex {
 		if err := l.buildIndexes(ctx, conn, &record); err != nil {
@@ -280,32 +268,6 @@ func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record 
 	return nil
 }
 
-// readContainerBudget reads the server's cgroup v2 limits, which only a superuser may read.
-func readContainerBudget(ctx context.Context, conn *pgx.Conn, settings map[string]string) error {
-	var cpuMax, memoryMax string
-	err := conn.QueryRow(ctx, "SELECT pg_read_file('/sys/fs/cgroup/cpu.max'), pg_read_file('/sys/fs/cgroup/memory.max')").Scan(&cpuMax, &memoryMax)
-	if err != nil {
-		return fmt.Errorf("read the container's cgroup limits: %w", err)
-	}
-	quota, period, ok := strings.Cut(strings.TrimSpace(cpuMax), " ")
-	if !ok {
-		return fmt.Errorf("cgroup cpu.max %q: want a quota and a period", cpuMax)
-	}
-	quotaMicros := int64(-1)
-	if quota != "max" {
-		if quotaMicros, err = strconv.ParseInt(quota, 10, 64); err != nil {
-			return fmt.Errorf("cgroup cpu.max quota %q: %w", quota, err)
-		}
-	}
-	periodMicros, err := strconv.ParseInt(period, 10, 64)
-	if err != nil {
-		return fmt.Errorf("cgroup cpu.max period %q: %w", period, err)
-	}
-	settings[storage.ContainerCPUsSetting] = storage.CPUQuota{QuotaMicros: quotaMicros, PeriodMicros: periodMicros}.CPUs()
-	settings[storage.ContainerMemorySetting] = strings.TrimSpace(memoryMax)
-	return nil
-}
-
 // indexBuildProgress reads how far the session's CREATE INDEX has got, or nothing when the index type reports none.
 func (l *CorpusLoader) indexBuildProgress(pid uint32) func(context.Context) []any {
 	return func(ctx context.Context) []any {
@@ -365,32 +327,22 @@ func resumeAutovacuum(ctx context.Context, conn *pgx.Conn) error {
 	return nil
 }
 
-// openWriters needs the schema's vector type; its connections skip the commit flush, since a crash mid-load means a reload.
-func (l *CorpusLoader) openWriters(ctx context.Context, concurrency int) (*pgxpool.Pool, error) {
+// openCopyPool needs the schema's vector type, which its connections register.
+func (l *CorpusLoader) openCopyPool(ctx context.Context, concurrency int) (*pgxpool.Pool, error) {
 	config := l.pool.conn.Config()
 	config.MaxConns = int32(concurrency)
 	config.MinConns = 0
-	config.AfterConnect = afterConnect(true, map[string]string{"synchronous_commit": "off"})
-	writers, err := pgxpool.NewWithConfig(ctx, config)
+	config.AfterConnect = afterConnect(true, nil)
+	copyPool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("open %d copy connections: %w", concurrency, err)
 	}
-	return writers, nil
-}
-
-// flushCommits lets readers set hint bits and all-visible flags on the copied rows again,
-// which Postgres refuses while an asynchronous commit is not yet flushed.
-func flushCommits(ctx context.Context, conn *pgx.Conn) error {
-	// A message flushed to the WAL flushes every commit written before it.
-	if _, err := conn.Exec(ctx, "SELECT pg_logical_emit_message(false, 'tusker', 'flush', true)"); err != nil {
-		return fmt.Errorf("flush the copy connections' commits: %w", err)
-	}
-	return nil
+	return copyPool, nil
 }
 
 // corpusCopier commits each batch in its own transaction, so a failed copy keeps whichever batches committed.
 type corpusCopier struct {
-	writers     *pgxpool.Pool
+	pool        *pgxpool.Pool
 	concurrency int
 	batchSize   int
 	committed   atomic.Int64
@@ -469,7 +421,7 @@ func copyConcurrently[T any](ctx context.Context, cp *corpusCopier, plan copyPla
 	for range cp.concurrency {
 		group.Go(func() error {
 			for batch := range batches {
-				if _, err := cp.writers.CopyFrom(ctx, pgx.Identifier{plan.Table}, plan.Columns, pgx.CopyFromRows(batch)); err != nil {
+				if _, err := cp.pool.CopyFrom(ctx, pgx.Identifier{plan.Table}, plan.Columns, pgx.CopyFromRows(batch)); err != nil {
 					return err
 				}
 				cp.committed.Add(int64(len(batch)))

@@ -403,24 +403,20 @@ func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string,
 		return nil, err
 	}
 	settings["segments"] = strconv.Itoa(segments)
-	if err := l.readNodeBudget(ctx, settings); err != nil {
+	if err := l.readNodeSizing(ctx, settings); err != nil {
 		return nil, err
 	}
 	return settings, nil
 }
 
-// readNodeBudget records the processors and heap the node runs with, and its container's cgroup limits.
-func (l *CorpusLoader) readNodeBudget(ctx context.Context, settings map[string]string) error {
+// readNodeSizing records the heap and processors the node sized itself to from its container's limits.
+func (l *CorpusLoader) readNodeSizing(ctx context.Context, settings map[string]string) error {
 	info, err := l.client.typed.Nodes.Info().Metric("os,jvm").Do(ctx)
 	if err != nil {
 		return fmt.Errorf("read node info: %w", err)
 	}
-	stats, err := l.client.typed.Nodes.Stats().Metric("os").Do(ctx)
-	if err != nil {
-		return fmt.Errorf("read node stats: %w", err)
-	}
-	if len(info.Nodes) != 1 || len(stats.Nodes) != 1 {
-		return fmt.Errorf("node budget: want one node, info lists %d and stats %d", len(info.Nodes), len(stats.Nodes))
+	if len(info.Nodes) != 1 {
+		return fmt.Errorf("node info: want one node, got %d", len(info.Nodes))
 	}
 	for _, node := range info.Nodes {
 		if node.Os == nil || node.Os.AllocatedProcessors == nil || node.Jvm == nil {
@@ -428,16 +424,6 @@ func (l *CorpusLoader) readNodeBudget(ctx context.Context, settings map[string]s
 		}
 		settings["node.allocated_processors"] = strconv.Itoa(*node.Os.AllocatedProcessors)
 		settings["node.heap_max_bytes"] = strconv.FormatInt(node.Jvm.Mem.HeapMaxInBytes, 10)
-	}
-	for _, node := range stats.Nodes {
-		if node.Os == nil || node.Os.Cgroup == nil || node.Os.Cgroup.Cpu == nil || node.Os.Cgroup.Memory == nil ||
-			node.Os.Cgroup.Cpu.CfsQuotaMicros == nil || node.Os.Cgroup.Cpu.CfsPeriodMicros == nil || node.Os.Cgroup.Memory.LimitInBytes == nil {
-			return errors.New("node stats report no cgroup cpu quota or memory limit")
-		}
-		cgroup := node.Os.Cgroup
-		quota := storage.CPUQuota{QuotaMicros: int64(*cgroup.Cpu.CfsQuotaMicros), PeriodMicros: int64(*cgroup.Cpu.CfsPeriodMicros)}
-		settings[storage.ContainerCPUsSetting] = quota.CPUs()
-		settings[storage.ContainerMemorySetting] = *cgroup.Memory.LimitInBytes
 	}
 	return nil
 }

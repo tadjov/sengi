@@ -158,8 +158,6 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 					"index.refresh_interval":                  "1s",
 					"node.allocated_processors":               "4",
 					"node.heap_max_bytes":                     "536870912",
-					"container.cpus":                          "4",
-					"container.memory_bytes":                  "6442450944",
 					"embedding.index_options.type":            "hnsw",
 					"embedding.index_options.m":               "16",
 					"embedding.index_options.ef_construction": "64",
