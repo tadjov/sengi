@@ -610,7 +610,7 @@ Judgments resolution order:
 
 A suite query without `text` fails the run before measuring, as it fails `bench pool`; the
 run reads the suites once, before measuring, so editing one mid-run changes nothing. A
-judgments file that does not exist fails the run the same way, as do judgments whose `pool_run_id` is not the current pool's `run_id`. `--latency-only` measures latency without judgments; its report is marked `settings.latency_only` and never becomes `latest.json`. A report's `provenance.unjudged_count` is the number of pooled docs the run found ungraded, not the judge's own count. `provenance.pool_run_id` and `provenance.judgments_run_id` name the pool and the judgments it scored against.
+judgments file that does not exist fails the run the same way, as do judgments whose `pool_run_id` is not the current pool's `run_id`. `--latency-only` measures latency without judgments; its report is marked `settings.latency_only` and never becomes `latest.json`. A report's `provenance.unjudged_count` is the number of pooled docs the run found ungraded, not the judge's own count. `provenance.pool_run_id` and `provenance.judgments_run_id` name the pool and the judgments it scored against. When the judgments reused grades through `bench judge --carry-over`, `provenance.carried_over` names the judgments and pool they came from and how many there were.
 
 Flags:
 - `--jobs pg,es` — run only the named job(s) from the spec (useful during development)
@@ -659,6 +659,7 @@ Before the first query, `bench run` reads from each live engine how it indexed t
 |---------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | postgres      | `server_version`; the versions of `vector`, `pg_search`, `pg_textsearch`, `pg_trgm` and `fuzzystrmatch`, where installed; `indexdef` and `reloptions` of every index on `articles` and `article_embeddings`; the live value of each `connection_settings` entry |
 | elasticsearch | the version from `GET /`; the concrete index the spec's `index` resolves to; its `settings.index.analysis`; analyzer, `index_options`, dims and similarity of every text and `dense_vector` field                                                      |
+| fusion        | `fusion.legs`: the leg engines it fuses, in leg order; a fusion engine has no index of its own                                                                                                                                                         |
 
 Provenance is metadata, so a failed read never fails the run: it prints a warning and the block carries `error` instead. An `api` engine cannot describe its index, so its block carries only that error. Reports written before provenance was recorded have no `index` block and still load.
 
