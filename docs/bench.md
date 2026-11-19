@@ -607,7 +607,7 @@ Executes the suite against all engines, computes IR metrics and latency, prints 
 
 The report is always written. A run fails, exits non-zero and leaves `reports/latest.json` alone when:
 - a (query, engine) execution errored
-- with `--rounds`, a (query, engine) cell ranked differently in a later round than in the first, whose ranking is the one scored; the error names the cells and the rounds (`fts:q07/es (round 2, 3)`). A deterministic engine returns the same ranking every time, so a difference is an unstable tie or a corpus that changed under the run
+- a (query, engine) cell ranked differently in a later measured iteration than in the first; the error names the cells and the iterations (`fts:q07/es (iteration 2, 3)`). A deterministic engine returns the same ranking every time, so a difference is an unstable tie or a corpus that changed under the run. The rankings are compared as stored: cut at the pool depth, or whole in a `--latency-only` run
 - it measured a (query, engine) cell the pool dropped (`bench pool --allow-partial`)
 - it ran a query the pool holds no entry for
 - it measured an engine the pool never saw
@@ -631,7 +631,6 @@ Flags:
 - `--jobs pg,es` — run only the named job(s) from the spec (useful during development)
 - `--k 3,5,10` — NDCG/P cut-off values; each must be positive, distinct and no deeper than the pool's `meta.pool_depth`, or the run fails before measuring. The spec loader holds `metrics.k_values` to the same rule against `defaults.pool_depth` when that is set
 - `--warmup N`, `--iterations N` — override spec settings
-- `--rounds N` — measure every job N times (default 1); see [Rounds](#rounds)
 - `--latency-only` — measure latency without judgments
 
 Retrieval depth is the suite's own `limit` param (or ES `size`); there is no run flag for it. Every ranking is cut at the pool's `meta.pool_depth` before it is scored and stored, so MAP and bpref count only docs the pool could have judged, and the run files `bench export --format run` writes hold the rankings bench scored. A `--latency-only` run keeps the rankings whole.
@@ -669,15 +668,13 @@ Every engine in a job answers every query of its suite. If an engine has no bloc
 
 Measured elasticsearch templates should set `"track_total_hits": false` until its cost has been measured. By default elasticsearch counts matches up to 10,000 to fill `hits.total`, which delays its early termination of a top-k search, while postgres reports no total at all. Leaving it on makes elasticsearch do work postgres does not, by an amount nobody has sized yet. With it off, elasticsearch omits `hits.total` and `corpus_matches` is left empty for those queries.
 
-#### Rounds
+#### Engine order
 
-`bench run --rounds N` measures each job N times, one round after another. A round is a full pass over the job's queries and engines, warmup included, so a slow stretch of the host lands in one round rather than on whichever engine was running. The engine order rotates by one each round: with engines `a`, `b`, `c`, round 1 runs every query on `a`, `b`, `c`, round 2 on `b`, `c`, `a`, round 3 on `c`, `a`, `b`. Every engine leads once only when `--rounds` is at least the number of engines; with fewer rounds some engine never runs first. The default, 1, measures once, and the report records the count as `settings.rounds`.
+`bench run` measures one execution at a time and interleaves a query's engines. For each query it first runs every engine's `runs.warmup` executions, then measured iteration 1 on every engine, then iteration 2, and so on through `runs.iterations`, so a slow stretch of the host spreads over the engines instead of landing on whichever runs first. Each pass, warmup or measured, runs the engines in a random permutation drawn from the run's seed, the query id and the pass. The seed is drawn per run and recorded as `settings.seed`, so the order of every pass can be drawn again from the report. A fusion engine is one execution like any other, its legs running back to back inside it. A cell that fails an iteration stops there, as above, while the other engines carry on. `bench pool` keeps running engines side by side.
 
-Engines run in the order the job declares them, rotated each round, at `--rounds 1` too. Reports made before this change ran them in whatever order the Go scheduler picked, which put the last-declared engine first for nearly every query, so their latency carries another position bias than reports made since.
+Reports made before this change ran each engine's warmup and iterations back to back, in whatever order the Go scheduler picked, which put the last-declared engine first for nearly every query, so their latency carries another position bias than reports made since.
 
-Quality metrics score the first round's ranking. Every later round must return the same ranking for the cell, or the run fails (see above).
-
-Each aggregated entry keeps every round's latency stats under `Rounds`, over the same queries as `Latency`, which pools every round's iterations. `AcrossRounds` holds the median of the rounds' p50, p95 and p99, each with the smallest and largest round value. With more than one round the text, markdown and HTML reports show it as `median [min, max]`.
+Each per-query entry keeps its cell's latency over every iteration under `Latency`, `median` included, and engine latency is p50 to p99 over every sample of the queries every engine answered.
 
 #### Index provenance
 
@@ -809,7 +806,7 @@ Significance is a two-tailed Wilcoxon signed-rank test per engine pair for NDCG@
 
 Beside each test, `Δ A−B [low, high]` is the mean of the per-query differences A − B with its 95% percentile bootstrap interval: 10,000 resamples of the judged queries, percentiles interpolated as `numpy.percentile` does. It matches `scipy.stats.bootstrap((d,), np.mean, method="percentile", n_resamples=10000)` within resampling noise. The resampler is seeded from the engine pair and metric names, so regenerating a report gives the same interval. Untestable pairs get one too. The interval is unadjusted, one per comparison, while the stars come from the Holm-adjusted p, so an interval clear of zero can sit beside `ns`. Wilcoxon tests the pseudo-median, so a starred pair can disagree in sign with Δ.
 
-Latency (min/p50/p75/p90/p95/p99/max/mean/stddev) covers only the queries every engine in the job answered; `LatencyExcludedQueries` counts the rest. The server time and every round's latency cover the same queries.
+Latency (min/p50/p75/p90/p95/p99/max/mean/stddev) covers only the queries every engine in the job answered; `LatencyExcludedQueries` counts the rest. The server time covers the same queries.
 
 Each report records every (query, engine) ranking, so `trec_eval` can reproduce its MAP, P@k and linear-gain NDCG:
 
