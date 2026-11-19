@@ -220,3 +220,11 @@ func TestSummary_NamesWhatTheEngineRanWith(t *testing.T) {
 		})
 	}
 }
+
+func TestSummary_NamesNoServerSettingsAReportNeverRecorded(t *testing.T) {
+	older := IndexProvenance{IndexDescription: engine.IndexDescription{Postgres: &pg.IndexDescription{ServerVersion: "18.0"}}}
+
+	if summary := older.Summary(); strings.Contains(summary, "server settings") {
+		t.Errorf("summary = %q, want no server settings count for a report that recorded none", summary)
+	}
+}

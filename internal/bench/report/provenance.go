@@ -166,7 +166,9 @@ func (p IndexProvenance) Summary() string {
 		if len(d.Settings) > 0 {
 			parts = append(parts, "settings: "+formatSettings(d.Settings))
 		}
-		parts = append(parts, fmt.Sprintf("server settings: %d", len(d.ServerSettings)))
+		if len(d.ServerSettings) > 0 {
+			parts = append(parts, fmt.Sprintf("server settings: %d", len(d.ServerSettings)))
+		}
 		if d.Limits != nil {
 			parts = append(parts, fmt.Sprintf("cgroup: cpu.max %s, memory.max %s", d.Limits.CPUMax, d.Limits.MemoryMax))
 		}
