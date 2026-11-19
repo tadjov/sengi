@@ -65,7 +65,7 @@ services:
       - pg_news_tiger_data:/home/postgres/pgdata/data
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0@sha256:ec72548cf833e58578d8ff40df44346a49480b2c88a4e73a91e1b85ec7ef0d44
     container_name: es-news
     environment:
       - node.name=es-news
@@ -87,7 +87,7 @@ services:
       - "9300:9300"
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.12.0
+    image: docker.elastic.co/kibana/kibana:8.12.0@sha256:596700740fdb449c5726e6b6a6dd910c2140c8a37e68a301a5186e86b0834c9f
     container_name: kibana-news
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200

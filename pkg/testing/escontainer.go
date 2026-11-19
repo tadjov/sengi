@@ -11,6 +11,29 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+const (
+	elasticsearchImage  = "docker.elastic.co/elasticsearch/elasticsearch:8.12.0"
+	elasticsearchDigest = "sha256:ec72548cf833e58578d8ff40df44346a49480b2c88a4e73a91e1b85ec7ef0d44"
+)
+
+// digestPin pulls image by digest at container creation. The elasticsearch module reads its
+// version defaults from the tag, which a tag@digest reference hides from it.
+type digestPin struct {
+	image  string
+	digest string
+}
+
+func (p digestPin) Description() string {
+	return "digest pin"
+}
+
+func (p digestPin) Substitute(image string) (string, error) {
+	if image != p.image {
+		return image, nil
+	}
+	return image + "@" + p.digest, nil
+}
+
 // ESContainer represents a running Elasticsearch test container
 type ESContainer struct {
 	Container testcontainers.Container
@@ -28,7 +51,8 @@ func NewESContainer(ctx context.Context, tb testing.TB) *ESContainer {
 	// readiness probe below speaks plaintext and would poll until it times out.
 	// ES_JAVA_OPTS overrides the module's 2 GB heap with 512 MB.
 	esContainer, err := elasticsearch.Run(ctx,
-		"docker.elastic.co/elasticsearch/elasticsearch:8.12.0",
+		elasticsearchImage,
+		testcontainers.WithImageSubstitutors(digestPin{image: elasticsearchImage, digest: elasticsearchDigest}),
 		testcontainers.WithEnv(map[string]string{
 			"xpack.security.enabled": "false",
 			"discovery.type":         "single-node",
