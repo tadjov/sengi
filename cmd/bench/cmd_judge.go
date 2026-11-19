@@ -99,7 +99,7 @@ Ctrl-C is safe.
 After a re-pool, --carry-over <annotations> --carry-over-pool <their pool>
 reuses each old grade whose judge and query are unchanged and grades only the
 new docs. Take the old pool from git; batched and whole-pool judges can't carry
-over.`,
+over, and neither can a pool built on another canonical package.`,
 		Example: `  bench judge tracks/global-news-dataset/fts_quality --strategy keyword
   bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-cli --model sonnet
   bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-api --model sonnet --batch 20 --resume
@@ -277,6 +277,9 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 		msg := fmt.Sprintf("Carry-over: %d grades from %s", carried.Count, carried.Grades.Meta.RunID)
 		if len(carried.ChangedQueries) > 0 {
 			msg += fmt.Sprintf("; changed queries graded again: %s", strings.Join(carried.ChangedQueries, ", "))
+		}
+		if !carried.CorpusChecked {
+			msg += "; corpus not checked, a pool names no canonical package"
 		}
 		printWarn(cmd.OutOrStdout(), msg)
 	}

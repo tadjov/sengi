@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/tadjov/tusker/internal/bench/meta"
 	"github.com/tadjov/tusker/internal/bench/pool"
+	"github.com/tadjov/tusker/internal/storage"
 )
 
 // CarryOverInput is the old judgments, the pool they graded, the new pool and the current judge.
@@ -23,10 +24,12 @@ type CarriedGrades struct {
 	Grades         *File
 	Count          int
 	ChangedQueries []string
+	// CorpusChecked is false when a pool names no canonical package.
+	CorpusChecked bool
 }
 
-// CarryOver reuses a grade when the judge and the query's text, category and
-// filters are unchanged. Docs new to the pool are left to grade.
+// CarryOver reuses a grade when the judge, the corpus and the query's text,
+// category and filters are unchanged. Docs new to the pool are left to grade.
 func CarryOver(in CarryOverInput) (CarriedGrades, error) {
 	if err := checkCarryOver(in); err != nil {
 		return CarriedGrades{}, err
@@ -37,7 +40,10 @@ func CarryOver(in CarryOverInput) (CarriedGrades, error) {
 	}
 	priorGrades := indexExisting(in.Prior)
 
-	carried := CarriedGrades{Grades: &File{Meta: in.Prior.Meta}}
+	carried := CarriedGrades{
+		Grades:        &File{Meta: in.Prior.Meta},
+		CorpusChecked: in.PriorPool.Meta.Canonical != nil && in.Pool.Meta.Canonical != nil,
+	}
 	for _, entry := range in.Pool.Queries {
 		before, ok := priorQueries[entry.QueryID]
 		if !ok {
@@ -77,7 +83,15 @@ func checkCarryOver(in CarryOverInput) error {
 	if in.Judge.Batching != nil {
 		return errors.New("batched grades depend on their batch, so they can't be carried over")
 	}
-	return nil
+	return checkSameCanonical(in.PriorPool.Meta.Canonical, in.Pool.Meta.Canonical)
+}
+
+func checkSameCanonical(before, now *storage.PackageRef) error {
+	if before == nil || now == nil || before.ResourceHash == now.ResourceHash {
+		return nil
+	}
+	return fmt.Errorf("old pool was built on %s %s (%s), the new one on %s %s (%s); grade the new pool without --carry-over",
+		before.Name, before.Version, before.ResourceHash, now.Name, now.Version, now.ResourceHash)
 }
 
 func sameGradingQuery(before, now pool.PoolEntry) bool {

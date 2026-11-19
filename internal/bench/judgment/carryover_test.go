@@ -9,6 +9,7 @@ import (
 	"github.com/tadjov/tusker/internal/bench/meta"
 	"github.com/tadjov/tusker/internal/bench/pool"
 	"github.com/tadjov/tusker/internal/bench/suite"
+	"github.com/tadjov/tusker/internal/storage"
 )
 
 var (
@@ -20,8 +21,18 @@ var (
 
 var sonnet = meta.Judge{Strategy: "llm", Provider: "claude-cli", Model: "claude-sonnet-5-5", PromptVersion: "v3"}
 
+var (
+	canonicalV1 = &storage.PackageRef{Name: "cc-news-canonical", Version: "v1", ResourceHash: "sha256:aaaa"}
+	canonicalV2 = &storage.PackageRef{Name: "cc-news-canonical", Version: "v2", ResourceHash: "sha256:bbbb"}
+)
+
 func carryPool(runID string, entries ...pool.PoolEntry) *pool.PoolFile {
 	return &pool.PoolFile{Meta: meta.Meta{RunID: runID}, Queries: entries}
+}
+
+func onCanonical(pf *pool.PoolFile, canonical *storage.PackageRef) *pool.PoolFile {
+	pf.Meta.Canonical = canonical
+	return pf
 }
 
 func pooled(id string, text string, docs ...uuid.UUID) pool.PoolEntry {
@@ -89,28 +100,61 @@ func TestCarryOver_Refuses(t *testing.T) {
 	batched := sonnet
 	batched.Batching = &meta.Batching{Size: 20, Seed: 1}
 	tests := []struct {
-		name      string
-		prior     *File
-		priorPool string
-		judge     meta.Judge
-		wantErr   string
+		name           string
+		prior          *File
+		priorPool      string
+		priorCanonical *storage.PackageRef
+		canonical      *storage.PackageRef
+		judge          meta.Judge
+		wantErr        string
 	}{
-		{"judgments of another pool", oldJudgments(sonnet, "other-pool"), "old-pool", sonnet, "other-pool"},
-		{"judgments without a pool", oldJudgments(sonnet, ""), "old-pool", sonnet, "no pool_run_id"},
-		{"another judge", oldJudgments(sonnet, "old-pool"), "old-pool", opus, "another judge"},
-		{"batched grades", oldJudgments(batched, "old-pool"), "old-pool", batched, "batch"},
+		{name: "judgments of another pool", prior: oldJudgments(sonnet, "other-pool"), priorPool: "old-pool", judge: sonnet, wantErr: "other-pool"},
+		{name: "judgments without a pool", prior: oldJudgments(sonnet, ""), priorPool: "old-pool", judge: sonnet, wantErr: "no pool_run_id"},
+		{name: "another judge", prior: oldJudgments(sonnet, "old-pool"), priorPool: "old-pool", judge: opus, wantErr: "another judge"},
+		{name: "batched grades", prior: oldJudgments(batched, "old-pool"), priorPool: "old-pool", judge: batched, wantErr: "batch"},
+		{
+			name: "another canonical package", prior: oldJudgments(sonnet, "old-pool"), priorPool: "old-pool",
+			priorCanonical: canonicalV1, canonical: canonicalV2, judge: sonnet, wantErr: "sha256:bbbb",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := CarryOver(CarryOverInput{
 				Prior:     tt.prior,
-				PriorPool: carryPool(tt.priorPool, pooled("q1", "flu vacine", kept)),
-				Pool:      carryPool("new-pool", pooled("q1", "flu vacine", kept)),
+				PriorPool: onCanonical(carryPool(tt.priorPool, pooled("q1", "flu vacine", kept)), tt.priorCanonical),
+				Pool:      onCanonical(carryPool("new-pool", pooled("q1", "flu vacine", kept)), tt.canonical),
 				Judge:     tt.judge,
 			})
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
+}
+
+func TestCarryOver_ChecksTheCorpusOnlyWhenBothPoolsNameIt(t *testing.T) {
+	tests := []struct {
+		name           string
+		priorCanonical *storage.PackageRef
+		canonical      *storage.PackageRef
+		wantChecked    bool
+	}{
+		{"same canonical package", canonicalV1, canonicalV1, true},
+		{"old pool names none", nil, canonicalV1, false},
+		{"new pool names none", canonicalV1, nil, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			carried, err := CarryOver(CarryOverInput{
+				Prior:     oldJudgments(sonnet, "old-pool"),
+				PriorPool: onCanonical(carryPool("old-pool", pooled("q1", "flu vacine", kept)), tt.priorCanonical),
+				Pool:      onCanonical(carryPool("new-pool", pooled("q1", "flu vacine", kept)), tt.canonical),
+				Judge:     sonnet,
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, map[string]map[uuid.UUID]int{"q1": {kept: 3}}, indexExisting(carried.Grades))
+			assert.Equal(t, tt.wantChecked, carried.CorpusChecked)
 		})
 	}
 }

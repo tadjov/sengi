@@ -26,9 +26,9 @@ type Corpus struct {
 }
 
 type PackageRef struct {
-	Name         string `json:"name"`
-	Version      string `json:"version"`
-	ResourceHash string `json:"resourceHash"`
+	Name         string `json:"name" yaml:"name"`
+	Version      string `json:"version" yaml:"version"`
+	ResourceHash string `json:"resourceHash" yaml:"resource_hash"`
 }
 
 type LoadOptions struct {
