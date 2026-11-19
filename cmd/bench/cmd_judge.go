@@ -247,42 +247,54 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	runMeta.PoolRef = poolPath
 	runMeta.PoolRunID = pf.Meta.RunID
 	runMeta.RelevanceScale = []int{0, 1, 2, 3}
-	writer := judgment.NewIncrementalWriter(outPath, runMeta)
-	if f.resume {
-		cfg.Existing, err = writer.LoadPrior(pf)
-		if err != nil {
-			return fmt.Errorf("load prior judgments: %w", err)
-		}
-		if cfg.Existing != nil {
-			if err := checkResumeCompat(cfg.Existing, judge); err != nil {
-				return err
-			}
-			if err := checkPoolBinding(cfg.Existing.Meta.PoolRunID, pf); err != nil {
-				return fmt.Errorf("--resume: %w\n  • re-run without --resume to grade the current pool from scratch", err)
-			}
-			printWarn(cmd.OutOrStdout(), fmt.Sprintf("Resume: loaded %d prior queries from %s", len(cfg.Existing.Queries), outPath))
-		}
-	}
+	var carried *judgment.File
 	if f.carryOver != "" {
-		carried, err := carryOverGrades(f, pf, judge, strat)
+		carry, err := carryOverGrades(f, pf, judge, strat)
 		if err != nil {
 			return err
 		}
-		cfg.Existing = judgment.MergeGrades(carried.Grades, cfg.Existing)
+		carried = carry.Grades
 		runMeta.CarriedOver = &meta.CarriedOver{
-			JudgmentsRunID: carried.Grades.Meta.RunID,
-			PoolRunID:      carried.Grades.Meta.PoolRunID,
-			Grades:         carried.Count,
+			JudgmentsRunID: carry.Grades.Meta.RunID,
+			PoolRunID:      carry.Grades.Meta.PoolRunID,
+			Grades:         carry.Count,
 		}
-		msg := fmt.Sprintf("Carry-over: %d grades from %s", carried.Count, carried.Grades.Meta.RunID)
-		if len(carried.ChangedQueries) > 0 {
-			msg += fmt.Sprintf("; changed queries graded again: %s", strings.Join(carried.ChangedQueries, ", "))
+		msg := fmt.Sprintf("Carry-over: %d grades from %s", carry.Count, carry.Grades.Meta.RunID)
+		if len(carry.ChangedQueries) > 0 {
+			msg += fmt.Sprintf("; changed queries graded again: %s", strings.Join(carry.ChangedQueries, ", "))
 		}
 		if !carried.CorpusChecked {
 			msg += "; corpus not checked, a pool names no canonical package"
 		}
 		printWarn(cmd.OutOrStdout(), msg)
 	}
+	var existing *judgment.File
+	if f.resume {
+		if existing, err = judgment.ReadFileIfExists(outPath); err != nil {
+			return fmt.Errorf("load prior judgments: %w", err)
+		}
+		if existing != nil {
+			if err := checkResumeCompat(existing, judge); err != nil {
+				return err
+			}
+			if err := checkPoolBinding(existing.Meta.PoolRunID, pf); err != nil {
+				return fmt.Errorf("--resume: %w\n  • re-run without --resume to grade the current pool from scratch", err)
+			}
+			// A resumed file keeps the grades an earlier run carried over.
+			if runMeta.CarriedOver == nil {
+				runMeta.CarriedOver = existing.Meta.CarriedOver
+			}
+			printWarn(cmd.OutOrStdout(), fmt.Sprintf("Resume: loaded %d prior queries from %s", len(existing.Queries), outPath))
+		}
+	}
+	// Made once runMeta is whole: the writer stamps every flush with a copy.
+	writer := judgment.NewIncrementalWriter(outPath, runMeta)
+	if f.resume {
+		if _, err := writer.LoadPrior(pf); err != nil {
+			return fmt.Errorf("load prior judgments: %w", err)
+		}
+	}
+	cfg.Existing = judgment.MergeGrades(carried, existing)
 	cfg.Sink = writer.Append
 	cfg.OnQueryStart = func(qid string, total, skipped int) {
 		if skipped > 0 {
