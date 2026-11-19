@@ -95,10 +95,11 @@ TEMPLATES = """templates:
       ) nearest
       ORDER BY distance, id
 
+  # k above size leaves the cut among tied vectors to the id sort, not to load order.
   - id: es_knn
     args: [query_vector]
     query: |
-      {"knn": {"field": "embedding", "query_vector": {{#toJson}}query_vector{{/toJson}}, "k": 100, "num_candidates": 200}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
+      {"knn": {"field": "embedding", "query_vector": {{#toJson}}query_vector{{/toJson}}, "k": 200, "num_candidates": 200}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   # Elasticsearch's own one-request hybrid on the basic licence: the BM25 and kNN
   # scores are summed with the default boosts.
