@@ -3,6 +3,8 @@ package testing
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"testing"
 	"time"
@@ -29,10 +31,27 @@ type PGConfig struct {
 	Unmigrated bool
 }
 
-var engineImages = map[storage.Engine]string{
-	storage.PostgresNative: "pgvector/pgvector:pg18",
-	storage.ParadeDB:       "paradedb/paradedb:0.21.5-pg18",
-	storage.Tiger:          "timescale/timescaledb-ha:pg18.6-ts2.32.0-r599.1",
+// engineImage is a published image pinned by digest, or a thin Dockerfile under docker/ that pins
+// its base the same way, as docker-compose.yml runs the engine.
+type engineImage struct {
+	reference  string
+	dockerfile testcontainers.FromDockerfile
+}
+
+var engineImages = map[storage.Engine]engineImage{
+	storage.PostgresNative: {dockerfile: thinDockerfile(storage.PostgresNative)},
+	storage.ParadeDB:       {dockerfile: thinDockerfile(storage.ParadeDB)},
+	storage.Tiger:          {reference: "timescale/timescaledb-ha:pg18.6-ts2.32.0-r599.1@sha256:96b6033e7e54c26099f29cb46f634953b749b8c2c92c77bfb715cd630cdadf2e"},
+}
+
+func thinDockerfile(engine storage.Engine) testcontainers.FromDockerfile {
+	_, thisFile, _, _ := runtime.Caller(0)
+	return testcontainers.FromDockerfile{
+		Context:   filepath.Join(filepath.Dir(thisFile), "..", "..", "docker", string(engine)),
+		Repo:      "tusker-test-" + string(engine),
+		Tag:       "latest",
+		KeepImage: true,
+	}
 }
 
 var serverFlags = []string{
@@ -94,7 +113,7 @@ func createPGContainer(ctx context.Context, cfg PGConfig) (*PGContainer, error) 
 	}
 
 	pgContainer, err := postgres.Run(ctx,
-		image,
+		image.reference, testcontainers.WithDockerfile(image.dockerfile),
 		postgres.WithDatabase(cfg.Database),
 		postgres.WithUsername(cfg.Username),
 		postgres.WithPassword(cfg.Password),
