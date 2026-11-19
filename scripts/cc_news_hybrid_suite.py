@@ -43,8 +43,8 @@ DESCRIPTIVE = [
 
 # Every leg orders its own ties by id, and the SQL fusions rank inside each leg
 # the same way, so pg-rrf and the client-side pg-rrf-client fuse the same input.
-# The vector legs sort the HNSW top-k afterwards: a tie-break inside the scan
-# would stop the index serving the ORDER BY.
+# The vector legs break ties before their LIMIT too: the HNSW index still serves
+# the distance, and an Incremental Sort adds article_id.
 TEMPLATES = """templates:
   - id: pg_multi_field
     args: [terms, rank_norm, limit]
@@ -90,7 +90,7 @@ TEMPLATES = """templates:
         SELECT article_id AS id, embedding <=> $2::vector AS distance
         FROM article_embeddings
         WHERE model_name = $1
-        ORDER BY embedding <=> $2::vector
+        ORDER BY embedding <=> $2::vector, article_id
         LIMIT $3::int
       ) nearest
       ORDER BY distance, id
@@ -125,7 +125,7 @@ TEMPLATES = """templates:
           SELECT article_id AS id, embedding <=> $4::vector AS distance
           FROM article_embeddings
           WHERE model_name = $3
-          ORDER BY embedding <=> $4::vector
+          ORDER BY embedding <=> $4::vector, article_id
           LIMIT $5::int
         ) nearest
       )
@@ -160,7 +160,7 @@ TEMPLATES = """templates:
           SELECT article_id AS id, embedding <=> $3::vector AS distance
           FROM article_embeddings
           WHERE model_name = $2
-          ORDER BY embedding <=> $3::vector
+          ORDER BY embedding <=> $3::vector, article_id
           LIMIT $4::int
         ) nearest
       )
@@ -191,7 +191,7 @@ TEMPLATES = """templates:
           SELECT article_id AS id, embedding <=> $3::vector AS distance
           FROM article_embeddings
           WHERE model_name = $2
-          ORDER BY embedding <=> $3::vector
+          ORDER BY embedding <=> $3::vector, article_id
           LIMIT $4::int
         ) nearest
       )
