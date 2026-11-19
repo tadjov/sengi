@@ -225,6 +225,7 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 	if judgments.meta != nil {
 		rpt.Provenance.PoolRunID = judgments.pool.Meta.RunID
 		rpt.Provenance.JudgmentsRunID = judgments.meta.RunID
+		rpt.Provenance.CarriedOver = judgments.meta.CarriedOver
 		rpt.Provenance.Judge = judgments.meta.Judge
 		rpt.Provenance.GradedCount = judgments.meta.GradedCount
 		rpt.Provenance.UnjudgedCount = &judgments.coverage.unjudged
