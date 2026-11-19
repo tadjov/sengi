@@ -965,6 +965,33 @@ func TestJudge_InterruptedCarryOverRunKeepsItsRecord(t *testing.T) {
 	assert.Equal(t, want, fx.annotations(t, "keyword").Meta.CarriedOver, "the file q1 left behind")
 }
 
+// A run that stops before the carried query must still leave its grade in the
+// file, or the resume bench run asks for grades it again from scratch.
+func TestJudge_ResumeAfterARunStoppedBeforeTheCarriedQueryKeepsItsGrade(t *testing.T) {
+	fx := newJudgeFixture(t, "climate change", "climate change summit")
+	carriedDoc := fx.pool.Queries[0].Docs[0].DocID
+	carryOver, want := fx.rePoolOverOldJudgments(t)
+	reachedDoc, unreadable := uuid.New(), uuid.New()
+	fx.articles[reachedDoc] = document.Article{ID: reachedDoc, Title: "climate report"}
+	fx.pool.Queries = append([]pool.PoolEntry{
+		{QueryID: "q-reached", QueryText: "climate report", Docs: []pool.PooledDoc{{DocID: reachedDoc}}},
+		{QueryID: "q-unread", QueryText: "climate summit", Docs: []pool.PooledDoc{{DocID: unreadable}}},
+	}, fx.pool.Queries...)
+	fx.writePool(t)
+	fx.reader = readerFailingOn{articleStore: fx.articles, doc: unreadable}
+	err := fx.judge(t, append([]string{"--strategy", "keyword"}, carryOver...)...)
+	require.ErrorContains(t, err, "connection reset")
+	fx.reader = nil
+	fx.articles[unreadable] = document.Article{ID: unreadable, Title: "climate summit"}
+
+	require.NoError(t, fx.judge(t, "--strategy", "keyword", "--resume"))
+
+	got := fx.annotations(t, "keyword")
+	// Keyword would grade the carried doc 3; 1 means the carried grade survived.
+	assert.Equal(t, judgment.GradeMarginally, gradesByQuery(got)["q1"][carriedDoc])
+	assert.Equal(t, want, got.Meta.CarriedOver)
+}
+
 func TestJudge_CarryOverRefusesWholePoolJudges(t *testing.T) {
 	fx := newJudgeFixture(t, "climate change", "climate change summit")
 

@@ -287,14 +287,11 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 			printWarn(cmd.OutOrStdout(), fmt.Sprintf("Resume: loaded %d prior queries from %s", len(existing.Queries), outPath))
 		}
 	}
+	cfg.Existing = judgment.MergeGrades(carried, existing)
 	// Made once runMeta is whole: the writer stamps every flush with a copy.
 	writer := judgment.NewIncrementalWriter(outPath, runMeta)
-	if f.resume {
-		if _, err := writer.LoadPrior(pf); err != nil {
-			return fmt.Errorf("load prior judgments: %w", err)
-		}
-	}
-	cfg.Existing = judgment.MergeGrades(carried, existing)
+	// Every flush then holds the carried grades of queries the run has not reached.
+	writer.Seed(cfg.Existing, pf)
 	cfg.Sink = writer.Append
 	cfg.OnQueryStart = func(qid string, total, skipped int) {
 		if skipped > 0 {

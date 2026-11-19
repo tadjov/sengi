@@ -88,25 +88,6 @@ func TestIncrementalWriter_AppendReplacesSameQuery(t *testing.T) {
 	assert.Equal(t, 3, jf.Queries[0].Docs[0].Grade, "second Append should overwrite same QueryID")
 }
 
-func TestIncrementalWriter_LoadPriorRoundTrip(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "ann.yaml")
-
-	prior := &File{
-		Meta: meta.Meta{Judge: &meta.Judge{Strategy: "test"}},
-		Queries: []Entry{
-			{QueryID: "q1", Docs: []GradedDoc{{DocID: uuid.New(), Grade: 2}}},
-		},
-	}
-	require.NoError(t, WriteFile(prior, path))
-
-	w := NewIncrementalWriter(path, meta.Meta{Judge: &meta.Judge{Strategy: "test"}})
-	loaded, err := w.LoadPrior(poolOf("q1"))
-	require.NoError(t, err)
-	require.NotNil(t, loaded)
-	assert.Len(t, loaded.Queries, 1)
-}
-
 // Grade counts describe a judgment set; pools share the meta block but have
 // nothing to count.
 func TestGradeCounts_StayOffPoolFiles(t *testing.T) {
@@ -125,15 +106,14 @@ func TestGradeCounts_StayOffPoolFiles(t *testing.T) {
 // the caller's meta for a later resume to check it.
 func TestIncrementalWriter_StampsMetaOnEveryFlush(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "ann.yaml")
-	require.NoError(t, WriteFile(&File{
+	prior := &File{
 		Meta:    meta.Meta{Judge: &meta.Judge{Strategy: "test"}, PoolRef: "old-pool.yaml"},
 		Queries: []Entry{{QueryID: "q1", Docs: []GradedDoc{{DocID: uuid.New(), Grade: 2}}}},
-	}, path))
+	}
 	stamp := meta.Meta{Judge: &meta.Judge{Strategy: "test"}, PoolRef: "pool.yaml"}
 
 	w := NewIncrementalWriter(path, stamp)
-	_, err := w.LoadPrior(poolOf("q1", "q2"))
-	require.NoError(t, err)
+	w.Seed(prior, poolOf("q1", "q2"))
 	require.NoError(t, w.Append(QueryProgress{QueryID: "q2"}, Entry{QueryID: "q2"}))
 
 	jf, err := ReadFile(path)
@@ -213,19 +193,18 @@ func poolOf(queryIDs ...string) *pool.PoolFile {
 
 // A query that has left the pool is no longer judged, so an interrupted resume
 // must not carry it into a file stamped and counted as this run's.
-func TestIncrementalWriter_LoadPriorDropsQueriesThatLeftThePool(t *testing.T) {
+func TestIncrementalWriter_SeedDropsQueriesThatLeftThePool(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "ann.yaml")
-	require.NoError(t, WriteFile(&File{
+	prior := &File{
 		Meta: meta.Meta{Judge: &meta.Judge{Strategy: "test"}},
 		Queries: []Entry{
 			{QueryID: "q1", Docs: []GradedDoc{{DocID: uuid.New(), Grade: 2}}},
 			{QueryID: "q-gone", Docs: []GradedDoc{{DocID: uuid.New(), Grade: GradeUnjudged}}},
 		},
-	}, path))
+	}
 
 	w := NewIncrementalWriter(path, meta.Meta{Judge: &meta.Judge{Strategy: "test"}})
-	_, err := w.LoadPrior(poolOf("q1", "q2"))
-	require.NoError(t, err)
+	w.Seed(prior, poolOf("q1", "q2"))
 	require.NoError(t, w.Append(QueryProgress{QueryID: "q2"}, Entry{QueryID: "q2"}))
 
 	jf, err := ReadFile(path)
