@@ -19,6 +19,9 @@ type serverBuild struct {
 }
 
 func TestPostgresEnginesShareServerBuild(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping testcontainer-backed test in -short mode")
+	}
 	ctx := context.Background()
 	engines := []storage.Engine{storage.PostgresNative, storage.ParadeDB, storage.Tiger}
 	builds := make(map[storage.Engine]serverBuild, len(engines))
