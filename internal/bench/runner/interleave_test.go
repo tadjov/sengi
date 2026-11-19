@@ -250,3 +250,29 @@ func TestRunAll_NamesTheIterationsWhoseRankingDiffersFromTheFirst(t *testing.T) 
 		})
 	}
 }
+
+func TestRunAll_ComparesRankingsCutAtTheRankingDepth(t *testing.T) {
+	a, b, c, d := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	tests := []struct {
+		name string
+		then []uuid.UUID
+		want []int
+	}{
+		{name: "a swap below the depth", then: []uuid.UUID{a, b, d, c}},
+		{name: "a swap within the depth", then: []uuid.UUID{b, a, c, d}, want: []int{2, 3}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := benchRunConfig(1, 1, 3)
+			cfg.RankingDepth = 2
+			// One warmup call precedes the three iterations.
+			pg := &rerankingExecutor{name: "pg", first: []uuid.UUID{a, b, c, d}, then: tt.then, rerankAfter: 2}
+
+			result, err := New(cfg).RunAll(context.Background(),
+				oneJobTrack(t, onePostgresQuery, map[string]spec.Engine{"pg": postgres}, nil), map[string]engine.Executor{"pg": pg})
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, result.Jobs[0].Results["q1"]["pg"].UnstableIterations)
+		})
+	}
+}
