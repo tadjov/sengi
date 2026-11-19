@@ -103,6 +103,7 @@ TEMPLATES = """templates:
 
   # Elasticsearch's own one-request hybrid on the basic licence: the BM25 and kNN
   # scores are summed with the default boosts.
+  # Ties among identical vectors are selected by load order: no sort reaches the kNN cut.
   - id: es_linear
     args: [terms, query_vector]
     query: |
