@@ -7,7 +7,7 @@ BM25 full-text search extension by Tiger Data (TimescaleDB). Built on a native P
 | Field | Value |
 |---|---|
 | Extension | `pg_textsearch` |
-| Version | v1.0.0 GA — March 31, 2026 (production-ready on Tiger Cloud) |
+| Version | v1.0.0 GA — March 31, 2026 (production-ready on Tiger Cloud); v1.5.1 used here |
 | Engine | Native Postgres pages + memtable (LSM-like segments) |
 | Ranking model | **BM25** (Block-Max WAND for top-k) |
 | Index | `USING bm25` |
@@ -70,8 +70,9 @@ FROM products ORDER BY score LIMIT 3;
 
 ## Limitations
 
-- **No phrase search** (exact multi-word phrases unsupported).
-- One text column per index; no expression indexes.
+- **Phrase and boolean only as a filter**: since 1.5 the bm25 index serves `@@` tsquery filters (`&`, `|`, `!`, `<->`), but `<@>` ranking treats every query word as OR, and filtered ranking is not one index scan yet, so it slows down as matches grow.
+- An `@@` filter takes at most 64 terms ("BM25 Boolean queries support at most 64 exact term operands").
+- One text expression per index: concatenate columns to search several, with no per-field weights.
 - No compressed-data path; no background compaction (synchronous memtable spills).
 - Implicit `<@>` fails in PL/pgSQL (use `to_bm25query`).
 - Partitioned tables: per-partition stats → scores not comparable across partitions.

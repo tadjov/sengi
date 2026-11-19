@@ -9,9 +9,9 @@ Three approaches to full-text search in PostgreSQL, for the thesis *"PostgreSQL 
 | Nature | Core feature | Extension (Tantivy/Rust) | Extension (native pages) |
 | Ranking | `ts_rank` (TF + proximity) | **BM25** | **BM25** |
 | Index | GIN/GiST on `tsvector` | `USING bm25` (Tantivy) | `USING bm25` (memtable/LSM) |
-| Match operator | `@@` | `@@@` | `<@>` |
+| Match operator | `@@` | `@@@` | `@@` filter (since 1.5); `<@>` ranks |
 | License | PostgreSQL | **AGPL-3.0** | PostgreSQL (OSS) |
-| PG versions | All | 14–17 | 17–18 |
+| PG versions | All | 14–18 | 17–18 |
 | Maturity | Decades, stable | Mature, widely used | v1.0 GA (Mar 2026), newest |
 | GA date | — | — | 2026-03-31 |
 
@@ -21,9 +21,9 @@ Three approaches to full-text search in PostgreSQL, for the thesis *"PostgreSQL 
 |---|---|---|---|
 | BM25 / IDF | ❌ | ✅ | ✅ |
 | Multi-column index | ✅ (concat) | ✅ | ❌ (1 text col) |
-| Phrase / proximity | ✅ (`<->`) | ✅ | ❌ |
-| Fuzzy / typo | ❌ (needs pg_trgm) | ✅ | ❌ |
-| Boolean queries | ✅ | ✅ | partial |
+| Phrase / proximity | ✅ (`<->`) | ✅ | ✅ as an `@@` filter (`<->`, since 1.5) |
+| Fuzzy / typo | ❌ (needs pg_trgm) | ✅ | ❌ (pg_trgm word expansion works) |
+| Boolean queries | ✅ | ✅ | ✅ as an `@@` filter; `<@>` ranks any word |
 | Faceting / aggregations | ❌ | ✅ (DataFusion) | ❌ |
 | Highlighting / snippets | ✅ `ts_headline` | ✅ `paradedb.snippet` | ❌ |
 | Field weighting (A–D) | ✅ | ✅ (boost) | ❌ |

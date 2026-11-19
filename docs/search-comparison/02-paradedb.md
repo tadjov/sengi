@@ -11,7 +11,7 @@ Postgres extension embedding the **Tantivy** (Rust/Lucene-like) search engine fo
 | Ranking model | **BM25** |
 | Index | `USING bm25` (custom Tantivy index, not GIN) |
 | License | AGPL-3.0 (community); enterprise available |
-| PG versions | 14–17 |
+| PG versions | 14–18 |
 | Deployment | Extension, Docker image, ParadeDB Cloud, BYOC; logical-replica of RDS/Aurora |
 
 ## Index Creation
