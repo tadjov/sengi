@@ -51,6 +51,8 @@ func TestParse_RejectsAFusionEngineItCannotRun(t *testing.T) {
 		{"leg listed twice", `    fusion: { method: rrf, rank_constant: 60, window: 100, legs: [pg-gin, pg-gin] }`, "twice"},
 		{"a connection of its own", `    connection: "postgresql://localhost/test"
     fusion: { method: rrf, rank_constant: 60, window: 100, legs: [pg-gin, pg-hnsw] }`, "only a fusion block"},
+		{"a container of its own", `    container: pg-native-news
+    fusion: { method: rrf, rank_constant: 60, window: 100, legs: [pg-gin, pg-hnsw] }`, "only a fusion block"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

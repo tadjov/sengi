@@ -188,14 +188,14 @@ func validateQueriesFrom(s *BenchSpec, name string, eng Engine) error {
 
 // validateFusion checks a fusion engine names a method, a positive rank
 // constant and window, and two or more declared legs that run queries
-// themselves. It reads its legs' blocks, so it takes no connection, alias or
-// params of its own.
+// themselves. It reads its legs' blocks and runs in its legs' containers, so it
+// takes no connection, alias, params or container of its own.
 func validateFusion(s *BenchSpec, name string, eng Engine) error {
 	f := eng.Fusion
 	if f == nil {
 		return fmt.Errorf("engine %q of type fusion has no fusion block", name)
 	}
-	if eng.Connection != "" || eng.QueriesFrom != "" || len(eng.Params) > 0 || len(eng.ConnectionSettings) > 0 {
+	if eng.Connection != "" || eng.QueriesFrom != "" || len(eng.Params) > 0 || len(eng.ConnectionSettings) > 0 || eng.Container != "" {
 		return fmt.Errorf("engine %q of type fusion takes only a fusion block: its legs connect and hold the queries", name)
 	}
 	if _, err := ParseFusionMethod(string(f.Method)); err != nil {
