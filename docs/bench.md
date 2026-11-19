@@ -241,8 +241,9 @@ engines:
 
 `rrf` is Reciprocal Rank Fusion: each leg's ranking is cut to `window`, and a doc scores the sum
 of `1 / (rank_constant + rank)` over the legs that return it, rank counting from 1. Equal scores
-order by id, as Postgres orders uuids, so a fusion engine and an SQL fusion over the same leg
-statements return the same ranking. Its latency is the wall time of every leg plus the merge.
+order by id, as Postgres orders uuids, and the merged ranking is cut to `window` as the SQL
+fusions' `LIMIT` cuts theirs, so a fusion engine and an SQL fusion over the same leg statements
+return the same ranking. Its latency is the wall time of every leg plus the merge.
 
 A fusion engine has no block of its own and takes no connection, params or `queries_from`. Its
 legs must be declared engines, two or more, none of them a fusion engine; they need not run in

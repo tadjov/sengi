@@ -34,11 +34,12 @@ func TestFuseRRF(t *testing.T) {
 			want:     []uuid.UUID{docC, docA, docB, docD},
 		},
 		{
-			// With window 2, c counts only for its first place in the second ranking.
+			// a and d tie at 1/61, b and c at 1/62, and the fused list keeps two.
+			// Counting c's third place would give it 1/62 + 1/63 and the top.
 			name:     "ranks past the window do not count",
 			rankings: [][]uuid.UUID{{docA, docB, docC}, {docD, docC}},
 			window:   2,
-			want:     []uuid.UUID{docA, docD, docB, docC},
+			want:     []uuid.UUID{docA, docD},
 		},
 		{
 			name:     "an equal score orders by id whichever ranking holds the doc",

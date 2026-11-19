@@ -87,7 +87,8 @@ func (f *FusionExecutor) checkLegs(req Request) error {
 // FuseRRF merges rankings by Reciprocal Rank Fusion after cutting each to
 // window: a doc scores the sum of 1/(rankConstant+rank) over the rankings that
 // hold it, rank counting from 1. Equal scores order by id, as Postgres orders
-// uuids, so the merge is deterministic.
+// uuids, so the merge is deterministic. The merged ranking is cut to window
+// too, as the SQL fusions' LIMIT cuts theirs.
 func FuseRRF(rankings [][]uuid.UUID, rankConstant, window int) []uuid.UUID {
 	scores := map[uuid.UUID]float64{}
 	var order []uuid.UUID
@@ -105,5 +106,5 @@ func FuseRRF(rankings [][]uuid.UUID, rankConstant, window int) []uuid.UUID {
 		}
 		return bytes.Compare(a[:], b[:])
 	})
-	return order
+	return order[:min(window, len(order))]
 }
