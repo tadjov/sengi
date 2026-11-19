@@ -141,7 +141,6 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		Engine:        string(storage.ES),
 		EngineVersion: info.Version.Int,
 		StartedAt:     startedAt,
-		FinishedAt:    time.Now().UTC(),
 		Canonical:     c.Canonical,
 		Embeddings:    c.Embeddings,
 		ModelTag:      c.ModelTag,
@@ -151,6 +150,7 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		Stages:        stages,
 		Settings:      settings,
 	}
+	record.Finish(time.Now().UTC())
 	if err := l.writeLoadRecord(ctx, record); err != nil {
 		return storage.LoadRecord{}, err
 	}

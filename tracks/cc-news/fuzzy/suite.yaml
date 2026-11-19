@@ -1,0 +1,1510 @@
+schema_version: 1
+id: cc_news_fuzzy_v1
+name: "cc-news fuzzy v1"
+description: "Typo-tolerant search over cc-news: 30 queries, 10 with one misspelt word, 10 harder, 10 spelled correctly"
+version: "1.1.0"
+
+corpus:
+  name: cc-news-canonical@v1
+  source: "sha256:7cdf4c719dc70cd013a1eb76fa33688564dc99af03ddf8cc57d20952cd4c89a3 (datasets/cc-news/canonical/v1/datapackage.json)"
+
+templates:
+  - id: pg_multi_field
+    args: [terms, rank_norm, limit]
+    query: |
+      SELECT id FROM articles
+      WHERE search_vector @@ plainto_tsquery('english', $1)
+      ORDER BY ts_rank(search_vector, plainto_tsquery('english', $1), $2::int) DESC, id
+      LIMIT $3::int
+
+  - id: pdb_multi_field_boosted
+    args: [terms, limit]
+    query: |
+      SELECT id FROM articles
+      WHERE id @@@ paradedb.boolean(
+        should => ARRAY[
+          paradedb.boost(3.0, paradedb.match('title', $1)),
+          paradedb.boost(2.0, paradedb.match('description', $1)),
+          paradedb.match('content', $1)
+        ]
+      )
+      ORDER BY pdb.score(id) DESC
+      LIMIT $2::int
+
+  - id: tiger_multi_field
+    args: [terms, limit]
+    query: |
+      WITH matched AS MATERIALIZED (
+        SELECT id, search_text FROM articles WHERE search_text @@ plainto_tsquery('english', $1)
+      )
+      SELECT id FROM matched
+      ORDER BY search_text <@> to_bm25query($1, 'idx_articles_bm25'), id
+      LIMIT $2::int
+
+  - id: es_multi_match_boosted
+    args: [terms]
+    query: |
+      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "_source": false, "track_total_hits": false}
+
+  - id: es_fuzzy
+    args: [terms]
+    query: |
+      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"], "fuzziness": "AUTO"}}, "size": 100, "_source": false, "track_total_hits": false}
+
+  # Trigram similarity of the query to the title, at pg_trgm's default threshold:
+  # the approach most people reach for first.
+  - id: pg_trgm_title
+    args: [terms, limit]
+    query: |
+      SELECT id FROM articles
+      WHERE $1 <% title
+      ORDER BY word_similarity($1, title) DESC, id
+      LIMIT $2::int
+
+  - id: pg_fuzzy
+    args: [terms, rank_norm, limit]
+    query: |
+      WITH query_words AS (
+        SELECT typed, ord,
+               CASE WHEN length(typed) <= 2 THEN 0 WHEN length(typed) <= 5 THEN 1 ELSE 2 END AS edits
+        FROM regexp_split_to_table(lower($1), '[^a-z]+') WITH ORDINALITY AS t(typed, ord)
+        WHERE typed <> ''
+      ),
+      expansions AS (
+        SELECT q.ord, string_agg(near.word, ' | ') AS alternatives
+        FROM query_words q
+        CROSS JOIN LATERAL (
+          SELECT w.word FROM corpus_words w
+          WHERE w.word % q.typed AND levenshtein_less_equal(w.word, q.typed, q.edits) <= q.edits
+          ORDER BY levenshtein(w.word, q.typed), w.ndoc DESC, w.word
+          LIMIT 50
+        ) near
+        GROUP BY q.ord
+      ),
+      fuzzy AS (
+        SELECT to_tsquery('english', string_agg('(' || alternatives || ')', ' & ' ORDER BY ord)) AS q
+        FROM expansions
+      )
+      SELECT a.id FROM articles a, fuzzy
+      WHERE a.search_vector @@ fuzzy.q
+      ORDER BY ts_rank(a.search_vector, fuzzy.q, $2::int) DESC, a.id
+      LIMIT $3::int
+
+  - id: tiger_fuzzy
+    args: [terms, limit]
+    query: |
+      WITH query_words AS (
+        SELECT typed, ord,
+               CASE WHEN length(typed) <= 2 THEN 0 WHEN length(typed) <= 5 THEN 1 ELSE 2 END AS edits
+        FROM regexp_split_to_table(lower($1), '[^a-z]+') WITH ORDINALITY AS t(typed, ord)
+        WHERE typed <> ''
+      ),
+      expansions AS (
+        SELECT q.ord, string_agg(near.word, ' | ') AS alternatives
+        FROM query_words q
+        CROSS JOIN LATERAL (
+          SELECT w.word FROM corpus_words w
+          WHERE w.word % q.typed AND levenshtein_less_equal(w.word, q.typed, q.edits) <= q.edits
+          ORDER BY levenshtein(w.word, q.typed), w.ndoc DESC, w.word
+          LIMIT 50
+        ) near
+        GROUP BY q.ord
+      ),
+      fuzzy AS (
+        SELECT to_tsquery('english', string_agg('(' || alternatives || ')', ' & ' ORDER BY ord)) AS q,
+               string_agg(replace(alternatives, ' | ', ' '), ' ' ORDER BY ord) AS words
+        FROM expansions
+      ),
+      matched AS MATERIALIZED (
+        SELECT a.id, a.search_text FROM articles a, fuzzy WHERE a.search_text @@ fuzzy.q
+      )
+      SELECT m.id FROM matched m, fuzzy
+      ORDER BY m.search_text <@> to_bm25query(fuzzy.words, 'idx_articles_bm25'), m.id
+      LIMIT $2::int
+
+queries:
+  - id: typo-hurricane-harvey
+    text: "hurricane harvy"
+    description: "Articles about Hurricane Harvey"
+    category: typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "hurricane harvy", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "hurricane harvy", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'hurricane', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'harvy', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'hurricane', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'harvy', distance => 1)),
+            paradedb.match('content', 'hurricane', distance => 2),
+            paradedb.match('content', 'harvy', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "hurricane harvy" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "hurricane harvy", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "hurricane harvy", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "hurricane harvy", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "hurricane harvy", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "hurricane harvy" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "hurricane harvey", limit: 100 }
+
+  - id: typo-brexit-negotiations
+    text: "brexit negociations"
+    description: "Articles about the Brexit negotiations"
+    category: typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "brexit negociations", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "brexit negociations", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'brexit', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'negociations', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'brexit', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'negociations', distance => 2)),
+            paradedb.match('content', 'brexit', distance => 2),
+            paradedb.match('content', 'negociations', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "brexit negociations" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "brexit negociations", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "brexit negociations", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "brexit negociations", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "brexit negociations", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "brexit negociations" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "brexit negotiations", limit: 100 }
+
+  - id: typo-facebook-privacy
+    text: "facebok privacy"
+    description: "Articles about Facebook and privacy"
+    category: typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "facebok privacy", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "facebok privacy", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'facebok', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'privacy', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'facebok', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'privacy', distance => 2)),
+            paradedb.match('content', 'facebok', distance => 2),
+            paradedb.match('content', 'privacy', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "facebok privacy" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "facebok privacy", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "facebok privacy", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "facebok privacy", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "facebok privacy", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "facebok privacy" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "facebook privacy", limit: 100 }
+
+  - id: typo-flu-vaccine
+    text: "flu vacine"
+    description: "Articles about the flu vaccine"
+    category: typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "flu vacine", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "flu vacine", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'flu', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'vacine', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'flu', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'vacine', distance => 1)),
+            paradedb.match('content', 'flu', distance => 1),
+            paradedb.match('content', 'vacine', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "flu vacine" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "flu vacine", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "flu vacine", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "flu vacine", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "flu vacine", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "flu vacine" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "flu vaccine", limit: 100 }
+
+  - id: typo-immigration-policy
+    text: "imigration policy"
+    description: "Articles about immigration policy"
+    category: typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "imigration policy", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "imigration policy", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'imigration', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'policy', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'imigration', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'policy', distance => 2)),
+            paradedb.match('content', 'imigration', distance => 1),
+            paradedb.match('content', 'policy', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "imigration policy" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "imigration policy", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "imigration policy", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "imigration policy", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "imigration policy", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "imigration policy" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "immigration policy", limit: 100 }
+
+  - id: typo-iran-nuclear-deal
+    text: "iran nuclar deal"
+    description: "Articles about the Iran nuclear deal"
+    category: typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "iran nuclar deal", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "iran nuclar deal", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'iran', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'nuclar', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'deal', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'iran', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'nuclar', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'deal', distance => 1)),
+            paradedb.match('content', 'iran', distance => 1),
+            paradedb.match('content', 'nuclar', distance => 2),
+            paradedb.match('content', 'deal', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "iran nuclar deal" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "iran nuclar deal", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "iran nuclar deal", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "iran nuclar deal", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "iran nuclar deal", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "iran nuclar deal" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "iran nuclear deal", limit: 100 }
+
+  - id: typo-opioid-crisis
+    text: "opiod crisis"
+    description: "Articles about the opioid crisis"
+    category: typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "opiod crisis", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "opiod crisis", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'opiod', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'crisis', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'opiod', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'crisis', distance => 1)),
+            paradedb.match('content', 'opiod', distance => 1),
+            paradedb.match('content', 'crisis', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "opiod crisis" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "opiod crisis", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "opiod crisis", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "opiod crisis", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "opiod crisis", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "opiod crisis" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "opioid crisis", limit: 100 }
+
+  - id: typo-tesla-autopilot
+    text: "tesla autopilt"
+    description: "Articles about Tesla's Autopilot"
+    category: typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "tesla autopilt", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "tesla autopilt", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'tesla', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'autopilt', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'tesla', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'autopilt', distance => 2)),
+            paradedb.match('content', 'tesla', distance => 1),
+            paradedb.match('content', 'autopilt', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "tesla autopilt" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "tesla autopilt", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "tesla autopilt", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "tesla autopilt", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "tesla autopilt", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "tesla autopilt" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "tesla autopilot", limit: 100 }
+
+  - id: typo-global-warming
+    text: "global warmng"
+    description: "Articles about global warming"
+    category: typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "global warmng", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "global warmng", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'global', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'warmng', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'global', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'warmng', distance => 2)),
+            paradedb.match('content', 'global', distance => 2),
+            paradedb.match('content', 'warmng', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "global warmng" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "global warmng", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "global warmng", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "global warmng", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "global warmng", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "global warmng" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "global warming", limit: 100 }
+
+  - id: typo-syrian-refugees
+    text: "syrian refugess"
+    description: "Articles about Syrian refugees"
+    category: typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "syrian refugess", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "syrian refugess", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'syrian', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'refugess', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'syrian', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'refugess', distance => 2)),
+            paradedb.match('content', 'syrian', distance => 2),
+            paradedb.match('content', 'refugess', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "syrian refugess" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "syrian refugess", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "syrian refugess", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "syrian refugess", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "syrian refugess", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "syrian refugess" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "syrian refugees", limit: 100 }
+
+  - id: hard-government-shutdown
+    text: "goverment shutdwon"
+    description: "Articles about a US government shutdown"
+    category: hard-typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "goverment shutdwon", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "goverment shutdwon", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'goverment', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'shutdwon', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'goverment', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'shutdwon', distance => 2)),
+            paradedb.match('content', 'goverment', distance => 1),
+            paradedb.match('content', 'shutdwon', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "goverment shutdwon" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "goverment shutdwon", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "goverment shutdwon", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "goverment shutdwon", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "goverment shutdwon", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "goverment shutdwon" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "government shutdown", limit: 100 }
+
+  - id: hard-bitcoin-price
+    text: "bitcion pirce"
+    description: "Articles about the price of bitcoin"
+    category: hard-typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "bitcion pirce", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "bitcion pirce", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'bitcion', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'pirce', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'bitcion', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'pirce', distance => 1)),
+            paradedb.match('content', 'bitcion', distance => 2),
+            paradedb.match('content', 'pirce', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "bitcion pirce" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "bitcion pirce", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "bitcion pirce", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "bitcion pirce", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "bitcion pirce", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "bitcion pirce" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "bitcoin price", limit: 100 }
+
+  - id: hard-presidential-election
+    text: "presidental eletcion"
+    description: "Articles about a presidential election"
+    category: hard-typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "presidental eletcion", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "presidental eletcion", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'presidental', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'eletcion', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'presidental', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'eletcion', distance => 2)),
+            paradedb.match('content', 'presidental', distance => 2),
+            paradedb.match('content', 'eletcion', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "presidental eletcion" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "presidental eletcion", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "presidental eletcion", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "presidental eletcion", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "presidental eletcion", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "presidental eletcion" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "presidential election", limit: 100 }
+
+  - id: hard-harassment-allegations
+    text: "sexual harasment alegations"
+    description: "Articles about sexual harassment allegations"
+    category: hard-typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "sexual harasment alegations", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "sexual harasment alegations", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'sexual', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'harasment', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'alegations', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'sexual', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'harasment', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'alegations', distance => 1)),
+            paradedb.match('content', 'sexual', distance => 2),
+            paradedb.match('content', 'harasment', distance => 1),
+            paradedb.match('content', 'alegations', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "sexual harasment alegations" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "sexual harasment alegations", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "sexual harasment alegations", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "sexual harasment alegations", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "sexual harasment alegations", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "sexual harasment alegations" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "sexual harassment allegations", limit: 100 }
+
+  - id: hard-artificial-intelligence
+    text: "artifical inteligence"
+    description: "Articles about artificial intelligence"
+    category: hard-typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "artifical inteligence", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "artifical inteligence", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'artifical', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'inteligence', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'artifical', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'inteligence', distance => 2)),
+            paradedb.match('content', 'artifical', distance => 1),
+            paradedb.match('content', 'inteligence', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "artifical inteligence" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "artifical inteligence", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "artifical inteligence", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "artifical inteligence", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "artifical inteligence", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "artifical inteligence" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "artificial intelligence", limit: 100 }
+
+  - id: hard-california-evacuation
+    text: "wildfire evacuaton califronia"
+    description: "Articles about wildfire evacuations in California"
+    category: hard-typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "wildfire evacuaton califronia", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "wildfire evacuaton califronia", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'wildfire', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'evacuaton', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'califronia', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'wildfire', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'evacuaton', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'califronia', distance => 2)),
+            paradedb.match('content', 'wildfire', distance => 2),
+            paradedb.match('content', 'evacuaton', distance => 2),
+            paradedb.match('content', 'califronia', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "wildfire evacuaton califronia" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "wildfire evacuaton califronia", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "wildfire evacuaton califronia", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "wildfire evacuaton califronia", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "wildfire evacuaton califronia", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "wildfire evacuaton califronia" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "wildfire evacuation california", limit: 100 }
+
+  - id: hard-cryptocurrency-exchange
+    text: "cryptocurency exchnage"
+    description: "Articles about cryptocurrency exchanges"
+    category: hard-typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "cryptocurency exchnage", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "cryptocurency exchnage", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'cryptocurency', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'exchnage', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'cryptocurency', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'exchnage', distance => 2)),
+            paradedb.match('content', 'cryptocurency', distance => 2),
+            paradedb.match('content', 'exchnage', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "cryptocurency exchnage" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "cryptocurency exchnage", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "cryptocurency exchnage", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "cryptocurency exchnage", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "cryptocurency exchnage", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "cryptocurency exchnage" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "cryptocurrency exchange", limit: 100 }
+
+  - id: hard-chemical-weapons
+    text: "chemcial wepons syria"
+    description: "Articles about chemical weapons in Syria"
+    category: hard-typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "chemcial wepons syria", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "chemcial wepons syria", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'chemcial', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'wepons', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'syria', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'chemcial', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'wepons', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'syria', distance => 1)),
+            paradedb.match('content', 'chemcial', distance => 2),
+            paradedb.match('content', 'wepons', distance => 1),
+            paradedb.match('content', 'syria', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "chemcial wepons syria" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "chemcial wepons syria", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "chemcial wepons syria", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "chemcial wepons syria", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "chemcial wepons syria", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "chemcial wepons syria" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "chemical weapons syria", limit: 100 }
+
+  - id: hard-renewable-energy
+    text: "renewble enrgy"
+    description: "Articles about renewable energy"
+    category: hard-typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "renewble enrgy", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "renewble enrgy", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'renewble', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'enrgy', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'renewble', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'enrgy', distance => 1)),
+            paradedb.match('content', 'renewble', distance => 2),
+            paradedb.match('content', 'enrgy', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "renewble enrgy" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "renewble enrgy", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "renewble enrgy", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "renewble enrgy", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "renewble enrgy", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "renewble enrgy" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "renewable energy", limit: 100 }
+
+  - id: hard-supreme-court-nominee
+    text: "suprme cuort nominee"
+    description: "Articles about a Supreme Court nominee"
+    category: hard-typo
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "suprme cuort nominee", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "suprme cuort nominee", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'suprme', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'cuort', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'nominee', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'suprme', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'cuort', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'nominee', distance => 2)),
+            paradedb.match('content', 'suprme', distance => 1),
+            paradedb.match('content', 'cuort', distance => 1),
+            paradedb.match('content', 'nominee', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "suprme cuort nominee" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "suprme cuort nominee", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "suprme cuort nominee", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "suprme cuort nominee", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "suprme cuort nominee", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "suprme cuort nominee" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "supreme court nominee", limit: 100 }
+
+  - id: kw-solar-eclipse
+    text: "solar eclipse"
+    description: "Articles about the solar eclipse"
+    category: keyword
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "solar eclipse", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "solar eclipse", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'solar', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'eclipse', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'solar', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'eclipse', distance => 2)),
+            paradedb.match('content', 'solar', distance => 1),
+            paradedb.match('content', 'eclipse', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "solar eclipse" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "solar eclipse", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "solar eclipse", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "solar eclipse", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "solar eclipse", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "solar eclipse" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "solar eclipse", limit: 100 }
+
+  - id: kw-pyeongchang-olympics
+    text: "pyeongchang olympics"
+    description: "Articles about the Pyeongchang Olympics"
+    category: keyword
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "pyeongchang olympics", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "pyeongchang olympics", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'pyeongchang', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'olympics', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'pyeongchang', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'olympics', distance => 1)),
+            paradedb.match('content', 'pyeongchang', distance => 2),
+            paradedb.match('content', 'olympics', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "pyeongchang olympics" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "pyeongchang olympics", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "pyeongchang olympics", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "pyeongchang olympics", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "pyeongchang olympics", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "pyeongchang olympics" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "pyeongchang olympics", limit: 100 }
+
+  - id: kw-stephen-hawking
+    text: "stephen hawking"
+    description: "Articles about Stephen Hawking"
+    category: keyword
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "stephen hawking", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "stephen hawking", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'stephen', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'hawking', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'stephen', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'hawking', distance => 1)),
+            paradedb.match('content', 'stephen', distance => 2),
+            paradedb.match('content', 'hawking', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "stephen hawking" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "stephen hawking", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "stephen hawking", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "stephen hawking", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "stephen hawking", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "stephen hawking" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "stephen hawking", limit: 100 }
+
+  - id: kw-puerto-rico-power
+    text: "puerto rico power outage"
+    description: "Articles about Puerto Rico's power outage"
+    category: keyword
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "puerto rico power outage", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "puerto rico power outage", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'puerto', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'rico', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'power', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'outage', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'puerto', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'rico', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'power', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'outage', distance => 1)),
+            paradedb.match('content', 'puerto', distance => 2),
+            paradedb.match('content', 'rico', distance => 1),
+            paradedb.match('content', 'power', distance => 1),
+            paradedb.match('content', 'outage', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "puerto rico power outage" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "puerto rico power outage", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "puerto rico power outage", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "puerto rico power outage", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "puerto rico power outage", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "puerto rico power outage" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "puerto rico power outage", limit: 100 }
+
+  - id: kw-anthem-protests
+    text: "nfl anthem protests"
+    description: "Articles about NFL anthem protests"
+    category: keyword
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "nfl anthem protests", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "nfl anthem protests", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'nfl', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'anthem', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'protests', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'nfl', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'anthem', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'protests', distance => 2)),
+            paradedb.match('content', 'nfl', distance => 1),
+            paradedb.match('content', 'anthem', distance => 2),
+            paradedb.match('content', 'protests', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "nfl anthem protests" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "nfl anthem protests", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "nfl anthem protests", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "nfl anthem protests", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "nfl anthem protests", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "nfl anthem protests" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "nfl anthem protests", limit: 100 }
+
+  - id: kw-amazon-whole-foods
+    text: "amazon whole foods"
+    description: "Articles about Amazon and Whole Foods"
+    category: keyword
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "amazon whole foods", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "amazon whole foods", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'amazon', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'whole', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'foods', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'amazon', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'whole', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'foods', distance => 1)),
+            paradedb.match('content', 'amazon', distance => 2),
+            paradedb.match('content', 'whole', distance => 1),
+            paradedb.match('content', 'foods', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "amazon whole foods" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "amazon whole foods", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "amazon whole foods", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "amazon whole foods", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "amazon whole foods", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "amazon whole foods" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "amazon whole foods", limit: 100 }
+
+  - id: kw-paradise-papers
+    text: "paradise papers"
+    description: "Articles about the Paradise Papers"
+    category: keyword
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "paradise papers", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "paradise papers", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'paradise', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'papers', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'paradise', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'papers', distance => 1)),
+            paradedb.match('content', 'paradise', distance => 2),
+            paradedb.match('content', 'papers', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "paradise papers" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "paradise papers", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "paradise papers", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "paradise papers", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "paradise papers", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "paradise papers" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "paradise papers", limit: 100 }
+
+  - id: kw-disney-fox
+    text: "disney fox deal"
+    description: "Articles about the Disney and Fox deal"
+    category: keyword
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "disney fox deal", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "disney fox deal", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'disney', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'fox', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'deal', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'disney', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'fox', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'deal', distance => 1)),
+            paradedb.match('content', 'disney', distance => 2),
+            paradedb.match('content', 'fox', distance => 1),
+            paradedb.match('content', 'deal', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "disney fox deal" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "disney fox deal", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "disney fox deal", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "disney fox deal", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "disney fox deal", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "disney fox deal" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "disney fox deal", limit: 100 }
+
+  - id: kw-starbucks-arrests
+    text: "starbucks arrests"
+    description: "Articles about the arrests at a Starbucks"
+    category: keyword
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "starbucks arrests", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "starbucks arrests", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'starbucks', distance => 2)),
+            paradedb.boost(3.0, paradedb.match('title', 'arrests', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'starbucks', distance => 2)),
+            paradedb.boost(2.0, paradedb.match('description', 'arrests', distance => 2)),
+            paradedb.match('content', 'starbucks', distance => 2),
+            paradedb.match('content', 'arrests', distance => 2)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "starbucks arrests" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "starbucks arrests", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "starbucks arrests", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "starbucks arrests", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "starbucks arrests", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "starbucks arrests" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "starbucks arrests", limit: 100 }
+
+  - id: kw-uber-self-driving
+    text: "uber self driving crash"
+    description: "Articles about the Uber self-driving crash"
+    category: keyword
+    engines:
+      pg-fuzzy:
+        template: pg_fuzzy
+        params: { terms: "uber self driving crash", limit: 100 }
+      tiger-fuzzy:
+        template: tiger_fuzzy
+        params: { terms: "uber self driving crash", limit: 100 }
+      paradedb-fuzzy: |
+        SELECT id FROM articles
+        WHERE id @@@ paradedb.boolean(should => ARRAY[
+            paradedb.boost(3.0, paradedb.match('title', 'uber', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'self', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'driving', distance => 1)),
+            paradedb.boost(3.0, paradedb.match('title', 'crash', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'uber', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'self', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'driving', distance => 1)),
+            paradedb.boost(2.0, paradedb.match('description', 'crash', distance => 1)),
+            paradedb.match('content', 'uber', distance => 1),
+            paradedb.match('content', 'self', distance => 1),
+            paradedb.match('content', 'driving', distance => 1),
+            paradedb.match('content', 'crash', distance => 1)
+        ])
+        ORDER BY pdb.score(id) DESC
+        LIMIT 100
+      es-fuzzy:
+        template: es_fuzzy
+        params: { terms: "uber self driving crash" }
+      pg-trgm:
+        template: pg_trgm_title
+        params: { terms: "uber self driving crash", limit: 100 }
+      pg-gin:
+        template: pg_multi_field
+        params: { terms: "uber self driving crash", limit: 100 }
+      paradedb:
+        template: pdb_multi_field_boosted
+        params: { terms: "uber self driving crash", limit: 100 }
+      tiger:
+        template: tiger_multi_field
+        params: { terms: "uber self driving crash", limit: 100 }
+      elasticsearch:
+        template: es_multi_match_boosted
+        params: { terms: "uber self driving crash" }
+      pg-gin-spelled:
+        template: pg_multi_field
+        params: { terms: "uber self driving crash", limit: 100 }

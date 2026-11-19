@@ -83,3 +83,5 @@ CLAUDE.local.md
 tracks/**/trec/qrels.*.tsv
 
 .issues
+.DS_Store
+.claude/agents/

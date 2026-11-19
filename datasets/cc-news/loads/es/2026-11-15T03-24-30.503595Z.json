@@ -1,0 +1,59 @@
+{
+  "engine": "es",
+  "engineVersion": "8.12.0",
+  "startedAt": "2026-11-15T03:24:30.503595Z",
+  "finishedAt": "2026-11-15T03:44:40.360327Z",
+  "totalSeconds": 1209.856732,
+  "canonical": {
+    "name": "cc-news-canonical",
+    "version": "v1",
+    "resourceHash": "sha256:7cdf4c719dc70cd013a1eb76fa33688564dc99af03ddf8cc57d20952cd4c89a3"
+  },
+  "embeddings": {
+    "name": "cc-news-canonical-embeddings",
+    "version": "v1",
+    "resourceHash": "sha256:de08a1b41c61d01ca245e23b632fa772324013eb6087ecbe90e793078b7fdde4"
+  },
+  "modelTag": "qwen3-embedding:0.6b@1024",
+  "articles": 707910,
+  "vectors": 707910,
+  "batchSize": 5000,
+  "stages": [
+    {
+      "name": "create_index",
+      "seconds": 0.237134292
+    },
+    {
+      "name": "bulk",
+      "seconds": 692.137038541
+    },
+    {
+      "name": "refresh",
+      "seconds": 1.899072042
+    },
+    {
+      "name": "force_merge",
+      "seconds": 515.493953042
+    }
+  ],
+  "settings": {
+    "content.analyzer": "english_analyzer",
+    "content.similarity": "article_bm25",
+    "description.analyzer": "english_analyzer",
+    "description.similarity": "article_bm25",
+    "embedding.dims": "1024",
+    "embedding.index_options.ef_construction": "64",
+    "embedding.index_options.m": "16",
+    "embedding.index_options.type": "hnsw",
+    "embedding.similarity": "cosine",
+    "index.max_result_window": "10001",
+    "index.number_of_replicas": "0",
+    "index.number_of_shards": "1",
+    "index.refresh_interval": "1s",
+    "segments": "1",
+    "similarity.b": "0.75",
+    "similarity.k1": "1.2",
+    "title.analyzer": "english_analyzer",
+    "title.similarity": "article_bm25"
+  }
+}

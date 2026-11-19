@@ -1,0 +1,4852 @@
+schema_version: 1
+meta:
+  run_id: 2026-11-14T21-58-54-pool-226cb0-xjudge-sample
+  tool: bench/1.0.0
+  generated_at: '2026-11-14T21:58:54.595636Z'
+  spec_id: cc_news_semantic_hybrid
+  pool_depth: 50
+  engines:
+  - pg-gin
+  - paradedb
+  - tiger
+  - elasticsearch
+  - pg-hnsw
+  - pg-exact
+  - paradedb-hnsw
+  - tiger-hnsw
+  - es-knn
+  - pg-rrf
+  - paradedb-rrf
+  - tiger-rrf
+  - es-rrf
+  - es-linear
+  - pg-rrf-client
+suite_name: keyword-engines,vector-engines,hybrid-engines,rrf-sql-vs-client
+queries:
+- query_id: kw-catalonia-referendum
+  query_text: catalonia independence referendum
+  query_desc: Articles about the Catalan independence referendum
+  category: keyword
+  docs:
+  - doc_id: 85e454f0-47dc-5878-abde-1349fa07a403
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: 3a80f10f-dcb2-5878-b450-b29c78e7fb75
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+  - doc_id: 6130bf00-21f6-564e-a6e4-439756a674c3
+    sources:
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 8fbe8b4c-141f-51bd-a4ed-228fcf9ab290
+    sources:
+    - paradedb
+    - tiger
+  - doc_id: c4d19f00-ed77-591c-b919-ffe347d00e04
+    sources:
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+  - doc_id: f00a5f6d-d40e-5deb-9820-83879e1b536b
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 7de28e31-c7d5-5d1e-b4d7-85b95c7eccf9
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 950c8c57-b930-5cd8-aacb-f17ba21e0a49
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 76caffa8-a9f1-5959-b32e-f1d85ae33205
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: fee6868f-6972-5034-9cb8-370a366be90d
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 347060de-4607-5313-a122-2744266c3d4f
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 93764f0a-c6b3-5797-bf48-2ccace25c5ce
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 939be375-7d12-56d1-9f8b-f8d4ea8fd31d
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 2856d36c-7e86-5e8c-bb7c-c9e121ff91f1
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 5e113871-bc73-5196-bae2-0afa60aec1c9
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: e0fe11a0-fe53-5f91-a62a-b62890a87811
+    sources:
+    - tiger-rrf
+  - doc_id: 1ac9f849-ef4d-5538-af82-20e2ca3c054a
+    sources:
+    - tiger-rrf
+  request_digests:
+    elasticsearch: aec76ddcb7d8d6927764c486dd1e2c77c651a48e1222c27bc25304400aed385d
+    es-knn: 4f47a29184c5b089b938c191a4d423ce320734c8b9f4becc9c91da13ca0ee6d0
+    es-linear: 1af647eb4ee1dd56f01e2c3033b37daf2859001ac433fbb44ab7cdf572294817
+    es-rrf: 8085f7581cf5e667515bfc206883a41ea22dc3bead59725b868051bcfd11478a
+    paradedb: 560705a1868e8427eae8b9ebe36b412cd18cd935ab1af70b9e29c544429c9bd8
+    paradedb-hnsw: 899b029d3219ced1808b38ad90c1ce16d84283933ef4c45eeb4d99654bc4863d
+    paradedb-rrf: 07a697ed80d42cd2cb629c560771a9a4a6b2b19f7ea16682f316fad106308616
+    pg-exact: 899b029d3219ced1808b38ad90c1ce16d84283933ef4c45eeb4d99654bc4863d
+    pg-gin: d6ad24df761c49644b5a12dd2061298141b98b0968504de70784535d4bc15f6f
+    pg-hnsw: 899b029d3219ced1808b38ad90c1ce16d84283933ef4c45eeb4d99654bc4863d
+    pg-rrf: ed4ee577fe8457e55cc5b7421e98eba39c27778845f81c7f8976da3e432a9202
+    pg-rrf-client: 394d9476cc965536569943429f039ac366df18a8b167a563cc7aed2740e74540
+    tiger: 381f8e978ca319a0c735bb793016cc21f9056bee7e334820272358334723e46a
+    tiger-hnsw: 899b029d3219ced1808b38ad90c1ce16d84283933ef4c45eeb4d99654bc4863d
+    tiger-rrf: 59219f8a4149b484008637e6e53fd40553d24540826d94b372334d53e8dd18c9
+- query_id: kw-rohingya-refugees
+  query_text: rohingya refugees
+  query_desc: Articles about Rohingya refugees
+  category: keyword
+  docs:
+  - doc_id: 7f14d295-2566-5de7-909f-1b6af1e8dabc
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+    - pg-gin
+  - doc_id: 62debbd1-31d9-527a-baa1-beeaabb9ee23
+    sources:
+    - tiger
+  - doc_id: 3f9b54b0-7041-5f92-b94b-1a463607588b
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+    - pg-gin
+  - doc_id: 5e572731-2819-5174-9a73-d68faa4dca86
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-rrf
+  - doc_id: 226afc43-8d39-5ac1-8f8c-3fa6c28d054c
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-rrf
+  - doc_id: e3f17ee6-bf2f-5ea3-b468-9b67702886a4
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 4d6c8437-3425-588d-8daa-fae5e4d4cb9b
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: f4db2b99-4172-5011-b959-baac7aaaa1f2
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: e817a197-239d-5d66-bb00-768846f0a9b1
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: ee0a3f9b-bf12-5b75-b23e-e892a00a3b65
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 596ba8c4-5977-5d29-92eb-84ba538dbfb5
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: dbb9986c-de63-5a26-a436-6699b86c0c09
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: d59115a5-5c61-53e5-a652-77ca484f3d9a
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: 1795bb21-7e6b-50cc-ae96-f9755c956a19
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 68542644-a043-5d2f-99ca-7b43806074bd
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  request_digests:
+    elasticsearch: d2bfc837c029368b848ce7c2113046fce838542873c5af2cb3ca9ad2e0cde266
+    es-knn: 4cfa7787a1a2d08a646ef04d9eb3374a40218e2b2611737d2384734ff375fe5b
+    es-linear: cd043bb0bac6adc61a818fef035d092fff455c80f80d6a73a7d6d34ea141ecda
+    es-rrf: aeb30abaf4616b37a07a06762bb48f83614a73d8e9373f8391cbcf365d49a6c9
+    paradedb: ca4e275a9420e9f3e6df764ccb0d97688af44a208bb3d4dff618dfe40d8791bc
+    paradedb-hnsw: 966d14adc557b233c318e77bdb03dbfad202158f43bdab60fa89ee41bcef9d15
+    paradedb-rrf: e4b74693fb50f477abe742d14e23ab88dc829a9d492233cdc4fe23589c000e1c
+    pg-exact: 966d14adc557b233c318e77bdb03dbfad202158f43bdab60fa89ee41bcef9d15
+    pg-gin: f5af975ea9ebdd4bbc7790c7a8f3ffcddb25df49452049c505fb96001bb34f0a
+    pg-hnsw: 966d14adc557b233c318e77bdb03dbfad202158f43bdab60fa89ee41bcef9d15
+    pg-rrf: 174dc6ef9ca278f88e9227d19c82dcc43b69ebb6779c01dd4018f0d004b651b9
+    pg-rrf-client: 13123696b57fd15120a1cfde02560f17e22287d7c93d077ef0208432c8a681cf
+    tiger: 35eba4682254855176decaac73753a782769b6f4a23a892d70c3868e1f8d7259
+    tiger-hnsw: 966d14adc557b233c318e77bdb03dbfad202158f43bdab60fa89ee41bcef9d15
+    tiger-rrf: c916d7762f8c60c3b9fa5766fe2d5e499290be08855fccf37e1a660ec0bd1d36
+- query_id: kw-tax-reform-bill
+  query_text: republican tax bill
+  query_desc: Articles about the Republican tax bill
+  category: keyword
+  docs:
+  - doc_id: feca476e-f555-54ee-85c3-56d4fe57ea33
+    sources:
+    - paradedb
+  - doc_id: 335d327e-5d67-51c3-9c0b-52590078dffa
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+  - doc_id: 1cc14d45-82e8-5e48-9571-02eaf4854916
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: 928fd5c3-6eec-5855-a46c-b5e1cc454ee9
+    sources:
+    - pg-gin
+  - doc_id: 3349b9b5-9b37-5384-8f6a-ac705e3ef018
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: 0da74658-7ec4-5e94-bfa4-a0d024214e8d
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 4c5ae536-ad23-5c6c-9fbb-45214da98039
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 7f9eb058-789e-53b2-b347-47f3a71d35f0
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: 79ec6810-289d-5938-862e-afc434a57343
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: dad42700-3317-5f2b-bf47-c89a3f81b8dd
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 95a46ec2-7d27-5a0e-8c46-3c472b382ce1
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 9342351b-4a2f-50d6-88b2-db47ebc7278b
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: dcc7607e-c93e-5e27-8d6b-45e844667136
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 2d6f4ea3-783a-50a7-a636-bb06bec131c8
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: ff47cc4c-fb06-5c42-b4b2-387f20fe0ca1
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: 7bc60d36-0861-5e5e-96e0-ea2331541db4
+    sources:
+    - es-rrf
+    - paradedb-rrf
+    - pg-rrf
+    - pg-rrf-client
+  - doc_id: 5cd28c04-10db-5a55-81f8-d877d031b45f
+    sources:
+    - tiger-rrf
+  request_digests:
+    elasticsearch: f14146dcc901c68581f9eabbfcff13ed791c03fb99575f61cda69138bf3856ae
+    es-knn: 32db1fcaf33771754e045112ff96e710512bb2d9ad128c26ce6a077373e2a671
+    es-linear: d92f28f193b2c7e501bee0c40777890f497877d302be793760477714d6c0f3e8
+    es-rrf: ed59ef8335ea4348493694f0ceb7be3ab5beb9991c411192a894abe04f450370
+    paradedb: 08caead4db3e27d499d5ebe331c4d9cdf83b685d03051bf262a289eb46e94432
+    paradedb-hnsw: 7360884c958f7cb854fa44deb5d0f0d49ec2ca2c31e8c9b718b1b4eb6d5e4c10
+    paradedb-rrf: f2b2fa2d85ce7230dc09bbae15421e78585d0cde4bdcb8ca9beafcf435a0a760
+    pg-exact: 7360884c958f7cb854fa44deb5d0f0d49ec2ca2c31e8c9b718b1b4eb6d5e4c10
+    pg-gin: 39c0c647d0964b55f02c3a0fc1e7ac11df1be1e9bb2b6c3504d90dca908836f0
+    pg-hnsw: 7360884c958f7cb854fa44deb5d0f0d49ec2ca2c31e8c9b718b1b4eb6d5e4c10
+    pg-rrf: ccf41279965d588ddd3a974f78ece2757eb4a8b850fb40ea70bb842e816e0a74
+    pg-rrf-client: 71b5a5d251a89b151af3a457fb95ab0e49f66c38698f02ee22dfb49079825863
+    tiger: 1ff4726b8f70230bca4d0e2303d5f0e74756d2efb8978bced75c8758b5bc7080
+    tiger-hnsw: 7360884c958f7cb854fa44deb5d0f0d49ec2ca2c31e8c9b718b1b4eb6d5e4c10
+    tiger-rrf: e10c9aad14fe7405f5063ce7d34dda9dcaa7583cb2fed3b59df723ecc2a3862c
+- query_id: kw-parkland-shooting
+  query_text: parkland school shooting
+  query_desc: Articles about the Parkland school shooting
+  category: keyword
+  docs:
+  - doc_id: e16085d1-457b-510e-8b05-96aa9fc1ddff
+    sources:
+    - paradedb
+    - paradedb-rrf
+    - pg-gin
+    - tiger
+    - tiger-rrf
+  - doc_id: 53e93597-55f6-5fde-ac44-19ea7265988b
+    sources:
+    - tiger
+  - doc_id: bd7ffb98-2304-50b8-902c-af8a0bfa2c89
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+  - doc_id: 904eae69-29d1-592e-83af-297b534a90ed
+    sources:
+    - paradedb
+    - tiger
+    - tiger-rrf
+  - doc_id: e015d3e8-cfb2-5c01-9e3c-015d3ada5bd2
+    sources:
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 89e0d91e-9b75-594d-b56a-5b7abaf96491
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 0a722553-326c-5028-a53e-b4ee21af4927
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 300261ff-0500-51f7-ae17-2ed1d1051fcc
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: 6d9b01fe-3261-5433-9a68-69feb692a5f4
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 62e32ccb-4584-5909-a471-06ca1acf6a6e
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 0bfd2593-6d71-5cc0-9b69-4d986483df99
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: 3ccf897a-e7f5-547c-aa5e-92ed8c2e876c
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 27cda165-fabd-5d8d-aa3c-981ba1c51296
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 6fe504e7-39d8-5276-8ed8-496efba3dbe4
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 244450f1-f16f-5808-a2ac-82fb755d78d7
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: 64f962d6-9829-5d29-a2ff-5699c9d44180
+    sources:
+    - pg-rrf
+    - pg-rrf-client
+  - doc_id: 5cedd5fe-fe37-53e2-98a4-b38725f3e946
+    sources:
+    - tiger-rrf
+  request_digests:
+    elasticsearch: f25de44e90d8935ee6436877f7a2379868a1944ea666af48ddd8a8125822a2bf
+    es-knn: 310e6df9661396041619eb6b709a68612ba9214ce38c538a5b2282f58579fa48
+    es-linear: 479b4d526b95aa974b06377090e797768532cacc4ab2f35edf0aea7bd1467642
+    es-rrf: 529b65e5576c244b75544016b1231f6b0edd6866bbb82f020db3b7cd5fa01bd5
+    paradedb: 0e2b06f4b3b7652fc3ab089f466d5389baa60dd86b522678fc3924f4b226383d
+    paradedb-hnsw: 25c411717f3f3a695bc209ab86ab3b4ba18f3b601a9bd7e0e7943cf4859010af
+    paradedb-rrf: 61185af90ac0aef2d456f3a32e7821ef14f4003883f01725fedbb4ad3f5c2065
+    pg-exact: 25c411717f3f3a695bc209ab86ab3b4ba18f3b601a9bd7e0e7943cf4859010af
+    pg-gin: f274e8eae82b25701a545bceb2a4c872bd07898e7f094e0482651e9b83ff873f
+    pg-hnsw: 25c411717f3f3a695bc209ab86ab3b4ba18f3b601a9bd7e0e7943cf4859010af
+    pg-rrf: 5a3a983150326e55a722d6854f21fd82be2af27ab58175f718c7a15d1e339898
+    pg-rrf-client: 6de68d19bc674a8c94692cbc7ba59d68f84f3de7302f81466a2d64e40e6c695d
+    tiger: c8e33f377419dd4e7ae715642b1f0d8927ff1dcb23c4e494a793cf265d9121f4
+    tiger-hnsw: 25c411717f3f3a695bc209ab86ab3b4ba18f3b601a9bd7e0e7943cf4859010af
+    tiger-rrf: 7a5104f9c1ca50a8309c6722a0a76050ae3d39237d60d3375901f91e1b07fc29
+- query_id: kw-royal-wedding
+  query_text: royal wedding
+  query_desc: Articles about the royal wedding of Prince Harry and Meghan Markle
+  category: keyword
+  docs:
+  - doc_id: 57d771f5-e789-5184-880a-3dafbe7406c5
+    sources:
+    - tiger
+  - doc_id: 25939b60-11e5-5f51-90ff-11d0bed73252
+    sources:
+    - pg-gin
+    - tiger
+  - doc_id: 7f4dea0d-daa6-54b2-82e0-cc154bc6cd54
+    sources:
+    - paradedb
+    - pg-gin
+  - doc_id: 7aedafbe-c3a5-5443-b5a0-e01230c935d0
+    sources:
+    - paradedb-rrf
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-rrf
+  - doc_id: e77f7788-1e5c-55bf-8bcd-4264631e1da5
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-rrf
+  - doc_id: ce3d19e3-b0e6-553e-98d6-a0676c101460
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 90420b39-4941-54f4-ae39-3d83054cf47c
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: a4ddc1a6-5a32-53af-ad7a-524797f2fb47
+    sources:
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: eb9c9c74-e898-5a4b-9a74-f243e4719cb8
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-rrf
+    - tiger-rrf
+  - doc_id: aeaf6739-931c-5f76-b780-e2d825cc5ecf
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 5b5fd9eb-495f-54bd-a51a-431ad64d42fd
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: b43eea84-324a-5f53-93cf-4a1cd8f05988
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: 1fe81ab4-dc03-5b1e-aea1-125a0c3d4394
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: de9c9026-dc12-565d-8952-f53eadcfb2c8
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: d7640fbc-1f25-5b63-bf89-a0c0ba74f72e
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: c8981f4e-3427-532f-9308-bba30f832ec9
+    sources:
+    - paradedb-rrf
+  - doc_id: 096eac09-0df4-5dde-a7c2-c2e224ddb2f0
+    sources:
+    - es-rrf
+  request_digests:
+    elasticsearch: 14b86d2acee137897f3c81e5e0e9fb91f47aa88583b58ec04afbdb52c80b30bd
+    es-knn: 02461146c7ff21daa6d7662f3fc858a76f38a49bad8dd5ee85d6efbee15622b0
+    es-linear: 4c74105f7366255770a33ed0565f2d93860552786126248fc76637a10fca29ac
+    es-rrf: 53c406cf60f3ca89a4ffd522b3e95d7fb0f2f0ab6a4f3b4c62de714ed504eb83
+    paradedb: 9bb28a154db914fa12137508a41fe5ff9c1f1aad58148bb6b1a37be6e4a493ab
+    paradedb-hnsw: 58ec75cf0161a578a46aca3df41cbaefbb10fa508741b131aa34938724ab290c
+    paradedb-rrf: 01b78e78ec0ef31bad209a84bffc22521a4efb98d1ce04c2d1bd14f3842bbe14
+    pg-exact: 58ec75cf0161a578a46aca3df41cbaefbb10fa508741b131aa34938724ab290c
+    pg-gin: 8738914d24582c49e6fbae8b04abdfae9e08ae3b60272e2cb2851e87b9dd088b
+    pg-hnsw: 58ec75cf0161a578a46aca3df41cbaefbb10fa508741b131aa34938724ab290c
+    pg-rrf: d768a012965ae9c616952752f075d5e6291a89f4a9240f9da8d7b0408dc7c4d8
+    pg-rrf-client: 07ba48cd9a36e800af991830b1a1c9a3a7dfc5cd47555b1190cc035909d41686
+    tiger: 6a56e2bf8a67f5d5c086a7812c183b62b4d2169bbacf02a7f1d4cf65940ffbb3
+    tiger-hnsw: 58ec75cf0161a578a46aca3df41cbaefbb10fa508741b131aa34938724ab290c
+    tiger-rrf: 23a87580306cad5ed448af7c8ecd707c492209e4f943da4d23901727d0af2b85
+- query_id: kw-world-cup-russia
+  query_text: world cup russia
+  query_desc: Articles about the 2018 World Cup in Russia
+  category: keyword
+  docs:
+  - doc_id: f30accfe-d451-5541-81b5-85fcb3e37300
+    sources:
+    - tiger
+  - doc_id: 1a4649c3-8114-5a06-ad7b-fc2d1b4d045d
+    sources:
+    - tiger
+    - tiger-rrf
+  - doc_id: cbb45abd-ca91-5f13-9f70-734635409c85
+    sources:
+    - tiger
+  - doc_id: 88d55107-e12d-5b22-8643-5c35bfa2ccc6
+    sources:
+    - pg-gin
+    - tiger
+    - tiger-rrf
+  - doc_id: 3c4f3006-661f-5fb7-b0e5-4de3b357518f
+    sources:
+    - paradedb
+    - paradedb-rrf
+    - pg-rrf
+    - pg-rrf-client
+  - doc_id: 3b0fd3b6-9a45-5944-822b-35eb73d3db66
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 8bd4d31f-4f10-5363-8162-49596e5a57ed
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 9c151b9c-aa7a-5ea6-95eb-391c06349eb2
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: 5705590a-6253-588f-913f-4782cc841653
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: e5e0d772-3e77-5804-9d9d-dfa9aac359a3
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: d9fb9c20-1a2f-5b63-b553-772ea1b4b79b
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: c176c62a-f5ed-58e6-a5cd-9b835569ec9d
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: ffa9a647-4d80-5126-b4f5-b78a5b9955e9
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: b33aae6e-be03-595e-842d-bc2d1a3eed9b
+    sources:
+    - es-knn
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: e632c05b-b73d-5db5-85a7-a0e6be85ed5d
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+  - doc_id: 132e37ab-af0c-55ea-a180-912a82d4dd5c
+    sources:
+    - tiger-rrf
+  - doc_id: 51a84918-1daf-5cc5-b6a9-a1ebe979b1ac
+    sources:
+    - es-linear
+    - es-rrf
+  request_digests:
+    elasticsearch: 33e79c0d9f7528dea3a285ce7a2520f7d8460b988834fabc73ac123037dc89d8
+    es-knn: bcd8a20bf2f4bd3d8755bf59d082f9adbfe6e0290016d0bd4a3e56d3c8504106
+    es-linear: 655e909d5e00a56fd2f0aa157172f6d0d9c92641ab06ba13aa3de0a5870017de
+    es-rrf: d1919a46e52ec01656eb497c08d0de13ffd605edbff2dfaadfbb889c25b32604
+    paradedb: e2d2b5f06ae051eaed47418d796c8da7d04510ed9d9774fdbb79a5cf114dfdbc
+    paradedb-hnsw: a280bffe8a1606fe546023285dc49c53f8bc3e531e0a436f22d82f820f7936e7
+    paradedb-rrf: 0ef942ff3e7cbdc38fbcdae132d607b6c0a8b054279c7ab19bafee8b3e62d422
+    pg-exact: a280bffe8a1606fe546023285dc49c53f8bc3e531e0a436f22d82f820f7936e7
+    pg-gin: 4ef5c1aeded823429ebb1963eea5eb9c7306c3de017c5b5211f430853c238283
+    pg-hnsw: a280bffe8a1606fe546023285dc49c53f8bc3e531e0a436f22d82f820f7936e7
+    pg-rrf: 50a82e92c6e9baff80b95bcb847d0b1c11690eeec96ef9df3f82f5624dfc23ee
+    pg-rrf-client: 8a233d4b87ff691f5ed396ba3b32cc27ba9753a271af606e3131403ca7312079
+    tiger: 41a84af9918d3663a8c05b6ae271cd62f06490a7c55bcbcb500b8c5affe85281
+    tiger-hnsw: a280bffe8a1606fe546023285dc49c53f8bc3e531e0a436f22d82f820f7936e7
+    tiger-rrf: d4f08e5e38de9b1d8de6de199871435eb83185dc8b3234f44f58329ba27b3ecf
+- query_id: kw-trump-kim-summit
+  query_text: trump kim summit
+  query_desc: Articles about the summit between Donald Trump and Kim Jong Un
+  category: keyword
+  docs:
+  - doc_id: d93cc563-bb33-5487-a20a-cf0bac5055ef
+    sources:
+    - tiger
+    - tiger-rrf
+  - doc_id: 4c79f68f-1092-535e-bf9e-81018d07832c
+    sources:
+    - paradedb
+    - pg-gin
+  - doc_id: 54253f19-1207-52ca-b97d-af2c642ec7c9
+    sources:
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-rrf
+  - doc_id: 2d95bae2-d0b2-555c-b93b-ff78f18ac41b
+    sources:
+    - tiger
+  - doc_id: 272565b3-86f6-5540-873f-b23ddefec0a9
+    sources:
+    - tiger
+  - doc_id: 4b7fa635-5b3d-58b2-ad4b-467bd518ffe9
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: f873fe06-33af-5878-a5c9-7dc3f5fb4957
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: e2d9f9e0-cb74-5e31-958c-c9e14e193882
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 1f193a3d-2658-526f-93dd-0109f6425567
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 3e084693-62fb-53e4-b324-a22a85449dd9
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 6cd1be6b-d0df-5664-9cd4-02fb10371348
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: 7362f28c-710b-5da7-814a-5eae529afbc9
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: c1a801fa-fd52-5c99-9920-69883206e882
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: 753bf4b9-94ff-54b2-9fd9-353d489555da
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: cdbdf9d1-9baa-5269-9065-1f0b14b72647
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 98625ae6-a5a1-5bcf-a0b7-3126608f695a
+    sources:
+    - es-rrf
+  - doc_id: 7e277f53-e3af-5fbd-a424-ebfa49203868
+    sources:
+    - es-rrf
+  request_digests:
+    elasticsearch: 5b8c991423e196be1fe986563bb35791eb5a4ce4b9554e574b8ef9649453ecd3
+    es-knn: dc14d647b73f2a576022359b822a83e3e5f2101aee13668a3f431cd1e34cb791
+    es-linear: c3354bf5fb87b1b632038cf162c7739aecf650ef17cf7eb0ae4eb99f3be81dff
+    es-rrf: ab1fbbf11dac38e2743a2947424576be5b6df5b138878dfbe6ddb05be745d5a2
+    paradedb: 6af65caeb3a4b14f6e27059b76e6b9146968c38614d8255570df74d980fbeb16
+    paradedb-hnsw: 89080f579822cacd866ac5657715c79eb5a93b8a75779c9ea6ae4c7fab6e856d
+    paradedb-rrf: 4ebd77d4bda3b3782cf8ea6dbb6dfe2d5da383208334742bfdfd25bd79548ece
+    pg-exact: 89080f579822cacd866ac5657715c79eb5a93b8a75779c9ea6ae4c7fab6e856d
+    pg-gin: 4ffff534eded03df1baf53545b2fc25d3a4158e9bf6dd02485014e7db7983ded
+    pg-hnsw: 89080f579822cacd866ac5657715c79eb5a93b8a75779c9ea6ae4c7fab6e856d
+    pg-rrf: 90a0748cc8b1a559490d0d6e620c175bb481aa076632257d713920d96d75459c
+    pg-rrf-client: 16226b5e79da49eb6e36b771ce40330c55564d79f0b694c8120bc77260c99d63
+    tiger: 64f6e6fd9598f6d9a2bee69719c9c16c69b5ecd25cd8b76e11b9aef301b4d152
+    tiger-hnsw: 89080f579822cacd866ac5657715c79eb5a93b8a75779c9ea6ae4c7fab6e856d
+    tiger-rrf: 54c6755229e2f109b16c6c5db8fda8d97b521fb291760a28483ae6d472158cfe
+- query_id: kw-amazon-hq2
+  query_text: amazon second headquarters
+  query_desc: Articles about Amazon's search for a second headquarters
+  category: keyword
+  docs:
+  - doc_id: 773b2128-fe36-5ec4-871d-2207ad672c6f
+    sources:
+    - pg-gin
+  - doc_id: 16026bde-5b75-5f96-9078-159d2d67e1e2
+    sources:
+    - paradedb
+  - doc_id: 965aaf29-0640-5ca8-a368-b72c4f718d05
+    sources:
+    - paradedb
+  - doc_id: 1135a882-35e2-5286-b4ac-f2512819b9ce
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+  - doc_id: 6b0ce402-8f42-5c17-a3a4-701f183b5043
+    sources:
+    - pg-gin
+    - tiger
+  - doc_id: a5991d8c-a33f-5808-b335-eb3f495f1106
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: fa197e50-641e-5b39-8f5f-b30e149864ca
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: c49f2149-6f9c-56b6-880f-5688ca083c67
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 63c0f317-f4e7-5bf7-a7de-b1c47fe26653
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: d772039c-a6a7-528b-8cc6-d8db2423b6e9
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 669d3033-1da8-547a-9271-0df70d66f51d
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 87f53629-45e3-57bf-9567-bcf10b5934c2
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: d6b3d978-0c4e-5cf3-ab1c-6182827888af
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: cd10f2e9-b6e7-51e5-8277-bed6bf594192
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 21638b88-8f13-54d6-b60b-abe3736a0d08
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: f3d8d841-0ff0-58ed-9110-cc265cfbfe99
+    sources:
+    - paradedb-rrf
+  - doc_id: d917ac75-0e38-5290-8dbe-39bd3b29691f
+    sources:
+    - tiger-rrf
+  request_digests:
+    elasticsearch: 4d6d20e4bf977d36072d27cbda16481c0e2681031b00b438ad563611f30ca4da
+    es-knn: 2517b00d2308e4c1cb0f92fcd26f81f3078d3878aefbc45d280d199ea9273fb6
+    es-linear: debf30db84ff258a941612789476fe5fdcd4f6166b383d5729e72e12fd1161e9
+    es-rrf: b62aa7313e7d833cc6a726c5122b437ad1dbb03c857f3bf59f3bd8bfe08d83be
+    paradedb: 41b59046645dee743fc859bafe6a815c87dd59c2ce54c7f68e81aa7b9d65aa27
+    paradedb-hnsw: 3dde80e22b293f1243a38eaa6e3c995622f68947b6ce2c64b4b905013d2af385
+    paradedb-rrf: 4fb5c2f23feddc64437158f064afe2f36af6adfb9c30bc4a71d8283c5e319453
+    pg-exact: 3dde80e22b293f1243a38eaa6e3c995622f68947b6ce2c64b4b905013d2af385
+    pg-gin: 6e8d269b043a54eb4cfbff87634cc736331dc510855cb2f1e632748097c44112
+    pg-hnsw: 3dde80e22b293f1243a38eaa6e3c995622f68947b6ce2c64b4b905013d2af385
+    pg-rrf: 230dbe16b4ec965978eecea62ee9a4f02029ce251674c6533dcc63485c85c057
+    pg-rrf-client: 2cded099fdddfc7d44f2caeed67fe1b83d71fda50dc50a0593af0170bd6ca4c2
+    tiger: a7ca44add78ee0cf63e0b3a526596449b4b6b36acfb09463068b607df11aa8df
+    tiger-hnsw: 3dde80e22b293f1243a38eaa6e3c995622f68947b6ce2c64b4b905013d2af385
+    tiger-rrf: ba75467b9c6d68b7234ac4c928e4caea35ebbbc459b7641b5dbc8842083b9ac2
+- query_id: kw-hawaii-missile-alert
+  query_text: hawaii missile alert
+  query_desc: Articles about the false missile alert in Hawaii
+  category: keyword
+  docs:
+  - doc_id: 37bb218f-e3d4-5caf-9d13-cf6f42b523ed
+    sources:
+    - elasticsearch
+  - doc_id: 8495bcf4-3449-52a2-a2a4-7608910f732d
+    sources:
+    - paradedb
+    - paradedb-rrf
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+  - doc_id: 2b95a517-33ad-5745-99a4-b9ddb67788e0
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+  - doc_id: 0dbb3096-e578-5c31-8565-63154fade7bd
+    sources:
+    - paradedb
+    - paradedb-rrf
+    - tiger
+    - tiger-rrf
+  - doc_id: 9baeb7d7-5876-59a4-9bc8-8c30c40add87
+    sources:
+    - es-linear
+    - paradedb
+    - paradedb-rrf
+    - pg-gin
+    - tiger
+    - tiger-rrf
+  - doc_id: 54761184-7940-542e-b8fd-32c2a9bbe845
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 4577c5c0-5a36-5971-b9db-45dd7ba3113c
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: e67e4936-c458-5c42-a7cd-bd58e9406528
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: b170ea1a-1414-5bae-a508-0807aeadecd9
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: 6ced7ad4-280c-54fd-ba42-d35a204ed567
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 8608e070-0036-5d78-ba36-6a8bb1a0ee57
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: 1b59e41e-ae3c-515e-84d9-72ae99568390
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 92e8ef94-5ed7-585a-ad88-64f5ffaa952a
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 8094f5c7-6b60-533b-9128-f50f424c38fa
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: d6133aaf-407e-51e4-a80b-701a313dc31e
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  request_digests:
+    elasticsearch: 2ac7e9c23be64cdc4fe389251465c76bfa4a4f6a65f7ecc7b385846727d5c226
+    es-knn: 8d531e9f51d0a9b623a549593363e73dfe02c2fb143223b3747a1cdcde9a1bf1
+    es-linear: 13ff6eff2988beaa74baf47f3fad1a932ca2ed1948613831eeda986a022acb41
+    es-rrf: 0671f6c70cd8081ce17dbb572000c0508283cef53c3ba4c1365dd3f776600c18
+    paradedb: 634051016fcd65fc255aa2e590bd8d758289cda31ee9b9a1b20daafd020c6449
+    paradedb-hnsw: 72265137df1d5332f9a03e3e8ca9b5a63119f5f54787556966b169e30a8caf5f
+    paradedb-rrf: 47e607892da1ec4084877f829df78182350992419f4c790a4195fe6d718411e3
+    pg-exact: 72265137df1d5332f9a03e3e8ca9b5a63119f5f54787556966b169e30a8caf5f
+    pg-gin: 6cc41c32124b30da156f37029b1b48bbc2b05ca168820e0d261497a5cb9b9cf7
+    pg-hnsw: 72265137df1d5332f9a03e3e8ca9b5a63119f5f54787556966b169e30a8caf5f
+    pg-rrf: 7f6afd2c089dbcfbe4b37478035b6278a4108f8b934fd90a90ae9b659c0c441f
+    pg-rrf-client: 96bd01199f0ac5b88f9bf2f407f15c630e197d75fb6b571f7351066d7e6a2a96
+    tiger: fe9c48154875d3ac9b05c87243115db0b6197b502e535c55aa2cd72c19622e91
+    tiger-hnsw: 72265137df1d5332f9a03e3e8ca9b5a63119f5f54787556966b169e30a8caf5f
+    tiger-rrf: 56e3e78c973bdd2cae2adc73b7370614c601be36105ba9db52add60699c34717
+- query_id: kw-weinstein-allegations
+  query_text: harvey weinstein allegations
+  query_desc: Articles about the allegations against Harvey Weinstein
+  category: keyword
+  docs:
+  - doc_id: 63a506f0-ed7c-55dc-86d6-0afbd79b333d
+    sources:
+    - tiger
+    - tiger-rrf
+  - doc_id: 347ad09e-dd81-5ce4-823f-9304295b7045
+    sources:
+    - paradedb
+  - doc_id: 07c39f2a-037b-541c-a67b-75016d229830
+    sources:
+    - tiger
+  - doc_id: fbe7599f-94c0-5777-a524-5ab4bb3aafed
+    sources:
+    - elasticsearch
+    - pg-gin
+  - doc_id: bf40c749-255f-5822-b910-6cea368feba7
+    sources:
+    - pg-gin
+  - doc_id: ca2f544f-2da9-56c0-86ae-15638c9beec1
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 075d7c91-5370-5a6b-9bd5-41fa18d338cd
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 58076641-467f-5c3e-918a-1581fb4db2cc
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: dac4b4f6-bdf4-5fa4-946d-29d8168fadc9
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 8b8cd57d-62cb-5630-b35e-71f97b78f6a0
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: c49aea9d-e404-561c-84b2-7744c6971ad4
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: b52c0ec1-235a-5566-887e-0543ad681d9e
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 50645f2b-6f34-51dd-9780-7fa2cc8b97ff
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 97dcffdb-2e40-59fb-beac-cbea5dc85185
+    sources:
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 8b771148-e467-5ecf-9ef1-f83c96e61431
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 34e2bcdc-3364-503a-9ff1-723342916c7c
+    sources:
+    - tiger-rrf
+  - doc_id: 21bc6f1d-f854-563a-852b-b557b2099c3c
+    sources:
+    - tiger-rrf
+  request_digests:
+    elasticsearch: 5f04ab4bdcfa6a9467167e5137418e45fef1e5318a58584d719b941ecb7b4955
+    es-knn: 45612e3c60c617b1b27c84b47c1f494a81bcf1f910a5374058d69c8596f00d5d
+    es-linear: 75067248cc90d34a51655ada69bf98935f6f01705b8fa79d7fa0b4282b9edbca
+    es-rrf: dda245ce182e9c78038b40db43d1551a87dae36417c861803fb77dd5a82ddfe7
+    paradedb: 138c10110963bf4b536c08fdd51b1573f9f6a4c1d17f4a5ed4c984adffbffc4a
+    paradedb-hnsw: 1ec252168d822734ed3470380b6c2c23184a7323e2ea86ee54277450832a8d94
+    paradedb-rrf: 373c248c97a346c06d7940363fc87c1fab167e6e3fd6c197783c5609bfc8eab4
+    pg-exact: 1ec252168d822734ed3470380b6c2c23184a7323e2ea86ee54277450832a8d94
+    pg-gin: ae939ec2089e1aeb7245303c23d3c0782e09ecf3fbf586e414c37a34f8aedecb
+    pg-hnsw: 1ec252168d822734ed3470380b6c2c23184a7323e2ea86ee54277450832a8d94
+    pg-rrf: 76f0ebc86e26fbf199a7f6a36f8b8796bd4def0a36cebe06968704b0d5c84d7a
+    pg-rrf-client: a91b352c092eb1648382172d205bc921a72e234c5bd603e32a935ca323a44f29
+    tiger: fb0407d13d06179f819684088336e3e63b0a22b4c3cd790788728c0277492c2d
+    tiger-hnsw: 1ec252168d822734ed3470380b6c2c23184a7323e2ea86ee54277450832a8d94
+    tiger-rrf: 8a9e01d427edf6c9afb496e30be61f93c5d9f4a42130b763f970e51f1eba1218
+- query_id: q-thai-cave-boys
+  query_text: how were the boys trapped in the thai cave rescued
+  query_desc: Articles about the rescue of the boys trapped in a Thai cave
+  category: question
+  docs:
+  - doc_id: 2018e18c-488a-5ab0-9e92-364261e65fdf
+    sources:
+    - pg-gin
+    - tiger
+    - tiger-rrf
+  - doc_id: ae36d1fc-947a-54a3-bbf4-a1a29a7f1d2a
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+  - doc_id: 42a1a252-1cec-52b0-a9b7-d0884299b9d2
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+    - pg-gin
+  - doc_id: f9078eed-a368-568d-96fa-bebf3f316f88
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: 38cc3003-5466-5141-b156-f2555aefc436
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+    - paradedb-rrf
+    - pg-gin
+  - doc_id: 8e3c30c7-0ca8-5766-8ff7-0eee7a9ad1e3
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: f0b76664-4a0a-54ba-8def-5ad021e87b79
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: c01e1a7d-75ad-5236-97ae-0c96f36bcc24
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 84eac00f-9e7c-5b14-b47d-d525da87b129
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: f7951700-09e8-5e24-ac15-7ae44bf7f95e
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: cbbea057-d68f-5bea-a255-fecda03b333c
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 4e9cd851-e927-557e-809a-9778c4ecebb9
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 72396b03-5e7a-52af-8170-6ef038a726f8
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: f7c06f83-69ec-5b89-9f33-a9e92c27525e
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 51c1705a-2b2c-505e-8df9-77a9aebc6e71
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: dc51efa4-6fc0-54cc-9239-f36521da4716
+    sources:
+    - paradedb-rrf
+  - doc_id: b1caeab7-3f7b-572b-ad8c-3fadfe2ac1e7
+    sources:
+    - paradedb-rrf
+  request_digests:
+    elasticsearch: 4dba43a290ee72bfa259ca95ba40a10a8c17010dc3e9c6f8e50101473792b354
+    es-knn: 115064c5023f9d0a48b57e3695bd40b2bb4126e835914848a071bf967e3e8ad2
+    es-linear: 101a6a9da75e878f8a44a94026bb12e263e1ff922d7ec6d69f6b8d51971aa1b5
+    es-rrf: 52b53f2e8f0a52d9f104eb4449100a6b617ec9bfa755540ab824847b047787f7
+    paradedb: 544b29aa4ab2513af86a64fa82522e152ccd55b119108fe6d4f213f5e253d074
+    paradedb-hnsw: f372e3ada903c0745261b4590d5777ee8c6152d5e4b5ee3c91dcce8d1b8a7eaf
+    paradedb-rrf: 5a7106b45801fe25c1a012a77f274e759d76d8f14ad3b1fb499b188f1b4be04a
+    pg-exact: f372e3ada903c0745261b4590d5777ee8c6152d5e4b5ee3c91dcce8d1b8a7eaf
+    pg-gin: b90df5252a7f031f35b076fad5c66fe734fc34d5c175a896a2285f760ae5ebe8
+    pg-hnsw: f372e3ada903c0745261b4590d5777ee8c6152d5e4b5ee3c91dcce8d1b8a7eaf
+    pg-rrf: bdcce95f3f2554ea765e3b4270dc4a8bac47ce6bee9f68fe473a05cea3eba247
+    pg-rrf-client: c2c7f4ce5b7ab552483afb1456d349e9fd11a007e9d20e79c4cfffa0f8ce4937
+    tiger: 21e7a9d7b5ebe82dcb744cb5b318c72b8380e960adc23a9f861019ae3686fa2c
+    tiger-hnsw: f372e3ada903c0745261b4590d5777ee8c6152d5e4b5ee3c91dcce8d1b8a7eaf
+    tiger-rrf: 35e8820ee6df173c12e7fdfb9a79ef67820878e92879ad31839e4c4ce0b3a4ac
+- query_id: q-bees-dying
+  query_text: why are honeybees dying
+  query_desc: Articles about why honeybees are dying
+  category: question
+  docs:
+  - doc_id: f6cdf6c3-5b52-589b-a1ee-7bb42b9188e5
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 939fe96a-e981-5943-9529-4442b94077df
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 36d0f5e3-b5b5-5d89-bed1-bf6ae3ffe80b
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 7484163f-11d1-5d29-b756-cf494b09740c
+    sources:
+    - es-rrf
+    - pg-gin
+    - tiger
+    - tiger-rrf
+  - doc_id: 7a61422f-4cdc-5aac-8ae7-b93660cc1b1d
+    sources:
+    - paradedb
+  - doc_id: 5aa9a314-18a9-564b-acae-6a03622e59ef
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: f414fb15-9d44-52f5-bd39-616dc29eeff0
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: b69ffeb9-7564-5d05-bb8f-65c7b2ffe069
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: b6ec6ec1-cd4c-5ee0-ad22-76c7de589b86
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 45c645a7-47fd-5dec-b118-07d07699e2cd
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 97ae1166-5847-5cc4-b584-e6734c781a13
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 08a1fbed-9fe5-5eae-9905-c2fdbaf25964
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 2d6f5ba4-268b-5fd1-8dcc-729d8d6b85d0
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 3ba83a97-4a53-58fe-a920-9f7e04d306e8
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: f3d13e5a-1f76-5148-bb5c-1ed9f810f46d
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  request_digests:
+    elasticsearch: 6f84f446d062d28f47315bc01fcfc0c0d12857e18937890c669c171dcc6b8439
+    es-knn: 622d35330a6f68be27cfc376eefd153cc44bc9deb1fba2aec869f45a0c668469
+    es-linear: 1fa139cc5d14f8e33db336f215bc12f2ae2bc05e0b9f4580a5bf05155b480a54
+    es-rrf: 17b78754edef45f9339e24f1e30555f930444ed1156e0381e419b05f1b6d3197
+    paradedb: 05963bb512bfbd107b0534390f80a8c43385e7a8a1c784abe1cbd500562395e7
+    paradedb-hnsw: ef32065e335bf17c63a69d0d76adffdfbba75f5e3f63ffae66f3c5d812327da6
+    paradedb-rrf: 7dc2fdc1d61af37fc538e28357f33c4c517cab83b10e29d3dade387018565c67
+    pg-exact: ef32065e335bf17c63a69d0d76adffdfbba75f5e3f63ffae66f3c5d812327da6
+    pg-gin: 9768d35a3a4424a05d569a2212c336e7372aed49cad4f9f8f127f453e9d5494f
+    pg-hnsw: ef32065e335bf17c63a69d0d76adffdfbba75f5e3f63ffae66f3c5d812327da6
+    pg-rrf: dbf70a1c78f6a5ca1d69cf5d9dbd5cad6d65d67c6ff064e74c30249e12cc66a0
+    pg-rrf-client: 16dea988f2299f424b5309816f4b069a7c7359d6ab668dfc310d822e11dc272b
+    tiger: 6eb76c0742f48628c3125f0579571b5eb0e38dd380e681ff1814d31a189ad7c7
+    tiger-hnsw: ef32065e335bf17c63a69d0d76adffdfbba75f5e3f63ffae66f3c5d812327da6
+    tiger-rrf: d15ba1228a44c337f841ea61bd7f3d319bfad06d410c7441db519e1e15ae82f3
+- query_id: q-tariffs-farmers
+  query_text: how do tariffs hurt american farmers
+  query_desc: Articles about how tariffs hurt American farmers
+  category: question
+  docs:
+  - doc_id: d77d23be-cd1d-5bad-a351-d57979b9eee8
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: a4d2252b-f8f6-5d73-ba14-7ed26b31249b
+    sources:
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 71456f0c-8b80-58a8-a66f-8f649e6176af
+    sources:
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+  - doc_id: 701d0982-be68-5fd1-81e9-64990879b330
+    sources:
+    - paradedb
+  - doc_id: b2b787cd-78c0-5162-ad2c-f503144fa0c9
+    sources:
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-rrf
+  - doc_id: 96c07150-ea5e-52d6-9a03-39914b2c36e5
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 993d167d-7f62-58cb-9244-5f4853932892
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 6579d700-34bd-5b67-bc1b-57d5c76b28a2
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 6616780f-4b18-5472-be47-59f42fa7a4d3
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 9477c390-316f-54df-8297-382e23da37f2
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: e687654e-fcb3-5639-84ce-a77e32efdc85
+    sources:
+    - es-knn
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-rrf
+  - doc_id: 06df68f1-8a42-5b3c-8911-5746109ce00d
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 59a25566-abe6-581a-91b2-902d1967b0ad
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: ae8fc536-02bb-5709-96d1-7588e987ab83
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: c2c81ab2-e8ca-58c3-84f3-486c61bae189
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 43c7887e-6f3d-5c73-9ec7-619de83f395a
+    sources:
+    - paradedb-rrf
+  - doc_id: a9c2000f-add1-5532-b90f-f5385ba664ba
+    sources:
+    - paradedb-rrf
+  request_digests:
+    elasticsearch: eac3daa3fe67f6d65f592fb7215a77ce8d38e68683b6c4b8c26ca39ebb8e07d0
+    es-knn: 015068f00d51be3a0c99f3a25aa1bbcf348b949dcf1b5905bb1891ce360282b7
+    es-linear: 259a81aad32b6a4606c40f7fd3463ee27bb85383ad8a7e899e9eb8a86f31f7f8
+    es-rrf: d4ba5a7a86f22e31fe7fe23318257945b452f8f1d42d0b025b1b2c6359aaff5a
+    paradedb: 21564757fae8dc5ce36c332a63cc27e8a5090eb90240c50d65c16e92aeacc66e
+    paradedb-hnsw: 35d91489d77e122f67f8f441dc782bdab2cb7eeff528e856bf6ebbc3eae843c0
+    paradedb-rrf: 1a8f50f7dfa7bd589d4757a0fcf8b0bf6373e7bd373c7a39bb94125097d7ced6
+    pg-exact: 35d91489d77e122f67f8f441dc782bdab2cb7eeff528e856bf6ebbc3eae843c0
+    pg-gin: ddf54f9a26eb031379c956aee6cc8bdcac99b1cb785a9d8c69fae2e7b806f29d
+    pg-hnsw: 35d91489d77e122f67f8f441dc782bdab2cb7eeff528e856bf6ebbc3eae843c0
+    pg-rrf: 9ee25ee5b5a580a769c44762b638f03df97b016ea2bc3fc211345606891f20a5
+    pg-rrf-client: 29bc4806fd4d72cf6ebeeae1ec75f1948c0c8f600ee99e656fa448653c1668b2
+    tiger: bd930811e757663f0c64ec45ed9d8763232119430f0510142993201dac665f07
+    tiger-hnsw: 35d91489d77e122f67f8f441dc782bdab2cb7eeff528e856bf6ebbc3eae843c0
+    tiger-rrf: 17344ee7a293c89fe318624d78ae9a9507846512757ded8f2943498021e8f086
+- query_id: q-government-shutdown
+  query_text: why did the us government shut down
+  query_desc: Articles about why the US government shut down
+  category: question
+  docs:
+  - doc_id: 2672504e-5ed7-5b54-80be-2f73a7b8af23
+    sources:
+    - pg-gin
+  - doc_id: c440bb8e-2861-5a50-9a4d-75fc03cfe365
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: 4487a8df-6d14-5a11-9ef7-25716d30a7d7
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: c445ac8d-a100-5c13-b818-5d0fea3c0d31
+    sources:
+    - paradedb
+    - paradedb-rrf
+  - doc_id: bda42a9d-ebfb-51c6-a9d4-b8d79d1dfe5d
+    sources:
+    - tiger
+  - doc_id: cee6f7fb-7ebd-5644-bcea-590d4d97c225
+    sources:
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 3c9fb549-9167-5e59-ab10-d21f74e49766
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 966144ab-d5c6-53eb-bd4b-8a172a0be1a7
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 8b349438-8d6a-5389-b607-736626697bb2
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 57b16eca-3a8a-5149-9bce-1b0b03287a57
+    sources:
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+  - doc_id: 59fa0d82-6176-5458-bbce-e77e42aab4ce
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 6521066d-9f1d-5e0a-bcb1-5b5377314a08
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 3698ae9a-4f78-5646-b82d-ae7d6d10833d
+    sources:
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: f9a8d93d-dc44-5f3b-9f45-abb152117635
+    sources:
+    - es-knn
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: a4b75239-990b-5345-aa4f-5d96a3ea975f
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+  - doc_id: 6f0da3d4-7013-53ab-bbb1-7cea9b8c52f9
+    sources:
+    - paradedb-rrf
+  - doc_id: 52656d94-7ee3-551d-a4d7-ab20b946c39c
+    sources:
+    - paradedb-rrf
+  request_digests:
+    elasticsearch: c54a62f4c6732aa09450ee5b74265ca061d76cb95ee8d41efd0c1765dfd1e1d4
+    es-knn: 38aa19b9a1297f441f3992cec373e418364547e7090202b07af15128a5e6b8f9
+    es-linear: e710b0139813acb438f452b6980a37204a7d5c5dabfb61ccba633f5adf8b2f79
+    es-rrf: f6e5ee3fd4dea61b07f0df84d5eafd6da6247e80765469b26823d9b274581310
+    paradedb: 95cd42bd9ee94ed750c30939165490d744275b791d8a6a3b2b811a8bbba1a11f
+    paradedb-hnsw: 6a7d768e9e2de07034c3efeef33f731ecf6ba2b65797042711485d48f7074d93
+    paradedb-rrf: 92db820ae9ef6024c916249b350f8b93ef6ea3c7077c62108ba6cdca05007c2e
+    pg-exact: 6a7d768e9e2de07034c3efeef33f731ecf6ba2b65797042711485d48f7074d93
+    pg-gin: 649fe3f888dcebc50019537f5b02977727e939dc23d50f797fc1a0e20c6e0fb2
+    pg-hnsw: 6a7d768e9e2de07034c3efeef33f731ecf6ba2b65797042711485d48f7074d93
+    pg-rrf: 33f6625e2c50ba5d7c0993c851d19a6ba46abafedce8869fe271d76104cf7dbd
+    pg-rrf-client: 35567980359cbe0995560c05b29df7005df6a0eb68ecffe001b59badae4fbad7
+    tiger: d9e2a830a22f6e31afdd9a824b8cc381c5632b140826ca5ee9e72dd855518516
+    tiger-hnsw: 6a7d768e9e2de07034c3efeef33f731ecf6ba2b65797042711485d48f7074d93
+    tiger-rrf: ec0ab0ffa2f3c96266b1bb4c9e2d8c38e63face248d732d539f05e2fd9a1bf11
+- query_id: q-vaping-teens
+  query_text: is vaping dangerous for teenagers
+  query_desc: Articles about the dangers of vaping for teenagers
+  category: question
+  docs:
+  - doc_id: eff815c3-e274-5005-8e73-8a47cb2f03c0
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 29f3a681-7adf-5daf-a2a9-3be5894b9661
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+  - doc_id: c7bf7cb2-7f8f-5ac8-a658-0dac047df09b
+    sources:
+    - elasticsearch
+  - doc_id: 372ac21b-7bd7-5296-9291-69df640dd729
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 4d8d97da-cf83-5953-b20f-ef2dd8422100
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 9ed7aa42-3d22-5648-9ba4-29a60cc1ab1b
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: ae3ee6db-132c-5e0f-b484-31c870c89f67
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 7748d273-d288-5aa8-a5af-fa7f2313fb12
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: f0cf1cca-90b5-50b6-b92b-b42794e0b7ee
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: f5b99456-57d0-596c-9ad5-10a7ae2bd083
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 85c4cb2d-ccfa-54aa-9c8e-e2edd4fc21d4
+    sources:
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: b2079961-6bc9-5d45-a5d9-15ba4aafc7eb
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 1fb1bbab-7f98-5194-9d18-98ec558d798e
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 661f4e5b-d21c-513b-9b26-796bee83472a
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: bbaf574b-6502-5497-89c6-adfee5a2d671
+    sources:
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 48f66732-d845-504b-ab78-e5525d3c6eb3
+    sources:
+    - es-rrf
+  request_digests:
+    elasticsearch: 4cea2aa6ddb04f71b16242bbb312b7af98c0fd0d61e7372a6c286ff2d53c6a6a
+    es-knn: 73dce1fa629f052661a512adf4e87e5729c11c26fb2c918eea6d590c06140f1c
+    es-linear: 5ee2e0b1789eacb5466ead70454aa006e08160d3746d69f1d3b6d84c502bd263
+    es-rrf: 1ecf589af7b6ba3e74588c1dde500744bb9939a1cdfc0726d065c63c15b37ae1
+    paradedb: d52321708a084129d7c4558bf50b4f9a42b754896284cd73ede6159c6dbf8b61
+    paradedb-hnsw: 2e2b2f950b2ee540fb10dc76c8d5ea9be3aef507e17235b53fdd98cbe5330556
+    paradedb-rrf: 1faaad6ad63feefffc0c2897f78724e179e10d4057dd9531cf8e422e3a3ee433
+    pg-exact: 2e2b2f950b2ee540fb10dc76c8d5ea9be3aef507e17235b53fdd98cbe5330556
+    pg-gin: f1bf2976acf7616db5351bd3de30f93a487e4b9d862c8d9a26c3c501cdddb771
+    pg-hnsw: 2e2b2f950b2ee540fb10dc76c8d5ea9be3aef507e17235b53fdd98cbe5330556
+    pg-rrf: 2900bd5783fe8560b56f3a553875ea4055b84ace0598e8d4bed2adaf417e6b61
+    pg-rrf-client: 14654656899eef92bc14a6f089fb10ef32b4a26e852e3c3c464b801292b05fc8
+    tiger: 72a0d68b663a26ac2f0a9c28bb4292b00afb0260f4965b18ff7861ebfc00be7f
+    tiger-hnsw: 2e2b2f950b2ee540fb10dc76c8d5ea9be3aef507e17235b53fdd98cbe5330556
+    tiger-rrf: ce316e7db65a7ab613a9a147fd78e379fcf525410869ffb425b894fd9764841e
+- query_id: q-venezuela-economy
+  query_text: why is venezuela's economy collapsing
+  query_desc: Articles about the collapse of Venezuela's economy
+  category: question
+  docs:
+  - doc_id: 8b6177a9-78d9-5c2e-8640-ebe27bed310b
+    sources:
+    - paradedb
+  - doc_id: 33f8ff1b-2f3c-5b31-b3c9-72162f9f70ab
+    sources:
+    - paradedb
+    - pg-gin
+    - tiger
+  - doc_id: de88a293-9c45-56d0-abbe-4f638de7d522
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: 44d2e6c1-2dab-5bf1-bd67-1c38a2e3ac04
+    sources:
+    - pg-gin
+  - doc_id: fed801f2-446d-55dd-8a9e-5132ad275530
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+  - doc_id: c099d655-6a3d-54c2-8861-87221d2bc543
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: e787c2c9-a246-557e-b485-b2d2d16be3fd
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: cfa51c8e-a8ed-594a-99a0-d7cb4d03aa85
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: fd770146-e5e9-50cb-bc30-38524decd999
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: bf1c686f-ff1f-5684-a539-d3f8f500955f
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: be28898a-814a-51e2-870c-278af37b52ba
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 26e0a23f-1d05-50d1-a5f9-c6bd3f2a3de0
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 25c53acc-3548-5548-be81-01bb5391725c
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 3d2604a7-b92f-593f-846c-ee8890168a83
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+  - doc_id: 92afc8c1-3fdb-5ed8-9e53-d5bf310df060
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 33e945c0-982f-5371-a4dc-041df0a3d14e
+    sources:
+    - es-rrf
+  request_digests:
+    elasticsearch: 8563f2bb3b993b65284d39737c215191b90582553633997040574cc0dd8545d7
+    es-knn: 89f95cb3a803cfd370ba3a92d9ef0466d203c2ce4101207080a5d0f7001a6b6a
+    es-linear: e364abc5ff39b281d26cf8dfdee9f7d771f0bc56ffe61ad15fc4b8698d00b8dc
+    es-rrf: f3c8e7220e88580b6f72fefaba10259f7129ff505baaaf75eca9cf6c415d1fcb
+    paradedb: 001107e78f8a357e0865d861851fed1c94dbf8e103a9aa3b5bbfe807229a26d2
+    paradedb-hnsw: 9e6788d501ec18ce6f58bd19335f5156c352f14530d0b8b4dbd15ec39073a2ee
+    paradedb-rrf: a4eb14083e3acf9c22d0b5b65aadb3affc5ffffb00e803656943523ae7ccf157
+    pg-exact: 9e6788d501ec18ce6f58bd19335f5156c352f14530d0b8b4dbd15ec39073a2ee
+    pg-gin: 84cbf40b898af87eeff528b810ca0a61010488906eedeb4f1d98ed60c72182d1
+    pg-hnsw: 9e6788d501ec18ce6f58bd19335f5156c352f14530d0b8b4dbd15ec39073a2ee
+    pg-rrf: c53405d10f09a315ab5ef35e8039235d519b233c3a17c00fb058cfd41debde72
+    pg-rrf-client: e12fac4aeb68df1f64349fc251bc251f2732745eb398add82ad4e28ba4a45940
+    tiger: a2380178658b5092e00dd404de16baa9fabec99e5f7bd0ec5d778bd96f36a6ff
+    tiger-hnsw: 9e6788d501ec18ce6f58bd19335f5156c352f14530d0b8b4dbd15ec39073a2ee
+    tiger-rrf: 99908e03913589bd5f7c155fc716247579c3b43aec97239932e9c5686e434d87
+- query_id: q-electric-cars
+  query_text: can electric cars replace petrol cars
+  query_desc: Articles about whether electric cars can replace petrol cars
+  category: question
+  docs:
+  - doc_id: b6639d92-46bc-5d49-8950-9ce7c04998c4
+    sources:
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+  - doc_id: a31b45bf-77da-536c-a890-4bbe72ee059a
+    sources:
+    - paradedb
+  - doc_id: b0649982-6ad0-5236-b511-b71013d58611
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: a349a01e-4c38-53b6-957b-c2b5bdc60aa1
+    sources:
+    - pg-gin
+    - tiger
+  - doc_id: 5bab62b9-f3c2-5ec5-b3b2-689f767409f5
+    sources:
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-rrf
+  - doc_id: b8281c29-b261-5643-8dc4-cb4bfae3a2c9
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 74f96b18-2efb-5b24-bf4c-ef9735dc1133
+    sources:
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 1445735b-b4c5-559a-933e-8c662dfbc2af
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: ffd28382-9ae2-5d72-8122-b7153d060312
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 42af5554-7152-5f39-87cf-ca0f487ee6c1
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: c1ec5c88-df6f-5c08-afbe-69f10f5e8780
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 0a581ce0-c781-5767-8360-c5dfcfe785f7
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 1978f85e-9dbe-50f4-a4de-190da20315b8
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: cd7d52ba-9c2f-5324-82e5-ab25aace8689
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: c38f059a-e905-5bb1-bea2-0d04c6d9b59e
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  request_digests:
+    elasticsearch: 0de69481be229e7bc72503fccfc6b179149fe47594ed495f11560e6c2f212e79
+    es-knn: adc0db6808e753db2298c3eded874272eee5f5386a1b1d4958339b8d88621e0c
+    es-linear: a6ec0bc0d2d31d86c95fb4f827229589b13a16a0685485ef9bf8af1e2c75269c
+    es-rrf: 5135c8df2602c8994087f4999146e1f809ef2616889524258ab401c35eaa31d1
+    paradedb: fa5f6c000d8cddbe57b35f197bd15511dd1c33e6c83444872d52f4258853e184
+    paradedb-hnsw: b2b68ddf626644e63ece644713b1c842adaf5ec0da46c1d4f36aa9b09d3cfd4d
+    paradedb-rrf: 30fc7af05ae568d3f05adc7a292d367c0d2d963362900ae1d6d21077f261d851
+    pg-exact: b2b68ddf626644e63ece644713b1c842adaf5ec0da46c1d4f36aa9b09d3cfd4d
+    pg-gin: 349a1e596d341a7457825df3c6c952cf2308ab36e05faa83c283def9d831723f
+    pg-hnsw: b2b68ddf626644e63ece644713b1c842adaf5ec0da46c1d4f36aa9b09d3cfd4d
+    pg-rrf: f22c945efb839ce70e1ec4d1aae804d489c6d56a8fb761b87694689d538ecde5
+    pg-rrf-client: 816d7dbb353ea88040aa1ee9c1ae8a6cd3ee880ab201d57c1e10a1f0f7e62fc8
+    tiger: 2c988cae470501560a6477669ba2431f5066659e69fb1cfafe187318ecc8d30b
+    tiger-hnsw: b2b68ddf626644e63ece644713b1c842adaf5ec0da46c1d4f36aa9b09d3cfd4d
+    tiger-rrf: 05fd4ffc859cd75a6d0d12ca9279f024136e748475aba77bcc1f5fe96c4fffc4
+- query_id: q-toys-r-us
+  query_text: why did toys r us go out of business
+  query_desc: Articles about why Toys R Us went out of business
+  category: question
+  docs:
+  - doc_id: 083ee7ad-9c8a-5a19-8230-8320f9f7f98a
+    sources:
+    - paradedb
+  - doc_id: da3778c8-4ec3-5c66-a1fd-d47ef4acad96
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-rrf
+  - doc_id: a973c699-ef71-57f3-b957-735eabe89756
+    sources:
+    - tiger
+  - doc_id: 605753ca-ae0d-543b-be86-dc9a13680d36
+    sources:
+    - pg-gin
+  - doc_id: 33dbf20d-8be5-5ebd-bde8-3295f0819f1a
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-rrf
+  - doc_id: c99c57fa-6a2d-546d-a61e-595d857eec64
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 9f608328-34b6-5e6e-aed6-e3fffce6521c
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 25d1a7c7-7c44-5417-b53c-dfe70b45c442
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 99e83691-2dd0-52e1-b4c8-cba4e4086bed
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 3e48be8a-e15c-5ee6-be08-8d5bf1147262
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 3115b688-f2a9-5468-9b18-af8f1ae92e9e
+    sources:
+    - es-knn
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 100fd12a-437d-5bdf-8bc2-b3246b03e095
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: ed2a2aa7-830f-5372-9a4b-7c3c22235656
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 1e2906fe-c4e4-516c-b6d2-dd04e33cbaa5
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 400517fc-dcd0-5364-b361-67abe82127fd
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  request_digests:
+    elasticsearch: ea23c21d21e17a5290f0db2942e39f4ac31f8ab200cc59e73c139887b2dc8feb
+    es-knn: ace033e6764462577351dd8e8005a9d481970605042db05bacd9c260bc717c44
+    es-linear: f27a6ef862e5109c77eea7c1f56216c26c2696a0f73f834f307e33065df765e9
+    es-rrf: b5368e1193ad11c5bd1be21d355e5dd8e368ffc66fd2f4eae6d3ac798bb3f91b
+    paradedb: ea5326363c6ac76f2a33bed4762130d8a9109e1127ebd739e7cc0d3554ed1495
+    paradedb-hnsw: d35808f0a05b3fcdbe11df76595b1ceeca5c97167b33d6205193f5dc2bfd4c47
+    paradedb-rrf: ee1be5c2d40b6259a304023c38ce90717fd58e8282e93d1417cd91730588dbba
+    pg-exact: d35808f0a05b3fcdbe11df76595b1ceeca5c97167b33d6205193f5dc2bfd4c47
+    pg-gin: 770e5c1bdc2ade88a1d752e37902991af282f3e0c4bd1c683cacd04a7411750d
+    pg-hnsw: d35808f0a05b3fcdbe11df76595b1ceeca5c97167b33d6205193f5dc2bfd4c47
+    pg-rrf: ee4dfdea4cf2faa25896814888bbc95d1380c04c3a7ce49cb0ae9bdc7c1b51d4
+    pg-rrf-client: 795eabeed36f79a90c97ab555819803189f7b9deab7b7cd071d4199e22c89c91
+    tiger: 84c526ae1427a0668d33fb95ce6b0d73e1f6e75ee6cfad51f1f333dea5c94a62
+    tiger-hnsw: d35808f0a05b3fcdbe11df76595b1ceeca5c97167b33d6205193f5dc2bfd4c47
+    tiger-rrf: 2e47ee1b7d71b3abf9367a279571112eb29a154f40736d22ed07161357417417
+- query_id: q-irish-border
+  query_text: how will brexit affect the irish border
+  query_desc: Articles about how Brexit affects the Irish border
+  category: question
+  docs:
+  - doc_id: e25bce88-d02e-5d17-9655-6c9dc2c68b58
+    sources:
+    - paradedb
+  - doc_id: 11752f3c-3f7d-55a0-a00d-f9dd098a2c1d
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+  - doc_id: 61fdd038-3fe0-5ee6-93bd-dfcb0a0b811f
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 8b301593-0fba-54bb-9848-818fbb04b79c
+    sources:
+    - paradedb
+  - doc_id: e12380d0-efcd-5575-9a50-024355144c03
+    sources:
+    - paradedb
+  - doc_id: 9bff7be8-ab9f-5a3e-a142-dd6d0e01533d
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: bddcae1b-9e6f-5a57-b496-7472f8be92a9
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 567ec585-433a-506b-9dd3-46e02fc08986
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 36aa848b-90b5-522b-b079-8745feb1697d
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 2ec7a7e5-352a-5e17-b69f-bd1c90b40e20
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 6442b24b-5349-5630-9c93-d504fb9490e7
+    sources:
+    - es-knn
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: d9bef8be-baca-5943-b5c0-abaf86f875ea
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 96833161-8caa-5f7b-879d-cc604e73debf
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: a2b8c6bb-9211-5f45-af80-5ab2bc57d70c
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 2f042ddc-7146-5f2c-8058-f6b5f0baaa05
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: c5a97265-8aa3-5b1b-b82b-d6a7c5a79eb6
+    sources:
+    - es-rrf
+  - doc_id: 8af7efed-dea8-5b49-9f39-705d234a27cd
+    sources:
+    - es-rrf
+  request_digests:
+    elasticsearch: c49864cd869777e8883a0f9903ca85eb02d7d2029720367f5d1e29c301b63771
+    es-knn: d3f5625d73a6913361a9e0a361ade7bfdb8884f4aef811c8695a51cd43cbe0fd
+    es-linear: 9226b4af0cdfae9fe7847358ef9fca7667f3b48f799687e5e4e785e4486e5165
+    es-rrf: 2688821a44897d843f6dce939c3911b63dc226d02fbf4bde5ea996c9a8af6d26
+    paradedb: 141c68e9b4edb5276b8866b1dd4530a4feb9a4ad3c22df8b4f56c203e47e6ffb
+    paradedb-hnsw: 69dfda75be692fd77830a45980f534ac187870317a847bdb773546ba20090418
+    paradedb-rrf: 8342c77c51ed70b8b5bef2a8e727f2839fb3de15ea5300375bd553e29b6bab72
+    pg-exact: 69dfda75be692fd77830a45980f534ac187870317a847bdb773546ba20090418
+    pg-gin: 517c0433d6b5882ab71df47b915fb82ca8b42804bf7046e86f2883faa328664a
+    pg-hnsw: 69dfda75be692fd77830a45980f534ac187870317a847bdb773546ba20090418
+    pg-rrf: 4fd4b93fbc78b7ed82e563831b8802af5240a5464515ad56493965ceae6286bc
+    pg-rrf-client: 3cf9ecb4379fc9fc0964cf1a1b1ebfea0dead1aa7ab45a9abf35ed9ecc61206c
+    tiger: 36a3161562b5c047bd36bd34fa3d9d1caf8644dc0c92d8949a279d38b330ea0d
+    tiger-hnsw: 69dfda75be692fd77830a45980f534ac187870317a847bdb773546ba20090418
+    tiger-rrf: a283746ae94b161d619af1168db7b149da8514b73807808f0b2bc85b6742da48
+- query_id: q-crispr-embryos
+  query_text: is gene editing of human embryos safe
+  query_desc: Articles about the safety of gene editing human embryos
+  category: question
+  docs:
+  - doc_id: 3c3399aa-0840-5f7a-aad1-5002068fd59d
+    sources:
+    - paradedb
+  - doc_id: a0e6e3a6-aa2a-576f-ad57-c349e15349dd
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+  - doc_id: bf2579d7-5877-56e4-9169-053e0675b297
+    sources:
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-rrf
+  - doc_id: e030274e-2ce8-58a9-8770-41e05fee0972
+    sources:
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+  - doc_id: 3f1ea8b3-1344-5f13-a927-35b6be1156c2
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: de7769f3-155a-5343-9a96-11b63b57f9f2
+    sources:
+    - es-knn
+  - doc_id: 4c8954e5-dde0-5868-8250-42ebd81f9931
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 728e7232-4a53-5460-a89b-c7f189409065
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 1e1ac42a-bbb6-538c-b873-383ffc7f008a
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 2b075b9d-80f2-5a5d-b332-b2d47dbe8184
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 911154e3-3122-514b-8a3f-14a427ffbffc
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: c6aa6b43-35c2-59ed-8fe2-839496b30fc6
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: e4a3b452-7c8d-5995-8d98-ffd2d2e5e9f0
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 8eae65bc-b0b8-59c4-bd36-f22c9017bad4
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 5da9bf9b-8572-5901-8964-c64b68de831b
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 7a4aedb1-45d5-5ecf-82ad-984876ac302c
+    sources:
+    - paradedb-rrf
+  - doc_id: 4e66db07-ed70-5df7-bce2-ca8516f6fbcc
+    sources:
+    - paradedb-rrf
+  request_digests:
+    elasticsearch: aca8503ed837e526661d283bdd160418e1ce5e47a1b0e20cb3d290b3f6932fc8
+    es-knn: 5ce97a4f3777eaa1d95882b28b3eb9858841ad03a955bb84814da3b239e57cd3
+    es-linear: 96ca47eb6060893e98c31bfedf908680722a3fedb82c46c2807871874e01afe5
+    es-rrf: 0e99ebcf5451c52350677e852d5bfe91e4ae09568fd67b51ce00604c888de7d1
+    paradedb: 4f736bdf890e895192bb19c617835546a8c6372ee91b4a028de3a14a7067dd5e
+    paradedb-hnsw: d42a29f67d788e9e1315ff3cd753cc7ce45a34eda0d804fba2c929cd29ed2e4d
+    paradedb-rrf: 98e7c50c682652f5cd04c44338979761414be66ac373921797fe29e277956570
+    pg-exact: d42a29f67d788e9e1315ff3cd753cc7ce45a34eda0d804fba2c929cd29ed2e4d
+    pg-gin: 97f33358f8c57cdf60380d5ddfb8eeb4896d9fa85b1e1974b7f3b55b01b365f5
+    pg-hnsw: d42a29f67d788e9e1315ff3cd753cc7ce45a34eda0d804fba2c929cd29ed2e4d
+    pg-rrf: 5659eff144c1f22880c12387f8e38b761af17ccca814a9cc670cb17aec253cbb
+    pg-rrf-client: 92d77624ff715df7a24344e2e213489467fa3fac8a5a77cc1303bf45ebfe5cf0
+    tiger: 480dfaeced6c6af74857ed7b44baa2d914ebb09210bf98fbc9b4b9813db216be
+    tiger-hnsw: d42a29f67d788e9e1315ff3cd753cc7ce45a34eda0d804fba2c929cd29ed2e4d
+    tiger-rrf: 461910614102fc7d98cda77d04a8eaf081000fd9d40a43c9c02d906d086cc84f
+- query_id: desc-automation
+  query_text: machines taking over work that people used to do
+  query_desc: Articles about automation replacing human jobs
+  category: descriptive
+  docs:
+  - doc_id: 7bc2b1d3-f630-5f1e-927b-6412d4b7d2bf
+    sources:
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-rrf
+  - doc_id: 900583bf-c7c4-53ac-b3db-9347d4d3460a
+    sources:
+    - pg-gin
+  - doc_id: 2e3e0565-89df-592b-8dc8-f1ea9640760b
+    sources:
+    - paradedb
+  - doc_id: 05f44dc1-8268-5e8d-b2a3-68b0455d5084
+    sources:
+    - paradedb
+    - pg-gin
+    - tiger
+  - doc_id: 882d01b2-d4c1-5d8c-9ed7-64377a03152a
+    sources:
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 2991fc1f-fdcf-51cb-bb2d-cdf6090f5532
+    sources:
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 048425e1-16c8-5eaa-bbe1-ab6ca3775652
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 07ca9d20-3711-562b-a605-5687101e99eb
+    sources:
+    - es-knn
+  - doc_id: b0571df6-9cbe-5bda-af84-9659f767bd1c
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: fc6ba947-4d03-55e6-ab90-0e09ddbb63cd
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 2c8e63d7-176d-57ad-a64a-d9e3b638cef9
+    sources:
+    - es-knn
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 3aeb5441-4877-5544-8cb3-6645243aa0e9
+    sources:
+    - es-knn
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 3f4433fe-0930-5b3d-a599-2a10ab07dadf
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 156a930c-0393-526a-b7ee-1a865d5f317d
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 7964ee18-e42f-5c3e-b5c9-6a8769f126b6
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  request_digests:
+    elasticsearch: f17d37c1a16b62499930adbc70598c48dfb02d4d1e25305c06ff093be9a72a47
+    es-knn: f92ab24f6cd657251de58491fbd100b459565b3402be6cef460b66c2c7e604c3
+    es-linear: b199b815fce888171ec98b0de6d458a7d7d0fce118409e7b07867ac344ae9ac5
+    es-rrf: ce665f2aef52158c2890c12482db4801d220b652d7c567bb6edb230bb643ab98
+    paradedb: 204ebdc9658149fac4203d5a02ef29f6c83a15e7c9b0af73f7e92c2485e50533
+    paradedb-hnsw: a489f00f74da89763b07276864e4095f112c554e2131d37bbe2d2d450474afc5
+    paradedb-rrf: b037110feb048b09af9f0b05123eeca035ff20f60c6a7b2ccba75cc4baf993bb
+    pg-exact: a489f00f74da89763b07276864e4095f112c554e2131d37bbe2d2d450474afc5
+    pg-gin: d1228cf19ed1b1d8d6ac1d66bc364a1433f22c9b9dadaae827d608b400f9b3c4
+    pg-hnsw: a489f00f74da89763b07276864e4095f112c554e2131d37bbe2d2d450474afc5
+    pg-rrf: d9b2b294f056e9c689d51f42c8c92c18c060f17cfbd0fadb41001f2e8d0246b6
+    pg-rrf-client: 7736320546fc233a9695a0e1ade6d5b05231459504481f9f0f15ac7a05f94b38
+    tiger: 291dac2e0fba9d6fa0cd1bd50d7436b32da865ea0a31262a4a959013beb8dc86
+    tiger-hnsw: a489f00f74da89763b07276864e4095f112c554e2131d37bbe2d2d450474afc5
+    tiger-rrf: 34651fc237df806d38d2742ea465f8c00a1160df37e5adb2a30f562f95756070
+- query_id: desc-cord-cutting
+  query_text: people cancelling their cable subscriptions for online streaming
+  query_desc: 'Articles about cord-cutting: viewers leaving cable for streaming'
+  category: descriptive
+  docs:
+  - doc_id: cc604310-9680-5ef4-83ba-9a0879aa40b8
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 86e76972-46c3-5ba1-8e95-8d55aa7e0f8f
+    sources:
+    - paradedb
+  - doc_id: 5bb93156-4446-5f16-8755-34a9120188dc
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+  - doc_id: c46e47aa-5274-5f57-a3f1-ed3a6096efa1
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+  - doc_id: bb0877b6-2933-56ab-874b-554e6d801c14
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb-rrf
+  - doc_id: 0e136f3f-330a-5c28-a14f-29bf643b4561
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 9702b936-89e1-5410-824b-2150b4c999e4
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 32fa7d04-f03b-59bb-8d16-8b17a36288ab
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 9853923c-bba9-58a2-a91b-869ab52dbeab
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 4784bae9-9ab1-5ba2-9eef-d3e84afdfbf5
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: ab979f16-996a-5897-8375-5a7f1ea518d6
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: d568ba05-ac7a-5e50-850a-b117fddb53f4
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 452ba2bc-ca81-5b51-8d21-db21f281e7fe
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: adb59e8c-439b-524d-bb9c-5daa03aa96e9
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 64d799b6-0a38-590a-b319-6095e5ea2778
+    sources:
+    - es-knn
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: ed518197-64f4-5494-b4bd-9c904181ec26
+    sources:
+    - es-linear
+    - es-rrf
+    - paradedb-rrf
+  request_digests:
+    elasticsearch: 9095275754f897b26130343f418f34756c9812283a8a6ebaddf44d41b9cfe18d
+    es-knn: 4f6e94e3aad1bcade1751a776b2d176cf13fd9b9729cfb4de1215fe43dcce647
+    es-linear: 7a290564c8658fb67ab80cb29441489d4fae3a11aa07435412a06f82188ba81a
+    es-rrf: ba810cbe73a693dd4364253a78e2fb05feed939e4c8ba16d26425e9e9a735230
+    paradedb: c233bac8443a740b2078ff56b76ff0c8904028a0c583444d3eb060e85f3f885f
+    paradedb-hnsw: 5b9f36b90798f8cf9239e6d17b46a81427ea38dc844157bfa6eb428aafb1c2fa
+    paradedb-rrf: 9b4ea97569b44ea604ec076296015d7afba562db6fb87c44289a0222153db1db
+    pg-exact: 5b9f36b90798f8cf9239e6d17b46a81427ea38dc844157bfa6eb428aafb1c2fa
+    pg-gin: 8041bbb2688a6b9015d0ab40c758480055cb0ca9eb8c590006f99d4c67c9566d
+    pg-hnsw: 5b9f36b90798f8cf9239e6d17b46a81427ea38dc844157bfa6eb428aafb1c2fa
+    pg-rrf: 750fd097e2a0c16340343af901443345f11b45172dd1c0833b084826dca701d4
+    pg-rrf-client: 2f2d2341826c7c27cb01aeae393d5f4d1d3824553b8f0acea158569cbecc361f
+    tiger: 00c73b8fc7cc4f5a6e7e3f3374bd1b05c0a17879fa2f3bac1ab35c2a9fabbda4
+    tiger-hnsw: 5b9f36b90798f8cf9239e6d17b46a81427ea38dc844157bfa6eb428aafb1c2fa
+    tiger-rrf: 0d70d433258cc4de14bb922136f8cf9993aca9eb5c7874bd20fe002088adc829
+- query_id: desc-flint-water
+  query_text: a city whose drinking water was contaminated with lead from old pipes
+  query_desc: Articles about the Flint water crisis
+  category: descriptive
+  docs:
+  - doc_id: 639acddc-1493-5e49-8dc3-66cd95522989
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+  - doc_id: 048738cd-8591-5631-a0b8-e52c6c090475
+    sources:
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 8267e293-29f2-5efd-9601-a3da2f324a00
+    sources:
+    - paradedb
+  - doc_id: ded53924-4dfc-5922-99cf-a000e2c9f9ea
+    sources:
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 3406a714-5cbe-53ca-877c-f98df08e2f6f
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: 11069645-6f36-529c-8144-d3b76b5c1c75
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 42c39714-d4f1-57ec-a072-532cb2a5aacb
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: e09f735c-00ac-5e75-99f1-435e95e2c31f
+    sources:
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+  - doc_id: c0689705-c764-5179-8859-064c3e1b02f1
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: bc838ae8-a728-5cfb-be85-dbb785fd824f
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 8e0d9649-56be-5001-9e8a-597ceccb979e
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 124b7789-4f2a-51b3-9ee4-60734a04d7c9
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 00e8c913-c7b4-5587-9f17-a46d86f99279
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: a7874ede-8319-57e8-8445-1b306163175d
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 80a00b20-295c-58b0-85b1-1e7d5d42e5d5
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: d3b44030-0bd6-5702-922a-c4331821b650
+    sources:
+    - es-rrf
+  - doc_id: 02edc0e5-d2ec-5c2c-98f4-a0770d1e7b0a
+    sources:
+    - paradedb-rrf
+  request_digests:
+    elasticsearch: 56c0835bc5079748c757975843e807493d6bc8bb843b9f898ad8fa1aba9830db
+    es-knn: 56a99b0f32df3e5cc2c844157565cd7ce1846ba73833b2a779c4f2cae7a4b5ef
+    es-linear: fade55a72fe426a072be169436a09271e372420ec06c8368ae8be0bd32677108
+    es-rrf: c06200aef1013847c0b330cd62477199cf252c524a972d32a7f9c60ee7465e59
+    paradedb: 0e7f62d382a8a1e3e3e7270d6e3460f45ef302a125fcb85159959e550511a2e3
+    paradedb-hnsw: d5f2ce531a02557ae06223aa5e02dcaa7bc401f3d512e2891725d0168d6fe991
+    paradedb-rrf: 7d5d152ad5ba2e1fe690f1bac1375db1c7b24661eeee960e0e64ed81d6c97bd8
+    pg-exact: d5f2ce531a02557ae06223aa5e02dcaa7bc401f3d512e2891725d0168d6fe991
+    pg-gin: 27ae65c9a34ed7090c8d21b4e030f98c1f75aae258b7d0793d380e8363631f4f
+    pg-hnsw: d5f2ce531a02557ae06223aa5e02dcaa7bc401f3d512e2891725d0168d6fe991
+    pg-rrf: f40108e8851eb77be5207d6e3c290d47bc1dcb4841473290a6e82abe54878883
+    pg-rrf-client: 322e0c9b523fbc1c1b70014289cca6c6231bee9b99d90efa958bf5126cc93033
+    tiger: 7704cb4a521bd15e4c753554fd447a4ea7d152aeb025e5bedb32f18d7e2ee350
+    tiger-hnsw: d5f2ce531a02557ae06223aa5e02dcaa7bc401f3d512e2891725d0168d6fe991
+    tiger-rrf: ec920e47e3007a410e6e1cd57f014cc137018a7751a6638340a4bdab11cadee9
+- query_id: desc-tech-taxes-europe
+  query_text: big american technology companies paying too little tax in europe
+  query_desc: Articles about US tech companies' taxes in Europe
+  category: descriptive
+  docs:
+  - doc_id: df0bd621-534a-5d88-8bac-aebc7d136129
+    sources:
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 608c3e2b-2e04-5a1f-9d0d-307f4808e1ae
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: 6b02b0d6-f9ab-57ab-a6c5-b5593cafb0a8
+    sources:
+    - paradedb
+    - paradedb-rrf
+  - doc_id: e41a1133-9cc5-57e6-8a8d-60facc8f61f5
+    sources:
+    - paradedb
+  - doc_id: 47c79b37-c86b-5884-866f-3ba6111266b1
+    sources:
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-rrf
+  - doc_id: b9eafee3-1ecd-5cc3-b516-ee19e84ca988
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: e95c0fa1-6d82-5425-9146-de73ac812224
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 57d21dd0-5ec2-5c3e-a123-624a788c19c6
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: daf4d721-deb1-52c3-89f8-80173061e49e
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 602feb77-ca16-5a27-8905-668c39e99074
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: c0fd5630-43f3-5f16-8e30-236fbd9c51ea
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: d0240624-41bf-5172-8ced-352297380537
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 2bece0a4-0947-5414-a377-bc2d14039f3d
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 03ace132-9574-57d2-bcaa-4ea131fb464c
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: f7dfcef0-3030-51ca-9d41-58568e656646
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  request_digests:
+    elasticsearch: 5c03550e60fea092429e364fe111b93e37984e0a91ccfd57771279017f8984bf
+    es-knn: 5337c73b29cbb1f5ea43d7a279a0dc056f019ef91e017a8631e6ea1f7b20da2e
+    es-linear: 477ad7fbebf5b102758de20af9391257a4da6e16bff6615b50ace7ca100a8c2f
+    es-rrf: 881f5b015a51d3bdd512fb029489ef88a3f04b7e1f32f284357d16b8da61cc62
+    paradedb: ba23c8f7b06352ddda37cbc75559f3fb5bb8b658e8a458cd88ba7e1e00dd3bf8
+    paradedb-hnsw: c7268ad5bd17fdf9add1a948a8288cd8a542e9666aa50bf6897998489965127e
+    paradedb-rrf: c0d91e4fbe7ecfa22c203c0b0659b40adc0c5898dc5fc8a61c0550b29724755d
+    pg-exact: c7268ad5bd17fdf9add1a948a8288cd8a542e9666aa50bf6897998489965127e
+    pg-gin: a12e7df6d52c38f1d8360b97d64e2575c50d55f282417f96817057c93dafc6fa
+    pg-hnsw: c7268ad5bd17fdf9add1a948a8288cd8a542e9666aa50bf6897998489965127e
+    pg-rrf: e5fdccc48dc92e560a86ac7db0da5e0c52263a52d22a8dc3710ebed961d50f91
+    pg-rrf-client: 4a96a5c44d3edf8d1fffa6b05897ee46d3a32a0ed1615aee0b581fad1b78e211
+    tiger: f8c54bcf13d8659af401dc3b09cde39896b1a71613d45a49351578c8f5e5ca4d
+    tiger-hnsw: c7268ad5bd17fdf9add1a948a8288cd8a542e9666aa50bf6897998489965127e
+    tiger-rrf: 10e74cbd3e23eed91cafedcf00c9cf3fd7d576dfa66158e47c20370688f70fb0
+- query_id: desc-plastic-oceans
+  query_text: plastic waste ending up in the sea and harming marine life
+  query_desc: Articles about plastic pollution in the oceans
+  category: descriptive
+  docs:
+  - doc_id: b4e2fcb9-c3e3-5845-b61c-fdc4f83a350f
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+  - doc_id: cab57be6-d5ff-5a27-b00b-a0a666d49f69
+    sources:
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 75a84992-966f-52a8-bb24-69d6c4be12b4
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: 000ce5cc-ff2c-525c-b91c-31c98bcab5ee
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 865a348b-160e-5468-b03c-92143791d3ea
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+  - doc_id: adf2fb3a-ed8b-570d-beb5-c1b97d3b8c31
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: f325d4e9-9c21-5e3b-b4f0-290d8ec47185
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 8c0fbb83-ed81-5072-82ea-2c9bda429746
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: da78b60a-cf7e-5c0d-b042-01c4a8f65a2b
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 996cde22-0def-5b6a-92ae-eda342c53fc7
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 07262507-dd68-584d-928e-68ea4e81de11
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: b9fdbfaa-e6a8-5825-89aa-ea61caa03a22
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: a410527c-9dd9-5903-b799-f17d86eb797e
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 9a9c4368-d4a4-5642-9120-11192ae73261
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 58e5ba0c-d5e9-5ed6-a664-eb3aa781a555
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 67ff75b8-1484-5efc-910a-aee686cba46c
+    sources:
+    - paradedb-rrf
+  - doc_id: 664ca3c3-c96e-5a3a-aa47-b3bce2fd7e6f
+    sources:
+    - paradedb-rrf
+  request_digests:
+    elasticsearch: 0454153edf6fc9ab4cedbabc090e33be3d63f4e521e5d2c3c31f98f0cd80988f
+    es-knn: e9d5b4e25ef2bc42527a49d3c40efa37e5812c4189ccd75f1a271a336b1439b0
+    es-linear: ebfb98d2965bc319250671f5f7191e547034c2ace2e4cb94e683d32d7abf5386
+    es-rrf: 66aef9000d4e167b21b9344e7e311ecdcc9d7ea97ae596efb25ae369d720d533
+    paradedb: 55231ab611ad27036f48f0e7919f2a8ed6198842c83eb72b35c2198f7416bb2b
+    paradedb-hnsw: 8beaa19bba2f689c965a31dff8428577c879a74dd8f57a192528906718e6de8b
+    paradedb-rrf: f02e9a18589eb6deac934a3c732d7bca6fc4f84ad3bf1c99944b1b8f85bd8ab7
+    pg-exact: 8beaa19bba2f689c965a31dff8428577c879a74dd8f57a192528906718e6de8b
+    pg-gin: deafc21372d41de624ecd6cc3e5d7f5ef66e3d9607a7b6e6c5fbca2c8577e090
+    pg-hnsw: 8beaa19bba2f689c965a31dff8428577c879a74dd8f57a192528906718e6de8b
+    pg-rrf: 4dbd281dbb4e1eea5549c6b24cf0cbfe606175e9e37151e3000a10fa33678bd2
+    pg-rrf-client: 7072f785a8065c0e0998c782c75843accfa93ebb83558eed4dc74f1f394f6500
+    tiger: 4c36add5ddba4d1fec3a535a811c22b5b835eeabfe4d8e41f48e1f74635c4140
+    tiger-hnsw: 8beaa19bba2f689c965a31dff8428577c879a74dd8f57a192528906718e6de8b
+    tiger-rrf: 11e459518ed52f87b0e11009f34fdddc92b3e7bb9b190d97ec1bc7082369d90a
+- query_id: desc-arctic-ice
+  query_text: ice melting at the north pole
+  query_desc: Articles about the melting of Arctic sea ice
+  category: descriptive
+  docs:
+  - doc_id: 423045e8-bddc-5744-8655-65884ebc63b7
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+  - doc_id: 1dc421cf-8bec-5703-9651-98d4d6698b5d
+    sources:
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-rrf
+  - doc_id: e767f6ca-3403-5f4e-911a-acd0b67f9ba2
+    sources:
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-rrf
+  - doc_id: cc2b24f4-8ec2-5939-89fb-3fa155751259
+    sources:
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-rrf
+  - doc_id: 37c68430-6990-57b5-bb5b-1acb7e46494c
+    sources:
+    - paradedb
+  - doc_id: 22dcd926-73f2-5ab4-9fbc-cc3e4002d786
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: deace54f-4393-5180-a8d1-4bb91a8721dd
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: cc073451-4458-5ae3-83ee-7b586c4cf993
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: d984988a-f20a-5d08-97b1-0fcc0b9c84c8
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 0284f229-b94f-508c-8f9e-ace7cff7af29
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 9460ebea-0889-5d74-85ca-e757b4a21074
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 391ea03c-440c-5c52-b36a-b132547292ff
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: d0dd2400-8348-5de3-a8c0-c312c29ccf50
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 622b9271-14f0-5a16-ac2a-188455c535ed
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 03084a37-b351-5ef3-ac2d-803f20147261
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  request_digests:
+    elasticsearch: c5a088b4a4724d34860800b2dc634009191f150f77c44b1f6015bb6345c4a3e5
+    es-knn: 753e9f7e62e2a3ab97b283bf2b2cf2db74147308fc33bae98b7af555c6d899e3
+    es-linear: 8b8ed6dd67289c53a6ee4d75c146fd3171097d0405de914602ca425a569064f1
+    es-rrf: 66723735e20b8d286c90360eb515a5d34240f6d12195236f1a9554a8d6918ab7
+    paradedb: 1c28c0a81f16e45d49d7342d0cf58e09690de0df65f18993c14cfa03ebcb19f7
+    paradedb-hnsw: bceedb16adc9518d1f5f44d20f42a11bce94d956a60ba020fdd9cdf3ee138a84
+    paradedb-rrf: 4f1f3a82ae466dc60c77ef12a523e1376304f47e9da0b349de9683a64b028092
+    pg-exact: bceedb16adc9518d1f5f44d20f42a11bce94d956a60ba020fdd9cdf3ee138a84
+    pg-gin: 8525f9bfbbf516f4c9a0fdd13fb8ea45c8cf624e1589b9144bfc0c8b4e531b41
+    pg-hnsw: bceedb16adc9518d1f5f44d20f42a11bce94d956a60ba020fdd9cdf3ee138a84
+    pg-rrf: c98df97aa3eb9358cccf02619cebcf26d81d172a8539363cf0654a2f7dacf7d2
+    pg-rrf-client: 8b322176922bb7e106e38d5472d27eecebbaf572754bca7bc8747a124d0a3689
+    tiger: 0fbb2c5dc7f77e5cac7f5c02fb7c49a15d7ae52d27f68d8bb4db0077edbb2a4f
+    tiger-hnsw: bceedb16adc9518d1f5f44d20f42a11bce94d956a60ba020fdd9cdf3ee138a84
+    tiger-rrf: 6566a5aa7d0ec4da7ff91553990554bc62b27beab348a0c64515e8dca443262b
+- query_id: desc-fake-news
+  query_text: false stories spread online to influence voters
+  query_desc: Articles about fake news and disinformation aimed at voters
+  category: descriptive
+  docs:
+  - doc_id: 16e696b9-8644-5999-8090-725e408aef7d
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: 46049231-977a-515f-b53b-3a1aae3568c5
+    sources:
+    - paradedb
+    - paradedb-rrf
+  - doc_id: aa67a82f-8cda-5630-9db7-d1d4aed64223
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+  - doc_id: 6e66ce9c-cd11-5562-b7d4-af04182a7867
+    sources:
+    - paradedb
+  - doc_id: a1634676-158b-52df-ada4-272a17098192
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+  - doc_id: fa217cfe-1937-5a14-b15c-418343f2c30f
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: b0b7552e-919e-5975-b42f-dafefb2dbd0b
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: e21cbbe7-f6cc-533e-b994-3c868c1f744c
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 3acc8ea2-2a9c-535a-ae99-ed998b1c0d9c
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 64b9e168-d77a-56a0-b72e-3dbbf7e39074
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: d746332a-5819-534f-a015-f244ea026af7
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: a46b5bb9-12f5-5bd2-a27b-8bfdaca9ac1d
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 4b1da6fb-4ca1-50bb-af39-59c862acdcda
+    sources:
+    - paradedb-rrf
+  - doc_id: b49ce274-78f1-58ed-9ebb-d76776be80ef
+    sources:
+    - paradedb-rrf
+  request_digests:
+    elasticsearch: 41cd35f632c6e01f6123bf199dcbf824d4d850379fed6eb52b6f66fc2d9932f0
+    es-knn: 3603241599aa0c1c28690f4b977dab271f7b3f443663b7fecb7b43d9a1e41aaa
+    es-linear: 17810a58c33f07270e20130d2d807c4a9e3e70ea24748590ae8d0f7c5db0b078
+    es-rrf: 8f6527ebcdb796a9aff871df959e8c87a76c2daec8112212304530b960d150ef
+    paradedb: 4dc86e331fc521eec94b06fc81304cf8a9983669cef98004020c8dee52002ddf
+    paradedb-hnsw: f549879251deb41b61aec641a519d19d6fae9816e4bf98688dc8745d7e3012cd
+    paradedb-rrf: fe453a6de17e0433495706c515f022f72f3c863d608fbc5365ca937727b36de7
+    pg-exact: f549879251deb41b61aec641a519d19d6fae9816e4bf98688dc8745d7e3012cd
+    pg-gin: 97cad7e5b4eee7a80dc258a2cc178c1d2ed069dcfdd76cfe10fe3897eead1dfb
+    pg-hnsw: f549879251deb41b61aec641a519d19d6fae9816e4bf98688dc8745d7e3012cd
+    pg-rrf: 2852926d3e06dc8d2e408b031259cad1eea86eedd74134353607e42e923429dd
+    pg-rrf-client: fc3f9d3c9749b193c1e334ff1d1b520ae415a629463f2af0118230854b67c50b
+    tiger: 1da9985d8523fe495736d13638025b2096f83e8fc517eb434351ab406061771b
+    tiger-hnsw: f549879251deb41b61aec641a519d19d6fae9816e4bf98688dc8745d7e3012cd
+    tiger-rrf: 393f7e4d084e7395265cc970d3efa018172e9a9a40cec1b604f4028e02bfde9a
+- query_id: desc-gig-economy
+  query_text: workers paid per task through apps without employee benefits
+  query_desc: Articles about the gig economy
+  category: descriptive
+  docs:
+  - doc_id: bfe830d2-12f0-5207-8a45-eb27f56494a0
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+    - paradedb-rrf
+  - doc_id: e04d0506-0bcf-5cb0-a7f1-aca7277a41b5
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+  - doc_id: beab9570-f020-50a5-b8b8-2e881219992a
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: cad5e6a3-71d1-5434-83ab-370542dd193f
+    sources:
+    - paradedb
+  - doc_id: 16d04f5b-45d0-523c-b2d0-9b5119e5ba36
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+    - paradedb-rrf
+  - doc_id: 220268c4-9a72-5e83-bf6d-e00ecf3318a3
+    sources:
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 89f6c72d-2159-5343-b5c0-327d946ba6ff
+    sources:
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: c1c7a13e-6c40-5402-bb9d-1f5cbdca4928
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - tiger-hnsw
+  - doc_id: 5c7f870c-6652-5b7e-84b8-878a87569b59
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: dafddb7e-e7f0-5883-be0a-1e93450f1fe4
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 3ecc64b3-e431-57ad-b96f-b05f547d82ee
+    sources:
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: a81e753f-ebed-5ba7-a9c6-673fa51fb2b3
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 6c390689-82d7-527b-a106-0455e0b916c8
+    sources:
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 53ca030e-12a5-5abc-840c-574123eee083
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: afb4e845-b281-543b-a6a6-0f572ddf51b9
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+  request_digests:
+    elasticsearch: e38eebb0dd17bdaec964b8ab119fb913c93a61a23db758cefa851b1a9e11eff9
+    es-knn: 824d5e0528cddd4674968e5fafbda6a42c336daa362d3e8910331ebc41332046
+    es-linear: 0572c41835e91477d7441b3b64cae2a86d2e8a353d38afb82a1bb3e71a3a6685
+    es-rrf: 135c45e5b5041a930a46c23d7fe4019546b1c665e20e3c759d74bea458558f7f
+    paradedb: b23c7973fac12208116951cb462a0db5c53647e8cbd625c5316db9452eaeb932
+    paradedb-hnsw: a463150047220f1225719633df0ea35ed7ef53dd3cfb72207e5c86c56a43ee36
+    paradedb-rrf: f1bc44b2cbcb4b691120a8956f33da0e6ebc1a8f06922c9471871fde16c4bdf9
+    pg-exact: a463150047220f1225719633df0ea35ed7ef53dd3cfb72207e5c86c56a43ee36
+    pg-gin: acf37ca8421e2ad423ba8df784eddc49c626f90c692147f55d91080f6372e958
+    pg-hnsw: a463150047220f1225719633df0ea35ed7ef53dd3cfb72207e5c86c56a43ee36
+    pg-rrf: 8c5e2d2980713ecde359997dc760313ffba114565ee4409f9e3671e186506b2d
+    pg-rrf-client: 5443ee4a6540be087d5039cc1e4664d1758abecf975a3a28c1cd7a78e5aa65b7
+    tiger: d6d0f5ada6ffc278be23eed5a1b80ec670b0eef44538ab251db64bc8aa23a346
+    tiger-hnsw: a463150047220f1225719633df0ea35ed7ef53dd3cfb72207e5c86c56a43ee36
+    tiger-rrf: e5670029ca5790e13b57f6ae86e2c2f339b7620aaba3251b12fac96f9078b793
+- query_id: desc-superbugs
+  query_text: bacteria that medicines no longer kill
+  query_desc: Articles about antibiotic resistance
+  category: descriptive
+  docs:
+  - doc_id: 6f731469-40ff-5b3f-a24a-c51cd9c42607
+    sources:
+    - elasticsearch
+    - es-linear
+  - doc_id: 20fb18d1-734e-5369-8540-155b6d6681c2
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+  - doc_id: c37f6355-6804-54ff-88db-fbf7978df45d
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-rrf
+  - doc_id: e7d1d18d-50ba-5560-8c9f-91b28c6c5801
+    sources:
+    - paradedb
+  - doc_id: 0b0f4b18-9f87-5cb3-af51-05bf80cd1800
+    sources:
+    - elasticsearch
+    - es-linear
+    - paradedb
+  - doc_id: e33dfc2f-cfb4-5f4d-a320-1886d1738861
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 7481b69c-ecfc-59a3-8577-acabf4b0d657
+    sources:
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 677783d0-9b60-5805-9cd0-fd2ad0a63103
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 6122b4b1-081b-5dad-a5ff-e8740bbb1658
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 904e73a7-5903-5500-82a8-09f234070982
+    sources:
+    - es-knn
+  - doc_id: 3525eff6-ec45-5ba1-b242-0b47ec706dfb
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 399496eb-fd87-5b69-af11-51b57c23c1fc
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: d3efb4cf-ce44-5c31-89d2-eac111ed0166
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: aec4725d-be4c-5515-92c4-6680b1f154bd
+    sources:
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 81ca0f0c-903a-5b54-aa4b-42d0a2212e28
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 117b59b3-ea36-5c03-bb9f-1fb5a239800f
+    sources:
+    - paradedb-rrf
+  - doc_id: bd565934-6a4d-5bb6-8953-8a1375b2bd57
+    sources:
+    - es-linear
+    - es-rrf
+  request_digests:
+    elasticsearch: 6c6f0a7bad71eb76b460dd1928330ee85f4bd0f1c60081a0ac75820507a91e07
+    es-knn: 00b529d5977cb4c73740624eba51dfa88a68a6b6dc2897004d62d71756f9412d
+    es-linear: c8442f8605de2d8fabcb7c098745f6d6cdcbcaafdb9199cc5395156aa15309e9
+    es-rrf: 68705590dcff271951432e547be2af3eb967f16f77b3c93908dac9668c45d8a1
+    paradedb: 94352103212741804a3be97366a80c11ac966bf621cc25199aae561a8751836f
+    paradedb-hnsw: 5e4a17c2d9897fa5d953b6143d552974633ca9bed094e86765a997b63b5abed5
+    paradedb-rrf: 1ff88b6c5af7e426bf6d231b65d84ac8269187fe53fc5176f59c91431dc0b33b
+    pg-exact: 5e4a17c2d9897fa5d953b6143d552974633ca9bed094e86765a997b63b5abed5
+    pg-gin: 30e39be94b34f4c0066e6955ef7fef105e296b5d131fe86ad4051a84efd3254b
+    pg-hnsw: 5e4a17c2d9897fa5d953b6143d552974633ca9bed094e86765a997b63b5abed5
+    pg-rrf: 9a0aa60e9b1415b912094b4e9cdb99fdbd3e5c3103bd3e772dd27c9dfca859e6
+    pg-rrf-client: 2d5908edd370cdec53c146632208a78ba028cd7d440d17e232a543733b15df88
+    tiger: 45751410910440ab1dc01aedc84f4607c1137e39f11b9b8ae8502af902cd9e5a
+    tiger-hnsw: 5e4a17c2d9897fa5d953b6143d552974633ca9bed094e86765a997b63b5abed5
+    tiger-rrf: 3659b62e272a1bfe248c4724fdb9ae1e1cb93a6d1f2757b736d0dd4d5a359d18
+- query_id: desc-wildfire-evacuations
+  query_text: forest fires forcing thousands to flee their homes
+  query_desc: Articles about wildfire evacuations
+  category: descriptive
+  docs:
+  - doc_id: 832ca1dd-0482-5fe9-bad7-56e34168adc9
+    sources:
+    - paradedb
+  - doc_id: ca1d268d-4ee4-5a92-b4d4-3260dde4f529
+    sources:
+    - pg-gin
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-rrf
+  - doc_id: 8cdefc0b-815e-5b72-8494-09a32eb9f79f
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+  - doc_id: 33cf21ca-e6fa-55dd-96dd-6f03b8b0e380
+    sources:
+    - elasticsearch
+    - es-linear
+    - es-rrf
+  - doc_id: aa2ed194-a083-5894-bed4-c5680207279e
+    sources:
+    - paradedb
+  - doc_id: 46be4c69-bf2a-534b-ba88-44bb703e394f
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: f8684334-1ee3-5dad-bff7-afeeeae42dfc
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: c94050a8-7bb1-56e3-a7f8-0967a320bf61
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: b19ca491-7030-5066-a985-4b09f24b8277
+    sources:
+    - es-knn
+    - paradedb-hnsw
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 36cd000e-2023-5fba-ba4e-4832d4330cc8
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 382284f0-2dc4-5dfa-906d-77e986ab79e0
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 16c50025-0973-52e4-82d7-3338b227565f
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - tiger-hnsw
+  - doc_id: 079f3220-39ea-5357-9e00-bcf9c7edef65
+    sources:
+    - es-knn
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: b227d8de-0d97-59cc-8cdb-fe05b67b9c1d
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 95010531-df7a-5140-bcea-4b3ca7e7f657
+    sources:
+    - elasticsearch
+    - es-knn
+    - es-linear
+    - es-rrf
+    - paradedb-hnsw
+    - paradedb-rrf
+    - pg-exact
+    - pg-gin
+    - pg-hnsw
+    - pg-rrf
+    - pg-rrf-client
+    - tiger
+    - tiger-hnsw
+    - tiger-rrf
+  - doc_id: 7b4ad61c-ac28-55c5-82b6-9362d13e32a9
+    sources:
+    - es-rrf
+  - doc_id: 223e782c-6d41-55ff-9b30-f931d09c7a50
+    sources:
+    - es-rrf
+  request_digests:
+    elasticsearch: d3bd5224c3dc295d5e5c5e2d7d8f97cf37f3471236be5273605b4daf5488242f
+    es-knn: 7c63689ebd6d2f2b667cc8543db9ca4093e6c144f98979e0e859f07bfe9560e1
+    es-linear: 8c502e76175d9b5b0bf0b229686a139cde5a9e4184754e0ced9e7fc569feea3a
+    es-rrf: b08b34f2ac7a9e4af3f3c8c7483e5ecf55eba48be58cfa3bc66a32037c60d461
+    paradedb: 7f0bab8fc3479c9450c680a2e7251f151f6ce86198ae406984f7257601e61c5d
+    paradedb-hnsw: be21efbe31661950446255bc18ba34c95f02f2d77b84efd565f01633cd12425f
+    paradedb-rrf: 955297a11611f4420508f83a0e0b56c8c8fbcb1e90f5436a07da8f311415dd96
+    pg-exact: be21efbe31661950446255bc18ba34c95f02f2d77b84efd565f01633cd12425f
+    pg-gin: 3bd04acd06e4e3606a7e9bf1b159aad7b7186587df065242fd5812372ba12a71
+    pg-hnsw: be21efbe31661950446255bc18ba34c95f02f2d77b84efd565f01633cd12425f
+    pg-rrf: 4f154532e29686c2185b19a322b49460790d86dd3a255afa54c2bdf6ebc3a1f5
+    pg-rrf-client: 965458d94762b916848e63fbcc09e6c7534b8d101d148d0cd9e8c70826a017fb
+    tiger: d6d9df229ccabaec70ed7571f0e3ce444d40cfa7b32677168a8aa1763f38bb50
+    tiger-hnsw: be21efbe31661950446255bc18ba34c95f02f2d77b84efd565f01633cd12425f
+    tiger-rrf: 3415db6ba51c3810643c91ce5fdecd770ca282e131501367fa02eb76ee62b9fc

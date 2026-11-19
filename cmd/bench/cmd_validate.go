@@ -102,6 +102,7 @@ func validateTrack(cmd *cobra.Command, f validateFlags, tr *trackctx.Track) erro
 	if err != nil {
 		return err
 	}
+	bindings := runner.QueryBindings(bs)
 	dialects, err := runner.Dialects(bs)
 	if err != nil {
 		return err
@@ -133,11 +134,11 @@ func validateTrack(cmd *cobra.Command, f validateFlags, tr *trackctx.Track) erro
 					query:        q,
 					track:        bs.ID,
 					engineName:   engName,
-					binding:      bs.QueryBinding(engName),
+					bindings:     bindings,
 					loaded:       ls,
 					executor:     executors[engName],
 					store:        vectorStore,
-					dialect:      dialects[engName],
+					dialects:     dialects,
 					queryTimeout: bs.Runs.QueryTimeout,
 				})
 				if err := cmd.Context().Err(); err != nil {
@@ -175,11 +176,11 @@ type validateInput struct {
 	query        suite.Query
 	track        string
 	engineName   string
-	binding      spec.QueryBinding
+	bindings     map[string]spec.QueryBinding
 	loaded       *suite.LoadedSuite
 	executor     engine.Executor
 	store        storage.VectorStore
-	dialect      dialect.Dialect
+	dialects     map[string]dialect.Dialect
 	queryTimeout time.Duration
 }
 
@@ -211,11 +212,13 @@ func validateOne(ctx context.Context, in validateInput) validateRow {
 			row.detail = "stubbed vector"
 		}
 	}
-	resolved, err := q.ResolveEngineQuery(suite.ResolveOptions{
-		Engine:      in.binding.QuerySource,
-		Registry:    in.loaded.Registry,
-		SuiteDir:    in.loaded.Dir,
-		Defaults:    in.binding.Params,
+	request, err := runner.BuildRequest(runner.RequestInput{
+		Engine:      in.engineName,
+		Query:       &q,
+		Track:       in.track,
+		Suite:       in.loaded,
+		Bindings:    in.bindings,
+		Dialects:    in.dialects,
 		QueryVector: queryVector,
 	})
 	if err != nil {
@@ -231,7 +234,7 @@ func validateOne(ctx context.Context, in validateInput) validateRow {
 	}
 	validateCtx, cancel := context.WithTimeout(ctx, in.queryTimeout)
 	defer cancel()
-	if err := v.Validate(validateCtx, in.dialect.Request(in.track, resolved)); err != nil {
+	if err := v.Validate(validateCtx, request); err != nil {
 		row.status = "INVALID"
 		row.detail = truncate(err.Error(), 120)
 		return row

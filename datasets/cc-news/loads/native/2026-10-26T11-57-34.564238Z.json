@@ -1,0 +1,59 @@
+{
+  "engine": "native",
+  "engineVersion": "PostgreSQL 18.1 (Debian 18.1-1.pgdg12+2), fuzzystrmatch 1.2, pg_trgm 1.6, vector 0.8.1",
+  "startedAt": "2026-10-26T11:57:34.564238Z",
+  "finishedAt": "2026-10-26T12:04:49.301165Z",
+  "totalSeconds": 434.736927,
+  "canonical": {
+    "name": "cc-news-canonical",
+    "version": "v1",
+    "resourceHash": "sha256:7cdf4c719dc70cd013a1eb76fa33688564dc99af03ddf8cc57d20952cd4c89a3"
+  },
+  "embeddings": {
+    "name": "cc-news-canonical-embeddings",
+    "version": "v1",
+    "resourceHash": "sha256:de08a1b41c61d01ca245e23b632fa772324013eb6087ecbe90e793078b7fdde4"
+  },
+  "modelTag": "qwen3-embedding:0.6b@1024",
+  "articles": 707910,
+  "vectors": 707910,
+  "batchSize": 1000,
+  "stages": [
+    {
+      "name": "schema",
+      "seconds": 0.045586958
+    },
+    {
+      "name": "copy_articles",
+      "seconds": 173.211767209
+    },
+    {
+      "name": "copy_embeddings",
+      "seconds": 54.181289042
+    },
+    {
+      "name": "idx_articles_search_vector",
+      "seconds": 25.152993583
+    },
+    {
+      "name": "idx_articles_title_trgm",
+      "seconds": 2.592119792
+    },
+    {
+      "name": "idx_articles_title_desc_trgm",
+      "seconds": 6.326246458
+    },
+    {
+      "name": "idx_article_embedding",
+      "seconds": 161.720864042
+    },
+    {
+      "name": "vacuum_analyze",
+      "seconds": 11.473152833
+    }
+  ],
+  "settings": {
+    "maintenance_work_mem": "4GB",
+    "max_parallel_maintenance_workers": "4"
+  }
+}

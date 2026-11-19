@@ -1,0 +1,32 @@
+A = 2026-11-14T20-26-29-run-183a31.json
+B = 2026-11-14T23-56-57-run-b2a175.json
+
+job           pair                           metric   A mean diff  A adj p B mean diff  B adj p
+all-engines   paradedb vs elasticsearch      MAP           0.0106    0.873      0.0123    0.341
+all-engines   paradedb vs elasticsearch      NDCG@10       0.0142    1.000      0.0142    1.000
+all-engines   paradedb vs tiger              MAP          -0.0418    0.028     -0.0299    0.165
+all-engines   paradedb vs tiger              NDCG@10      -0.0287    0.829     -0.0061    1.000
+all-engines   pg-gin vs elasticsearch        MAP           0.0294    0.020      0.0423    0.007
+all-engines   pg-gin vs elasticsearch        NDCG@10       0.0299    1.000      0.0614    0.142
+all-engines   pg-gin vs paradedb             MAP           0.0188    0.098      0.0300    0.183
+all-engines   pg-gin vs paradedb             NDCG@10       0.0157    1.000      0.0472    0.721
+all-engines   pg-gin vs pg-gin-norm          MAP           0.0086    0.502      0.0356    0.060
+all-engines   pg-gin vs pg-gin-norm          NDCG@10       0.0874    0.108      0.1148    0.024
+all-engines   pg-gin vs tiger                MAP          -0.0230    0.873      0.0001    0.992
+all-engines   pg-gin vs tiger                NDCG@10      -0.0130    1.000      0.0411    0.721
+all-engines   pg-gin-norm vs elasticsearch   MAP           0.0208    0.873      0.0067    0.992
+all-engines   pg-gin-norm vs elasticsearch   NDCG@10      -0.0575    0.414     -0.0535    0.721
+all-engines   pg-gin-norm vs paradedb        MAP           0.0101    0.953     -0.0055    0.992
+all-engines   pg-gin-norm vs paradedb        NDCG@10      -0.0717    0.108     -0.0677    0.358
+all-engines   pg-gin-norm vs tiger           MAP          -0.0316    0.078     -0.0355    0.060
+all-engines   pg-gin-norm vs tiger           NDCG@10      -0.1004    0.089     -0.0737    0.642
+all-engines   tiger vs elasticsearch         MAP           0.0524    0.006      0.0422    0.004
+all-engines   tiger vs elasticsearch         NDCG@10       0.0429    0.669      0.0203    1.000
+bm25-engines  paradedb vs elasticsearch      MAP           0.0106    0.218      0.0123    0.085
+bm25-engines  paradedb vs elasticsearch      NDCG@10       0.0142    0.767      0.0142    1.000
+bm25-engines  paradedb vs tiger              MAP          -0.0418    0.007     -0.0299    0.055
+bm25-engines  paradedb vs tiger              NDCG@10      -0.0287    0.334     -0.0061    1.000
+bm25-engines  tiger vs elasticsearch         MAP           0.0524    0.002      0.0422    0.001
+bm25-engines  tiger vs elasticsearch         NDCG@10       0.0429    0.334      0.0203    1.000
+index-ab      pg-noindex vs pg-gin           MAP           0.0000    1.000      0.0000    1.000
+index-ab      pg-noindex vs pg-gin           NDCG@10       0.0000    1.000      0.0000    1.000

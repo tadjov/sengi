@@ -1,0 +1,74 @@
+schema_version: 1
+id: cc_news_fts
+kind: fts
+description: "Full-text search on cc-news across native Postgres, ParadeDB, pg_textsearch and Elasticsearch"
+
+defaults:
+  pool_depth: 50
+  judgments: claude-cli
+
+engines:
+  # rank_norm is ts_rank's normalisation bitmask: 0 ignores document length, 1
+  # divides by 1 + log(length), the length normalisation BM25 applies.
+  pg-gin:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54320/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+    params:
+      rank_norm: "0"
+  pg-gin-norm:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54320/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+    queries_from: pg-gin
+    params:
+      rank_norm: "1"
+  # Same query as pg-gin without index access: rankings must match, only latency moves.
+  pg-noindex:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54320/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+      enable_indexscan: "off"
+      enable_bitmapscan: "off"
+    queries_from: pg-gin
+    params:
+      rank_norm: "0"
+  paradedb:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54321/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+  tiger:
+    type: postgres
+    connection: "postgresql://news_user:news_password@localhost:54322/news_db"
+    connection_settings:
+      plan_cache_mode: force_custom_plan
+  elasticsearch:
+    type: elasticsearch
+    connection: "http://localhost:9200"
+    index: articles
+
+metrics:
+  k_values: [3, 5, 10]
+  relevance_threshold: 2
+
+runs:
+  warmup: 1
+  iterations: 3
+  query_timeout: 30s
+
+jobs:
+  - name: "index-ab"
+    suite: suite.yaml
+    engines: [pg-noindex, pg-gin]
+
+  - name: "all-engines"
+    suite: suite.yaml
+    engines: [pg-gin, pg-gin-norm, paradedb, tiger, elasticsearch]
+
+  - name: "bm25-engines"
+    suite: suite.yaml
+    engines: [paradedb, tiger, elasticsearch]

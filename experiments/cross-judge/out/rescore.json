@@ -1,0 +1,2148 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "run_id": "2026-11-15T01-16-23-agreement-021aa2",
+    "tool": "bench/1.0.0",
+    "generated_at": "2026-11-15T01:16:23.516653Z",
+    "sources": {
+      "judgments": [
+        {
+          "label": "sonnet",
+          "path": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/annotations.claude-cli.yaml",
+          "run_id": "2026-11-14T20-06-00-judge-c27330"
+        },
+        {
+          "label": "jev",
+          "path": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/annotations.jev.yaml",
+          "run_id": "2026-11-14T22-17-45-judge-6002ee"
+        }
+      ],
+      "report_run_id": "2026-11-14T20-26-29-run-183a31"
+    }
+  },
+  "relevance_threshold": 2,
+  "seed": 1,
+  "all_pairs": {
+    "pairs": 3716,
+    "distributions": [
+      {
+        "label": "sonnet",
+        "grades": [
+          159,
+          417,
+          787,
+          2353
+        ]
+      },
+      {
+        "label": "jev",
+        "grades": [
+          301,
+          400,
+          218,
+          2797
+        ]
+      }
+    ],
+    "comparisons": [
+      {
+        "first": "sonnet",
+        "second": "jev",
+        "pairs": 3716,
+        "exact": 0.7747578040904198,
+        "within_one": 0.9790096878363832,
+        "relevant": 0.932454251883746,
+        "quadratic_kappa": {
+          "value": 0.8204636872240347,
+          "low": 0.7385788780859734,
+          "high": 0.8647400754972379
+        },
+        "binary_kappa": {
+          "value": 0.7631365896520375,
+          "low": 0.6696060685504551,
+          "high": 0.822632254537303
+        }
+      }
+    ],
+    "reference": {
+      "label": "sonnet",
+      "against": [
+        {
+          "label": "jev",
+          "table": [
+            [
+              150,
+              7,
+              0,
+              2
+            ],
+            [
+              108,
+              248,
+              31,
+              30
+            ],
+            [
+              35,
+              142,
+              163,
+              447
+            ],
+            [
+              8,
+              3,
+              24,
+              2318
+            ]
+          ],
+          "reference_irrelevant": 576,
+          "graded_relevant": 63,
+          "reference_relevant": 3140,
+          "graded_irrelevant": 188
+        }
+      ],
+      "by_category": [
+        {
+          "category": "boolean",
+          "queries": 5,
+          "pairs": 632,
+          "comparisons": [
+            {
+              "first": "sonnet",
+              "second": "jev",
+              "pairs": 632,
+              "exact": 0.884493670886076,
+              "within_one": 0.9889240506329114,
+              "relevant": 0.9588607594936709,
+              "quadratic_kappa": {
+                "value": 0.7670137182179722,
+                "low": 0.6872648929621776,
+                "high": 0.7873595892608463
+              },
+              "binary_kappa": {
+                "value": 0.6537570061949509,
+                "low": 0.48906928718934695,
+                "high": 0.8006169801478751
+              }
+            }
+          ]
+        },
+        {
+          "category": "keyword",
+          "queries": 10,
+          "pairs": 1325,
+          "comparisons": [
+            {
+              "first": "sonnet",
+              "second": "jev",
+              "pairs": 1325,
+              "exact": 0.7992452830188679,
+              "within_one": 0.9826415094339622,
+              "relevant": 0.9441509433962264,
+              "quadratic_kappa": {
+                "value": 0.8323379670467311,
+                "low": 0.5923231384536354,
+                "high": 0.8979759871880371
+              },
+              "binary_kappa": {
+                "value": 0.7932411687303891,
+                "low": 0.571663572732837,
+                "high": 0.8835496039525513
+              }
+            }
+          ]
+        },
+        {
+          "category": "multi-field",
+          "queries": 6,
+          "pairs": 795,
+          "comparisons": [
+            {
+              "first": "sonnet",
+              "second": "jev",
+              "pairs": 795,
+              "exact": 0.690566037735849,
+              "within_one": 0.9849056603773585,
+              "relevant": 0.9182389937106918,
+              "quadratic_kappa": {
+                "value": 0.8671546174345264,
+                "low": 0.7497132812278184,
+                "high": 0.9010775765949526
+              },
+              "binary_kappa": {
+                "value": 0.8161522725251268,
+                "low": 0.6623896409652736,
+                "high": 0.8827667845948963
+              }
+            }
+          ]
+        },
+        {
+          "category": "phrase",
+          "queries": 5,
+          "pairs": 504,
+          "comparisons": [
+            {
+              "first": "sonnet",
+              "second": "jev",
+              "pairs": 504,
+              "exact": 0.7420634920634921,
+              "within_one": 0.9761904761904762,
+              "relevant": 0.9107142857142857,
+              "quadratic_kappa": {
+                "value": 0.7283142389525368,
+                "low": 0.6131308235040664,
+                "high": 0.8279412385240911
+              },
+              "binary_kappa": {
+                "value": 0.6375838926174495,
+                "low": 0.51963687150838,
+                "high": 0.7433004231311705
+              }
+            }
+          ]
+        },
+        {
+          "category": "single-field",
+          "queries": 4,
+          "pairs": 460,
+          "comparisons": [
+            {
+              "first": "sonnet",
+              "second": "jev",
+              "pairs": 460,
+              "exact": 0.7347826086956522,
+              "within_one": 0.9478260869565217,
+              "relevant": 0.9108695652173913,
+              "quadratic_kappa": {
+                "value": 0.605380066791262,
+                "low": 0.45449393987092723,
+                "high": 0.7835139935084818
+              },
+              "binary_kappa": {
+                "value": 0.5459797785267213,
+                "low": 0.3423076923076919,
+                "high": 0.7253195539842262
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "rescoring": {
+    "report_run_id": "2026-11-14T20-26-29-run-183a31",
+    "report_set": "sonnet",
+    "reference": "sonnet",
+    "metrics": [
+      "NDCG@3",
+      "NDCG@5",
+      "NDCG@10",
+      "NDCG@3 (gain rel)",
+      "NDCG@5 (gain rel)",
+      "NDCG@10 (gain rel)",
+      "P@3",
+      "P@5",
+      "P@10",
+      "R@3",
+      "R@5",
+      "R@10",
+      "F1@3",
+      "F1@5",
+      "F1@10",
+      "MAP",
+      "MRR",
+      "Bpref"
+    ],
+    "jobs": [
+      {
+        "job": "index-ab",
+        "engines": [
+          "pg-noindex",
+          "pg-gin"
+        ],
+        "queries": 30,
+        "metrics": [
+          {
+            "metric": "NDCG@3",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.847964635127,
+                  "pg-noindex": 0.847964635127
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.912795232649,
+                  "pg-noindex": 0.912795232649
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@5",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.833074068053,
+                  "pg-noindex": 0.833074068053
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.910992469216,
+                  "pg-noindex": 0.910992469216
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@10",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.82098011139,
+                  "pg-noindex": 0.82098011139
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.888744987382,
+                  "pg-noindex": 0.888744987382
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@3 (gain rel)",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.903972493988,
+                  "pg-noindex": 0.903972493988
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.941961016287,
+                  "pg-noindex": 0.941961016287
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@5 (gain rel)",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.895416708522,
+                  "pg-noindex": 0.895416708522
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.941356918199,
+                  "pg-noindex": 0.941356918199
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@10 (gain rel)",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.88921307764,
+                  "pg-noindex": 0.88921307764
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.923206926994,
+                  "pg-noindex": 0.923206926994
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "P@3",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.944444444444,
+                  "pg-noindex": 0.944444444444
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.944444444444,
+                  "pg-noindex": 0.944444444444
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "P@5",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.933333333333,
+                  "pg-noindex": 0.933333333333
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.94,
+                  "pg-noindex": 0.94
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "P@10",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.91,
+                  "pg-noindex": 0.91
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.913333333333,
+                  "pg-noindex": 0.913333333333
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "R@3",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.036442471413,
+                  "pg-noindex": 0.036442471413
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.040340766425,
+                  "pg-noindex": 0.040340766425
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "R@5",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.0588486313,
+                  "pg-noindex": 0.0588486313
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.064311319575,
+                  "pg-noindex": 0.064311319575
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "R@10",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.113155588154,
+                  "pg-noindex": 0.113155588154
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.117859741009,
+                  "pg-noindex": 0.117859741009
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "F1@3",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.068453898411,
+                  "pg-noindex": 0.068453898411
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.07497646402,
+                  "pg-noindex": 0.07497646402
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "F1@5",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.106667941086,
+                  "pg-noindex": 0.106667941086
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.115354274879,
+                  "pg-noindex": 0.115354274879
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "F1@10",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.189538386822,
+                  "pg-noindex": 0.189538386822
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.196846223877,
+                  "pg-noindex": 0.196846223877
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "MAP",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.441828003962,
+                  "pg-noindex": 0.441828003962
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.441464874303,
+                  "pg-noindex": 0.441464874303
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "MRR",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.966666666667,
+                  "pg-noindex": 0.966666666667
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.966666666667,
+                  "pg-noindex": 0.966666666667
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          },
+          {
+            "metric": "Bpref",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "pg-gin": 0.409718677634,
+                  "pg-noindex": 0.409718677634
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "pg-gin": 0.413976710055,
+                  "pg-noindex": 0.413976710055
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-noindex"
+                ],
+                "tau_b": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "job": "all-engines",
+        "engines": [
+          "pg-gin",
+          "pg-gin-norm",
+          "paradedb",
+          "tiger",
+          "elasticsearch"
+        ],
+        "queries": 30,
+        "metrics": [
+          {
+            "metric": "NDCG@3",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.76342068366,
+                  "paradedb": 0.802181656653,
+                  "pg-gin": 0.847964635127,
+                  "pg-gin-norm": 0.718568459818,
+                  "tiger": 0.800292583562
+                },
+                "order": [
+                  "pg-gin",
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.806464402185,
+                  "paradedb": 0.83993130724,
+                  "pg-gin": 0.912795232649,
+                  "pg-gin-norm": 0.711624898402,
+                  "tiger": 0.800930754632
+                },
+                "order": [
+                  "pg-gin",
+                  "paradedb",
+                  "elasticsearch",
+                  "tiger",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0.8
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@5",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.782251595054,
+                  "paradedb": 0.79433799558,
+                  "pg-gin": 0.833074068053,
+                  "pg-gin-norm": 0.709104982925,
+                  "tiger": 0.810986587609
+                },
+                "order": [
+                  "pg-gin",
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.814880905032,
+                  "paradedb": 0.833503818054,
+                  "pg-gin": 0.910992469216,
+                  "pg-gin-norm": 0.74376795369,
+                  "tiger": 0.811377033312
+                },
+                "order": [
+                  "pg-gin",
+                  "paradedb",
+                  "elasticsearch",
+                  "tiger",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0.6
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@10",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.791091486811,
+                  "paradedb": 0.805271914031,
+                  "pg-gin": 0.82098011139,
+                  "pg-gin-norm": 0.733559149643,
+                  "tiger": 0.833954268383
+                },
+                "order": [
+                  "tiger",
+                  "pg-gin",
+                  "paradedb",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.827377207768,
+                  "paradedb": 0.841580524462,
+                  "pg-gin": 0.888744987382,
+                  "pg-gin-norm": 0.773920657457,
+                  "tiger": 0.847663131768
+                },
+                "order": [
+                  "pg-gin",
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0.8
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@3 (gain rel)",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.832091619254,
+                  "paradedb": 0.857479964612,
+                  "pg-gin": 0.903972493988,
+                  "pg-gin-norm": 0.825512021233,
+                  "tiger": 0.860769763622
+                },
+                "order": [
+                  "pg-gin",
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.831408924277,
+                  "paradedb": 0.867225685768,
+                  "pg-gin": 0.941961016287,
+                  "pg-gin-norm": 0.761576134475,
+                  "tiger": 0.839912931355
+                },
+                "order": [
+                  "pg-gin",
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0.8
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@5 (gain rel)",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.846382158676,
+                  "paradedb": 0.854827953041,
+                  "pg-gin": 0.895416708522,
+                  "pg-gin-norm": 0.818438215667,
+                  "tiger": 0.870189431524
+                },
+                "order": [
+                  "pg-gin",
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.842477646075,
+                  "paradedb": 0.860413610496,
+                  "pg-gin": 0.941356918199,
+                  "pg-gin-norm": 0.790714946519,
+                  "tiger": 0.850411847099
+                },
+                "order": [
+                  "pg-gin",
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0.8
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@10 (gain rel)",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.857217839943,
+                  "paradedb": 0.864225668893,
+                  "pg-gin": 0.88921307764,
+                  "pg-gin-norm": 0.835575444091,
+                  "tiger": 0.89096741014
+                },
+                "order": [
+                  "tiger",
+                  "pg-gin",
+                  "paradedb",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.854809692231,
+                  "paradedb": 0.867489475233,
+                  "pg-gin": 0.923206926994,
+                  "pg-gin-norm": 0.817951331895,
+                  "tiger": 0.881497653082
+                },
+                "order": [
+                  "pg-gin",
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0.8
+              }
+            ]
+          },
+          {
+            "metric": "P@3",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.888888888889,
+                  "paradedb": 0.9,
+                  "pg-gin": 0.944444444444,
+                  "pg-gin-norm": 0.922222222222,
+                  "tiger": 0.9
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-gin-norm",
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.833333333333,
+                  "paradedb": 0.844444444444,
+                  "pg-gin": 0.944444444444,
+                  "pg-gin-norm": 0.755555555556,
+                  "tiger": 0.844444444444
+                },
+                "order": [
+                  "pg-gin",
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0.3333333333333333
+              }
+            ]
+          },
+          {
+            "metric": "P@5",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.9,
+                  "paradedb": 0.9,
+                  "pg-gin": 0.933333333333,
+                  "pg-gin-norm": 0.926666666667,
+                  "tiger": 0.913333333333
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-gin-norm",
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.846666666667,
+                  "paradedb": 0.853333333333,
+                  "pg-gin": 0.94,
+                  "pg-gin-norm": 0.8,
+                  "tiger": 0.853333333333
+                },
+                "order": [
+                  "pg-gin",
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0.2222222222222222
+              }
+            ]
+          },
+          {
+            "metric": "P@10",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.906666666667,
+                  "paradedb": 0.91,
+                  "pg-gin": 0.91,
+                  "pg-gin-norm": 0.92,
+                  "tiger": 0.95
+                },
+                "order": [
+                  "tiger",
+                  "pg-gin-norm",
+                  "paradedb",
+                  "pg-gin",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.866666666667,
+                  "paradedb": 0.866666666667,
+                  "pg-gin": 0.913333333333,
+                  "pg-gin-norm": 0.826666666667,
+                  "tiger": 0.896666666667
+                },
+                "order": [
+                  "pg-gin",
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0
+              }
+            ]
+          },
+          {
+            "metric": "R@3",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.033921081872,
+                  "paradedb": 0.034044352702,
+                  "pg-gin": 0.036442471413,
+                  "pg-gin-norm": 0.036264378208,
+                  "tiger": 0.034076862652
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-gin-norm",
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.033439630639,
+                  "paradedb": 0.033643091726,
+                  "pg-gin": 0.040340766425,
+                  "pg-gin-norm": 0.030473412697,
+                  "tiger": 0.035518219959
+                },
+                "order": [
+                  "pg-gin",
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0.4
+              }
+            ]
+          },
+          {
+            "metric": "R@5",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.057004388685,
+                  "paradedb": 0.055978303638,
+                  "pg-gin": 0.0588486313,
+                  "pg-gin-norm": 0.059907481513,
+                  "tiger": 0.057414799096
+                },
+                "order": [
+                  "pg-gin-norm",
+                  "pg-gin",
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.056060327367,
+                  "paradedb": 0.054548429093,
+                  "pg-gin": 0.064311319575,
+                  "pg-gin-norm": 0.056253152958,
+                  "tiger": 0.060000826789
+                },
+                "order": [
+                  "pg-gin",
+                  "tiger",
+                  "pg-gin-norm",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 0.6
+              }
+            ]
+          },
+          {
+            "metric": "R@10",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.113103309885,
+                  "paradedb": 0.112574564877,
+                  "pg-gin": 0.113155588154,
+                  "pg-gin-norm": 0.11741960499,
+                  "tiger": 0.12175325401
+                },
+                "order": [
+                  "tiger",
+                  "pg-gin-norm",
+                  "pg-gin",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.111783829894,
+                  "paradedb": 0.109684455215,
+                  "pg-gin": 0.117859741009,
+                  "pg-gin-norm": 0.111009816173,
+                  "tiger": 0.124705347547
+                },
+                "order": [
+                  "tiger",
+                  "pg-gin",
+                  "elasticsearch",
+                  "pg-gin-norm",
+                  "paradedb"
+                ],
+                "tau_b": 0.6
+              }
+            ]
+          },
+          {
+            "metric": "F1@3",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.063694774485,
+                  "paradedb": 0.063992333672,
+                  "pg-gin": 0.068453898411,
+                  "pg-gin-norm": 0.068053412994,
+                  "tiger": 0.064084420491
+                },
+                "order": [
+                  "pg-gin",
+                  "pg-gin-norm",
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.062672652565,
+                  "paradedb": 0.062833043442,
+                  "pg-gin": 0.07497646402,
+                  "pg-gin-norm": 0.057037947537,
+                  "tiger": 0.06551738769
+                },
+                "order": [
+                  "pg-gin",
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0.4
+              }
+            ]
+          },
+          {
+            "metric": "F1@5",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.103202454371,
+                  "paradedb": 0.101516393684,
+                  "pg-gin": 0.106667941086,
+                  "pg-gin-norm": 0.108363724367,
+                  "tiger": 0.104110052313
+                },
+                "order": [
+                  "pg-gin-norm",
+                  "pg-gin",
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.1012665284,
+                  "paradedb": 0.098658068588,
+                  "pg-gin": 0.115354274879,
+                  "pg-gin-norm": 0.099960996871,
+                  "tiger": 0.106109972957
+                },
+                "order": [
+                  "pg-gin",
+                  "tiger",
+                  "elasticsearch",
+                  "pg-gin-norm",
+                  "paradedb"
+                ],
+                "tau_b": 0.4
+              }
+            ]
+          },
+          {
+            "metric": "F1@10",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.189346584175,
+                  "paradedb": 0.188814389579,
+                  "pg-gin": 0.189538386822,
+                  "pg-gin-norm": 0.195973155806,
+                  "tiger": 0.203494733766
+                },
+                "order": [
+                  "tiger",
+                  "pg-gin-norm",
+                  "pg-gin",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.186741252112,
+                  "paradedb": 0.183457170465,
+                  "pg-gin": 0.196846223877,
+                  "pg-gin-norm": 0.182726925456,
+                  "tiger": 0.202096945271
+                },
+                "order": [
+                  "tiger",
+                  "pg-gin",
+                  "elasticsearch",
+                  "paradedb",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0.4
+              }
+            ]
+          },
+          {
+            "metric": "MAP",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.412408777121,
+                  "paradedb": 0.423046930678,
+                  "pg-gin": 0.441828003962,
+                  "pg-gin-norm": 0.433191394558,
+                  "tiger": 0.464824958662
+                },
+                "order": [
+                  "tiger",
+                  "pg-gin",
+                  "pg-gin-norm",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.399179780634,
+                  "paradedb": 0.411453680773,
+                  "pg-gin": 0.441464874303,
+                  "pg-gin-norm": 0.405909881779,
+                  "tiger": 0.441378200816
+                },
+                "order": [
+                  "pg-gin",
+                  "tiger",
+                  "paradedb",
+                  "pg-gin-norm",
+                  "elasticsearch"
+                ],
+                "tau_b": 0.6
+              }
+            ]
+          },
+          {
+            "metric": "MRR",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.895555555556,
+                  "paradedb": 0.956666666667,
+                  "pg-gin": 0.966666666667,
+                  "pg-gin-norm": 0.944444444444,
+                  "tiger": 0.931666666667
+                },
+                "order": [
+                  "pg-gin",
+                  "paradedb",
+                  "pg-gin-norm",
+                  "tiger",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.863333333333,
+                  "paradedb": 0.945555555556,
+                  "pg-gin": 0.966666666667,
+                  "pg-gin-norm": 0.814206349206,
+                  "tiger": 0.872777777778
+                },
+                "order": [
+                  "pg-gin",
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0.6
+              }
+            ]
+          },
+          {
+            "metric": "Bpref",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.355244601133,
+                  "paradedb": 0.377816240767,
+                  "pg-gin": 0.409718677634,
+                  "pg-gin-norm": 0.384245803686,
+                  "tiger": 0.443690147228
+                },
+                "order": [
+                  "tiger",
+                  "pg-gin",
+                  "pg-gin-norm",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.370704533766,
+                  "paradedb": 0.393802331391,
+                  "pg-gin": 0.413976710055,
+                  "pg-gin-norm": 0.350451564613,
+                  "tiger": 0.434856244967
+                },
+                "order": [
+                  "tiger",
+                  "pg-gin",
+                  "paradedb",
+                  "elasticsearch",
+                  "pg-gin-norm"
+                ],
+                "tau_b": 0.6
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "job": "bm25-engines",
+        "engines": [
+          "paradedb",
+          "tiger",
+          "elasticsearch"
+        ],
+        "queries": 30,
+        "metrics": [
+          {
+            "metric": "NDCG@3",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.76342068366,
+                  "paradedb": 0.802181656653,
+                  "tiger": 0.800292583562
+                },
+                "order": [
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.806464402185,
+                  "paradedb": 0.83993130724,
+                  "tiger": 0.800930754632
+                },
+                "order": [
+                  "paradedb",
+                  "elasticsearch",
+                  "tiger"
+                ],
+                "tau_b": 0.3333333333333333
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@5",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.782251595054,
+                  "paradedb": 0.79433799558,
+                  "tiger": 0.810986587609
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.814880905032,
+                  "paradedb": 0.833503818054,
+                  "tiger": 0.811377033312
+                },
+                "order": [
+                  "paradedb",
+                  "elasticsearch",
+                  "tiger"
+                ],
+                "tau_b": -0.3333333333333333
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@10",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.791091486811,
+                  "paradedb": 0.805271914031,
+                  "tiger": 0.833954268383
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.827377207768,
+                  "paradedb": 0.841580524462,
+                  "tiger": 0.847663131768
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@3 (gain rel)",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.832091619254,
+                  "paradedb": 0.857479964612,
+                  "tiger": 0.860769763622
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.831408924277,
+                  "paradedb": 0.867225685768,
+                  "tiger": 0.839912931355
+                },
+                "order": [
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch"
+                ],
+                "tau_b": 0.3333333333333333
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@5 (gain rel)",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.846382158676,
+                  "paradedb": 0.854827953041,
+                  "tiger": 0.870189431524
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.842477646075,
+                  "paradedb": 0.860413610496,
+                  "tiger": 0.850411847099
+                },
+                "order": [
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch"
+                ],
+                "tau_b": 0.3333333333333333
+              }
+            ]
+          },
+          {
+            "metric": "NDCG@10 (gain rel)",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.857217839943,
+                  "paradedb": 0.864225668893,
+                  "tiger": 0.89096741014
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.854809692231,
+                  "paradedb": 0.867489475233,
+                  "tiger": 0.881497653082
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              }
+            ]
+          },
+          {
+            "metric": "P@3",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.888888888889,
+                  "paradedb": 0.9,
+                  "tiger": 0.9
+                },
+                "order": [
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.833333333333,
+                  "paradedb": 0.844444444444,
+                  "tiger": 0.844444444444
+                },
+                "order": [
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              }
+            ]
+          },
+          {
+            "metric": "P@5",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.9,
+                  "paradedb": 0.9,
+                  "tiger": 0.913333333333
+                },
+                "order": [
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.846666666667,
+                  "paradedb": 0.853333333333,
+                  "tiger": 0.853333333333
+                },
+                "order": [
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch"
+                ],
+                "tau_b": 0.5
+              }
+            ]
+          },
+          {
+            "metric": "P@10",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.906666666667,
+                  "paradedb": 0.91,
+                  "tiger": 0.95
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.866666666667,
+                  "paradedb": 0.866666666667,
+                  "tiger": 0.896666666667
+                },
+                "order": [
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 0.8164965809277261
+              }
+            ]
+          },
+          {
+            "metric": "R@3",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.033921081872,
+                  "paradedb": 0.034044352702,
+                  "tiger": 0.034076862652
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.033439630639,
+                  "paradedb": 0.033643091726,
+                  "tiger": 0.035518219959
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              }
+            ]
+          },
+          {
+            "metric": "R@5",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.057004388685,
+                  "paradedb": 0.055978303638,
+                  "tiger": 0.057414799096
+                },
+                "order": [
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.056060327367,
+                  "paradedb": 0.054548429093,
+                  "tiger": 0.060000826789
+                },
+                "order": [
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              }
+            ]
+          },
+          {
+            "metric": "R@10",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.113103309885,
+                  "paradedb": 0.112574564877,
+                  "tiger": 0.12175325401
+                },
+                "order": [
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.111783829894,
+                  "paradedb": 0.109684455215,
+                  "tiger": 0.124705347547
+                },
+                "order": [
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              }
+            ]
+          },
+          {
+            "metric": "F1@3",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.063694774485,
+                  "paradedb": 0.063992333672,
+                  "tiger": 0.064084420491
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.062672652565,
+                  "paradedb": 0.062833043442,
+                  "tiger": 0.06551738769
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              }
+            ]
+          },
+          {
+            "metric": "F1@5",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.103202454371,
+                  "paradedb": 0.101516393684,
+                  "tiger": 0.104110052313
+                },
+                "order": [
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.1012665284,
+                  "paradedb": 0.098658068588,
+                  "tiger": 0.106109972957
+                },
+                "order": [
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              }
+            ]
+          },
+          {
+            "metric": "F1@10",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.189346584175,
+                  "paradedb": 0.188814389579,
+                  "tiger": 0.203494733766
+                },
+                "order": [
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.186741252112,
+                  "paradedb": 0.183457170465,
+                  "tiger": 0.202096945271
+                },
+                "order": [
+                  "tiger",
+                  "elasticsearch",
+                  "paradedb"
+                ],
+                "tau_b": 1
+              }
+            ]
+          },
+          {
+            "metric": "MAP",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.412408777121,
+                  "paradedb": 0.423046930678,
+                  "tiger": 0.464824958662
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.399179780634,
+                  "paradedb": 0.411453680773,
+                  "tiger": 0.441378200816
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              }
+            ]
+          },
+          {
+            "metric": "MRR",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.895555555556,
+                  "paradedb": 0.956666666667,
+                  "tiger": 0.931666666667
+                },
+                "order": [
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.863333333333,
+                  "paradedb": 0.945555555556,
+                  "tiger": 0.872777777778
+                },
+                "order": [
+                  "paradedb",
+                  "tiger",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              }
+            ]
+          },
+          {
+            "metric": "Bpref",
+            "sets": [
+              {
+                "label": "sonnet",
+                "means": {
+                  "elasticsearch": 0.355244601133,
+                  "paradedb": 0.377816240767,
+                  "tiger": 0.443690147228
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              },
+              {
+                "label": "jev",
+                "means": {
+                  "elasticsearch": 0.370704533766,
+                  "paradedb": 0.393802331391,
+                  "tiger": 0.434856244967
+                },
+                "order": [
+                  "tiger",
+                  "paradedb",
+                  "elasticsearch"
+                ],
+                "tau_b": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -17,6 +17,14 @@ type Request struct {
 	// place of Query. Set only for an executor that stores templates.
 	SearchTemplateID string
 	Params           map[string]any
+	// Legs are a fusion engine's requests to its leg engines, in leg order.
+	Legs []LegRequest
+}
+
+// LegRequest is the request one leg engine of a fusion engine receives.
+type LegRequest struct {
+	Engine  string
+	Request Request
 }
 
 // SearchTemplate is a suite template stored on the engine under ID.
@@ -67,9 +75,11 @@ var (
 	_ Executor  = (*PgExecutor)(nil)
 	_ Executor  = (*EsExecutor)(nil)
 	_ Executor  = (*APIExecutor)(nil)
+	_ Executor  = (*FusionExecutor)(nil)
 	_ Validator = (*PgExecutor)(nil)
 	_ Validator = (*EsExecutor)(nil)
 	_ Validator = (*APIExecutor)(nil)
+	_ Validator = (*FusionExecutor)(nil)
 
 	_ SearchTemplateRegistrar = (*EsExecutor)(nil)
 )

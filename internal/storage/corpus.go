@@ -47,6 +47,7 @@ type LoadRecord struct {
 	EngineVersion string            `json:"engineVersion"`
 	StartedAt     time.Time         `json:"startedAt"`
 	FinishedAt    time.Time         `json:"finishedAt"`
+	TotalSeconds  float64           `json:"totalSeconds"`
 	Canonical     PackageRef        `json:"canonical"`
 	Embeddings    *PackageRef       `json:"embeddings"`
 	ModelTag      string            `json:"modelTag"`
@@ -55,4 +56,10 @@ type LoadRecord struct {
 	BatchSize     int               `json:"batchSize"`
 	Stages        []StageTiming     `json:"stages"`
 	Settings      map[string]string `json:"settings"`
+}
+
+// Finish stamps the end of the load and its wall-clock total since StartedAt.
+func (r *LoadRecord) Finish(at time.Time) {
+	r.FinishedAt = at
+	r.TotalSeconds = at.Sub(r.StartedAt).Seconds()
 }

@@ -38,8 +38,12 @@ for these kinds instead of stubbing a fake vector and reporting a misleading OK.
 
 ### Query categories
 
-A suite query may carry `category:`, one of `keyword`, `phrase`, `boolean`, `multi-field` or
-`single-field`; any other value fails the suite load, naming the query. When a job's queries span more than one category, `bench run`
+A suite query may carry `category:`, one of `keyword`, `phrase`, `boolean`, `multi-field`,
+`single-field`, `question`, `descriptive`, `typo` or `hard-typo`; any other value fails the suite
+load, naming the query. `question` is a query phrased as a question and `descriptive` one that
+describes its topic without the words articles about it usually use; the semantic and hybrid tracks
+use them. `typo` has one word misspelt by one insertion, deletion or substitution, and `hard-typo`
+two misspelt words, two swapped letters or two edits in one word; the fuzzy track uses them. When a job's queries span more than one category, `bench run`
 prints the aggregated table per category alongside the overall one.
 
 Result-list length is the reason. A strict phrase query legitimately matches two documents
@@ -218,6 +222,37 @@ than falling back.
 An arm has to exist before `bench pool`, not just before `bench run`. Each engine contributes
 its own top-K to the pool; added afterwards, the documents only it ranks highly come back
 Unjudged and its NDCG reads low for a reason that has nothing to do with its ranking.
+
+#### Fusion engines
+
+An engine of type `fusion` answers a query by running each of its legs' own queries, one leg
+after the other, and merging their rankings on the client:
+
+```yaml
+engines:
+  es-rrf:
+    type: fusion
+    fusion:
+      method: rrf
+      rank_constant: 60
+      window: 100
+      legs: [elasticsearch, es-knn]
+```
+
+`rrf` is Reciprocal Rank Fusion: each leg's ranking is cut to `window`, and a doc scores the sum
+of `1 / (rank_constant + rank)` over the legs that return it, rank counting from 1. Equal scores
+order by id, as Postgres orders uuids, so a fusion engine and an SQL fusion over the same leg
+statements return the same ranking. Its latency is the wall time of every leg plus the merge.
+
+A fusion engine has no block of its own and takes no connection, params or `queries_from`. Its
+legs must be declared engines, two or more, none of them a fusion engine; they need not run in
+any job of their own, but every query needs a block for each. `validate`, `pool` and `run`
+check those blocks, store their templates and validate each leg on its own executor. The run
+records the merge settings with the legs' requests, so changing `rank_constant` or `window`
+changes the request digest.
+
+Elasticsearch 8.12 refuses its own RRF on the basic licence, so a fusion engine is how the
+hybrid track fuses Elasticsearch with the same RRF the Postgres engines run in SQL.
 
 #### `embedding_model`
 
@@ -526,6 +561,7 @@ Key flags:
 - `--concurrency N`: parallel Grade calls (per-doc mode)
 - `--allow-unjudged`: exit 0 even when some pooled docs are left unjudged. A query with no usable terms still fails the run
 - `--force`: for `manual` only, rewrite the placeholders from scratch. Without it, `manual` keeps every existing hand grade, adds `-1` placeholders for new pool docs, and refuses a file another judge wrote
+- `--carry-over <annotations> --carry-over-pool <pool>`: after a re-pool, reuse the old grades and grade only new docs. A grade is reused when the judge and the query's text, category and filters are unchanged. Take the old pool from git (`git show <commit>:<track>/trec/pool.yaml`). Batched judges and `bm25`, `vector`, `hybrid` refuse it. The new file records where its grades came from under `carried_over`
 - `--api-base URL`: the API `claude-api` or `jev` calls (defaults `https://api.anthropic.com`, `https://api.typesafe.ai`)
 
 `--strategy jev` grades with TypeSafe's Jev (`POST /v1/systemone`), a non-Anthropic cross-judge of the LLM judge, so it must grade exactly what the LLM judge graded:

@@ -33,10 +33,14 @@ var databases atomic.Int64
 var fixtureNamespace = uuid.MustParse("3b1f6f0e-2a4c-4d3e-9b1a-7c2d5e8f9a10")
 
 var declaredIndexes = map[storage.Engine][]string{
-	storage.PostgresNative: {"idx_articles_search_vector", "idx_articles_title_trgm", "idx_articles_title_desc_trgm", "idx_article_embedding"},
+	storage.PostgresNative: {"idx_articles_search_vector", "idx_articles_title_trgm", "idx_articles_title_desc_trgm", "idx_article_embedding", "idx_corpus_words_trgm"},
 	storage.ParadeDB:       {"idx_articles_search", "idx_article_embedding"},
-	storage.Tiger:          {"idx_articles_bm25", "idx_article_embedding"},
+	storage.Tiger:          {"idx_articles_bm25", "idx_articles_title_bm25", "idx_article_embedding", "idx_corpus_words_trgm"},
 }
+
+// fillsCorpusWords are the engines whose fuzzy search expands query words
+// against a table of the corpus's words.
+var fillsCorpusWords = map[storage.Engine]bool{storage.PostgresNative: true, storage.Tiger: true}
 
 var filterIndexes = map[storage.Engine][]string{
 	storage.PostgresNative: {"idx_articles_published_at", "idx_articles_publisher_domain"},
@@ -57,12 +61,12 @@ var declaredSettings = map[storage.Engine]map[string]string{
 		"idx_articles_search.segments":             "1",
 	},
 	storage.Tiger: {
-		"maintenance_work_mem":                   "4GB",
-		"max_parallel_maintenance_workers":       "4",
-		"pg_textsearch.memory_limit":             "2GB",
-		"pg_textsearch.segments_per_level":       "8",
-		"pg_textsearch.memtable_spill_threshold": "32000000",
-		"idx_articles_bm25.segments":             "1",
+		"maintenance_work_mem":             "4GB",
+		"max_parallel_maintenance_workers": "4",
+		"pg_textsearch.memory_limit":       "2GB",
+		"pg_textsearch.segments_per_level": "8",
+		"idx_articles_bm25.segments":       "1",
+		"idx_articles_title_bm25.segments": "1",
 	},
 }
 
@@ -365,9 +369,12 @@ func TestCorpusLoader(t *testing.T) {
 
 				present := indexDefinitions(t, db)
 				stages := map[string]int{}
+				var staged float64
 				for _, stage := range record.Stages {
 					stages[stage.Name]++
+					staged += stage.Seconds
 				}
+				assert.GreaterOrEqual(t, record.TotalSeconds, staged, "the total spans every stage")
 				for _, name := range declaredIndexes[engine] {
 					assert.Contains(t, present, name)
 					assert.Equal(t, 1, stages[name], "stages timing index %s", name)
@@ -378,6 +385,46 @@ func TestCorpusLoader(t *testing.T) {
 					assert.Zero(t, stages[name], "the schema builds filter index %s, so no stage times it", name)
 				}
 				assert.Equal(t, declaredSettings[engine], record.Settings)
+			})
+
+			t.Run("fills the corpus words after the load as a timed stage", func(t *testing.T) {
+				if !fillsCorpusWords[engine] {
+					t.Skip("no corpus words table on this engine")
+				}
+				db := newDatabase(t, server.ConnString)
+				articles, vectors := fixture(corpusSize)
+
+				record, err := load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500})
+				require.NoError(t, err)
+
+				words := map[string]int{}
+				query(t, db, func(conn *pgx.Conn) error {
+					rows, err := conn.Query(context.Background(), "SELECT word, ndoc FROM corpus_words")
+					if err != nil {
+						return err
+					}
+					for rows.Next() {
+						var word string
+						var ndoc int
+						if err := rows.Scan(&word, &ndoc); err != nil {
+							return err
+						}
+						words[word] = ndoc
+					}
+					return rows.Err()
+				})
+				// Every fixture article's title and content say "storm"; "landfall" is in content only.
+				assert.Equal(t, corpusSize, words["storm"])
+				assert.Equal(t, corpusSize, words["landfall"])
+				assert.Equal(t, corpusSize, words["thousands"], "description words are counted")
+				for word := range words {
+					assert.Regexp(t, `^[a-z]+$`, word, "only words of letters are kept")
+				}
+				stages := map[string]int{}
+				for _, stage := range record.Stages {
+					stages[stage.Name]++
+				}
+				assert.Equal(t, 1, stages["fill_corpus_words"])
 			})
 		})
 	}
@@ -514,7 +561,7 @@ func indexDefinitions(t *testing.T, connString string) map[string]string {
 	require.NoError(t, err)
 	defer conn.Close(ctx)
 	rows, err := conn.Query(ctx, `SELECT indexname, indexdef FROM pg_indexes
-		WHERE tablename IN ('articles', 'article_embeddings') AND indexname NOT LIKE '%_pkey'`)
+		WHERE tablename IN ('articles', 'article_embeddings', 'corpus_words') AND indexname NOT LIKE '%_pkey'`)
 	require.NoError(t, err)
 	definitions := map[string]string{}
 	for rows.Next() {

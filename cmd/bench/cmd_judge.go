@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -28,6 +29,8 @@ type judgeFlags struct {
 	batchSize      int
 	batchSeed      uint64
 	resume         bool
+	carryOver      string
+	carryOverPool  string
 	allowUnjudged  bool
 	force          bool
 	provider       string
@@ -91,11 +94,17 @@ against via --judgments <name>.
 Resumable: re-run with the same --strategy and --resume to skip docs already
 graded. bm25, vector and hybrid grade the whole pool at once, so they skip only
 queries that are fully graded and regrade the rest whole. Atomic writes mean
-Ctrl-C is safe.`,
+Ctrl-C is safe.
+
+After a re-pool, --carry-over <annotations> --carry-over-pool <their pool>
+reuses each old grade whose judge and query are unchanged and grades only the
+new docs. Take the old pool from git; batched and whole-pool judges can't carry
+over.`,
 		Example: `  bench judge tracks/global-news-dataset/fts_quality --strategy keyword
   bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-cli --model sonnet
   bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-api --model sonnet --batch 20 --resume
   bench judge --pool /tmp/p.yaml --strategy keyword --output /tmp/a.yaml
+  bench judge tracks/cc-news/fuzzy --strategy llm --carry-over /tmp/old-annotations.yaml --carry-over-pool /tmp/old-pool.yaml
   bench judge tracks/cc-news/fts --strategy jev --pool /tmp/sample.yaml --output /tmp/a.jev.yaml`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -111,6 +120,8 @@ Ctrl-C is safe.`,
 	cmd.Flags().IntVar(&f.batchSize, "batch", 0, "LLM docs per request (default one); --strategy llm only")
 	cmd.Flags().Uint64Var(&f.batchSeed, "seed", 1, "Seed that shuffles each query's pool into --batch batches")
 	cmd.Flags().BoolVar(&f.resume, "resume", false, "Skip docs already graded in --output; bm25, vector and hybrid skip only fully graded queries")
+	cmd.Flags().StringVar(&f.carryOver, "carry-over", "", "Reuse grades from these older judgments where judge and query are unchanged")
+	cmd.Flags().StringVar(&f.carryOverPool, "carry-over-pool", "", "The pool the --carry-over judgments graded")
 	cmd.Flags().BoolVar(&f.allowUnjudged, "allow-unjudged", false, "Exit 0 even when some pooled docs end unjudged; a query with no usable terms still fails")
 	cmd.Flags().BoolVar(&f.force, "force", false, "Manual only: discard existing hand grades and rewrite the placeholders")
 	cmd.Flags().StringVar(&f.provider, "provider", "",
@@ -150,6 +161,9 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	kind, provider, err := resolveJudge(f)
 	if err != nil {
 		return err
+	}
+	if f.carryOver != "" && kind == judgment.StrategyManual {
+		return errors.New("--carry-over doesn't apply to --strategy manual, which already keeps hand grades")
 	}
 	if f.force && kind != judgment.StrategyManual {
 		return fmt.Errorf("--force applies only to --strategy manual; %s rewrites its file on every run without --resume", kind)
@@ -249,6 +263,23 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 			printWarn(cmd.OutOrStdout(), fmt.Sprintf("Resume: loaded %d prior queries from %s", len(cfg.Existing.Queries), outPath))
 		}
 	}
+	if f.carryOver != "" {
+		carried, err := carryOverGrades(f, pf, judge, strat)
+		if err != nil {
+			return err
+		}
+		cfg.Existing = judgment.MergeGrades(carried.Grades, cfg.Existing)
+		runMeta.CarriedOver = &meta.CarriedOver{
+			JudgmentsRunID: carried.Grades.Meta.RunID,
+			PoolRunID:      carried.Grades.Meta.PoolRunID,
+			Grades:         carried.Count,
+		}
+		msg := fmt.Sprintf("Carry-over: %d grades from %s", carried.Count, carried.Grades.Meta.RunID)
+		if len(carried.ChangedQueries) > 0 {
+			msg += fmt.Sprintf("; changed queries graded again: %s", strings.Join(carried.ChangedQueries, ", "))
+		}
+		printWarn(cmd.OutOrStdout(), msg)
+	}
 	cfg.Sink = writer.Append
 	cfg.OnQueryStart = func(qid string, total, skipped int) {
 		if skipped > 0 {
@@ -292,6 +323,28 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 		return fmt.Errorf("judge run: %w", runErr)
 	}
 	return requireJudged(final, f.allowUnjudged)
+}
+
+func carryOverGrades(f judgeFlags, current *pool.PoolFile, judge meta.Judge, strat judgment.Strategy) (judgment.CarriedGrades, error) {
+	if f.carryOverPool == "" {
+		return judgment.CarriedGrades{}, errors.New("--carry-over needs --carry-over-pool, the pool those judgments graded")
+	}
+	if _, wholePool := strat.(judgment.PoolStrategy); wholePool {
+		return judgment.CarriedGrades{}, fmt.Errorf("%s grades each doc against the whole pool, so its grades can't be carried over", strat.Name())
+	}
+	prior, err := judgment.ReadFile(f.carryOver)
+	if err != nil {
+		return judgment.CarriedGrades{}, fmt.Errorf("read --carry-over: %w", err)
+	}
+	priorPool, err := pool.ReadPoolFile(f.carryOverPool)
+	if err != nil {
+		return judgment.CarriedGrades{}, fmt.Errorf("read --carry-over-pool: %w", err)
+	}
+	carried, err := judgment.CarryOver(judgment.CarryOverInput{Prior: prior, PriorPool: priorPool, Pool: current, Judge: judge})
+	if err != nil {
+		return judgment.CarriedGrades{}, fmt.Errorf("--carry-over: %w", err)
+	}
+	return carried, nil
 }
 
 // resolveJudge maps --strategy and --provider to what the strategy factory needs.
