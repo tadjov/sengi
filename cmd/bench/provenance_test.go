@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -82,6 +83,19 @@ func TestShowReport_ReportWithoutProvenanceStillShows(t *testing.T) {
 	showReport(&out, readFixtureReport(t, "legacy.json"))
 
 	assert.Regexp(t, `(?m)^\s+pg-native\s+postgres\s+index provenance not recorded`, out.String())
+}
+
+func TestCollectIndexProvenance_AFusionEngineRecordsTheLegsItFuses(t *testing.T) {
+	executors := map[string]engine.Executor{"lexical": undescribedExecutor{}, "vector": undescribedExecutor{}}
+	executors["hybrid"] = engine.NewFusionExecutor("hybrid", []string{"lexical", "vector"}, executors)
+
+	provenance := collectIndexProvenance(context.Background(), io.Discard, executors)
+
+	require.Contains(t, provenance, "hybrid")
+	assert.Empty(t, provenance["hybrid"].Error)
+	require.NotNil(t, provenance["hybrid"].Fusion)
+	assert.Equal(t, []string{"lexical", "vector"}, provenance["hybrid"].Fusion.Legs)
+	assert.Equal(t, "fuses lexical, vector", provenance["hybrid"].Summary())
 }
 
 type describedExecutor struct {

@@ -250,7 +250,8 @@ legs must be declared engines, two or more, none of them a fusion engine; they n
 any job of their own, but every query needs a block for each. `validate`, `pool` and `run`
 check those blocks, store their templates and validate each leg on its own executor. The run
 records the merge settings with the legs' requests, so changing `rank_constant` or `window`
-changes the request digest.
+changes the request digest. Having no index of its own, a fusion engine records the legs it
+fuses as its [index provenance](#index-provenance).
 
 Elasticsearch 8.12 refuses its own RRF on the basic licence, so a fusion engine is how the
 hybrid track fuses Elasticsearch with the same RRF the Postgres engines run in SQL.
