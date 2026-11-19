@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 
@@ -119,17 +120,33 @@ func TestFusionExecutor_RunsEachLegsOwnRequestAndFusesTheirRankings(t *testing.T
 	assert.Nil(t, exec.CorpusMatches)
 }
 
-// At k = 60, c's 2/63 beats the 1/61 a and d each take from the top of one leg;
-// at k = 1, a's 1/2 would tie c's 2/4 and win on id, giving b, a, c, d.
+// b, second in both legs, leads at any k. At k = 60, c's 2/63 beats the 1/61
+// a and d each take from the top of one leg; at k = 1, a, c and d all score
+// 1/2 and order by id.
 func TestFusionExecutor_FusesWithTheRequestsRankConstant(t *testing.T) {
-	lexical := &fixedExecutor{ranking: []uuid.UUID{docA, docB, docC}}
-	vector := &fixedExecutor{ranking: []uuid.UUID{docD, docB, docC}}
-	fusion := NewFusionExecutor("hybrid", lexicalAndVector.Legs, map[string]Executor{"lexical": lexical, "vector": vector})
+	tests := []struct {
+		rankConstant int
+		want         []uuid.UUID
+	}{
+		{rankConstant: 60, want: []uuid.UUID{docB, docC, docA, docD}},
+		{rankConstant: 1, want: []uuid.UUID{docB, docA, docC, docD}},
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("k=%d", tt.rankConstant), func(t *testing.T) {
+			lexical := &fixedExecutor{ranking: []uuid.UUID{docA, docB, docC}}
+			vector := &fixedExecutor{ranking: []uuid.UUID{docD, docB, docC}}
+			fusion := NewFusionExecutor("hybrid", lexicalAndVector.Legs, map[string]Executor{"lexical": lexical, "vector": vector})
+			merge := lexicalAndVector
+			merge.RankConstant = tt.rankConstant
+			request := legRequests("SELECT lexical", "SELECT vector")
+			request.Fusion = &merge
 
-	exec, err := fusion.Execute(context.Background(), legRequests("SELECT lexical", "SELECT vector"))
+			exec, err := fusion.Execute(context.Background(), request)
 
-	require.NoError(t, err)
-	assert.Equal(t, []uuid.UUID{docB, docC, docA, docD}, exec.RankedDocIDs)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, exec.RankedDocIDs)
+		})
+	}
 }
 
 func TestFusionExecutor_RefusesARequestWithoutMergeSettings(t *testing.T) {
