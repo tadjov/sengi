@@ -15,9 +15,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/report"
-	pgstore "github.com/tadjov/tusker/internal/storage/pg"
-	pkgtesting "github.com/tadjov/tusker/pkg/testing"
+	"github.com/tadjov/sengi/internal/bench/report"
+	pgstore "github.com/tadjov/sengi/internal/storage/pg"
+	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 	"github.com/testcontainers/testcontainers-go"
 )
 
@@ -183,7 +183,7 @@ func esRequest(t *testing.T, method, url, body string) {
 
 func TestRun_AContainerDockerCannotInspectIsRecordedAsANote(t *testing.T) {
 	tr := judgedTrack(t, nil)
-	missing := "tusker-bench-test-" + uuid.NewString()
+	missing := "sengi-bench-test-" + uuid.NewString()
 	editFile(t, filepath.Join(tr.dir, "spec.yaml"), "    index: a\n", "    index: a\n    container: "+missing+"\n")
 
 	_, err := execute(t, newRunCmd(), tr.dir)

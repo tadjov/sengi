@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/runner"
+	"github.com/tadjov/sengi/internal/bench/runner"
 )
 
 // serverTimedRun has es report a server time of took on q1 and q2, and pg

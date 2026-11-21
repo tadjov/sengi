@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/judgment"
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/internal/bench/judgment"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 // keywordJudgedTrack is the lineage track pooled by bench pool and graded by
@@ -121,7 +121,7 @@ func TestRun_ReportNamesTheTracksOwnPoolWhateverPathTheJudgmentsRecorded(t *test
 		poolRef func(tr lineageTrack) string
 	}{
 		{name: "another machine's checkout", poolRef: func(lineageTrack) string {
-			return "/Users/someone/projects/news-hunter/tracks/x/trec/pool.yaml"
+			return "/Users/someone/projects/sengi/tracks/x/trec/pool.yaml"
 		}},
 		{name: "this machine, absolute", poolRef: func(tr lineageTrack) string { return tr.poolPath() }},
 	}
@@ -180,8 +180,8 @@ func TestPrintDiff_AnAbsoluteAndATrackRelativeReportOfOneTrackScoreAlike(t *test
 	judge := &meta.Judge{Strategy: "keyword"}
 	older := diffRun{
 		runID: "a", kValues: []int{10}, ndcg: map[int]float64{10: 0.6}, threshold: 1, judge: judge,
-		spec:      "/Users/me/projects/news-hunter/tracks/cc-news/fts/spec.yaml",
-		judgments: "/Users/me/projects/news-hunter/tracks/cc-news/fts/trec/annotations.keyword.yaml",
+		spec:      "/Users/me/projects/sengi/tracks/cc-news/fts/spec.yaml",
+		judgments: "/Users/me/projects/sengi/tracks/cc-news/fts/trec/annotations.keyword.yaml",
 	}
 	relative := older
 	relative.runID = "b"
