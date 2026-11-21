@@ -65,22 +65,10 @@ func TestDescribeIndex_ReadsTheLiveIndex(t *testing.T) {
 				t.Errorf("title.keyword recorded, but keyword fields are not analysed")
 			}
 
-			if description.BuildHash == "" {
-				t.Errorf("build hash not recorded")
-			}
-			if got := description.Settings["index.number_of_replicas"]; got != "0" {
-				t.Errorf("index.number_of_replicas = %v, want the indexer's 0", got)
-			}
-			for key := range description.Settings {
-				if strings.HasPrefix(key, "index.analysis") {
-					t.Errorf("settings repeat %s, which Analysis records", key)
-				}
-			}
-			if description.ClusterSettings == nil {
-				t.Errorf("cluster settings not recorded: %v", description.Unreadable)
-			}
 			if len(description.Nodes) != 1 || description.Nodes[0].HeapMaxBytes != 512<<20 {
 				t.Errorf("nodes = %+v, want the one node with the container's -Xmx512m heap", description.Nodes)
+			} else if description.Nodes[0].MemoryLimit == "" {
+				t.Errorf("memory limit not recorded, want the container's cgroup limit or max")
 			}
 			if len(description.Unreadable) != 0 {
 				t.Errorf("unreadable = %v, want every read to succeed", description.Unreadable)

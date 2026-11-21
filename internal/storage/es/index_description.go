@@ -15,42 +15,28 @@ import (
 
 // IndexDescription is how an ES engine was indexed and set up, read from the live cluster.
 type IndexDescription struct {
-	Version   string `json:"version"`
-	BuildHash string `json:"build_hash,omitempty"`
+	Version string `json:"version"`
 	// Index is the concrete index the configured name resolved to, which
 	// differs from it when the configured name is an alias.
 	Index string `json:"index"`
 	// Analysis is settings.index.analysis with its keys sorted, so two
 	// descriptions of the same analysis compare equal byte for byte.
 	Analysis json.RawMessage `json:"analysis,omitempty"`
-	// Settings are the index's non-default settings, flattened.
-	Settings map[string]any `json:"settings,omitempty"`
 	// Fields holds the text and dense_vector fields, multi-fields included,
 	// keyed by dotted path.
 	Fields map[string]FieldMapping `json:"fields,omitempty"`
 	// Load is nil when the corpus load left no record.
-	Load *storage.LoadRecord `json:"load,omitempty"`
-	// ClusterSettings is nil when it could not be read; Unreadable says why.
-	ClusterSettings *ClusterSettings `json:"cluster_settings,omitempty"`
-	Nodes           []NodeStats      `json:"nodes,omitempty"`
+	Load  *storage.LoadRecord `json:"load,omitempty"`
+	Nodes []NodeStats         `json:"nodes,omitempty"`
 	// Unreadable lists the cluster reads that failed; the rest still stands.
 	Unreadable []string `json:"unreadable,omitempty"`
 }
 
-// ClusterSettings are the non-default cluster settings, flattened.
-type ClusterSettings struct {
-	Persistent map[string]any `json:"persistent,omitempty"`
-	Transient  map[string]any `json:"transient,omitempty"`
-}
-
-// NodeStats is a node's heap ceiling and cgroup limits; the limits are empty outside a cgroup.
+// NodeStats is a node's heap ceiling and cgroup memory limit.
 type NodeStats struct {
 	Name         string `json:"name"`
 	HeapMaxBytes int64  `json:"heap_max_bytes"`
-	// CPUQuotaMicros is -1 when the cgroup sets no quota.
-	CPUQuotaMicros  *int64 `json:"cpu_quota_micros,omitempty"`
-	CPUPeriodMicros *int64 `json:"cpu_period_micros,omitempty"`
-	// MemoryLimit is a byte count, or "max" when the cgroup sets none.
+	// MemoryLimit is a byte count, "max" when the cgroup sets none, empty outside a cgroup.
 	MemoryLimit string `json:"memory_limit,omitempty"`
 }
 
@@ -72,8 +58,8 @@ type VectorIndexOptions struct {
 	EfConstruction int    `json:"ef_construction,omitempty"`
 }
 
-// DescribeIndex records how the index was set up and loaded, and what the cluster ran with.
-// A failed cluster read goes to Unreadable instead of the error.
+// DescribeIndex records how cfg.IndexName was configured and loaded, and each node's heap and memory limit.
+// A failed node stats read goes to Unreadable instead of the error.
 func DescribeIndex(ctx context.Context, cfg ClientConfig) (*IndexDescription, error) {
 	client, err := newTypedClient(cfg)
 	if err != nil {
@@ -85,7 +71,7 @@ func DescribeIndex(ctx context.Context, cfg ClientConfig) (*IndexDescription, er
 		return nil, fmt.Errorf("read cluster version: %w", err)
 	}
 
-	index, err := readIndexSettings(ctx, client, cfg.IndexName)
+	index, analysis, err := readAnalysis(ctx, client, cfg.IndexName)
 	if err != nil {
 		return nil, err
 	}
@@ -94,44 +80,27 @@ func DescribeIndex(ctx context.Context, cfg ClientConfig) (*IndexDescription, er
 	if err != nil {
 		return nil, fmt.Errorf("read mapping of %s: %w", cfg.IndexName, err)
 	}
-	record, ok := mappings[index.name]
+	record, ok := mappings[index]
 	if !ok {
-		return nil, fmt.Errorf("read mapping of %s: no mapping for index %s", cfg.IndexName, index.name)
+		return nil, fmt.Errorf("read mapping of %s: no mapping for index %s", cfg.IndexName, index)
 	}
 
 	load, err := decodeLoadRecord(record.Mappings.Meta_)
 	if err != nil {
-		return nil, fmt.Errorf("read load record of %s: %w", index.name, err)
+		return nil, fmt.Errorf("read load record of %s: %w", index, err)
 	}
 
 	description := &IndexDescription{
-		Version:   info.Version.Int,
-		BuildHash: info.Version.BuildHash,
-		Index:     index.name,
-		Analysis:  index.analysis,
-		Settings:  index.settings,
-		Fields:    searchFieldMappings(record.Mappings.Properties),
-		Load:      load,
-	}
-	if description.ClusterSettings, err = readClusterSettings(ctx, client); err != nil {
-		description.Unreadable = append(description.Unreadable, err.Error())
+		Version:  info.Version.Int,
+		Index:    index,
+		Analysis: analysis,
+		Fields:   searchFieldMappings(record.Mappings.Properties),
+		Load:     load,
 	}
 	if description.Nodes, err = readNodeStats(ctx, client); err != nil {
 		description.Unreadable = append(description.Unreadable, err.Error())
 	}
 	return description, nil
-}
-
-func readClusterSettings(ctx context.Context, client *elasticsearch.TypedClient) (*ClusterSettings, error) {
-	res, err := client.Cluster.GetSettings().FlatSettings(true).Perform(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("read cluster settings: %w", err)
-	}
-	var settings ClusterSettings
-	if err := decodeBody(res, &settings); err != nil {
-		return nil, fmt.Errorf("read cluster settings: %w", err)
-	}
-	return &settings, nil
 }
 
 func readNodeStats(ctx context.Context, client *elasticsearch.TypedClient) ([]NodeStats, error) {
@@ -148,11 +117,7 @@ func readNodeStats(ctx context.Context, client *elasticsearch.TypedClient) ([]No
 				} `json:"mem"`
 			} `json:"jvm"`
 			OS struct {
-				Cgroup *struct {
-					CPU struct {
-						CFSQuotaMicros  *int64 `json:"cfs_quota_micros"`
-						CFSPeriodMicros *int64 `json:"cfs_period_micros"`
-					} `json:"cpu"`
+				Cgroup struct {
 					Memory struct {
 						LimitInBytes string `json:"limit_in_bytes"`
 					} `json:"memory"`
@@ -165,13 +130,11 @@ func readNodeStats(ctx context.Context, client *elasticsearch.TypedClient) ([]No
 	}
 	nodes := make([]NodeStats, 0, len(stats.Nodes))
 	for _, n := range stats.Nodes {
-		node := NodeStats{Name: n.Name, HeapMaxBytes: n.JVM.Mem.HeapMaxInBytes}
-		if cgroup := n.OS.Cgroup; cgroup != nil {
-			node.CPUQuotaMicros = cgroup.CPU.CFSQuotaMicros
-			node.CPUPeriodMicros = cgroup.CPU.CFSPeriodMicros
-			node.MemoryLimit = cgroup.Memory.LimitInBytes
-		}
-		nodes = append(nodes, node)
+		nodes = append(nodes, NodeStats{
+			Name:         n.Name,
+			HeapMaxBytes: n.JVM.Mem.HeapMaxInBytes,
+			MemoryLimit:  n.OS.Cgroup.Memory.LimitInBytes,
+		})
 	}
 	sort.Slice(nodes, func(i, j int) bool { return nodes[i].Name < nodes[j].Name })
 	return nodes, nil
@@ -201,56 +164,56 @@ func decodeLoadRecord(meta types.Metadata) (*storage.LoadRecord, error) {
 	return &record, nil
 }
 
-// indexSettings is an index's analysis block and its other settings, flattened.
-type indexSettings struct {
-	name     string
-	analysis json.RawMessage
-	settings map[string]any
-}
-
-// readIndexSettings reads raw settings, so analysis parts the typed client doesn't model are kept.
-func readIndexSettings(ctx context.Context, client *elasticsearch.TypedClient, name string) (indexSettings, error) {
+// readAnalysis reads the raw settings rather than the typed ones, so analysis
+// components the client does not model are recorded instead of dropped.
+func readAnalysis(ctx context.Context, client *elasticsearch.TypedClient, name string) (string, json.RawMessage, error) {
 	res, err := client.Indices.GetSettings().Index(name).Perform(ctx)
 	if err != nil {
-		return indexSettings{}, fmt.Errorf("read settings of %s: %w", name, err)
+		return "", nil, fmt.Errorf("read settings of %s: %w", name, err)
 	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", nil, fmt.Errorf("read settings of %s: %w", name, err)
+	}
+	if res.StatusCode != http.StatusOK {
+		return "", nil, fmt.Errorf("read settings of %s: status %d: %s", name, res.StatusCode, body)
+	}
+
 	var byIndex map[string]struct {
-		Settings map[string]any `json:"settings"`
+		Settings struct {
+			Index struct {
+				Analysis json.RawMessage `json:"analysis"`
+			} `json:"index"`
+		} `json:"settings"`
 	}
-	if err := decodeBody(res, &byIndex); err != nil {
-		return indexSettings{}, fmt.Errorf("read settings of %s: %w", name, err)
+	if err := json.Unmarshal(body, &byIndex); err != nil {
+		return "", nil, fmt.Errorf("parse settings of %s: %w", name, err)
 	}
 	if len(byIndex) != 1 {
-		return indexSettings{}, fmt.Errorf("read settings of %s: resolves to %d indices, want 1", name, len(byIndex))
+		return "", nil, fmt.Errorf("read settings of %s: resolves to %d indices, want 1", name, len(byIndex))
 	}
 
-	for index, body := range byIndex {
-		read := indexSettings{name: index, settings: map[string]any{}}
-		flattenSettings(read.settings, "", body.Settings)
-		indexBlock, _ := body.Settings["index"].(map[string]any)
-		if analysis, ok := indexBlock["analysis"]; ok {
-			if read.analysis, err = json.Marshal(analysis); err != nil {
-				return indexSettings{}, fmt.Errorf("parse analysis of %s: %w", index, err)
-			}
+	for index, settings := range byIndex {
+		analysis, err := canonicalJSON(settings.Settings.Index.Analysis)
+		if err != nil {
+			return "", nil, fmt.Errorf("parse analysis of %s: %w", index, err)
 		}
-		return read, nil
+		return index, analysis, nil
 	}
-	return indexSettings{}, nil
+	return "", nil, nil
 }
 
-// flattenSettings flattens like ES flat_settings, minus the analysis block Analysis keeps whole.
-func flattenSettings(flat map[string]any, prefix string, nested map[string]any) {
-	for key, value := range nested {
-		path := prefix + key
-		if path == "index.analysis" {
-			continue
-		}
-		if child, ok := value.(map[string]any); ok {
-			flattenSettings(flat, path+".", child)
-			continue
-		}
-		flat[path] = value
+func canonicalJSON(raw json.RawMessage) (json.RawMessage, error) {
+	if len(raw) == 0 {
+		return nil, nil
 	}
+	var value any
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return nil, err
+	}
+	return json.Marshal(value)
 }
 
 func searchFieldMappings(properties map[string]types.Property) map[string]FieldMapping {

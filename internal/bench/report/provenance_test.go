@@ -117,8 +117,6 @@ func TestSummary_NamesTheLoadedPackagesAndTag(t *testing.T) {
 	}
 }
 
-func int64Pointer(v int64) *int64 { return &v }
-
 func recordedEnvironment() (postgres, elasticsearch IndexProvenance) {
 	postgres = IndexProvenance{
 		IndexDescription: engine.IndexDescription{Postgres: &pg.IndexDescription{
@@ -130,12 +128,9 @@ func recordedEnvironment() (postgres, elasticsearch IndexProvenance) {
 		}},
 	}
 	elasticsearch = IndexProvenance{IndexDescription: engine.IndexDescription{Elasticsearch: &es.IndexDescription{
-		Version:         "8.12.0",
-		BuildHash:       "1665f706",
-		Index:           "articles",
-		Settings:        map[string]any{"index.number_of_replicas": "0"},
-		ClusterSettings: &es.ClusterSettings{Persistent: map[string]any{"cluster.routing.allocation.enable": "all"}},
-		Nodes:           []es.NodeStats{{Name: "es-1", HeapMaxBytes: 512 << 20, CPUQuotaMicros: int64Pointer(-1), CPUPeriodMicros: int64Pointer(100000), MemoryLimit: "max"}},
+		Version: "8.12.0",
+		Index:   "articles",
+		Nodes:   []es.NodeStats{{Name: "es-1", HeapMaxBytes: 512 << 20, MemoryLimit: "max"}},
 	}}}
 	return postgres, elasticsearch
 }
@@ -155,18 +150,8 @@ func TestDiffProvenance_NamesEveryRecordedFactThatChanged(t *testing.T) {
 			change: func(p, _ *IndexProvenance) { p.Postgres.Limits.MemoryMax = "8589934592" }},
 		{name: "a server read that failed", engine: "pg", field: "unreadable",
 			change: func(p, _ *IndexProvenance) { p.Postgres.Unreadable = []string{"read cgroup limits: permission denied"} }},
-		{name: "the build", engine: "es", field: "build_hash",
-			change: func(_, e *IndexProvenance) { e.Elasticsearch.BuildHash = "0badc0de" }},
-		{name: "an index setting", engine: "es", field: "setting.index.number_of_replicas",
-			change: func(_, e *IndexProvenance) { e.Elasticsearch.Settings["index.number_of_replicas"] = "1" }},
-		{name: "a cluster setting", engine: "es", field: "cluster.persistent.cluster.routing.allocation.enable",
-			change: func(_, e *IndexProvenance) {
-				e.Elasticsearch.ClusterSettings.Persistent["cluster.routing.allocation.enable"] = "primaries"
-			}},
 		{name: "a node's heap", engine: "es", field: "node.es-1.heap_max_bytes",
 			change: func(_, e *IndexProvenance) { e.Elasticsearch.Nodes[0].HeapMaxBytes = 1 << 30 }},
-		{name: "a node's cpu quota", engine: "es", field: "node.es-1.cpu_quota_micros",
-			change: func(_, e *IndexProvenance) { e.Elasticsearch.Nodes[0].CPUQuotaMicros = int64Pointer(200000) }},
 		{name: "a node's memory limit", engine: "es", field: "node.es-1.memory_limit",
 			change: func(_, e *IndexProvenance) { e.Elasticsearch.Nodes[0].MemoryLimit = "2147483648" }},
 	}

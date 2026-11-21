@@ -75,21 +75,9 @@ func (p IndexProvenance) Fields() []ProvenanceField {
 	}
 	if d := p.Elasticsearch; d != nil {
 		add("version", d.Version)
-		add("build_hash", d.BuildHash)
 		add("index", d.Index)
 		if len(d.Analysis) > 0 {
 			add("analysis", digest(d.Analysis))
-		}
-		for key, value := range d.Settings {
-			add("setting."+key, settingValue(value))
-		}
-		if c := d.ClusterSettings; c != nil {
-			for key, value := range c.Persistent {
-				add("cluster.persistent."+key, settingValue(value))
-			}
-			for key, value := range c.Transient {
-				add("cluster.transient."+key, settingValue(value))
-			}
 		}
 		for _, node := range d.Nodes {
 			addNodeFields(add, node)
@@ -107,12 +95,6 @@ func (p IndexProvenance) Fields() []ProvenanceField {
 func addNodeFields(add func(name, value string), node es.NodeStats) {
 	prefix := "node." + node.Name + "."
 	add(prefix+"heap_max_bytes", strconv.FormatInt(node.HeapMaxBytes, 10))
-	if node.CPUQuotaMicros != nil {
-		add(prefix+"cpu_quota_micros", strconv.FormatInt(*node.CPUQuotaMicros, 10))
-	}
-	if node.CPUPeriodMicros != nil {
-		add(prefix+"cpu_period_micros", strconv.FormatInt(*node.CPUPeriodMicros, 10))
-	}
 	if node.MemoryLimit != "" {
 		add(prefix+"memory_limit", node.MemoryLimit)
 	}
@@ -122,18 +104,6 @@ func addUnreadable(add func(name, value string), unreadable []string) {
 	if len(unreadable) > 0 {
 		add("unreadable", strings.Join(unreadable, "; "))
 	}
-}
-
-// settingValue writes a setting as ES does: a string, except for a list.
-func settingValue(value any) string {
-	if s, ok := value.(string); ok {
-		return s
-	}
-	encoded, err := json.Marshal(value)
-	if err != nil {
-		return fmt.Sprint(value)
-	}
-	return string(encoded)
 }
 
 // Summary is a one-line account of the provenance for `bench show report`.
