@@ -263,7 +263,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 		if len(carry.ChangedQueries) > 0 {
 			msg += fmt.Sprintf("; changed queries graded again: %s", strings.Join(carry.ChangedQueries, ", "))
 		}
-		if !carried.CorpusChecked {
+		if !carry.CorpusChecked {
 			msg += "; corpus not checked, a pool names no canonical package"
 		}
 		printWarn(cmd.OutOrStdout(), msg)
