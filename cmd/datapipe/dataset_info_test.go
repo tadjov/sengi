@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/cli"
-	"github.com/tadjov/tusker/internal/ingest/reader"
+	"github.com/tadjov/sengi/internal/cli"
+	"github.com/tadjov/sengi/internal/ingest/reader"
 )
 
 type plainSource struct{ reader.RawParallelReader }

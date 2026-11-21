@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/bench/spec"
+	"github.com/tadjov/sengi/internal/bench/spec"
 )
 
 // FusionExecutor answers a query by running each leg engine's request, one leg

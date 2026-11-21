@@ -16,11 +16,11 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
-	"github.com/tadjov/tusker/db/migrations"
-	"github.com/tadjov/tusker/internal/embedding"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/types/document"
-	"github.com/tadjov/tusker/internal/types/language"
+	"github.com/tadjov/sengi/db/migrations"
+	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/language"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -186,7 +186,7 @@ func validateCorpus(c storage.Corpus, opts storage.LoadOptions) error {
 	return nil
 }
 
-const loadLockKey = 0x7475736b6572 // "tusker"
+const loadLockKey = 0x73656e6769 // "sengi"
 
 func lockLoad(ctx context.Context, conn *pgx.Conn) error {
 	var locked bool

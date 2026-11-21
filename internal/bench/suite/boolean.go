@@ -3,7 +3,7 @@ package suite
 import (
 	"fmt"
 
-	"github.com/tadjov/tusker/internal/token"
+	"github.com/tadjov/sengi/internal/token"
 )
 
 // BooleanKind names the node a BooleanExpr is.

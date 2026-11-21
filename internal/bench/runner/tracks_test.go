@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/spec"
+	"github.com/tadjov/sengi/internal/bench/spec"
 )
 
 // Every committed track must load with each engine given the args its queries

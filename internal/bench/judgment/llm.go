@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/meta"
 )
 
 // Output budgets leave room for adaptive thinking at any effort before the

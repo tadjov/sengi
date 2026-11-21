@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/runner"
-	"github.com/tadjov/tusker/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/bench/runner"
+	"github.com/tadjov/sengi/internal/bench/suite"
 )
 
 // Two jobs sharing a suite must produce ONE pool entry per query_id, not one

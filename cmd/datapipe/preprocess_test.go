@@ -23,10 +23,10 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/datapackage"
-	"github.com/tadjov/tusker/internal/types/document"
-	"github.com/tadjov/tusker/internal/types/language"
-	"github.com/tadjov/tusker/pkg/apis/datamapping"
+	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/pkg/apis/datamapping"
 )
 
 const ccNewsLikeMapping = `kind: DataMapper

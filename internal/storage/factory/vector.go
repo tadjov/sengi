@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tadjov/tusker/internal/embedding"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/storage/es"
-	"github.com/tadjov/tusker/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/storage/es"
+	"github.com/tadjov/sengi/internal/storage/pg"
 )
 
 // VectorStoreConfig selects and configures a storage.VectorStore. Postgres

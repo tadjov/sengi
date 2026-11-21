@@ -11,8 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/pool"
-	"github.com/tadjov/tusker/internal/bench/spec"
+	"github.com/tadjov/sengi/internal/bench/pool"
+	"github.com/tadjov/sengi/internal/bench/spec"
 )
 
 // judgedTrack is a track whose judgments grade every doc in its pool, served by

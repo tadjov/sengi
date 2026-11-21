@@ -1,5 +1,5 @@
 import json, subprocess, urllib.request
-A='/Users/djordjevuckovic/projects/news-hunter/experiments/analysis-chains/out/'
+A='/Users/djordjevuckovic/projects/sengi/experiments/analysis-chains/out/'
 S=[json.loads(l) for l in open(A+'sample_b.jsonl')]
 Q=json.load(open(A+'queries.json'))['queries']
 STORED=json.load(open(A+'divergence_results.json'))['results']

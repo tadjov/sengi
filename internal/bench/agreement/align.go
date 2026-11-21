@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/bench/judgment"
+	"github.com/tadjov/sengi/internal/bench/judgment"
 )
 
 // Pair is a (query, doc) every set graded, with each set's grade in set order.

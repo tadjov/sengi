@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/tadjov/tusker/internal/storage"
-	pkgtesting "github.com/tadjov/tusker/pkg/testing"
+	"github.com/tadjov/sengi/internal/storage"
+	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 	"github.com/testcontainers/testcontainers-go"
 )
 

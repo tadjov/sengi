@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 //go:embed native paradedb tiger

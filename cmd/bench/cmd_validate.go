@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/tadjov/tusker/internal/bench/dialect"
-	"github.com/tadjov/tusker/internal/bench/engine"
-	"github.com/tadjov/tusker/internal/bench/runner"
-	"github.com/tadjov/tusker/internal/bench/spec"
-	"github.com/tadjov/tusker/internal/bench/suite"
-	"github.com/tadjov/tusker/internal/bench/trackctx"
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/internal/bench/dialect"
+	"github.com/tadjov/sengi/internal/bench/engine"
+	"github.com/tadjov/sengi/internal/bench/runner"
+	"github.com/tadjov/sengi/internal/bench/spec"
+	"github.com/tadjov/sengi/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 type validateFlags struct {

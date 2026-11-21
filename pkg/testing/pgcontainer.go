@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/tadjov/tusker/db/migrations"
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/db/migrations"
+	"github.com/tadjov/sengi/internal/storage"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"

@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/bench/suite"
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 // GradingQuery is the query a judge grades against.

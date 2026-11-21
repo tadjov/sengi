@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/tadjov/tusker/internal/datapackage"
+	"github.com/tadjov/sengi/internal/datapackage"
 )
 
 func writeFullPackage(t *testing.T, dir string) datapackage.Package {

@@ -1,10 +1,10 @@
-// Package main Tusker API
-// @title Tusker API
+// Package main Sengi API
+// @title Sengi API
 // @version 1.0
 // @description A full-text and semantic search engine for exploring multilingual news headlines and articles
 // @termsOfService http://swagger.io/terms/
 // @contact.name API Support
-// @contact.email support@tusker.sh
+// @contact.email support@sengi.sh
 // @license.name Apache 2.0
 // @license.url https://opensource.org/licenses/Apache-2.0
 // @BasePath /
@@ -16,9 +16,9 @@ import (
 	"os"
 
 	"github.com/labstack/echo/v4"
-	"github.com/tadjov/tusker/internal/api/router"
-	server2 "github.com/tadjov/tusker/internal/api/server"
-	"github.com/tadjov/tusker/internal/embedding"
+	"github.com/tadjov/sengi/internal/api/router"
+	server2 "github.com/tadjov/sengi/internal/api/server"
+	"github.com/tadjov/sengi/internal/embedding"
 )
 
 func main() {
@@ -56,7 +56,7 @@ func main() {
 		SetupOpenApi("/swagger/*")
 
 	s.Echo.GET("/", func(c echo.Context) error {
-		return c.String(200, "Tusker API is running")
+		return c.String(200, "Sengi API is running")
 	})
 
 	var routerOpts []router.SearchRouterOption

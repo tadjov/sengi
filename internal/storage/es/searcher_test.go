@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/storage/storagetest"
-	"github.com/tadjov/tusker/internal/types/document"
-	"github.com/tadjov/tusker/internal/types/language"
-	dquery "github.com/tadjov/tusker/internal/types/query"
-	pkgtesting "github.com/tadjov/tusker/pkg/testing"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/storage/storagetest"
+	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/language"
+	dquery "github.com/tadjov/sengi/internal/types/query"
+	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 type searchMethod struct {

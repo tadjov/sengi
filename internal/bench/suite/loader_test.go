@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/apperr"
+	"github.com/tadjov/sengi/internal/apperr"
 )
 
 const validHeader = `schema_version: 1

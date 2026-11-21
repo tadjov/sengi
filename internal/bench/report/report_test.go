@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/bench/metrics"
-	"github.com/tadjov/tusker/internal/bench/runner"
+	"github.com/tadjov/sengi/internal/bench/metrics"
+	"github.com/tadjov/sengi/internal/bench/runner"
 )
 
 // ─── helpers ─────────────────────────────────────────────────────────────────

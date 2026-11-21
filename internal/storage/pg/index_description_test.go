@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 func TestDescribeIndexes_ReadsTheMigratedServer(t *testing.T) {

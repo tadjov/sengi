@@ -15,15 +15,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/spf13/cobra"
-	"github.com/tadjov/tusker/internal/cli"
-	"github.com/tadjov/tusker/internal/datapackage"
-	"github.com/tadjov/tusker/internal/embedding"
-	"github.com/tadjov/tusker/internal/ingest/reader"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/storage/factory"
-	"github.com/tadjov/tusker/internal/types/document"
-	"github.com/tadjov/tusker/internal/types/language"
-	"github.com/tadjov/tusker/pkg/config/env"
+	"github.com/tadjov/sengi/internal/cli"
+	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/ingest/reader"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/storage/factory"
+	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/pkg/config/env"
 )
 
 const (
@@ -102,7 +102,7 @@ func runLoad(ctx context.Context, out io.Writer, opts loadOptions) error {
 	}
 	defer release()
 
-	cli.Header(out, "tusker load", inputs.fields(engine, opts)...)
+	cli.Header(out, "sengi load", inputs.fields(engine, opts)...)
 	record, err := loader.LoadCorpus(ctx, inputs.corpus(ctx), storage.LoadOptions{BatchSize: opts.BatchSize, Concurrency: opts.Concurrency, SkipIndex: opts.SkipIndex})
 	if err != nil {
 		return fmt.Errorf("load %s: %w", engine, err)
