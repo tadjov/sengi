@@ -31,8 +31,7 @@ type PGConfig struct {
 	Unmigrated bool
 }
 
-// engineImage is a published image pinned by digest, or a thin Dockerfile under docker/ that pins
-// its base the same way, as docker-compose.yml runs the engine.
+// engineImage is a digest-pinned image or a docker/ Dockerfile, as docker-compose.yml runs the engine.
 type engineImage struct {
 	reference  string
 	dockerfile testcontainers.FromDockerfile

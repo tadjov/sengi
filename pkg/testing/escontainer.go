@@ -16,8 +16,7 @@ const (
 	elasticsearchDigest = "sha256:ec72548cf833e58578d8ff40df44346a49480b2c88a4e73a91e1b85ec7ef0d44"
 )
 
-// digestPin pulls image by digest at container creation. The elasticsearch module reads its
-// version defaults from the tag, which a tag@digest reference hides from it.
+// digestPin adds the digest at creation, since the module reads its defaults from the bare tag.
 type digestPin struct {
 	image  string
 	digest string

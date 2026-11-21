@@ -37,8 +37,7 @@ func TestPostgresEnginesShareServerBuild(t *testing.T) {
 	}
 }
 
-// readServerBuild reads pgvector as the migration installed it. ParadeDB's migration creates
-// neither pg_trgm nor fuzzystrmatch, so those come from the versions the server ships.
+// readServerBuild reads pg_trgm and fuzzystrmatch as the server ships them: ParadeDB's migration creates neither.
 func readServerBuild(ctx context.Context, t *testing.T, connString string) serverBuild {
 	t.Helper()
 	conn, err := pgx.Connect(ctx, connString)
