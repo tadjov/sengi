@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tusker search benchmark — canonical workflow (bench v1, track-first).
+# Sengi search benchmark — canonical workflow (bench v1, track-first).
 #
 # A "track" is a self-contained folder under tracks/<dataset>/ holding spec.yaml,
 # suite.yaml, generated pool/annotations/qrels in trec/, and reports/.

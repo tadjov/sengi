@@ -6,12 +6,12 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/tadjov/tusker/internal/api/dto"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/storage/pg"
-	"github.com/tadjov/tusker/internal/types/operator"
-	dquery "github.com/tadjov/tusker/internal/types/query"
-	"github.com/tadjov/tusker/pkg/utils"
+	"github.com/tadjov/sengi/internal/api/dto"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/types/operator"
+	dquery "github.com/tadjov/sengi/internal/types/query"
+	"github.com/tadjov/sengi/pkg/utils"
 )
 
 type Searcher struct {

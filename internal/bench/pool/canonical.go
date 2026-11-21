@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 // SharedCanonical is the canonical package every engine loaded; nil when none records one.

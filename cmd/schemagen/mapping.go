@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/tadjov/tusker/pkg/apis/datamapping"
-	"github.com/tadjov/tusker/pkg/schema"
+	"github.com/tadjov/sengi/pkg/apis/datamapping"
+	"github.com/tadjov/sengi/pkg/schema"
 )
 
 const mappingSchemaFile = "datamapping-v1.json"

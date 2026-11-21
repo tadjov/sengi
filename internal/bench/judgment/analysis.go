@@ -10,7 +10,7 @@ import (
 	"unicode"
 
 	"github.com/kljensen/snowball/english"
-	"github.com/tadjov/tusker/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/bench/suite"
 )
 
 // englishStop is Postgres 18's tsearch_data/english.stop verbatim: Snowball's

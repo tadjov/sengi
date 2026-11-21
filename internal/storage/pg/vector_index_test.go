@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 func TestArticleEmbeddingIndex_DeclaresHNSWBuildParams(t *testing.T) {

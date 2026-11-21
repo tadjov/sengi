@@ -9,11 +9,11 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
-	apiserver "github.com/tadjov/tusker/internal/api/server"
-	"github.com/tadjov/tusker/internal/apperr"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/types/operator"
-	dquery "github.com/tadjov/tusker/internal/types/query"
+	apiserver "github.com/tadjov/sengi/internal/api/server"
+	"github.com/tadjov/sengi/internal/apperr"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/operator"
+	dquery "github.com/tadjov/sengi/internal/types/query"
 )
 
 type stubSemanticSearcher struct{}

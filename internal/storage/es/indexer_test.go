@@ -8,11 +8,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/api/dto"
-	"github.com/tadjov/tusker/internal/types/document"
-	"github.com/tadjov/tusker/internal/types/language"
-	dquery "github.com/tadjov/tusker/internal/types/query"
-	pkgtesting "github.com/tadjov/tusker/pkg/testing"
+	"github.com/tadjov/sengi/internal/api/dto"
+	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/language"
+	dquery "github.com/tadjov/sengi/internal/types/query"
+	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 func TestIndexer(t *testing.T) {

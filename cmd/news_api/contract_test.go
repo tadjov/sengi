@@ -10,16 +10,16 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/api/router"
-	"github.com/tadjov/tusker/internal/api/server"
-	"github.com/tadjov/tusker/internal/embedding"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/storage/factory"
-	"github.com/tadjov/tusker/internal/storage/pg"
-	"github.com/tadjov/tusker/internal/storage/storagetest"
-	"github.com/tadjov/tusker/internal/types/document"
-	dquery "github.com/tadjov/tusker/internal/types/query"
-	pkgtesting "github.com/tadjov/tusker/pkg/testing"
+	"github.com/tadjov/sengi/internal/api/router"
+	"github.com/tadjov/sengi/internal/api/server"
+	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/storage/factory"
+	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/storage/storagetest"
+	"github.com/tadjov/sengi/internal/types/document"
+	dquery "github.com/tadjov/sengi/internal/types/query"
+	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 // newPostgresSearchServer serves the search API from a Postgres container

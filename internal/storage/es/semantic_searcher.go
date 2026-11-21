@@ -7,10 +7,10 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
-	"github.com/tadjov/tusker/internal/api/dto"
-	"github.com/tadjov/tusker/internal/embedding"
-	"github.com/tadjov/tusker/internal/storage"
-	dquery "github.com/tadjov/tusker/internal/types/query"
+	"github.com/tadjov/sengi/internal/api/dto"
+	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/storage"
+	dquery "github.com/tadjov/sengi/internal/types/query"
 )
 
 const minNumCandidates = 100

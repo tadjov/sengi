@@ -10,7 +10,7 @@
 # ///
 """Project a canonical package to the columns embed_corpus.py reads, for the cloud upload.
 
-  uv run scripts/slim_corpus.py datasets/cc-news/canonical/<version>/datapackage.json --out /tmp/tusker-payload
+  uv run scripts/slim_corpus.py datasets/cc-news/canonical/<version>/datapackage.json --out /tmp/sengi-payload
 
 Writes <out>/<version>/ as plain parquet: Kaggle decompresses .gz uploads, breaking the hash.
 """

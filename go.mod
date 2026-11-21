@@ -1,4 +1,4 @@
-module github.com/tadjov/tusker
+module github.com/tadjov/sengi
 
 go 1.25.0
 

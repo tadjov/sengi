@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/pkg/apis/datamapping"
+	"github.com/tadjov/sengi/pkg/apis/datamapping"
 )
 
 func TestNormalizeURL(t *testing.T) {

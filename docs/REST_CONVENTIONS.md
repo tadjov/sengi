@@ -52,7 +52,7 @@ GET /search/repositories?q=...     # Simple
 
 ---
 
-## Recommendation for Tusker
+## Recommendation for Sengi
 
 ### Option A: Elasticsearch Style (RECOMMENDED)
 

@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/bench/pool"
-	"github.com/tadjov/tusker/internal/bench/version"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/pool"
+	"github.com/tadjov/sengi/internal/bench/version"
 	"gopkg.in/yaml.v3"
 )
 

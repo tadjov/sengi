@@ -8,10 +8,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/agreement"
-	"github.com/tadjov/tusker/internal/bench/judgment"
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/bench/agreement"
+	"github.com/tadjov/sengi/internal/bench/judgment"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/trackctx"
 )
 
 func newTrack(t *testing.T) *trackctx.Track {

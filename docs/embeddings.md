@@ -122,8 +122,8 @@ vectors were made from, and the input package's resource is checked against its
 most of the bytes, so project it away before moving anything to a cloud box:
 
 ```bash
-uv run scripts/slim_corpus.py datasets/cc-news/canonical/<version>/datapackage.json --out /tmp/tusker-payload
-# writes /tmp/tusker-payload/v1/; --version picks another name
+uv run scripts/slim_corpus.py datasets/cc-news/canonical/<version>/datapackage.json --out /tmp/sengi-payload
+# writes /tmp/sengi-payload/v1/; --version picks another name
 ```
 
 The output is a package of its own in `<out>/<version>/`: `articles.parquet`
@@ -160,8 +160,8 @@ pip install kaggle          # token from kaggle.com/settings/api -> ~/.kaggle/ka
 **2. Upload the slim package as a dataset.**
 
 ```bash
-uv run scripts/slim_corpus.py datasets/cc-news/canonical/<version>/datapackage.json --out /tmp/tusker-payload
-PAYLOAD=/tmp/tusker-payload/v1
+uv run scripts/slim_corpus.py datasets/cc-news/canonical/<version>/datapackage.json --out /tmp/sengi-payload
+PAYLOAD=/tmp/sengi-payload/v1
 kaggle datasets init -p "$PAYLOAD"
 # edit $PAYLOAD/dataset-metadata.json: set the title, and the id that
 # datasets/cc-news/kernel-metadata.json lists under dataset_sources
@@ -191,9 +191,9 @@ scratch dir, then move the version directory in; nothing in `datasets/` is
 overwritten.
 
 ```bash
-kaggle kernels output djordjevuckovic/tusker-embed -p /tmp/tusker-out
+kaggle kernels output djordjevuckovic/tusker-embed -p /tmp/sengi-out
 mkdir -p datasets/cc-news/embeddings/qwen3-embedding-0.6b@1024
-mv /tmp/tusker-out/embeddings/qwen3-embedding-0.6b@1024/v1 \
+mv /tmp/sengi-out/embeddings/qwen3-embedding-0.6b@1024/v1 \
    datasets/cc-news/embeddings/qwen3-embedding-0.6b@1024/
 ```
 
@@ -281,13 +281,13 @@ the track's `suite.yaml` and a copy of `scripts/embed_corpus.py`, which
 `embed_queries.py` imports:
 
 ```bash
-mkdir -p /tmp/tusker-queries
-cp tracks/cc-news/<paradigm>/suite.yaml scripts/embed_corpus.py /tmp/tusker-queries/
-kaggle datasets init -p /tmp/tusker-queries        # set title and id
-kaggle datasets create -p /tmp/tusker-queries      # first time; later runs use `kaggle datasets version`
+mkdir -p /tmp/sengi-queries
+cp tracks/cc-news/<paradigm>/suite.yaml scripts/embed_corpus.py /tmp/sengi-queries/
+kaggle datasets init -p /tmp/sengi-queries        # set title and id
+kaggle datasets create -p /tmp/sengi-queries      # first time; later runs use `kaggle datasets version`
 kaggle kernels push -p scripts/kaggle/queries
-kaggle kernels output djordjevuckovic/tusker-embed-queries -p /tmp/tusker-queries-out
-mv /tmp/tusker-queries-out/query-vectors tracks/cc-news/<paradigm>/trec/
+kaggle kernels output djordjevuckovic/tusker-embed-queries -p /tmp/sengi-queries-out
+mv /tmp/sengi-queries-out/query-vectors tracks/cc-news/<paradigm>/trec/
 ```
 
 ### Checkpoints and re-runs

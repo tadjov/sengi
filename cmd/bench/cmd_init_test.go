@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/runner"
-	"github.com/tadjov/tusker/internal/bench/spec"
-	"github.com/tadjov/tusker/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/bench/runner"
+	"github.com/tadjov/sengi/internal/bench/spec"
+	"github.com/tadjov/sengi/internal/bench/suite"
 )
 
 func TestInit_ScaffoldedSpecResolvesItsSuite(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"slices"
 
-	"github.com/tadjov/tusker/internal/bench/version"
+	"github.com/tadjov/sengi/internal/bench/version"
 	"gopkg.in/yaml.v3"
 )
 

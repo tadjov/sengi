@@ -484,6 +484,5 @@ See `/scripts/curl_examples.sh` for 14 comprehensive examples covering:
 
 Run examples:
 ```bash
-cd /home/tadjo/projects/news-hunter
 ./scripts/curl_examples.sh
 ```

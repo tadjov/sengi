@@ -15,12 +15,12 @@ import (
 
 	"github.com/parquet-go/parquet-go"
 	"github.com/spf13/cobra"
-	"github.com/tadjov/tusker/internal/cli"
-	"github.com/tadjov/tusker/internal/datapackage"
-	"github.com/tadjov/tusker/internal/embedding"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/types/document"
-	"github.com/tadjov/tusker/pkg/config/env"
+	"github.com/tadjov/sengi/internal/cli"
+	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/pkg/config/env"
 )
 
 const (
@@ -84,7 +84,7 @@ func runEmbed(ctx context.Context, out io.Writer, opts embedOptions) error {
 	defer inputs.Close()
 	run.corpus = inputs.corpus(ctx)
 
-	cli.Header(out, "tusker embed",
+	cli.Header(out, "sengi embed",
 		cli.Field{Label: "canonical", Value: run.corpus.Canonical.Name + "@" + run.corpus.Canonical.Version},
 		cli.Field{Label: "model", Value: run.embedding.Tag},
 		cli.IntField("batch", opts.BatchSize),

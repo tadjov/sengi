@@ -19,12 +19,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tadjov/tusker/internal/embedding"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/types/document"
-	"github.com/tadjov/tusker/internal/types/language"
-	dquery "github.com/tadjov/tusker/internal/types/query"
-	pkgtesting "github.com/tadjov/tusker/pkg/testing"
+	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/language"
+	dquery "github.com/tadjov/sengi/internal/types/query"
+	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 const loadTestModelTag = "qwen3-embedding:0.6b@1024"

@@ -1,5 +1,5 @@
 import json, sys, importlib.metadata as md
-V = sorted(json.load(open('/Users/djordjevuckovic/projects/news-hunter/experiments/analysis-chains/out/vocab.json')))
+V = sorted(json.load(open('/Users/djordjevuckovic/projects/sengi/experiments/analysis-chains/out/vocab.json')))
 kind=sys.argv[1]
 if kind=="sbs":
     try:
