@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/tadjov/tusker/pkg/apis/datamapping"
+	"github.com/tadjov/sengi/pkg/apis/datamapping"
 	"golang.org/x/net/publicsuffix"
 )
 

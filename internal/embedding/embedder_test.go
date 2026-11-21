@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/document"
 )
 
 // fakeOllama records the model each request names.

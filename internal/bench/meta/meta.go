@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tadjov/tusker/internal/bench/version"
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/internal/bench/version"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 // Meta is the provenance block of a pool, annotations or report file.

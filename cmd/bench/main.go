@@ -9,9 +9,9 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
-	"github.com/tadjov/tusker/internal/bench/judgment"
-	"github.com/tadjov/tusker/internal/bench/spec"
-	"github.com/tadjov/tusker/pkg/config/env"
+	"github.com/tadjov/sengi/internal/bench/judgment"
+	"github.com/tadjov/sengi/internal/bench/spec"
+	"github.com/tadjov/sengi/pkg/config/env"
 )
 
 func init() {
@@ -23,7 +23,7 @@ const (
 	cliName  = "bench"
 	cliShort = "Search engine quality + latency benchmark"
 	cliLong  = `bench evaluates full-text, vector, and hybrid search queries against multiple
-engines (Postgres, ParadeDB, Elasticsearch, the tusker API), produces
+engines (Postgres, ParadeDB, Elasticsearch, the sengi API), produces
 IR-quality metrics (NDCG, MAP, MRR, Bpref, P/R/F1) and latency statistics.
 
 Typical pipeline (pass the track path as a positional arg):

@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/resilience"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/resilience"
 )
 
 // DefaultJevModel is the Jev release used when --model is omitted.

@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/embedding"
-	"github.com/tadjov/tusker/internal/types/document"
-	"github.com/tadjov/tusker/internal/types/language"
-	"github.com/tadjov/tusker/internal/types/query"
+	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/internal/types/query"
 )
 
 func TestHybridSearcher_LexicalLegReadsTheQueryAsFreeText(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/document"
 )
 
 type InMemIndexer struct {

@@ -6,10 +6,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/bench/pool"
-	"github.com/tadjov/tusker/internal/bench/suite"
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/pool"
+	"github.com/tadjov/sengi/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 var (

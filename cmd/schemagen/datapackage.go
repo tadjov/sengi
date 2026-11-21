@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/tadjov/tusker/internal/datapackage"
-	"github.com/tadjov/tusker/pkg/schema"
+	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/pkg/schema"
 )
 
 const dataPackageSchemaFile = "datapackage-v1.json"
@@ -24,7 +24,7 @@ func dataPackageSchema() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("generate data package schema: %w", err)
 	}
-	descriptor.ID = "https://schemas.tusker.sh/datapackage-v1"
+	descriptor.ID = "https://schemas.sengi.sh/datapackage-v1"
 	descriptor.Title = "Data package descriptor"
 	generated, err := json.MarshalIndent(descriptor, "", "  ")
 	if err != nil {

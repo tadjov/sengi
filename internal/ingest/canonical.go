@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/parquet-go/parquet-go"
-	"github.com/tadjov/tusker/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/document"
 )
 
 type CanonicalWriter interface {

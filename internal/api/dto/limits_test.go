@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tadjov/tusker/internal/apperr"
-	"github.com/tadjov/tusker/pkg/pagination"
+	"github.com/tadjov/sengi/internal/apperr"
+	"github.com/tadjov/sengi/pkg/pagination"
 )
 
 func isValidationError(err error) bool {

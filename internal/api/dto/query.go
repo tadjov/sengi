@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/tadjov/tusker/internal/apperr"
-	"github.com/tadjov/tusker/internal/types/query"
+	"github.com/tadjov/sengi/internal/apperr"
+	"github.com/tadjov/sengi/internal/types/query"
 )
 
 // SearchRequest represents the base search request with unified structure

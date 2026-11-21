@@ -13,12 +13,12 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/tadjov/tusker/internal/cli"
-	"github.com/tadjov/tusker/internal/datapackage"
-	"github.com/tadjov/tusker/internal/ingest"
-	"github.com/tadjov/tusker/internal/ingest/reader"
-	"github.com/tadjov/tusker/pkg/apis/datamapping"
-	"github.com/tadjov/tusker/pkg/config/env"
+	"github.com/tadjov/sengi/internal/cli"
+	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/internal/ingest"
+	"github.com/tadjov/sengi/internal/ingest/reader"
+	"github.com/tadjov/sengi/pkg/apis/datamapping"
+	"github.com/tadjov/sengi/pkg/config/env"
 )
 
 type preprocessConfig struct {
@@ -87,7 +87,7 @@ func runPreprocess(ctx context.Context, out io.Writer, cfg preprocessConfig) err
 		return fmt.Errorf("open raw package: %w", err)
 	}
 
-	cli.Header(out, "tusker preprocess",
+	cli.Header(out, "sengi preprocess",
 		cli.Field{Label: "raw", Value: raw.Location},
 		cli.IntField("resources", len(raw.Package.Resources)),
 		cli.Field{Label: "mapping", Value: cfg.MappingPath},

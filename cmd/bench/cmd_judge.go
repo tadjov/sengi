@@ -8,15 +8,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"github.com/tadjov/tusker/internal/bench/judgment"
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/bench/pool"
-	"github.com/tadjov/tusker/internal/bench/spec"
-	"github.com/tadjov/tusker/internal/bench/trackctx"
-	"github.com/tadjov/tusker/internal/embedding"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/storage/factory"
-	"github.com/tadjov/tusker/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/bench/judgment"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/pool"
+	"github.com/tadjov/sengi/internal/bench/spec"
+	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/storage/factory"
+	"github.com/tadjov/sengi/internal/storage/pg"
 )
 
 type judgeFlags struct {

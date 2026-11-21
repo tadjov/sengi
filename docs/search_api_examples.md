@@ -1,8 +1,8 @@
-# Tusker Search API Documentation
+# Sengi Search API Documentation
 
 ## Overview
 
-The Tusker API provides comprehensive search capabilities across multiple paradigms:
+The Sengi API provides comprehensive search capabilities across multiple paradigms:
 - **Simple Search**: Google-like query string search
 - **Structured Search**: Elasticsearch-style structured queries
 - **Field-Level Control**: Match specific fields with custom weights

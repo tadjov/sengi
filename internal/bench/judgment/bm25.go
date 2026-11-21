@@ -4,7 +4,7 @@ import (
 	"context"
 	"math"
 
-	"github.com/tadjov/tusker/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/meta"
 )
 
 const (

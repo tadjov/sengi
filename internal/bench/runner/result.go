@@ -2,7 +2,7 @@ package runner
 
 import (
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/bench/metrics"
+	"github.com/tadjov/sengi/internal/bench/metrics"
 )
 
 type QueryResult struct {

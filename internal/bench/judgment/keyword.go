@@ -4,7 +4,7 @@ import (
 	"context"
 	"slices"
 
-	"github.com/tadjov/tusker/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/meta"
 )
 
 // KeywordStrategy is a deterministic baseline judge. It tokenizes the query

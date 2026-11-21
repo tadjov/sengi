@@ -7,11 +7,11 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/bench/metrics"
-	"github.com/tadjov/tusker/internal/bench/runner"
-	"github.com/tadjov/tusker/internal/bench/spec"
-	"github.com/tadjov/tusker/internal/bench/version"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/metrics"
+	"github.com/tadjov/sengi/internal/bench/runner"
+	"github.com/tadjov/sengi/internal/bench/spec"
+	"github.com/tadjov/sengi/internal/bench/version"
 )
 
 type GenerateOptions struct {

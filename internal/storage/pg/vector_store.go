@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
-	"github.com/tadjov/tusker/internal/embedding"
+	"github.com/tadjov/sengi/internal/embedding"
 )
 
 // VectorStore reads document embeddings from article_embeddings and embeds

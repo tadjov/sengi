@@ -3,7 +3,7 @@ package runner
 import (
 	"fmt"
 
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 var DefaultKValues = []int{3, 5, 10}

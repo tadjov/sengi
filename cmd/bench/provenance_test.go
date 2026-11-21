@@ -11,9 +11,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/engine"
-	"github.com/tadjov/tusker/internal/bench/report"
-	"github.com/tadjov/tusker/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/bench/engine"
+	"github.com/tadjov/sengi/internal/bench/report"
+	"github.com/tadjov/sengi/internal/storage/pg"
 )
 
 func readFixtureReport(t *testing.T, name string) *report.Report {

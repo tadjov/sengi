@@ -3,8 +3,8 @@ package agreement
 import (
 	"time"
 
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/bench/version"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/version"
 )
 
 // Artifact is the JSON bench diff judgments writes to --output.

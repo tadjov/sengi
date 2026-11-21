@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tadjov/tusker/internal/bench/engine"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/storage/es"
+	"github.com/tadjov/sengi/internal/bench/engine"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/storage/es"
 )
 
 // IndexProvenance is how an engine had the corpus indexed when the run

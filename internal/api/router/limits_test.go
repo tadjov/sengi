@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
-	"github.com/tadjov/tusker/internal/api/dto"
-	apiserver "github.com/tadjov/tusker/internal/api/server"
-	"github.com/tadjov/tusker/internal/apperr"
-	"github.com/tadjov/tusker/pkg/pagination"
+	"github.com/tadjov/sengi/internal/api/dto"
+	apiserver "github.com/tadjov/sengi/internal/api/server"
+	"github.com/tadjov/sengi/internal/apperr"
+	"github.com/tadjov/sengi/pkg/pagination"
 )
 
 func TestSearchHandlers_RejectOutOfBoundsRequests(t *testing.T) {
