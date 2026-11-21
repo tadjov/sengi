@@ -288,9 +288,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 		}
 	}
 	cfg.Existing = judgment.MergeGrades(carried, existing)
-	// Made once runMeta is whole: the writer stamps every flush with a copy.
 	writer := judgment.NewIncrementalWriter(outPath, runMeta)
-	// Every flush then holds the carried grades of queries the run has not reached.
 	writer.Seed(cfg.Existing, pf)
 	cfg.Sink = writer.Append
 	cfg.OnQueryStart = func(qid string, total, skipped int) {

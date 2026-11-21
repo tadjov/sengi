@@ -174,8 +174,6 @@ func TestRequestDigest_AFusionRequestChangesWithItsLegs(t *testing.T) {
 	}
 }
 
-// The digest is the run's record of what a fusion engine was asked, so the
-// merge it runs must be the one the request carries.
 func TestFusionRequest_TheMergeItRunsIsTheOneItsDigestRecords(t *testing.T) {
 	bs := fusionTrack(t, `queries:
   - id: q1
@@ -214,8 +212,8 @@ func TestFusionRequest_TheMergeItRunsIsTheOneItsDigestRecords(t *testing.T) {
 	narrowDigest, narrow := runWithWindow(1)
 
 	assert.NotEqual(t, wideDigest, narrowDigest)
-	// b is second in both legs: 2/62 beats a and c, which tie at 1/61.
+	// b is second in both legs, so it beats a and c.
 	assert.Equal(t, []uuid.UUID{b, a, c}, wide)
-	// Window 1 keeps a and c, the top of each leg, tied at 1/61, and then a.
+	// Window 1 keeps a and c, tied, and cuts the result to a.
 	assert.Equal(t, []uuid.UUID{a}, narrow)
 }

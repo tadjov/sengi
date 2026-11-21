@@ -20,7 +20,7 @@ type Request struct {
 	Params           map[string]any
 	// Legs are a fusion engine's requests to its leg engines, in leg order.
 	Legs []LegRequest
-	// Fusion is how a fusion engine merges what its legs return.
+	// Fusion is a fusion engine's merge settings.
 	Fusion *spec.Fusion
 }
 

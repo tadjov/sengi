@@ -35,8 +35,7 @@ func TestFuseRRF(t *testing.T) {
 			want:     []uuid.UUID{docC, docA, docB, docD},
 		},
 		{
-			// a and d tie at 1/61, b and c at 1/62, and the fused list keeps two.
-			// Counting c's third place would give it 1/62 + 1/63 and the top.
+			// Counting c's third place would put it on top.
 			name:     "ranks past the window do not count",
 			rankings: [][]uuid.UUID{{docA, docB, docC}, {docD, docC}},
 			window:   2,
@@ -120,9 +119,7 @@ func TestFusionExecutor_RunsEachLegsOwnRequestAndFusesTheirRankings(t *testing.T
 	assert.Nil(t, exec.CorpusMatches)
 }
 
-// b, second in both legs, leads at any k. At k = 60, c's 2/63 beats the 1/61
-// a and d each take from the top of one leg; at k = 1, a, c and d all score
-// 1/2 and order by id.
+// b leads at any k. At k 60 c beats a and d; at k 1 all three tie and order by id.
 func TestFusionExecutor_FusesWithTheRequestsRankConstant(t *testing.T) {
 	tests := []struct {
 		rankConstant int

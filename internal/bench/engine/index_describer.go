@@ -22,8 +22,7 @@ type IndexDescription struct {
 	Fusion        *FusionDescription   `json:"fusion,omitempty"`
 }
 
-// FusionDescription is all a fusion engine has to describe: it has no index of
-// its own and searches through its legs'.
+// FusionDescription lists a fusion engine's legs, since it has no index of its own.
 type FusionDescription struct {
 	Legs []string `json:"legs"`
 }

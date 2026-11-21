@@ -27,7 +27,7 @@ type legContent struct {
 func contentOf(request engine.Request) requestContent {
 	content := requestContent{Query: request.Query, Args: request.Args, Params: request.Params}
 	if fusion := request.Fusion; fusion != nil {
-		// Encoded as params, so the fusion digests existing pools hold still match.
+		// Kept as params so existing pools' fusion digests still match.
 		content.Params = map[string]any{"method": string(fusion.Method), "rank_constant": fusion.RankConstant, "window": fusion.Window}
 	}
 	for _, leg := range request.Legs {

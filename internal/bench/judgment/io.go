@@ -108,9 +108,8 @@ func NewIncrementalWriter(path string, stamp meta.Meta) *IncrementalWriter {
 	}
 }
 
-// Seed starts the writer from prior's queries that are still in pf, in pool
-// order, so every flush holds them until the run reaches each one. Prior's meta
-// is not kept; flushes write the stamp. A nil prior seeds nothing.
+// Seed starts the writer from prior's queries still in pf, so every flush keeps them until the run reaches each.
+// It drops prior's meta; a nil prior seeds nothing.
 func (w *IncrementalWriter) Seed(prior *File, pf *pool.PoolFile) {
 	w.current = File{Queries: []Entry{}}
 	if prior == nil {

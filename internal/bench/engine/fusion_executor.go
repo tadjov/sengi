@@ -12,10 +12,8 @@ import (
 	"github.com/tadjov/sengi/internal/bench/spec"
 )
 
-// FusionExecutor answers a query by running each leg engine's request, one leg
-// after the other, and merging their rankings by Reciprocal Rank Fusion with
-// the settings the request carries. Its latency is the wall time of every leg
-// plus the merge.
+// FusionExecutor runs its legs one after the other and merges them by RRF.
+// Its latency includes every leg and the merge.
 type FusionExecutor struct {
 	name      string
 	legs      []string
@@ -67,9 +65,7 @@ func (f *FusionExecutor) Validate(ctx context.Context, req Request) error {
 	return nil
 }
 
-// checkRequest refuses a request without merge settings, or whose legs are not
-// this engine's declared legs in their declared order, which would fuse some
-// other ranking than the spec's.
+// checkRequest refuses a request without merge settings or with legs other than the spec's.
 func (f *FusionExecutor) checkRequest(req Request) error {
 	if req.Fusion == nil {
 		return fmt.Errorf("fusion engine %q got a request without merge settings", f.name)
@@ -89,11 +85,8 @@ func (f *FusionExecutor) checkRequest(req Request) error {
 	return nil
 }
 
-// FuseRRF merges rankings by Reciprocal Rank Fusion after cutting each to
-// fusion.Window: a doc scores the sum of 1/(fusion.RankConstant+rank) over the
-// rankings that hold it, rank counting from 1. Equal scores order by id, as
-// Postgres orders uuids, so the merge is deterministic. The merged ranking is
-// cut to the window too, as the SQL fusions' LIMIT cuts theirs.
+// FuseRRF merges rankings by RRF, each and the result cut to fusion.Window as the SQL fusions do.
+// Ties order by id, as Postgres orders uuids.
 func FuseRRF(rankings [][]uuid.UUID, fusion spec.Fusion) []uuid.UUID {
 	window := fusion.Window
 	scores := map[uuid.UUID]float64{}

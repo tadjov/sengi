@@ -273,7 +273,7 @@ type judgeFixture struct {
 	track    string
 	articles articleStore
 	pool     *pool.PoolFile
-	// reader replaces articles as what the judge reads from when set.
+	// reader, when set, is read instead of articles.
 	reader storage.Reader
 }
 
@@ -898,9 +898,7 @@ func TestJudge_CarryOverGradesOnlyNewDocs(t *testing.T) {
 	assert.Equal(t, fx.pool.Meta.RunID, got.Meta.PoolRunID)
 }
 
-// rePoolOverOldJudgments writes keyword judgments that grade the fixture's
-// first doc 1 on its current pool, then re-pools with newDocs added to q1. It
-// returns the flags that carry those grades over and the record they leave.
+// rePoolOverOldJudgments returns the flags that carry an old grade of q1's first doc, and their record.
 func (fx *judgeFixture) rePoolOverOldJudgments(t *testing.T, newDocs ...uuid.UUID) ([]string, *meta.CarriedOver) {
 	t.Helper()
 	oldPoolRunID, oldDoc := fx.pool.Meta.RunID, fx.pool.Queries[0].Docs[0].DocID
@@ -921,8 +919,6 @@ func (fx *judgeFixture) rePoolOverOldJudgments(t *testing.T, newDocs ...uuid.UUI
 		&meta.CarriedOver{JudgmentsRunID: "old-judge", PoolRunID: oldPoolRunID, Grades: 1}
 }
 
-// The resume requireJudged asks for keeps the carried grades, so the file must
-// keep saying where they came from.
 func TestJudge_ResumeAfterACarryOverKeepsItsRecord(t *testing.T) {
 	fx := newJudgeFixture(t, "climate change", "climate change summit")
 	oldDoc, newDoc := fx.pool.Queries[0].Docs[0].DocID, uuid.New()
@@ -938,7 +934,6 @@ func TestJudge_ResumeAfterACarryOverKeepsItsRecord(t *testing.T) {
 	assert.Equal(t, want, got.Meta.CarriedOver)
 }
 
-// readerFailingOn fails every read that asks for doc.
 type readerFailingOn struct {
 	articleStore
 	doc uuid.UUID
@@ -965,8 +960,6 @@ func TestJudge_InterruptedCarryOverRunKeepsItsRecord(t *testing.T) {
 	assert.Equal(t, want, fx.annotations(t, "keyword").Meta.CarriedOver, "the file q1 left behind")
 }
 
-// A run that stops before the carried query must still leave its grade in the
-// file, or the resume bench run asks for grades it again from scratch.
 func TestJudge_ResumeAfterARunStoppedBeforeTheCarriedQueryKeepsItsGrade(t *testing.T) {
 	fx := newJudgeFixture(t, "climate change", "climate change summit")
 	carriedDoc := fx.pool.Queries[0].Docs[0].DocID
@@ -987,7 +980,7 @@ func TestJudge_ResumeAfterARunStoppedBeforeTheCarriedQueryKeepsItsGrade(t *testi
 	require.NoError(t, fx.judge(t, "--strategy", "keyword", "--resume"))
 
 	got := fx.annotations(t, "keyword")
-	// Keyword would grade the carried doc 3; 1 means the carried grade survived.
+	// keyword grades it 3, so 1 means the carried grade survived.
 	assert.Equal(t, judgment.GradeMarginally, gradesByQuery(got)["q1"][carriedDoc])
 	assert.Equal(t, want, got.Meta.CarriedOver)
 }
