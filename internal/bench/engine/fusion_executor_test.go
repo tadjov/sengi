@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 
@@ -34,11 +35,11 @@ func TestFuseRRF(t *testing.T) {
 			want:     []uuid.UUID{docC, docA, docB, docD},
 		},
 		{
-			// With window 2, c counts only for its first place in the second ranking.
+			// Counting c's third place would put it on top.
 			name:     "ranks past the window do not count",
 			rankings: [][]uuid.UUID{{docA, docB, docC}, {docD, docC}},
 			window:   2,
-			want:     []uuid.UUID{docA, docD, docB, docC},
+			want:     []uuid.UUID{docA, docD},
 		},
 		{
 			name:     "an equal score orders by id whichever ranking holds the doc",
@@ -49,7 +50,7 @@ func TestFuseRRF(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, FuseRRF(tt.rankings, 60, tt.window))
+			assert.Equal(t, tt.want, FuseRRF(tt.rankings, spec.Fusion{RankConstant: 60, Window: tt.window}))
 		})
 	}
 }
@@ -68,7 +69,7 @@ func TestFuseRRF_RanksCountFromOne(t *testing.T) {
 	}
 	first, second = append(first, bothAt62), append(second, bothAt62)
 
-	fused := FuseRRF([][]uuid.UUID{first, second}, 60, 100)
+	fused := FuseRRF([][]uuid.UUID{first, second}, spec.Fusion{RankConstant: 60, Window: 100})
 
 	assert.Less(t, slices.Index(fused, bothAt62), slices.Index(fused, top))
 }
@@ -98,7 +99,7 @@ func (e *fixedExecutor) Validate(_ context.Context, req Request) error {
 var lexicalAndVector = spec.Fusion{Method: spec.FusionRRF, RankConstant: 60, Window: 100, Legs: []string{"lexical", "vector"}}
 
 func legRequests(lexical, vector string) Request {
-	return Request{Legs: []LegRequest{
+	return Request{Fusion: &lexicalAndVector, Legs: []LegRequest{
 		{Engine: "lexical", Request: Request{Query: lexical}},
 		{Engine: "vector", Request: Request{Query: vector}},
 	}}
@@ -107,7 +108,7 @@ func legRequests(lexical, vector string) Request {
 func TestFusionExecutor_RunsEachLegsOwnRequestAndFusesTheirRankings(t *testing.T) {
 	lexical := &fixedExecutor{ranking: []uuid.UUID{docA, docB, docC}}
 	vector := &fixedExecutor{ranking: []uuid.UUID{docC, docD}}
-	fusion := NewFusionExecutor("hybrid", lexicalAndVector, map[string]Executor{"lexical": lexical, "vector": vector})
+	fusion := NewFusionExecutor("hybrid", lexicalAndVector.Legs, map[string]Executor{"lexical": lexical, "vector": vector})
 
 	exec, err := fusion.Execute(context.Background(), legRequests("SELECT lexical", "SELECT vector"))
 
@@ -118,10 +119,49 @@ func TestFusionExecutor_RunsEachLegsOwnRequestAndFusesTheirRankings(t *testing.T
 	assert.Nil(t, exec.CorpusMatches)
 }
 
+// b leads at any k. At k 60 c beats a and d; at k 1 all three tie and order by id.
+func TestFusionExecutor_FusesWithTheRequestsRankConstant(t *testing.T) {
+	tests := []struct {
+		rankConstant int
+		want         []uuid.UUID
+	}{
+		{rankConstant: 60, want: []uuid.UUID{docB, docC, docA, docD}},
+		{rankConstant: 1, want: []uuid.UUID{docB, docA, docC, docD}},
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("k=%d", tt.rankConstant), func(t *testing.T) {
+			lexical := &fixedExecutor{ranking: []uuid.UUID{docA, docB, docC}}
+			vector := &fixedExecutor{ranking: []uuid.UUID{docD, docB, docC}}
+			fusion := NewFusionExecutor("hybrid", lexicalAndVector.Legs, map[string]Executor{"lexical": lexical, "vector": vector})
+			merge := lexicalAndVector
+			merge.RankConstant = tt.rankConstant
+			request := legRequests("SELECT lexical", "SELECT vector")
+			request.Fusion = &merge
+
+			exec, err := fusion.Execute(context.Background(), request)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, exec.RankedDocIDs)
+		})
+	}
+}
+
+func TestFusionExecutor_RefusesARequestWithoutMergeSettings(t *testing.T) {
+	executors := map[string]Executor{"lexical": &fixedExecutor{ranking: []uuid.UUID{docA}}, "vector": &fixedExecutor{ranking: []uuid.UUID{docB}}}
+	fusion := NewFusionExecutor("hybrid", lexicalAndVector.Legs, executors)
+	request := legRequests("a", "b")
+	request.Fusion = nil
+
+	_, err := fusion.Execute(context.Background(), request)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "merge settings")
+}
+
 func TestFusionExecutor_RefusesRequestsThatAreNotItsLegsInOrder(t *testing.T) {
 	executors := map[string]Executor{"lexical": &fixedExecutor{}, "vector": &fixedExecutor{}}
-	fusion := NewFusionExecutor("hybrid", lexicalAndVector, executors)
-	swapped := Request{Legs: []LegRequest{{Engine: "vector"}, {Engine: "lexical"}}}
+	fusion := NewFusionExecutor("hybrid", lexicalAndVector.Legs, executors)
+	swapped := Request{Fusion: &lexicalAndVector, Legs: []LegRequest{{Engine: "vector"}, {Engine: "lexical"}}}
 
 	_, err := fusion.Execute(context.Background(), swapped)
 
@@ -134,7 +174,7 @@ func TestFusionExecutor_AFailedLegFailsTheQueryNamingTheLeg(t *testing.T) {
 		"lexical": &fixedExecutor{ranking: []uuid.UUID{docA}},
 		"vector":  &fixedExecutor{err: errors.New("knn timed out")},
 	}
-	fusion := NewFusionExecutor("hybrid", lexicalAndVector, executors)
+	fusion := NewFusionExecutor("hybrid", lexicalAndVector.Legs, executors)
 
 	_, err := fusion.Execute(context.Background(), legRequests("a", "b"))
 
@@ -146,7 +186,7 @@ func TestFusionExecutor_AFailedLegFailsTheQueryNamingTheLeg(t *testing.T) {
 func TestFusionExecutor_ValidatesEveryLegOnItsOwnExecutor(t *testing.T) {
 	lexical := &fixedExecutor{}
 	vector := &fixedExecutor{err: errors.New("bad knn clause")}
-	fusion := NewFusionExecutor("hybrid", lexicalAndVector, map[string]Executor{"lexical": lexical, "vector": vector})
+	fusion := NewFusionExecutor("hybrid", lexicalAndVector.Legs, map[string]Executor{"lexical": lexical, "vector": vector})
 
 	err := fusion.Validate(context.Background(), legRequests("SELECT lexical", "SELECT vector"))
 

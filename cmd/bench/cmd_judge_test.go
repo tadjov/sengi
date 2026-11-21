@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -272,6 +273,8 @@ type judgeFixture struct {
 	track    string
 	articles articleStore
 	pool     *pool.PoolFile
+	// reader, when set, is read instead of articles.
+	reader storage.Reader
 }
 
 func newJudgeFixture(t *testing.T, queryText string, titles ...string) *judgeFixture {
@@ -307,6 +310,9 @@ func (fx *judgeFixture) judge(t *testing.T, args ...string) error {
 func (fx *judgeFixture) judgeOutput(t *testing.T, args ...string) (string, error) {
 	t.Helper()
 	cmd := newJudgeCmdWithReader(func(*cobra.Command, string) (storage.Reader, error) {
+		if fx.reader != nil {
+			return fx.reader, nil
+		}
 		return fx.articles, nil
 	})
 	var out bytes.Buffer
@@ -890,6 +896,93 @@ func TestJudge_CarryOverGradesOnlyNewDocs(t *testing.T) {
 	assert.GreaterOrEqual(t, grades[newDoc], judgment.GradeNotRelev)
 	assert.Equal(t, &meta.CarriedOver{JudgmentsRunID: "old-judge", PoolRunID: oldPoolRunID, Grades: 1}, got.Meta.CarriedOver)
 	assert.Equal(t, fx.pool.Meta.RunID, got.Meta.PoolRunID)
+}
+
+// rePoolOverOldJudgments returns the flags that carry an old grade of q1's first doc, and their record.
+func (fx *judgeFixture) rePoolOverOldJudgments(t *testing.T, newDocs ...uuid.UUID) ([]string, *meta.CarriedOver) {
+	t.Helper()
+	oldPoolRunID, oldDoc := fx.pool.Meta.RunID, fx.pool.Queries[0].Docs[0].DocID
+	oldPool := filepath.Join(t.TempDir(), "old-pool.yaml")
+	require.NoError(t, pool.WritePoolFile(fx.pool, oldPool))
+	judge := judgment.NewKeywordStrategy().Describe()
+	old := filepath.Join(t.TempDir(), "old.yaml")
+	require.NoError(t, judgment.WriteFile(&judgment.File{
+		Meta:    meta.Meta{RunID: "old-judge", Judge: &judge, PoolRunID: oldPoolRunID},
+		Queries: []judgment.Entry{{QueryID: "q1", Docs: []judgment.GradedDoc{{DocID: oldDoc, Grade: judgment.GradeMarginally}}}},
+	}, old))
+	fx.pool.Meta = meta.New("pool")
+	for _, id := range newDocs {
+		fx.pool.Queries[0].Docs = append(fx.pool.Queries[0].Docs, pool.PooledDoc{DocID: id})
+	}
+	fx.writePool(t)
+	return []string{"--carry-over", old, "--carry-over-pool", oldPool},
+		&meta.CarriedOver{JudgmentsRunID: "old-judge", PoolRunID: oldPoolRunID, Grades: 1}
+}
+
+func TestJudge_ResumeAfterACarryOverKeepsItsRecord(t *testing.T) {
+	fx := newJudgeFixture(t, "climate change", "climate change summit")
+	oldDoc, newDoc := fx.pool.Queries[0].Docs[0].DocID, uuid.New()
+	carryOver, want := fx.rePoolOverOldJudgments(t, newDoc)
+	err := fx.judge(t, append([]string{"--strategy", "keyword"}, carryOver...)...)
+	require.ErrorContains(t, err, "unjudged", "newDoc has no article to grade yet")
+	fx.articles[newDoc] = document.Article{ID: newDoc, Title: "climate change protest"}
+
+	require.NoError(t, fx.judge(t, "--strategy", "keyword", "--resume"))
+
+	got := fx.annotations(t, "keyword")
+	assert.Equal(t, judgment.GradeMarginally, gradesByQuery(got)["q1"][oldDoc], "the carried grade is still the file's")
+	assert.Equal(t, want, got.Meta.CarriedOver)
+}
+
+type readerFailingOn struct {
+	articleStore
+	doc uuid.UUID
+}
+
+func (r readerFailingOn) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]document.Article, error) {
+	if slices.Contains(ids, r.doc) {
+		return nil, errors.New("connection reset")
+	}
+	return r.articleStore.GetByIDs(ctx, ids)
+}
+
+func TestJudge_InterruptedCarryOverRunKeepsItsRecord(t *testing.T) {
+	fx := newJudgeFixture(t, "climate change", "climate change summit")
+	carryOver, want := fx.rePoolOverOldJudgments(t)
+	unreadable := uuid.New()
+	fx.pool.Queries = append(fx.pool.Queries, pool.PoolEntry{QueryID: "q2", QueryText: "climate report", Docs: []pool.PooledDoc{{DocID: unreadable}}})
+	fx.writePool(t)
+	fx.reader = readerFailingOn{articleStore: fx.articles, doc: unreadable}
+
+	err := fx.judge(t, append([]string{"--strategy", "keyword"}, carryOver...)...)
+
+	require.ErrorContains(t, err, "connection reset")
+	assert.Equal(t, want, fx.annotations(t, "keyword").Meta.CarriedOver, "the file q1 left behind")
+}
+
+func TestJudge_ResumeAfterARunStoppedBeforeTheCarriedQueryKeepsItsGrade(t *testing.T) {
+	fx := newJudgeFixture(t, "climate change", "climate change summit")
+	carriedDoc := fx.pool.Queries[0].Docs[0].DocID
+	carryOver, want := fx.rePoolOverOldJudgments(t)
+	reachedDoc, unreadable := uuid.New(), uuid.New()
+	fx.articles[reachedDoc] = document.Article{ID: reachedDoc, Title: "climate report"}
+	fx.pool.Queries = append([]pool.PoolEntry{
+		{QueryID: "q-reached", QueryText: "climate report", Docs: []pool.PooledDoc{{DocID: reachedDoc}}},
+		{QueryID: "q-unread", QueryText: "climate summit", Docs: []pool.PooledDoc{{DocID: unreadable}}},
+	}, fx.pool.Queries...)
+	fx.writePool(t)
+	fx.reader = readerFailingOn{articleStore: fx.articles, doc: unreadable}
+	err := fx.judge(t, append([]string{"--strategy", "keyword"}, carryOver...)...)
+	require.ErrorContains(t, err, "connection reset")
+	fx.reader = nil
+	fx.articles[unreadable] = document.Article{ID: unreadable, Title: "climate summit"}
+
+	require.NoError(t, fx.judge(t, "--strategy", "keyword", "--resume"))
+
+	got := fx.annotations(t, "keyword")
+	// keyword grades it 3, so 1 means the carried grade survived.
+	assert.Equal(t, judgment.GradeMarginally, gradesByQuery(got)["q1"][carriedDoc])
+	assert.Equal(t, want, got.Meta.CarriedOver)
 }
 
 func TestJudge_CarryOverRefusesWholePoolJudges(t *testing.T) {

@@ -53,7 +53,7 @@ func CreateFromSpec(ctx context.Context, engines map[string]spec.Engine) (map[st
 
 	for name, eng := range engines {
 		if eng.Type == spec.EngineFusion {
-			executors[name] = NewFusionExecutor(name, *eng.Fusion, executors)
+			executors[name] = NewFusionExecutor(name, eng.Fusion.Legs, executors)
 		}
 	}
 

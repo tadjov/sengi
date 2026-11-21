@@ -19,6 +19,12 @@ type IndexDescriber interface {
 type IndexDescription struct {
 	Postgres      *pg.IndexDescription `json:"postgres,omitempty"`
 	Elasticsearch *es.IndexDescription `json:"elasticsearch,omitempty"`
+	Fusion        *FusionDescription   `json:"fusion,omitempty"`
+}
+
+// FusionDescription lists a fusion engine's legs, since it has no index of its own.
+type FusionDescription struct {
+	Legs []string `json:"legs"`
 }
 
 func (d IndexDescription) Version() string {
@@ -58,4 +64,8 @@ func (e *EsExecutor) DescribeIndex(ctx context.Context) (*IndexDescription, erro
 		return nil, fmt.Errorf("es describe index: %w", err)
 	}
 	return &IndexDescription{Elasticsearch: description}, nil
+}
+
+func (f *FusionExecutor) DescribeIndex(context.Context) (*IndexDescription, error) {
+	return &IndexDescription{Fusion: &FusionDescription{Legs: f.legs}}, nil
 }

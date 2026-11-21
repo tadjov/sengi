@@ -108,29 +108,22 @@ func NewIncrementalWriter(path string, stamp meta.Meta) *IncrementalWriter {
 	}
 }
 
-// LoadPrior reads the existing output file (if any) and seeds the writer with
-// its queries that are still in pf. Returns the whole prior JudgmentFile so the
-// caller can pass it as Runner.Existing. The prior file's meta is not carried
-// over; later flushes write the stamp.
-func (w *IncrementalWriter) LoadPrior(pf *pool.PoolFile) (*File, error) {
-	jf, err := ReadFileIfExists(w.Path)
-	if err != nil {
-		return nil, err
-	}
-	if jf == nil {
-		return nil, nil
-	}
-	pooled := make(map[string]bool, len(pf.Queries))
-	for _, entry := range pf.Queries {
-		pooled[entry.QueryID] = true
-	}
+// Seed starts the writer from prior's queries still in pf, so every flush keeps them until the run reaches each.
+// It drops prior's meta; a nil prior seeds nothing.
+func (w *IncrementalWriter) Seed(prior *File, pf *pool.PoolFile) {
 	w.current = File{Queries: []Entry{}}
-	for _, qe := range jf.Queries {
-		if pooled[qe.QueryID] {
+	if prior == nil {
+		return
+	}
+	byQuery := make(map[string]Entry, len(prior.Queries))
+	for _, qe := range prior.Queries {
+		byQuery[qe.QueryID] = qe
+	}
+	for _, entry := range pf.Queries {
+		if qe, ok := byQuery[entry.QueryID]; ok {
 			w.current.Queries = append(w.current.Queries, qe)
 		}
 	}
-	return jf, nil
 }
 
 // Append adds (or updates) a query's judgments and flushes to disk atomically.

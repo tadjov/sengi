@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/bench/judgment"
+	"github.com/tadjov/sengi/internal/bench/meta"
 )
 
 func TestRun_ReportNamesThePoolAndJudgmentsItScoredAgainst(t *testing.T) {
@@ -22,6 +23,20 @@ func TestRun_ReportNamesThePoolAndJudgmentsItScoredAgainst(t *testing.T) {
 	provenance := tr.latestReport(t).Provenance
 	assert.Equal(t, tr.poolRunID(t), provenance.PoolRunID)
 	assert.Equal(t, jf.Meta.RunID, provenance.JudgmentsRunID)
+}
+
+func TestRun_ReportScoredOnCarriedGradesSaysWhereTheyCameFrom(t *testing.T) {
+	tr := judgedTrack(t, nil)
+	jf, err := judgment.ReadFile(tr.judgments)
+	require.NoError(t, err)
+	carried := &meta.CarriedOver{JudgmentsRunID: "old-judge", PoolRunID: "old-pool", Grades: 3}
+	jf.Meta.CarriedOver = carried
+	require.NoError(t, judgment.WriteFile(jf, tr.judgments))
+
+	_, err = execute(t, newRunCmd(), tr.dir)
+	require.NoError(t, err)
+
+	assert.Equal(t, carried, tr.latestReport(t).Provenance.CarriedOver)
 }
 
 // twoSuiteTrack is the judged track with job a-only reading its own copy of

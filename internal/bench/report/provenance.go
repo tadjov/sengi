@@ -50,6 +50,9 @@ func (p IndexProvenance) Fields() []ProvenanceField {
 	if p.Error != "" {
 		add("error", p.Error)
 	}
+	if d := p.Fusion; d != nil {
+		add("fusion.legs", strings.Join(d.Legs, ", "))
+	}
 	if d := p.Postgres; d != nil {
 		add("server_version", d.ServerVersion)
 		for _, ext := range d.Extensions {
@@ -83,6 +86,9 @@ func (p IndexProvenance) Fields() []ProvenanceField {
 // Summary is a one-line account of the provenance for `bench show report`.
 func (p IndexProvenance) Summary() string {
 	var parts []string
+	if d := p.Fusion; d != nil {
+		parts = append(parts, "fuses "+strings.Join(d.Legs, ", "))
+	}
 	if d := p.Postgres; d != nil {
 		parts = append(parts, "postgres "+d.ServerVersion)
 		if len(d.Extensions) > 0 {
