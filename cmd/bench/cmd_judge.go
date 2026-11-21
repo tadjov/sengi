@@ -487,7 +487,7 @@ func buildManualJudgments(pf *pool.PoolFile, existing *judgment.File) *judgment.
 // manualJudgments is a hand-grading file bound to the pool it was built from.
 type manualJudgments struct {
 	pool *pool.PoolFile
-	// poolRef is the pool's path relative to the track.
+	// poolRef is relative to the track.
 	poolRef string
 	path    string
 }

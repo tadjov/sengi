@@ -21,8 +21,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 )
 
-// latencyOnlyTrack is a one-engine track whose single query is block, written
-// under engines: as name.
 func latencyOnlyTrack(t *testing.T, name, engineYAML, block string) string {
 	t.Helper()
 	dir := t.TempDir()

@@ -15,11 +15,9 @@ type QueryResult struct {
 	ReturnedCount int
 	CorpusMatches *int64
 	Latency       LatencyStats
-	// ServerLatency is the server time the engine reported for each measured
-	// iteration; nil when it reports none.
+	// ServerLatency is nil when the engine reports no server time.
 	ServerLatency *LatencyStats
-	// UnstableIterations lists the measured iterations, counted from 1, whose
-	// ranking differs from the first iteration's.
+	// UnstableIterations are the iterations, from 1, that rank differently from the first.
 	UnstableIterations []int
 	Error              error
 }

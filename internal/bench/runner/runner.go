@@ -366,8 +366,7 @@ func (r *Runner) runQueries(ctx context.Context, jr *JobResult, req JobRequest) 
 			jr.Results[q.ID][c.engine] = r.queryResult(q, c)
 		}
 	}
-	// Goroutines would take the one query slot in the scheduler's order, so
-	// two runs of a spec would measure their queries in different sequences.
+	// Goroutines would take queries in scheduler order, not suite order.
 	if qp == QueryParallelismSerial {
 		for i := range queries {
 			runQuery(&queries[i])
@@ -387,12 +386,12 @@ func (r *Runner) runQueries(ctx context.Context, jr *JobResult, req JobRequest) 
 	wg.Wait()
 }
 
-// cell is one query on one engine: the request it sends and what it measured.
+// cell is one query on one engine.
 type cell struct {
 	engine      string
 	measurement measurement
 	digest      string
-	// unsent is why the request could not be built; the cell is never measured.
+	// unsent is why the request couldn't be built; the cell is never measured.
 	unsent   error
 	measured execResult
 }
@@ -402,7 +401,6 @@ type queryCells struct {
 	cells []*cell
 }
 
-// prepareCells resolves the query's request for every engine of the job.
 func (r *Runner) prepareCells(ctx context.Context, req JobRequest, engines []string, q *suite.Query) []*cell {
 	queryVector := r.queryVector(ctx, req.Suite, q)
 	cells := make([]*cell, 0, len(engines))
@@ -444,8 +442,7 @@ func (r *Runner) prepareCells(ctx context.Context, req JobRequest, engines []str
 	return cells
 }
 
-// measureQuery interleaves the engines when they run one at a time; otherwise
-// each engine runs its warmup and iterations on a goroutine of its own.
+// measureQuery interleaves engines that run one at a time and gives the rest a goroutine each.
 func (r *Runner) measureQuery(ctx context.Context, q queryCells, engineSem chan struct{}) {
 	if r.config.EngineParallelism == EngineParallelismSerial {
 		r.measureInterleaved(ctx, q, engineSem)
@@ -467,10 +464,7 @@ func (r *Runner) measureQuery(ctx context.Context, q queryCells, engineSem chan 
 	wg.Wait()
 }
 
-// measureInterleaved warms every engine before measuring any, then runs
-// iteration i on every engine before iteration i+1, each pass in an order drawn
-// from the run seed, so a slow stretch of the host spreads over the engines
-// instead of landing on whichever runs first.
+// measureInterleaved runs each iteration across all engines in a seeded order, so host noise spreads over them.
 func (r *Runner) measureInterleaved(ctx context.Context, q queryCells, engineSem chan struct{}) {
 	var sendable []*cell
 	for _, c := range q.cells {
@@ -510,7 +504,6 @@ const (
 	iterationPhase orderPhase = "iteration"
 )
 
-// orderStep is one pass over a query's engines.
 type orderStep struct {
 	seed    uint64
 	queryID string
@@ -518,8 +511,7 @@ type orderStep struct {
 	number  int
 }
 
-// engineOrder permutes the cells by the step, the same way every time for the
-// same seed.
+// engineOrder is the same for the same seed and step.
 func engineOrder(cells []*cell, step orderStep) []*cell {
 	stream := fnv.New64a()
 	fmt.Fprintf(stream, "%s\x00%s\x00%d", step.queryID, step.phase, step.number)
@@ -671,7 +663,6 @@ type measurement struct {
 	timeout  time.Duration
 }
 
-// measure runs the cell's warmup and then its iterations back to back.
 func (r *Runner) measure(ctx context.Context, m measurement) execResult {
 	for i := 0; i < r.config.WarmupRuns; i++ {
 		if _, err := m.execute(ctx); err != nil {
@@ -686,9 +677,7 @@ func (r *Runner) measure(ctx context.Context, m measurement) execResult {
 	return log.result(r.config.RankingDepth)
 }
 
-// iterationLog gathers one cell's measured iterations. The first that fails
-// fails the cell: keeping the others would drop a timeout from the latency
-// tail and report the query as answered.
+// iterationLog fails the cell at its first failed iteration, so a timeout never drops out of the latency tail.
 type iterationLog struct {
 	iterations  int
 	latencies   []time.Duration
@@ -711,9 +700,7 @@ func (l *iterationLog) record(iteration int, exec *engine.Execution, err error) 
 	}
 }
 
-// result scores the last iteration's ranking, cut at depth when depth is set,
-// and names the iterations whose ranking, cut the same way, differs from the
-// first's.
+// result scores the last iteration, cut at depth, and lists the iterations that rank differently from the first.
 func (l *iterationLog) result(depth int) execResult {
 	if l.err != nil {
 		return execResult{err: l.err}
@@ -747,8 +734,7 @@ func cutRanking(ranked []uuid.UUID, depth int) []uuid.UUID {
 	return ranked
 }
 
-// executeAlone holds the engine semaphore for one execution, so on the serial
-// path no other execution is in flight while it is measured.
+// executeAlone holds the engine semaphore, so nothing else runs while it is measured.
 func (m measurement) executeAlone(ctx context.Context, engineSem chan struct{}) (*engine.Execution, error) {
 	engineSem <- struct{}{}
 	defer func() { <-engineSem }()

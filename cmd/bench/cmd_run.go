@@ -238,8 +238,7 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 		rpt.Provenance.Judge = judgments.meta.Judge
 		rpt.Provenance.GradedCount = judgments.meta.GradedCount
 		rpt.Provenance.UnjudgedCount = &judgments.coverage.unjudged
-		// checkPoolBinding proved by run id that the judgments graded this
-		// track's pool, whatever path they recorded for it.
+		// checkPoolBinding already matched the judgments to this pool by run id.
 		rpt.Provenance.PoolRef = tr.Relative(tr.Pool)
 	}
 	rpt.Settings = report.RunSettings{
@@ -805,12 +804,10 @@ func describeIndex(ctx context.Context, describer engine.IndexDescriber) (*engin
 	return describer.DescribeIndex(ctx)
 }
 
-// containerInspectTimeout bounds each docker inspect, so a docker daemon that
-// does not answer delays the run by this much rather than stalling it.
+// containerInspectTimeout keeps a stuck docker daemon from stalling the run.
 const containerInspectTimeout = 15 * time.Second
 
-// inspectContainers reads the image of every container the spec names. One
-// docker cannot inspect is warned about and kept with its note.
+// inspectContainers keeps a container docker can't inspect, with a warning and its note.
 func inspectContainers(ctx context.Context, w io.Writer, engines map[string]spec.Engine) map[string]engine.Container {
 	containers := make(map[string]engine.Container)
 	for _, name := range slices.Sorted(maps.Keys(engines)) {

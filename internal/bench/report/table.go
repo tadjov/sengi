@@ -465,8 +465,7 @@ func serverTimeRow(agg AggregatedEntry) table.Row {
 	}
 }
 
-// fmtServerTime shows a reported zero, which a search under the engine's
-// resolution reads as, rather than the dash fmtDuration uses for absent.
+// fmtServerTime shows a reported 0 instead of the dash fmtDuration uses for absent.
 func fmtServerTime(d time.Duration) string {
 	if d == 0 {
 		return "0.00ms"

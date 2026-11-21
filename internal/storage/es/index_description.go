@@ -13,8 +13,7 @@ import (
 	"github.com/tadjov/sengi/internal/storage"
 )
 
-// IndexDescription is how an Elasticsearch engine had its corpus indexed and
-// what the cluster ran with, read from the live cluster.
+// IndexDescription is how an ES engine was indexed and set up, read from the live cluster.
 type IndexDescription struct {
 	Version   string `json:"version"`
 	BuildHash string `json:"build_hash,omitempty"`
@@ -24,7 +23,7 @@ type IndexDescription struct {
 	// Analysis is settings.index.analysis with its keys sorted, so two
 	// descriptions of the same analysis compare equal byte for byte.
 	Analysis json.RawMessage `json:"analysis,omitempty"`
-	// Settings are the index's other settings that are not defaults, flat.
+	// Settings are the index's non-default settings, flattened.
 	Settings map[string]any `json:"settings,omitempty"`
 	// Fields holds the text and dense_vector fields, multi-fields included,
 	// keyed by dotted path.
@@ -34,19 +33,17 @@ type IndexDescription struct {
 	// ClusterSettings is nil when it could not be read; Unreadable says why.
 	ClusterSettings *ClusterSettings `json:"cluster_settings,omitempty"`
 	Nodes           []NodeStats      `json:"nodes,omitempty"`
-	// Unreadable lists the cluster reads that failed, each with its error; the
-	// rest of the description stands.
+	// Unreadable lists the cluster reads that failed; the rest still stands.
 	Unreadable []string `json:"unreadable,omitempty"`
 }
 
-// ClusterSettings are the cluster settings that are not defaults, flat.
+// ClusterSettings are the non-default cluster settings, flattened.
 type ClusterSettings struct {
 	Persistent map[string]any `json:"persistent,omitempty"`
 	Transient  map[string]any `json:"transient,omitempty"`
 }
 
-// NodeStats is a node's heap ceiling and the cgroup limits it reports; the
-// cgroup fields are empty when the node runs outside one.
+// NodeStats is a node's heap ceiling and cgroup limits; the limits are empty outside a cgroup.
 type NodeStats struct {
 	Name         string `json:"name"`
 	HeapMaxBytes int64  `json:"heap_max_bytes"`
@@ -75,9 +72,8 @@ type VectorIndexOptions struct {
 	EfConstruction int    `json:"ef_construction,omitempty"`
 }
 
-// DescribeIndex records how cfg.IndexName was configured and loaded, and what
-// the cluster ran with. A failed read of the cluster settings or node stats is
-// recorded in Unreadable, not returned.
+// DescribeIndex records how the index was set up and loaded, and what the cluster ran with.
+// A failed cluster read goes to Unreadable instead of the error.
 func DescribeIndex(ctx context.Context, cfg ClientConfig) (*IndexDescription, error) {
 	client, err := newTypedClient(cfg)
 	if err != nil {
@@ -205,17 +201,14 @@ func decodeLoadRecord(meta types.Metadata) (*storage.LoadRecord, error) {
 	return &record, nil
 }
 
-// indexSettings are the settings of the concrete index a name resolved to:
-// its analysis block, and the rest flattened to dotted keys.
+// indexSettings is an index's analysis block and its other settings, flattened.
 type indexSettings struct {
 	name     string
 	analysis json.RawMessage
 	settings map[string]any
 }
 
-// readIndexSettings reads the raw settings rather than the typed ones, so
-// analysis components the client does not model are recorded instead of
-// dropped.
+// readIndexSettings reads raw settings, so analysis parts the typed client doesn't model are kept.
 func readIndexSettings(ctx context.Context, client *elasticsearch.TypedClient, name string) (indexSettings, error) {
 	res, err := client.Indices.GetSettings().Index(name).Perform(ctx)
 	if err != nil {
@@ -245,8 +238,7 @@ func readIndexSettings(ctx context.Context, client *elasticsearch.TypedClient, n
 	return indexSettings{}, nil
 }
 
-// flattenSettings writes nested settings as ES's flat_settings does, leaving
-// out the analysis block, which IndexDescription.Analysis records whole.
+// flattenSettings flattens like ES flat_settings, minus the analysis block Analysis keeps whole.
 func flattenSettings(flat map[string]any, prefix string, nested map[string]any) {
 	for key, value := range nested {
 		path := prefix + key

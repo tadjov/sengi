@@ -186,10 +186,8 @@ func validateQueriesFrom(s *BenchSpec, name string, eng Engine) error {
 	return nil
 }
 
-// validateFusion checks a fusion engine names a method, a positive rank
-// constant and window, and two or more declared legs that run queries
-// themselves. It reads its legs' blocks and runs in its legs' containers, so it
-// takes no connection, alias, params or container of its own.
+// validateFusion needs a method, a positive rank constant and window, and two or more legs that run queries.
+// It takes no connection, alias, params or container: its legs bring their own.
 func validateFusion(s *BenchSpec, name string, eng Engine) error {
 	f := eng.Fusion
 	if f == nil {

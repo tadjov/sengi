@@ -529,7 +529,7 @@ func judgmentsOf(r *report.Report) string {
 		return filepath.ToSlash(filepath.Clean(sources.Judgments))
 	}
 	if sources.Spec != "" {
-		// An older report named its files absolutely, under the track it ran in.
+		// Older reports recorded absolute paths.
 		ranIn := &trackctx.Track{Root: filepath.Dir(sources.Spec)}
 		return ranIn.Relative(sources.Judgments)
 	}

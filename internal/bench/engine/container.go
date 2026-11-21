@@ -10,20 +10,17 @@ import (
 	"strings"
 )
 
-// Container is the image a named docker container runs. Note replaces the
-// image fields when docker inspect could not tell.
+// Container is the image a docker container runs; Note says why docker couldn't tell.
 type Container struct {
 	Name    string `json:"name"`
 	Image   string `json:"image,omitempty"`
 	ImageID string `json:"image_id,omitempty"`
-	// RepoDigests are the registry digests the image can be pulled by; a
-	// locally built image has none.
+	// RepoDigests is empty for a locally built image.
 	RepoDigests []string `json:"repo_digests,omitempty"`
 	Note        string   `json:"note,omitempty"`
 }
 
-// InspectContainer reads the container's image with docker inspect. It never
-// fails: a container docker cannot inspect comes back with a Note.
+// InspectContainer never fails: a container docker can't inspect comes back with a Note.
 func InspectContainer(ctx context.Context, name string) Container {
 	container := Container{Name: name}
 	out, err := docker(ctx, "inspect", "--type", "container", "--format", "{{.Config.Image}} {{.Image}}", name)

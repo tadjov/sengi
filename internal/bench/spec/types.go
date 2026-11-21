@@ -107,8 +107,7 @@ type Engine struct {
 	// QueriesFrom names the engine whose per-query engines: block this engine
 	// reuses, so an A/B arm cannot drift from the arm it is compared against.
 	QueriesFrom string `yaml:"queries_from,omitempty"`
-	// Container names the docker container the engine runs in, whose image a
-	// run report records.
+	// Container is the docker container whose image the run report records.
 	Container string `yaml:"container,omitempty"`
 	// Fusion is set on, and only on, an engine of type fusion.
 	Fusion *Fusion `yaml:"fusion,omitempty"`

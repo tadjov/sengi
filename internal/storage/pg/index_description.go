@@ -17,31 +17,25 @@ var searchExtensions = []string{"vector", "pg_search", "pg_textsearch", "pg_trgm
 
 var describedTables = []string{"articles", "article_embeddings"}
 
-// IndexDescription is how a Postgres engine had its corpus indexed and what
-// it ran with, read from the live server.
+// IndexDescription is how a Postgres engine was indexed and set up, read from the live server.
 type IndexDescription struct {
 	// ServerVersion is version(), which names the build and platform too.
-	ServerVersion string `json:"server_version"`
-	// Extensions are every installed extension.
-	Extensions []Extension       `json:"extensions,omitempty"`
-	Indexes    []IndexDefinition `json:"indexes,omitempty"`
-	// Settings holds the live value of every connection setting the pool
-	// applied, keyed by setting name, as SHOW reads it.
+	ServerVersion string            `json:"server_version"`
+	Extensions    []Extension       `json:"extensions,omitempty"`
+	Indexes       []IndexDefinition `json:"indexes,omitempty"`
+	// Settings are the pool's connection settings as SHOW reads them.
 	Settings map[string]string `json:"settings,omitempty"`
-	// ServerSettings are the settings off their default that the session did
-	// not set: what the server was started and configured with.
+	// ServerSettings are the non-default settings the server started with, not the session's.
 	ServerSettings []ServerSetting `json:"server_settings,omitempty"`
 	// Limits is nil when the server could not read them; Unreadable says why.
 	Limits *CgroupLimits `json:"cgroup_limits,omitempty"`
 	// Load is nil when corpus_load holds no record.
 	Load *storage.LoadRecord `json:"load,omitempty"`
-	// Unreadable lists the server reads that failed, each with its error; the
-	// rest of the description stands.
+	// Unreadable lists the server reads that failed; the rest still stands.
 	Unreadable []string `json:"unreadable,omitempty"`
 }
 
-// ServerSetting is one pg_settings row; Source is where the value came from,
-// such as "command line" or "configuration file".
+// ServerSetting is one pg_settings row; Source is e.g. "command line" or "configuration file".
 type ServerSetting struct {
 	Name    string `json:"name"`
 	Setting string `json:"setting"`
@@ -49,8 +43,7 @@ type ServerSetting struct {
 	Source  string `json:"source"`
 }
 
-// CgroupLimits are the cgroup v2 cpu.max and memory.max the server reads from
-// inside its container.
+// CgroupLimits are the cgroup v2 cpu.max and memory.max seen from inside the container.
 type CgroupLimits struct {
 	CPUMax    string `json:"cpu_max"`
 	MemoryMax string `json:"memory_max"`
@@ -68,11 +61,8 @@ type IndexDefinition struct {
 	Options    []string `json:"reloptions,omitempty"`
 }
 
-// DescribeIndexes reads the server version, the installed extensions, every
-// index on the articles and article_embeddings tables, the session value of
-// each setting the pool applies on connect, the server's own settings and
-// cgroup limits, and the latest corpus load record. A failed read of the
-// server's settings or limits is recorded in Unreadable, not returned.
+// DescribeIndexes reads the server version, extensions, indexes, settings, cgroup limits and latest load record.
+// A failed settings or limits read goes to Unreadable instead of the error.
 func DescribeIndexes(ctx context.Context, pool *ConnectionPool) (*IndexDescription, error) {
 	conn, err := pool.conn.Acquire(ctx)
 	if err != nil {
@@ -105,8 +95,7 @@ func DescribeIndexes(ctx context.Context, pool *ConnectionPool) (*IndexDescripti
 	return &description, nil
 }
 
-// readServerSettings leaves out the session's rows: they are the connection
-// settings, which Settings records as SHOW reads them.
+// readServerSettings skips session rows, which Settings already records.
 func readServerSettings(ctx context.Context, conn *pgx.Conn) ([]ServerSetting, error) {
 	rows, err := conn.Query(ctx, `
 		SELECT name, setting, coalesce(unit, ''), source
@@ -123,8 +112,7 @@ func readServerSettings(ctx context.Context, conn *pgx.Conn) ([]ServerSetting, e
 	return settings, nil
 }
 
-// readCgroupLimits needs a role that may read server files, such as a
-// superuser or a member of pg_read_server_files.
+// readCgroupLimits needs a superuser or pg_read_server_files.
 func readCgroupLimits(ctx context.Context, conn *pgx.Conn) (*CgroupLimits, error) {
 	var limits CgroupLimits
 	err := conn.QueryRow(ctx,

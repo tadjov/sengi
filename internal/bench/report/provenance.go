@@ -15,10 +15,8 @@ import (
 	"github.com/tadjov/sengi/internal/storage/es"
 )
 
-// IndexProvenance is how an engine had the corpus indexed when the run
-// started, what it ran with, and the container image it ran from. Error is set
-// instead of a description when it could not be read; a run never fails over
-// provenance.
+// IndexProvenance is how an engine was indexed and set up when the run started.
+// Error replaces it when it can't be read; a run never fails over provenance.
 type IndexProvenance struct {
 	engine.IndexDescription
 	// Container is nil unless the spec names the engine's container.
@@ -137,8 +135,7 @@ func addUnreadable(add func(name, value string), unreadable []string) {
 	}
 }
 
-// settingValue writes a setting as ES does, which is a string except for a
-// list.
+// settingValue writes a setting as ES does: a string, except for a list.
 func settingValue(value any) string {
 	if s, ok := value.(string); ok {
 		return s
@@ -222,8 +219,7 @@ func DiffProvenance(before, after *Report) []ProvenanceChange {
 	return changes
 }
 
-// postgresRelease cuts version() before the platform it was built on;
-// reports written before it was recorded hold the bare release.
+// postgresRelease drops the platform from version(); older reports hold the bare release.
 func postgresRelease(version string) string {
 	release, _, _ := strings.Cut(version, " on ")
 	return strings.TrimPrefix(release, "PostgreSQL ")

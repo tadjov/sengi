@@ -53,7 +53,6 @@ func TestRun_ReportListsTheSuitesItsJobsLoaded(t *testing.T) {
 	assert.Equal(t, []string{resolved}, canonicalPaths(t, tr.dir, suitesByJobs[1]), "only the suite of the job that ran")
 }
 
-// canonicalPaths resolves paths recorded relative to trackDir.
 func canonicalPaths(t *testing.T, trackDir string, paths []string) []string {
 	t.Helper()
 	out := make([]string, 0, len(paths))

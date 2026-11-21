@@ -24,22 +24,18 @@ import (
 	"github.com/tadjov/sengi/internal/bench/report"
 )
 
-// fakeIndex is one engine's index in fakeCluster: its document count and the
-// ranked ids each query returns. A query listed in failing answers 500. took,
-// when set, is the server time in milliseconds every search reports.
+// fakeIndex answers 500 to a query in failing, and reports took, in ms, as every search's server time.
 type fakeIndex struct {
 	count   int64
 	ranked  map[string][]uuid.UUID
 	failing map[string]bool
 	took    *int
-	// log, when set, records every search. A query in drifted answers its
-	// drifted ranking once log holds more than driftAfter searches of it here.
+	// A query in drifted switches ranking after driftAfter searches of it in log.
 	log        *searchLog
 	drifted    map[string][]uuid.UUID
 	driftAfter int
 }
 
-// searchLog records the searches a fake cluster answers, in arrival order.
 type searchLog struct {
 	mu       sync.Mutex
 	searches []loggedSearch
@@ -50,8 +46,7 @@ type loggedSearch struct {
 	queryID string
 }
 
-// add records a search and returns how many searches of the query the index
-// has answered since the last reset, this one included.
+// add returns the query's search count since the last reset, this one included.
 func (l *searchLog) add(search loggedSearch) int {
 	l.mu.Lock()
 	defer l.mu.Unlock()

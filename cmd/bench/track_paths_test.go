@@ -17,8 +17,6 @@ import (
 	"github.com/tadjov/sengi/internal/storage"
 )
 
-// keywordJudgedTrack is the lineage track pooled by bench pool and graded by
-// bench judge --strategy keyword, its spec naming the judgments by strategy.
 func keywordJudgedTrack(t *testing.T) lineageTrack {
 	t.Helper()
 	relevant, other := uuid.New(), uuid.New()
@@ -39,8 +37,7 @@ func keywordJudgedTrack(t *testing.T) lineageTrack {
 	return tr
 }
 
-// machinePaths are the ways this machine names dir: as the test was handed it,
-// and with its symlinks resolved, as macOS's /var resolves to /private/var.
+// machinePaths names dir as given and with symlinks resolved, since macOS's /var is /private/var.
 func machinePaths(t *testing.T, dir string) []string {
 	t.Helper()
 	resolved, err := filepath.EvalSymlinks(dir)

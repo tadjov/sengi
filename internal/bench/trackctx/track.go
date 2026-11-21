@@ -173,9 +173,7 @@ func (t *Track) ReportPath(runID string) string {
 	return filepath.Join(t.reportsDir, runID+".json")
 }
 
-// Relative writes path, absolute or relative to the working directory,
-// relative to the track folder, so an artifact reads the same from any
-// checkout. A path outside the track climbs out of it: ../shared/suite.yaml.
+// Relative writes path relative to the track, so artifacts read the same from any checkout.
 func (t *Track) Relative(path string) string {
 	if path == "" {
 		return ""
@@ -315,9 +313,7 @@ func suggestTracks(base, arg string) []string {
 	return nil
 }
 
-// canonicalise resolves symlinks so a track's Root is stable across OS quirks
-// (notably macOS where /tmp -> /private/tmp). A path not written yet resolves
-// through its nearest existing folder; one with none falls back to the input.
+// canonicalise resolves symlinks (macOS /tmp is /private/tmp), through the nearest existing folder for a path not written yet.
 func canonicalise(p string) string {
 	missing := ""
 	for dir := p; ; dir = filepath.Dir(dir) {

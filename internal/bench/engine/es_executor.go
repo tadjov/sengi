@@ -395,7 +395,7 @@ type esValidateExplanation struct {
 }
 
 type esSearchResponse struct {
-	// Took is whole milliseconds, so a search under one reads 0.
+	// Took is whole ms, so a search under 1 ms reads 0.
 	Took *int64 `json:"took"`
 	Hits esHits `json:"hits"`
 }

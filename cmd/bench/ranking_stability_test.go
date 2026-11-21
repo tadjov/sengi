@@ -10,9 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// rerankingTrack is the judged lineage track in which b answers q1 with its
-// two docs swapped from its third search after pooling on: the spec's warmup
-// and first iteration see the pooled order, the second iteration the swap.
+// rerankingTrack has b swap q1's docs from its third search on, so only the second iteration ranks differently.
 func rerankingTrack(t *testing.T) lineageTrack {
 	t.Helper()
 	relevant, other := uuid.New(), uuid.New()

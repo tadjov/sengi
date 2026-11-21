@@ -42,7 +42,6 @@ type execution struct {
 	queryID string
 }
 
-// executionLog records every execution of every engine sharing it, in order.
 type executionLog struct {
 	mu         sync.Mutex
 	executions []execution
@@ -79,7 +78,6 @@ func (e *loggingExecutor) Execute(_ context.Context, req engine.Request) (*engin
 func (e *loggingExecutor) Name() string { return e.name }
 func (e *loggingExecutor) Close() error { return nil }
 
-// benchRunConfig measures as bench run does: one query and one engine at a time.
 func benchRunConfig(seed uint64, warmup, iterations int) Config {
 	cfg := DefaultConfig()
 	cfg.EngineParallelism = EngineParallelismSerial
@@ -101,7 +99,6 @@ func runLogged(t *testing.T, cfg Config) *executionLog {
 	return log
 }
 
-// drawnOrder is the order engineOrder draws for one step over the job's engines.
 func drawnOrder(step orderStep) []string {
 	cells := []*cell{{engine: "pg-a"}, {engine: "pg-b"}, {engine: "pg-c"}}
 	var names []string
@@ -140,7 +137,6 @@ func TestRunAll_TheSameSeedRunsTheSameOrderAndAnotherSeedAnother(t *testing.T) {
 	assert.NotEqual(t, first, sequence(2))
 }
 
-// scriptedLatencyExecutor answers its i-th call with latencies[i].
 type scriptedLatencyExecutor struct {
 	name      string
 	latencies []time.Duration
@@ -174,7 +170,6 @@ func TestRunAll_PoolsEveryIterationAndKeepsTheCellsMedian(t *testing.T) {
 	assert.Equal(t, 3, server.SampleCount, "every iteration's server time pooled")
 }
 
-// overlapDetector notes when an execution starts while another is in flight.
 type overlapDetector struct {
 	name     string
 	inFlight *atomic.Int32
@@ -207,8 +202,7 @@ func TestRunAll_NoTwoMeasuredExecutionsOverlap(t *testing.T) {
 	assert.Zero(t, overlaps.Load())
 }
 
-// rerankingExecutor returns first before its rerankAfter-th call and then
-// afterwards, as an unstable tie would.
+// rerankingExecutor switches from first to then at its rerankAfter-th call, like an unstable tie.
 type rerankingExecutor struct {
 	name        string
 	first, then []uuid.UUID

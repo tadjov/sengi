@@ -119,8 +119,6 @@ func TestSummary_NamesTheLoadedPackagesAndTag(t *testing.T) {
 
 func int64Pointer(v int64) *int64 { return &v }
 
-// recordedEnvironment is an engine provenance carrying one of each fact the
-// run records about what a Postgres or Elasticsearch engine ran with.
 func recordedEnvironment() (postgres, elasticsearch IndexProvenance) {
 	postgres = IndexProvenance{
 		IndexDescription: engine.IndexDescription{Postgres: &pg.IndexDescription{

@@ -12,8 +12,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/runner"
 )
 
-// serverTimedRun has es report a server time of took on q1 and q2, and pg
-// report none.
+// serverTimedRun has es report took on q1 and q2, and pg no server time.
 func serverTimedRun(took time.Duration) *runner.BenchmarkResult {
 	judged := map[string]int{"11111111-1111-1111-1111-111111111111": 1}
 	results := map[string]map[string]runner.QueryResult{}

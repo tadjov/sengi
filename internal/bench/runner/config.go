@@ -39,8 +39,7 @@ type Config struct {
 	RelevanceThreshold int
 	WarmupRuns         int
 	Runs               int
-	// Seed draws the order the engines run in at every warmup and iteration
-	// of a query, when they run one at a time.
+	// Seed draws the engine order of each warmup and iteration when engines run one at a time.
 	Seed uint64
 	// RankingDepth cuts every ranking before it is scored or stored, so scores
 	// count only docs a pool that deep could have judged. Zero keeps it whole.
