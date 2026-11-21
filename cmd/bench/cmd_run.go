@@ -204,11 +204,6 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 		return err
 	}
 	indexes := collectIndexProvenance(cmd.Context(), cmd.OutOrStdout(), executors)
-	for name, container := range inspectContainers(cmd.Context(), cmd.OutOrStdout(), bs.Engines) {
-		provenance := indexes[name]
-		provenance.Container = &container
-		indexes[name] = provenance
-	}
 
 	r := runner.New(runCfg)
 	sp := startSpinner("Running " + tr.Name() + "…")
@@ -802,27 +797,6 @@ func describeIndex(ctx context.Context, describer engine.IndexDescriber) (*engin
 	ctx, cancel := context.WithTimeout(ctx, indexDescribeTimeout)
 	defer cancel()
 	return describer.DescribeIndex(ctx)
-}
-
-// containerInspectTimeout keeps a stuck docker daemon from stalling the run.
-const containerInspectTimeout = 15 * time.Second
-
-// inspectContainers keeps a container docker can't inspect, with a warning and its note.
-func inspectContainers(ctx context.Context, w io.Writer, engines map[string]spec.Engine) map[string]engine.Container {
-	containers := make(map[string]engine.Container)
-	for _, name := range slices.Sorted(maps.Keys(engines)) {
-		if engines[name].Container == "" {
-			continue
-		}
-		inspectCtx, cancel := context.WithTimeout(ctx, containerInspectTimeout)
-		container := engine.InspectContainer(inspectCtx, engines[name].Container)
-		cancel()
-		if container.Note != "" {
-			printWarn(w, fmt.Sprintf("container of %q not recorded: %s", name, container.Note))
-		}
-		containers[name] = container
-	}
-	return containers
 }
 
 func firstNonZero(a, b int) int {

@@ -19,9 +19,7 @@ import (
 // Error replaces it when it can't be read; a run never fails over provenance.
 type IndexProvenance struct {
 	engine.IndexDescription
-	// Container is nil unless the spec names the engine's container.
-	Container *engine.Container `json:"container,omitempty"`
-	Error     string            `json:"error,omitempty"`
+	Error string `json:"error,omitempty"`
 }
 
 // ProvenanceField is one comparable fact from an IndexProvenance.
@@ -102,15 +100,6 @@ func (p IndexProvenance) Fields() []ProvenanceField {
 		addUnreadable(add, d.Unreadable)
 		addLoadFields(add, d.Load)
 	}
-	if c := p.Container; c != nil {
-		add("container.name", c.Name)
-		add("container.image", c.Image)
-		add("container.image_id", c.ImageID)
-		add("container.repo_digests", strings.Join(c.RepoDigests, ", "))
-		if c.Note != "" {
-			add("container.note", c.Note)
-		}
-	}
 	sort.Slice(fields, func(i, j int) bool { return fields[i].Name < fields[j].Name })
 	return fields
 }
@@ -183,13 +172,6 @@ func (p IndexProvenance) Summary() string {
 		}
 		parts = appendLoadSummary(parts, d.Load)
 		parts = appendUnreadableSummary(parts, d.Unreadable)
-	}
-	if c := p.Container; c != nil {
-		if c.Note != "" {
-			parts = append(parts, "container "+c.Name+": "+c.Note)
-		} else {
-			parts = append(parts, "image: "+c.Image)
-		}
 	}
 	if p.Error != "" {
 		parts = append(parts, "error: "+p.Error)

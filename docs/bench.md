@@ -88,22 +88,6 @@ which puts part of any recall gap in the graph rather than the engine. Both are 
 pgvector's default, so the loaded Postgres graphs stand as built. Changing the value rebuilds
 the graph and is therefore a new run.
 
-### Engine container
-
-An engine may name the docker container it runs in, and `bench run` records the container's
-image in the report:
-
-```yaml
-engines:
-  pg-native:
-    type: postgres
-    connection: "postgresql://…"
-    container: pg-native-news
-```
-
-Left out, nothing is recorded and nothing is warned about. See
-[Engine environment](#engine-environment).
-
 ### Query templates
 
 A suite query reaches each engine through that engine's own parameter mechanism. The bench
@@ -696,9 +680,9 @@ The same read records what each engine ran with, in the same block, each fact on
 | postgres      | `settings`: each `connection_settings` entry as `SHOW` reads it back once applied, so `8192kB` reads `8MB`; `server_settings`: every other `pg_settings` row whose `source` is not `default` (name, setting, unit, source), so a `-c` flag reads `command line`; `cgroup_limits`: the container's `cpu.max` and `memory.max`, read through `pg_read_file` |
 | elasticsearch | `settings`: the index's settings that are not defaults, flat, without the analysis block; `cluster_settings`: the persistent and transient cluster settings, flat; `nodes`: each node's heap max and cgroup CPU quota, period and memory limit, from `_nodes/stats/os,jvm`                                                   |
 
-A read of the server settings, cgroup limits, cluster settings or node stats that fails, as `pg_read_file` does for a role that may not read server files, is listed under `unreadable` with its error, and the rest of the block stands. An engine that names its `container` in the spec also gets `index.container`: the image, its id and its registry digests, from `docker inspect`. A container docker cannot inspect is recorded with a `note` and a warning, never a failed run.
+A read of the server settings, cgroup limits, cluster settings or node stats that fails, as `pg_read_file` does for a role that may not read server files, is listed under `unreadable` with its error, and the rest of the block stands.
 
-`bench show report` prints one line per engine summarising the block. `bench diff runs` lists every provenance field that differs between the two runs before the metric deltas: each setting, extension, index, limit, node and image. The analysis block is compared as one field and shown as a digest.
+`bench show report` prints one line per engine summarising the block. `bench diff runs` lists every provenance field that differs between the two runs before the metric deltas: each setting, extension, index, limit and node. The analysis block is compared as one field and shown as a digest.
 
 ### `bench export [<name>] --format <F>`
 

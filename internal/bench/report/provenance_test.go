@@ -128,7 +128,6 @@ func recordedEnvironment() (postgres, elasticsearch IndexProvenance) {
 			ServerSettings: []pg.ServerSetting{{Name: "work_mem", Setting: "4096", Unit: "kB", Source: "command line"}},
 			Limits:         &pg.CgroupLimits{CPUMax: "max 100000", MemoryMax: "max"},
 		}},
-		Container: &engine.Container{Name: "pg-native-news", Image: "pgvector/pgvector:pg18", ImageID: "sha256:aaa", RepoDigests: []string{"pgvector/pgvector@sha256:bbb"}},
 	}
 	elasticsearch = IndexProvenance{IndexDescription: engine.IndexDescription{Elasticsearch: &es.IndexDescription{
 		Version:         "8.12.0",
@@ -156,10 +155,6 @@ func TestDiffProvenance_NamesEveryRecordedFactThatChanged(t *testing.T) {
 			change: func(p, _ *IndexProvenance) { p.Postgres.Limits.MemoryMax = "8589934592" }},
 		{name: "a server read that failed", engine: "pg", field: "unreadable",
 			change: func(p, _ *IndexProvenance) { p.Postgres.Unreadable = []string{"read cgroup limits: permission denied"} }},
-		{name: "the image", engine: "pg", field: "container.image",
-			change: func(p, _ *IndexProvenance) { p.Container.Image = "pgvector/pgvector:pg17" }},
-		{name: "the image's registry digest", engine: "pg", field: "container.repo_digests",
-			change: func(p, _ *IndexProvenance) { p.Container.RepoDigests = []string{"pgvector/pgvector@sha256:ccc"} }},
 		{name: "the build", engine: "es", field: "build_hash",
 			change: func(_, e *IndexProvenance) { e.Elasticsearch.BuildHash = "0badc0de" }},
 		{name: "an index setting", engine: "es", field: "setting.index.number_of_replicas",
@@ -204,7 +199,7 @@ func TestSummary_NamesWhatTheEngineRanWith(t *testing.T) {
 		provenance IndexProvenance
 		want       []string
 	}{
-		{name: "postgres", provenance: postgres, want: []string{"postgres 18.1 (Debian 18.1-1.pgdg12+2)", "server settings: 1", "cpu.max max 100000", "image: pgvector/pgvector:pg18"}},
+		{name: "postgres", provenance: postgres, want: []string{"postgres 18.1 (Debian 18.1-1.pgdg12+2)", "server settings: 1", "cpu.max max 100000"}},
 		{name: "elasticsearch", provenance: elasticsearch, want: []string{"elasticsearch 8.12.0", "node es-1: heap 512 MiB"}},
 	}
 	for _, tt := range tests {

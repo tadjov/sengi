@@ -18,7 +18,6 @@ import (
 	"github.com/tadjov/sengi/internal/bench/report"
 	pgstore "github.com/tadjov/sengi/internal/storage/pg"
 	pkgtesting "github.com/tadjov/sengi/pkg/testing"
-	"github.com/testcontainers/testcontainers-go"
 )
 
 func latencyOnlyTrack(t *testing.T, name, engineYAML, block string) string {
@@ -60,13 +59,6 @@ func onlyReport(t *testing.T, track string) *report.Report {
 	return rpt
 }
 
-func containerName(t *testing.T, c testcontainers.Container) string {
-	t.Helper()
-	name, err := c.Name(context.Background())
-	require.NoError(t, err)
-	return strings.TrimPrefix(name, "/")
-}
-
 func TestRun_ReportRecordsWhatThePostgresServerRanWith(t *testing.T) {
 	ctx := context.Background()
 	pg := pkgtesting.NewPGContainerWithConfig(ctx, t, pkgtesting.PGConfig{ServerFlags: []string{"-c", "work_mem=7MB"}})
@@ -77,9 +69,8 @@ func TestRun_ReportRecordsWhatThePostgresServerRanWith(t *testing.T) {
 	require.NoError(t, conn.Close(ctx))
 	track := latencyOnlyTrack(t, "pg", fmt.Sprintf(`    type: postgres
     connection: %q
-    container: %s
     connection_settings:
-      maintenance_work_mem: 65536kB`, pg.ConnString, containerName(t, pg.Container)), "SELECT id FROM articles LIMIT 10")
+      maintenance_work_mem: 65536kB`, pg.ConnString), "SELECT id FROM articles LIMIT 10")
 
 	out, err := execute(t, newRunCmd(), track, "--latency-only")
 	require.NoError(t, err, out)
@@ -102,10 +93,6 @@ func TestRun_ReportRecordsWhatThePostgresServerRanWith(t *testing.T) {
 	require.NotNil(t, server.Limits, "unreadable: %v", server.Unreadable)
 	assert.NotEmpty(t, server.Limits.CPUMax)
 	assert.Empty(t, server.Unreadable)
-	require.NotNil(t, info.Index.Container)
-	assert.Equal(t, "pgvector/pgvector:pg18", info.Index.Container.Image)
-	assert.True(t, strings.HasPrefix(info.Index.Container.ImageID, "sha256:"), info.Index.Container.ImageID)
-	assert.Empty(t, info.Index.Container.Note)
 }
 
 func TestRun_AServerThatCannotReadItsCgroupLimitsRecordsWhyAndRuns(t *testing.T) {
@@ -165,7 +152,6 @@ func TestRun_ReportRecordsWhatTheElasticsearchClusterRanWith(t *testing.T) {
 	assert.Equal(t, "0", cluster.Settings["index.number_of_replicas"])
 	require.NotEmpty(t, cluster.Nodes)
 	assert.Equal(t, int64(512<<20), cluster.Nodes[0].HeapMaxBytes, "the container's -Xmx512m")
-	assert.Nil(t, info.Index.Container, "the spec names no container")
 }
 
 func esRequest(t *testing.T, method, url, body string) {
@@ -177,32 +163,4 @@ func esRequest(t *testing.T, method, url, body string) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Less(t, resp.StatusCode, 300, "%s %s", method, url)
-}
-
-func TestRun_AContainerDockerCannotInspectIsRecordedAsANote(t *testing.T) {
-	tr := judgedTrack(t, nil)
-	missing := "sengi-bench-test-" + uuid.NewString()
-	editFile(t, filepath.Join(tr.dir, "spec.yaml"), "    index: a\n", "    index: a\n    container: "+missing+"\n")
-
-	_, err := execute(t, newRunCmd(), tr.dir)
-
-	require.NoError(t, err, "a failing docker inspect never fails the run")
-	engines := tr.latestReport(t).Environment.Engines
-	require.NotNil(t, engines["a"].Index.Container)
-	assert.Equal(t, missing, engines["a"].Index.Container.Name)
-	assert.NotEmpty(t, engines["a"].Index.Container.Note)
-	assert.Empty(t, engines["a"].Index.Container.Image)
-	assert.Nil(t, engines["b"].Index.Container, "b names no container")
-}
-
-func TestRun_NoContainerNamedRecordsNothingAndWarnsNothing(t *testing.T) {
-	tr := judgedTrack(t, nil)
-
-	out, err := execute(t, newRunCmd(), tr.dir)
-
-	require.NoError(t, err)
-	for name, info := range tr.latestReport(t).Environment.Engines {
-		assert.Nil(t, info.Index.Container, name)
-	}
-	assert.NotContains(t, out, "container of")
 }
