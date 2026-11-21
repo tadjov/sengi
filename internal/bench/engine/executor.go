@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/bench/spec"
+	"github.com/tadjov/sengi/internal/bench/spec"
 )
 
 // Request is one suite query as an engine receives it.
