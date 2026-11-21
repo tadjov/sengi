@@ -30,6 +30,14 @@ services:
     <<: *postgres
     build: docker/paradedb
     container_name: pg-parade-news
+    # The image retunes work_mem and gather workers; they go back to stock here.
+    command: >-
+      postgres
+      -c shared_buffers=1536MB -c effective_cache_size=4608MB
+      -c maintenance_work_mem=4GB -c max_parallel_maintenance_workers=3
+      -c random_page_cost=1.1 -c effective_io_concurrency=200
+      -c max_wal_size=16GB -c checkpoint_timeout=30min
+      -c work_mem=4MB -c max_parallel_workers_per_gather=2
     ports:
       - "54321:5432"
     volumes:

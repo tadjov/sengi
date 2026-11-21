@@ -64,7 +64,8 @@ var serverFlags = []string{
 // engineServerFlags mirrors the server-start settings in docker-compose.yml.
 var engineServerFlags = map[storage.Engine][]string{
 	storage.PostgresNative: serverFlags,
-	storage.ParadeDB:       serverFlags,
+	storage.ParadeDB: append(slices.Clone(serverFlags),
+		"-c", "work_mem=4MB", "-c", "max_parallel_workers_per_gather=2"),
 	storage.Tiger: append(slices.Clone(serverFlags),
 		"-c", "work_mem=4MB", "-c", "jit=on", "-c", "max_parallel_workers_per_gather=2", "-c", "default_toast_compression=pglz",
 		"-c", "pg_textsearch.memory_limit=2GB"),
