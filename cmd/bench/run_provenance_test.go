@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/judgment"
+	"github.com/tadjov/sengi/internal/bench/judgment"
 )
 
 func TestRun_ReportNamesThePoolAndJudgmentsItScoredAgainst(t *testing.T) {

@@ -3,7 +3,7 @@ package dto
 import (
 	"testing"
 
-	"github.com/tadjov/tusker/internal/types/query"
+	"github.com/tadjov/sengi/internal/types/query"
 )
 
 func TestHandlingFromPrefer(t *testing.T) {

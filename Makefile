@@ -1,8 +1,8 @@
 # Build variables
-APP_NAME := tusker
+APP_NAME := sengi
 CMD_DIR := ./cmd
 BIN_DIR := ./bin
-PKG := github.com/tadjov/tusker
+PKG := github.com/tadjov/sengi
 MIGRATIONS_DIR := ./db/migrations
 PG_ENGINES := native paradedb tiger
 LOAD_ENGINES := $(PG_ENGINES) es

@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tadjov/tusker/internal/storage/es"
-	"github.com/tadjov/tusker/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/storage/es"
+	"github.com/tadjov/sengi/internal/storage/pg"
 )
 
 // IndexDescriber is an optional capability for executors that can read, from
@@ -28,6 +29,18 @@ func (d IndexDescription) Version() string {
 		return d.Elasticsearch.Version
 	default:
 		return ""
+	}
+}
+
+// Load is the engine's latest corpus load record, nil when it has none.
+func (d IndexDescription) Load() *storage.LoadRecord {
+	switch {
+	case d.Postgres != nil:
+		return d.Postgres.Load
+	case d.Elasticsearch != nil:
+		return d.Elasticsearch.Load
+	default:
+		return nil
 	}
 }
 

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/types/language"
+	"github.com/tadjov/sengi/internal/types/language"
 )
 
 // Article holds only fields an engine filters, sorts or ranks on; the rest go in Metadata.

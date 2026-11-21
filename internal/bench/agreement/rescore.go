@@ -7,9 +7,9 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/bench/judgment"
-	"github.com/tadjov/tusker/internal/bench/metrics"
-	"github.com/tadjov/tusker/internal/bench/report"
+	"github.com/tadjov/sengi/internal/bench/judgment"
+	"github.com/tadjov/sengi/internal/bench/metrics"
+	"github.com/tadjov/sengi/internal/bench/report"
 )
 
 // RescoreOptions configures Rescore.

@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/tadjov/tusker/internal/embedding"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/storage/es"
-	"github.com/tadjov/tusker/internal/storage/factory"
-	"github.com/tadjov/tusker/internal/storage/pg"
-	pkgserver "github.com/tadjov/tusker/pkg/server"
+	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/storage/es"
+	"github.com/tadjov/sengi/internal/storage/factory"
+	"github.com/tadjov/sengi/internal/storage/pg"
+	pkgserver "github.com/tadjov/sengi/pkg/server"
 )
 
 // searchBackend is everything the API serves from. semantic and hybrid are nil

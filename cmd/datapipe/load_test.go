@@ -15,13 +15,13 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/datapackage"
-	"github.com/tadjov/tusker/internal/ingest"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/storage/pg"
-	"github.com/tadjov/tusker/internal/types/document"
-	"github.com/tadjov/tusker/internal/types/language"
-	pkgtesting "github.com/tadjov/tusker/pkg/testing"
+	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/internal/ingest"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/language"
+	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 const loadFixtureModelTag = "qwen3-embedding:0.6b@1024"
@@ -50,7 +50,7 @@ func TestLoad(t *testing.T) {
 				embeddings := writeEmbeddingsPackage(t, root, canonical, articles, nil)
 
 				err := execDatapipe(t, db, "load", "--engine", string(engine),
-					"--canonical", canonical.location, "--embeddings", embeddings.location, "--batch-size", "500")
+					"--canonical", canonical.location, "--embeddings", embeddings.location, "--batch-size", "500", "--concurrency", "2")
 				require.NoError(t, err)
 
 				stored := readLoadedArticles(t, db, articles[0].ID, articles[1_999].ID)
@@ -66,6 +66,7 @@ func TestLoad(t *testing.T) {
 				assert.Equal(t, &storage.PackageRef{Name: "fixture-embeddings", Version: "lead-v1-1024-test", ResourceHash: embeddings.resourceHash}, written[0].Embeddings)
 				assert.Equal(t, loadFixtureModelTag, written[0].ModelTag)
 				assert.Equal(t, int64(2_000), written[0].Vectors)
+				assert.Equal(t, 2, written[0].Concurrency)
 			})
 
 			t.Run("loads a JSONL canonical package", func(t *testing.T) {

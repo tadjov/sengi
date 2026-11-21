@@ -3,8 +3,8 @@ package query
 import (
 	"fmt"
 
-	"github.com/tadjov/tusker/internal/types/language"
-	"github.com/tadjov/tusker/internal/types/operator"
+	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/internal/types/operator"
 )
 
 // Kind QueryType represents the search paradigm to use

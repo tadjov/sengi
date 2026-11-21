@@ -3,8 +3,8 @@ package storage
 import (
 	"context"
 
-	"github.com/tadjov/tusker/internal/api/dto"
-	"github.com/tadjov/tusker/internal/types/query"
+	"github.com/tadjov/sengi/internal/api/dto"
+	"github.com/tadjov/sengi/internal/types/query"
 )
 
 // SearchResult represents search results with cursor-based pagination

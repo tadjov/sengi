@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tadjov/tusker/pkg/schema"
+	"github.com/tadjov/sengi/pkg/schema"
 )
 
 func strictGenerator() *schema.Generator {

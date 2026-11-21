@@ -8,17 +8,20 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
-	pgxvec "github.com/pgvector/pgvector-go/pgx"
-	"github.com/tadjov/tusker/db/migrations"
-	"github.com/tadjov/tusker/internal/embedding"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/types/document"
-	"github.com/tadjov/tusker/internal/types/language"
+	"github.com/tadjov/sengi/db/migrations"
+	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/language"
+	"golang.org/x/sync/errgroup"
 )
 
 var _ storage.CorpusLoader = (*CorpusLoader)(nil)
@@ -50,14 +53,15 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		return storage.LoadRecord{}, err
 	}
 	record := storage.LoadRecord{
-		Engine:     string(l.engine),
-		StartedAt:  now(),
-		Canonical:  c.Canonical,
-		Embeddings: c.Embeddings,
-		ModelTag:   c.ModelTag,
-		BatchSize:  opts.BatchSize,
-		Stages:     []storage.StageTiming{},
-		Settings:   map[string]string{},
+		Engine:      string(l.engine),
+		StartedAt:   now(),
+		Canonical:   c.Canonical,
+		Embeddings:  c.Embeddings,
+		ModelTag:    c.ModelTag,
+		BatchSize:   opts.BatchSize,
+		Concurrency: opts.Concurrency,
+		Stages:      []storage.StageTiming{},
+		Settings:    map[string]string{},
 	}
 
 	// One session, so index settings read back from it and never reach the pool.
@@ -77,19 +81,19 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	if err := l.refuseLoaded(ctx, conn); err != nil {
 		return storage.LoadRecord{}, err
 	}
-	if err := pgxvec.RegisterTypes(ctx, conn); err != nil {
-		return storage.LoadRecord{}, fmt.Errorf("register vector types: %w", err)
+	if err := pauseAutovacuum(ctx, conn); err != nil {
+		return storage.LoadRecord{}, err
 	}
-
-	tx, err := conn.Begin(ctx)
+	copyPool, err := l.openCopyPool(ctx, opts.Concurrency)
 	if err != nil {
-		return storage.LoadRecord{}, fmt.Errorf("begin load: %w", err)
+		return storage.LoadRecord{}, err
 	}
-	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	defer copyPool.Close()
+	copier := &corpusCopier{pool: copyPool, concurrency: opts.Concurrency, batchSize: opts.BatchSize}
 
 	var ids []uuid.UUID
 	err = timed(&record, "copy_articles", func() error {
-		ids, err = copyArticles(ctx, tx, c, opts.BatchSize)
+		ids, err = copier.copyArticles(ctx, c)
 		return err
 	})
 	if err != nil {
@@ -102,16 +106,14 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 
 	if c.Vectors != nil {
 		err = timed(&record, "copy_embeddings", func() error {
-			record.Vectors, err = copyVectors(ctx, tx, c, ids, opts.BatchSize)
+			record.Vectors, err = copier.copyVectors(ctx, c, ids)
 			return err
 		})
 		if err != nil {
 			return storage.LoadRecord{}, err
 		}
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return storage.LoadRecord{}, fmt.Errorf("commit load: %w", err)
-	}
+	copyPool.Close()
 
 	if !opts.SkipIndex {
 		if err := l.buildIndexes(ctx, conn, &record); err != nil {
@@ -125,6 +127,9 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	})
 	if err != nil {
 		return storage.LoadRecord{}, fmt.Errorf("vacuum analyze: %w", err)
+	}
+	if err := resumeAutovacuum(ctx, conn); err != nil {
+		return storage.LoadRecord{}, err
 	}
 	if inspect := engineKnobs[l.engine].inspect; inspect != nil && !opts.SkipIndex {
 		if err := inspect(ctx, conn, record.Settings); err != nil {
@@ -175,11 +180,13 @@ func validateCorpus(c storage.Corpus, opts storage.LoadOptions) error {
 		return errors.New("corpus vectors carry no model tag")
 	case opts.BatchSize <= 0:
 		return fmt.Errorf("batch size %d: want at least 1", opts.BatchSize)
+	case opts.Concurrency <= 0:
+		return fmt.Errorf("concurrency %d: want at least 1 batch written at once", opts.Concurrency)
 	}
 	return nil
 }
 
-const loadLockKey = 0x7475736b6572 // "tusker"
+const loadLockKey = 0x73656e6769 // "sengi"
 
 func lockLoad(ctx context.Context, conn *pgx.Conn) error {
 	var locked bool
@@ -219,14 +226,21 @@ func (l *CorpusLoader) refuseLoaded(ctx context.Context, conn *pgx.Conn) error {
 	return nil
 }
 
-var indexBuildSettings = []string{"maintenance_work_mem", "max_parallel_maintenance_workers"}
+var serverSettings = []string{
+	"shared_buffers", "effective_cache_size", "maintenance_work_mem", "max_parallel_maintenance_workers",
+	"max_wal_size", "checkpoint_timeout", "autovacuum",
+}
 
 // buildIndexes times each search index and each derived-table fill as its own stage; a SET or ANALYZE runs untimed.
 func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record *storage.LoadRecord) error {
 	for _, s := range l.indexes {
 		run := func() error {
 			if _, err := conn.Exec(ctx, s.SQL); err != nil {
-				return fmt.Errorf("build search index %s: %w", s, err)
+				// The detail carries the offending row, such as the key a primary key found twice.
+				if pgErr := (*pgconn.PgError)(nil); errors.As(err, &pgErr) && pgErr.Detail != "" {
+					return fmt.Errorf("build %s: %w: %s", s, err, pgErr.Detail)
+				}
+				return fmt.Errorf("build %s: %w", s, err)
 			}
 			return nil
 		}
@@ -244,7 +258,7 @@ func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record 
 			return err
 		}
 	}
-	for _, name := range slices.Concat(indexBuildSettings, engineKnobs[l.engine].settings) {
+	for _, name := range slices.Concat(serverSettings, engineKnobs[l.engine].settings) {
 		var value string
 		if err := conn.QueryRow(ctx, "SELECT current_setting($1)", name).Scan(&value); err != nil {
 			return fmt.Errorf("read setting %s: %w", name, err)
@@ -292,8 +306,57 @@ func timed(record *storage.LoadRecord, stage string, run func() error) error {
 	return nil
 }
 
+var corpusTables = []string{"articles", "article_embeddings"}
+
+// pauseAutovacuum keeps autovacuum off the corpus tables, TOAST included, until the load's own vacuum.
+func pauseAutovacuum(ctx context.Context, conn *pgx.Conn) error {
+	for _, table := range corpusTables {
+		if _, err := conn.Exec(ctx, "ALTER TABLE "+pgx.Identifier{table}.Sanitize()+" SET (autovacuum_enabled = false, toast.autovacuum_enabled = false)"); err != nil {
+			return fmt.Errorf("pause autovacuum on %s: %w", table, err)
+		}
+	}
+	return nil
+}
+
+func resumeAutovacuum(ctx context.Context, conn *pgx.Conn) error {
+	for _, table := range corpusTables {
+		if _, err := conn.Exec(ctx, "ALTER TABLE "+pgx.Identifier{table}.Sanitize()+" RESET (autovacuum_enabled, toast.autovacuum_enabled)"); err != nil {
+			return fmt.Errorf("resume autovacuum on %s: %w", table, err)
+		}
+	}
+	return nil
+}
+
+// openCopyPool needs the schema's vector type, which its connections register.
+func (l *CorpusLoader) openCopyPool(ctx context.Context, concurrency int) (*pgxpool.Pool, error) {
+	config := l.pool.conn.Config()
+	config.MaxConns = int32(concurrency)
+	config.MinConns = 0
+	config.AfterConnect = afterConnect(true, nil)
+	copyPool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("open %d copy connections: %w", concurrency, err)
+	}
+	return copyPool, nil
+}
+
+// corpusCopier commits each batch in its own transaction, so a failed copy keeps whichever batches committed.
+type corpusCopier struct {
+	pool        *pgxpool.Pool
+	concurrency int
+	batchSize   int
+	committed   atomic.Int64
+}
+
+func (cp *corpusCopier) failed(err error) error {
+	if cp.committed.Load() == 0 {
+		return err
+	}
+	return fmt.Errorf("%w; the database now holds a partial corpus, drop its schema before loading again", err)
+}
+
 // copyArticles returns the ids in corpus order, which the vectors must follow.
-func copyArticles(ctx context.Context, tx pgx.Tx, c storage.Corpus, batchSize int) ([]uuid.UUID, error) {
+func (cp *corpusCopier) copyArticles(ctx context.Context, c storage.Corpus) ([]uuid.UUID, error) {
 	var ids []uuid.UUID
 	toRow := func(a document.Article) ([]any, error) {
 		if a.ID == uuid.Nil {
@@ -305,15 +368,15 @@ func copyArticles(ctx context.Context, tx pgx.Tx, c storage.Corpus, batchSize in
 		ids = append(ids, a.ID)
 		return insertRow(a)
 	}
-	plan := copyPlan[document.Article]{Table: "articles", Columns: ArticleColumns, Items: c.Articles, ToRow: toRow, BatchSize: batchSize}
-	if err := copyBatches(ctx, tx, plan); err != nil {
-		return nil, fmt.Errorf("copy articles: %w", err)
+	plan := copyPlan[document.Article]{Table: "articles", Columns: ArticleColumns, Items: c.Articles, ToRow: toRow, BatchSize: cp.batchSize}
+	if err := copyConcurrently(ctx, cp, plan); err != nil {
+		return nil, cp.failed(fmt.Errorf("copy articles: %w", err))
 	}
 	return ids, nil
 }
 
 // copyVectors refuses any vector out of step with the articles, orphans included.
-func copyVectors(ctx context.Context, tx pgx.Tx, c storage.Corpus, ids []uuid.UUID, batchSize int) (int64, error) {
+func (cp *corpusCopier) copyVectors(ctx context.Context, c storage.Corpus, ids []uuid.UUID) (int64, error) {
 	var n int64
 	toRow := func(v embedding.Vec) ([]any, error) {
 		if n >= int64(len(ids)) {
@@ -330,10 +393,10 @@ func copyVectors(ctx context.Context, tx pgx.Tx, c storage.Corpus, ids []uuid.UU
 		Columns:   []string{"article_id", "model_name", "embedding"},
 		Items:     c.Vectors,
 		ToRow:     toRow,
-		BatchSize: batchSize,
+		BatchSize: cp.batchSize,
 	}
-	if err := copyBatches(ctx, tx, plan); err != nil {
-		return 0, fmt.Errorf("copy embeddings: %w", err)
+	if err := copyConcurrently(ctx, cp, plan); err != nil {
+		return 0, cp.failed(fmt.Errorf("copy embeddings: %w", err))
 	}
 	return n, nil
 }
@@ -346,56 +409,61 @@ type copyPlan[T any] struct {
 	BatchSize int
 }
 
-func copyBatches[T any](ctx context.Context, tx pgx.Tx, plan copyPlan[T]) error {
-	next, stop := iter.Pull2(plan.Items)
-	defer stop()
-	src := &batchSource[T]{next: next, toRow: plan.ToRow}
-	var copied, reported int64
-	for !src.exhausted {
-		src.left = plan.BatchSize
-		n, err := tx.CopyFrom(ctx, pgx.Identifier{plan.Table}, plan.Columns, src)
+// copyConcurrently converts rows on one goroutine, in corpus order, and copies each batch on the next free connection.
+func copyConcurrently[T any](ctx context.Context, cp *corpusCopier, plan copyPlan[T]) error {
+	group, ctx := errgroup.WithContext(ctx)
+	batches := make(chan [][]any, cp.concurrency)
+	group.Go(func() error {
+		defer close(batches)
+		return batchRows(ctx, plan, batches)
+	})
+	var copied atomic.Int64
+	for range cp.concurrency {
+		group.Go(func() error {
+			for batch := range batches {
+				if _, err := cp.pool.CopyFrom(ctx, pgx.Identifier{plan.Table}, plan.Columns, pgx.CopyFromRows(batch)); err != nil {
+					return err
+				}
+				cp.committed.Add(int64(len(batch)))
+				rows := copied.Add(int64(len(batch)))
+				if rows/storage.ProgressRows > (rows-int64(len(batch)))/storage.ProgressRows {
+					slog.Info("corpus load progress", "table", plan.Table, "rows", rows)
+				}
+			}
+			return nil
+		})
+	}
+	return group.Wait()
+}
+
+func batchRows[T any](ctx context.Context, plan copyPlan[T], batches chan<- [][]any) error {
+	batch := make([][]any, 0, plan.BatchSize)
+	send := func() error {
+		select {
+		case batches <- batch:
+			batch = make([][]any, 0, plan.BatchSize)
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	for item, err := range plan.Items {
 		if err != nil {
 			return err
 		}
-		copied += n
-		if copied-reported >= storage.ProgressRows {
-			slog.Info("corpus load progress", "table", plan.Table, "rows", copied)
-			reported = copied
+		row, err := plan.ToRow(item)
+		if err != nil {
+			return err
+		}
+		batch = append(batch, row)
+		if len(batch) == plan.BatchSize {
+			if err := send(); err != nil {
+				return err
+			}
 		}
 	}
-	return nil
+	if len(batch) == 0 {
+		return nil
+	}
+	return send()
 }
-
-// batchSource ends after left rows, so one iterator feeds consecutive COPYs.
-type batchSource[T any] struct {
-	next      func() (T, error, bool)
-	toRow     func(T) ([]any, error)
-	left      int
-	exhausted bool
-	row       []any
-	err       error
-}
-
-func (s *batchSource[T]) Next() bool {
-	if s.left == 0 || s.exhausted || s.err != nil {
-		return false
-	}
-	item, err, ok := s.next()
-	if !ok {
-		s.exhausted = true
-		return false
-	}
-	if err == nil {
-		s.row, err = s.toRow(item)
-	}
-	if err != nil {
-		s.err = err
-		return false
-	}
-	s.left--
-	return true
-}
-
-func (s *batchSource[T]) Values() ([]any, error) { return s.row, nil }
-
-func (s *batchSource[T]) Err() error { return s.err }

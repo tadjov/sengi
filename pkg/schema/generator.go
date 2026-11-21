@@ -83,7 +83,7 @@ func NewGenerator() *Generator {
 		IncludeExamples:     true,
 		StrictValidation:    true,
 		UseDefinitions:      true,
-		BaseURI:             "https://schemas.tusker.sh",
+		BaseURI:             "https://schemas.sengi.sh",
 		SkipSchemaReference: false,
 	})
 }
@@ -505,7 +505,7 @@ func (g *Generator) getTypeComment(t reflect.Type) string {
 
 func (g *Generator) parseSchemaAnnotations(t reflect.Type, schema *JSONSchema) {
 	schema.Title = t.Name()
-	schema.ID = fmt.Sprintf("https://schemas.tusker.sh/%s", strings.ToLower(t.Name()))
+	schema.ID = fmt.Sprintf("https://schemas.sengi.sh/%s", strings.ToLower(t.Name()))
 }
 
 // GenerateJSONSchema generates a JSON schema as a JSON string

@@ -1,11 +1,11 @@
 #!/bin/bash
-# Tusker API - Example Requests
+# Sengi API - Example Requests
 # Usage: chmod +x curl_examples.sh && ./curl_examples.sh
 
 API_BASE="http://localhost:8080"
 
 echo "================================================"
-echo "Tusker Search API Examples"
+echo "Sengi Search API Examples"
 echo "================================================"
 
 # ============================================================================

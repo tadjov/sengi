@@ -2,18 +2,21 @@ package main
 
 import (
 	"cmp"
+	"context"
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/tadjov/tusker/internal/bench/engine"
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/bench/pool"
-	"github.com/tadjov/tusker/internal/bench/runner"
-	"github.com/tadjov/tusker/internal/bench/spec"
-	"github.com/tadjov/tusker/internal/bench/suite"
-	"github.com/tadjov/tusker/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/bench/engine"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/pool"
+	"github.com/tadjov/sengi/internal/bench/runner"
+	"github.com/tadjov/sengi/internal/bench/spec"
+	"github.com/tadjov/sengi/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 type poolFlags struct {
@@ -108,6 +111,13 @@ func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
 		return fmt.Errorf("create executors: %w", err)
 	}
 	defer cleanup()
+	canonical, err := loadedCanonical(cmd.Context(), cmd.OutOrStdout(), executors)
+	if err != nil {
+		return err
+	}
+	if canonical == nil {
+		printWarn(cmd.OutOrStdout(), "no engine records a corpus load, so the pool names no canonical package and carry-over can't check it")
+	}
 
 	r := runner.New(runCfg)
 	sp := startSpinner("Pooling " + tr.Name() + "…")
@@ -127,6 +137,7 @@ func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
 	pf.Meta.PoolDepth = depth
 	pf.Meta.Engines = collectEngines(bs, result)
 	pf.Meta.DroppedExecutions = dropped
+	pf.Meta.Canonical = canonical
 
 	outPath := f.output
 	if outPath == "" {
@@ -143,6 +154,26 @@ func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
 	}
 	printDone(cmd.OutOrStdout(), fmt.Sprintf("Pool written: %s  (queries=%d  run_id=%s)", outPath, len(pf.Queries), pf.Meta.RunID))
 	return nil
+}
+
+// loadedCanonical reads which canonical package the engines had loaded.
+func loadedCanonical(ctx context.Context, w io.Writer, executors map[string]engine.Executor) (*storage.PackageRef, error) {
+	loads := make(map[string]storage.PackageRef, len(executors))
+	for name, exec := range executors {
+		describer, ok := exec.(engine.IndexDescriber)
+		if !ok {
+			continue
+		}
+		description, err := describeIndex(ctx, describer)
+		if err != nil {
+			printWarn(w, fmt.Sprintf("canonical package of %q not recorded: %v", name, err))
+			continue
+		}
+		if load := description.Load(); load != nil {
+			loads[name] = load.Canonical
+		}
+	}
+	return pool.SharedCanonical(loads)
 }
 
 // buildPoolFile merges results across all jobs into one entry per query_id.

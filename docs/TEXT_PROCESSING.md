@@ -27,7 +27,7 @@ Text processing is the foundation of full-text search engines. Before search can
 3. **Normalizing word forms** (stemming/lemmatization)
 4. **Creating searchable index** (inverted index or tsvector)
 
-**Why it matters for Tusker:**
+**Why it matters for Sengi:**
 - Enables matching "climate" with "climatic", "climate change", "climatology"
 - Improves search relevance by focusing on meaningful content
 - Reduces index size and improves query performance
@@ -1226,7 +1226,7 @@ WHERE search_vector @@ english_query
 
 ## Conclusion
 
-Text processing is the foundation of effective full-text search systems. For the Tusker project's comparison between PostgreSQL and Elasticsearch:
+Text processing is the foundation of effective full-text search systems. For the Sengi project's comparison between PostgreSQL and Elasticsearch:
 
 ### Key Takeaways
 
@@ -1246,7 +1246,7 @@ Text processing is the foundation of effective full-text search systems. For the
 | **Customization** | SQL-level | JSON configuration |
 | **Performance** | Faster for simple cases | Better for complex pipelines |
 
-### Recommendations for Tusker
+### Recommendations for Sengi
 
 1. **Use standard configurations** for news domain
 2. **Implement moderate stemming** for balance of recall/precision

@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/tadjov/tusker/internal/bench/agreement"
+	"github.com/tadjov/sengi/internal/bench/agreement"
 )
 
 func TestDisagreements_WidestSpanFirstThenQueryThenDoc(t *testing.T) {

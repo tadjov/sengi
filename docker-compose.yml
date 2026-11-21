@@ -1,70 +1,61 @@
+x-budget: &budget
+  cpus: 4
+  mem_limit: 6g
+
+x-postgres: &postgres
+  <<: *budget
+  environment:
+    POSTGRES_USER: news_user
+    POSTGRES_PASSWORD: news_password
+    POSTGRES_DB: news_db
+  command: >-
+    postgres
+    -c shared_buffers=1536MB -c effective_cache_size=4608MB
+    -c maintenance_work_mem=4GB -c max_parallel_maintenance_workers=3
+    -c random_page_cost=1.1 -c effective_io_concurrency=200
+    -c max_wal_size=16GB -c checkpoint_timeout=30min
+  shm_size: 5gb
+
 services:
   pg-news-native:
+    <<: *postgres
     build: docker/native
     container_name: pg-native-news
-    environment:
-      POSTGRES_USER: news_user
-      POSTGRES_PASSWORD: news_password
-      POSTGRES_DB: news_db
-    command: >-
-      postgres
-      -c maintenance_work_mem=4GB -c max_parallel_maintenance_workers=4
-      -c shared_buffers=1GB -c effective_cache_size=4GB -c work_mem=4MB
-      -c random_page_cost=1.1 -c effective_io_concurrency=200 -c jit=on
-      -c max_parallel_workers_per_gather=2 -c max_parallel_workers=8
-      -c wal_buffers=16MB -c min_wal_size=80MB
-      -c default_toast_compression=pglz
-    shm_size: 5gb
     ports:
       - "54320:5432"
     volumes:
       - pg_news_data:/var/lib/postgresql
 
   pg-news-parade:
+    <<: *postgres
     build: docker/paradedb
     container_name: pg-parade-news
-    environment:
-      POSTGRES_USER: news_user
-      POSTGRES_PASSWORD: news_password
-      POSTGRES_DB: news_db
-    command: >-
-      postgres
-      -c maintenance_work_mem=4GB -c max_parallel_maintenance_workers=4
-      -c shared_buffers=1GB -c effective_cache_size=4GB -c work_mem=4MB
-      -c random_page_cost=1.1 -c effective_io_concurrency=200 -c jit=on
-      -c max_parallel_workers_per_gather=2 -c max_parallel_workers=8
-      -c wal_buffers=16MB -c min_wal_size=80MB
-      -c default_toast_compression=pglz
-    shm_size: 5gb
     ports:
       - "54321:5432"
     volumes:
       - pg_news_parade_data:/var/lib/postgresql
 
   pg-news-tiger:
+    <<: *postgres
     image: timescale/timescaledb-ha:pg18.6-ts2.32.0-r599.1@sha256:96b6033e7e54c26099f29cb46f634953b749b8c2c92c77bfb715cd630cdadf2e
     container_name: pg-tiger-news
-    environment:
-      POSTGRES_USER: news_user
-      POSTGRES_PASSWORD: news_password
-      POSTGRES_DB: news_db
-    # memory_limit is sighup, so no migration can SET it.
+    # The image retunes work_mem, jit, gather workers and TOAST compression at startup; they go back to stock here.
+    # pg_textsearch.memory_limit is sighup, so no migration can SET it.
     command: >-
       postgres
-      -c maintenance_work_mem=4GB -c max_parallel_maintenance_workers=4
-      -c shared_buffers=1GB -c effective_cache_size=4GB -c work_mem=4MB
-      -c random_page_cost=1.1 -c effective_io_concurrency=200 -c jit=on
-      -c max_parallel_workers_per_gather=2 -c max_parallel_workers=8
-      -c wal_buffers=16MB -c min_wal_size=80MB
-      -c default_toast_compression=pglz
+      -c shared_buffers=1536MB -c effective_cache_size=4608MB
+      -c maintenance_work_mem=4GB -c max_parallel_maintenance_workers=3
+      -c random_page_cost=1.1 -c effective_io_concurrency=200
+      -c max_wal_size=16GB -c checkpoint_timeout=30min
+      -c work_mem=4MB -c jit=on -c max_parallel_workers_per_gather=2 -c default_toast_compression=pglz
       -c pg_textsearch.memory_limit=2GB
-    shm_size: 5gb
     ports:
       - "54322:5432"
     volumes:
       - pg_news_tiger_data:/home/postgres/pgdata/data
 
   elasticsearch:
+    <<: *budget
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0@sha256:ec72548cf833e58578d8ff40df44346a49480b2c88a4e73a91e1b85ec7ef0d44
     container_name: es-news
     environment:
@@ -72,7 +63,6 @@ services:
       - cluster.name=news-cluster
       - discovery.type=single-node
       - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
       - xpack.security.enabled=false
       - xpack.security.enrollment.enabled=false
     ulimits:
@@ -101,14 +91,14 @@ services:
 
 volumes:
   pg_news_data:
-    name: ${NEWS_VOLUME_NS:-tusker}_pg_news_data
+    name: ${NEWS_VOLUME_NS:-sengi}_pg_news_data
     driver: local
   es_news_data:
-    name: ${NEWS_VOLUME_NS:-tusker}_es_news_data
+    name: ${NEWS_VOLUME_NS:-sengi}_es_news_data
     driver: local
   pg_news_parade_data:
-    name: ${NEWS_VOLUME_NS:-tusker}_pg_news_parade_data
+    name: ${NEWS_VOLUME_NS:-sengi}_pg_news_parade_data
     driver: local
   pg_news_tiger_data:
-    name: ${NEWS_VOLUME_NS:-tusker}_pg_news_tiger_data
+    name: ${NEWS_VOLUME_NS:-sengi}_pg_news_tiger_data
     driver: local

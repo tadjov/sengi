@@ -86,6 +86,8 @@ func newTransport(config ClientConfig) *http.Transport {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.DialContext = (&net.Dialer{Timeout: dialTimeout, KeepAlive: 30 * time.Second}).DialContext
 	transport.ResponseHeaderTimeout = responseHeaderTimeout
+	// One node answers every request, so it may keep every idle connection.
+	transport.MaxIdleConnsPerHost = transport.MaxIdleConns
 	return transport
 }
 

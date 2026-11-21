@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/tadjov/tusker/internal/bench/metrics"
-	"github.com/tadjov/tusker/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/bench/metrics"
+	"github.com/tadjov/sengi/internal/bench/suite"
 )
 
 // Statistic is a value that is NaN when undefined, and null in JSON.

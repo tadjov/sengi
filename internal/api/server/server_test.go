@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	pkgserver "github.com/tadjov/tusker/pkg/server"
+	pkgserver "github.com/tadjov/sengi/pkg/server"
 )
 
 func newServer(t *testing.T, cfg *Config, checker pkgserver.HealthChecker) *Server {

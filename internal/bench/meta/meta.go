@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tadjov/tusker/internal/bench/version"
+	"github.com/tadjov/sengi/internal/bench/version"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 // Meta is the provenance block of a pool, annotations or report file.
@@ -28,6 +29,8 @@ type Meta struct {
 	PoolDepth         int                `yaml:"pool_depth,omitempty" json:"pool_depth,omitempty"`
 	Engines           []string           `yaml:"engines,omitempty" json:"engines,omitempty"`
 	DroppedExecutions []DroppedExecution `yaml:"dropped_executions,omitempty" json:"dropped_executions,omitempty"`
+	// Canonical is the canonical package the pooled engines had loaded.
+	Canonical *storage.PackageRef `yaml:"canonical,omitempty" json:"canonical,omitempty"`
 
 	// Judgment fields; a report also records its pool in PoolRunID.
 	Judge          *Judge `yaml:"judge,omitempty" json:"judge,omitempty"`

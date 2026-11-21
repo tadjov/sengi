@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/tadjov/tusker/internal/bench/engine"
-	"github.com/tadjov/tusker/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/bench/engine"
+	"github.com/tadjov/sengi/internal/bench/suite"
 )
 
 // Mustache is Elasticsearch: suite templates render on the engine, other blocks are sent as written.
