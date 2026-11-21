@@ -43,8 +43,7 @@ DESCRIPTIVE = [
 
 # Every leg orders its own ties by id, and the SQL fusions rank inside each leg
 # the same way, so pg-rrf and the client-side pg-rrf-client fuse the same input.
-# The vector legs break ties before their LIMIT too: the HNSW index still serves
-# the distance, and an Incremental Sort adds article_id.
+# Vector legs break ties before the LIMIT, and HNSW still serves the distance.
 TEMPLATES = """templates:
   - id: pg_multi_field
     args: [terms, rank_norm, limit]
@@ -95,7 +94,7 @@ TEMPLATES = """templates:
       ) nearest
       ORDER BY distance, id
 
-  # k above size leaves the cut among tied vectors to the id sort, not to load order.
+  # k above size lets the id sort cut tied vectors, not load order.
   - id: es_knn
     args: [query_vector]
     query: |
@@ -103,7 +102,7 @@ TEMPLATES = """templates:
 
   # Elasticsearch's own one-request hybrid on the basic licence: the BM25 and kNN
   # scores are summed with the default boosts.
-  # Ties among identical vectors are selected by load order: no sort reaches the kNN cut.
+  # Tied vectors are cut by load order; no sort reaches the kNN cut.
   - id: es_linear
     args: [terms, query_vector]
     query: |
