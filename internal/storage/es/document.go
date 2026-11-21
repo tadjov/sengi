@@ -10,10 +10,10 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/densevectorsimilarity"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/snowballlanguage"
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/api/dto"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/types/document"
-	"github.com/tadjov/tusker/internal/types/language"
+	"github.com/tadjov/sengi/internal/api/dto"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/language"
 )
 
 // ArticleDocument omits the embedding fields, which the embedder writes.

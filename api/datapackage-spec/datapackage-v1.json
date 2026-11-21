@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.tusker.sh/datapackage-v1",
+  "$id": "https://schemas.sengi.sh/datapackage-v1",
   "title": "Data package descriptor",
   "type": "object",
   "required": [

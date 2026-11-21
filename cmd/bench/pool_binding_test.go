@@ -9,11 +9,11 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/judgment"
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/bench/pool"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/types/document"
+	"github.com/tadjov/sengi/internal/bench/judgment"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/pool"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/document"
 )
 
 func poolWithRunID(runID string) *pool.PoolFile {

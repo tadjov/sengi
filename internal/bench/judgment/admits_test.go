@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/bench/suite"
 )
 
 func TestGateAdmits(t *testing.T) {

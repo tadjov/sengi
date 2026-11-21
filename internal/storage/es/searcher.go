@@ -10,12 +10,12 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/operator"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/sortorder"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/textquerytype"
-	"github.com/tadjov/tusker/internal/api/dto"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/token"
-	queryoperator "github.com/tadjov/tusker/internal/types/operator"
-	dquery "github.com/tadjov/tusker/internal/types/query"
-	"github.com/tadjov/tusker/pkg/utils"
+	"github.com/tadjov/sengi/internal/api/dto"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/token"
+	queryoperator "github.com/tadjov/sengi/internal/types/operator"
+	dquery "github.com/tadjov/sengi/internal/types/query"
+	"github.com/tadjov/sengi/pkg/utils"
 )
 
 type Searcher struct {

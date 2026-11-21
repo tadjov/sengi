@@ -1,5 +1,5 @@
 import json, subprocess, urllib.request
-V = sorted(json.load(open('/Users/djordjevuckovic/projects/news-hunter/experiments/analysis-chains/out/vocab.json')))
+V = sorted(json.load(open('/Users/djordjevuckovic/projects/sengi/experiments/analysis-chains/out/vocab.json')))
 def psql(c, sql, stdin=None):
     r = subprocess.run(["docker","exec","-i",c,"psql","-U","postgres","-v","ON_ERROR_STOP=1","-tAF","\t","-c",sql],input=stdin,capture_output=True,text=True)
     if r.returncode: raise SystemExit(c+r.stderr)

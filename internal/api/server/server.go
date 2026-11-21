@@ -15,10 +15,10 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
-	openapi "github.com/tadjov/tusker/api/openapi-spec"
-	mw "github.com/tadjov/tusker/internal/api/middleware"
-	"github.com/tadjov/tusker/internal/apperr"
-	"github.com/tadjov/tusker/pkg/server"
+	openapi "github.com/tadjov/sengi/api/openapi-spec"
+	mw "github.com/tadjov/sengi/internal/api/middleware"
+	"github.com/tadjov/sengi/internal/apperr"
+	"github.com/tadjov/sengi/pkg/server"
 )
 
 const (

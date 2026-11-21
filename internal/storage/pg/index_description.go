@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 // searchExtensions are the extensions whose version changes what a search

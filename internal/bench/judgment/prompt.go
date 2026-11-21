@@ -7,7 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/bench/suite"
 )
 
 const (

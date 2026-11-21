@@ -12,13 +12,13 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/api/dto"
-	apiserver "github.com/tadjov/tusker/internal/api/server"
-	"github.com/tadjov/tusker/internal/apperr"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/types/document"
-	"github.com/tadjov/tusker/internal/types/language"
-	dquery "github.com/tadjov/tusker/internal/types/query"
+	"github.com/tadjov/sengi/internal/api/dto"
+	apiserver "github.com/tadjov/sengi/internal/api/server"
+	"github.com/tadjov/sengi/internal/apperr"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/language"
+	dquery "github.com/tadjov/sengi/internal/types/query"
 )
 
 type oneArticleSearcher struct {

@@ -8,7 +8,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/embedding"
+	"github.com/tadjov/sengi/internal/embedding"
 )
 
 // VectorStore is the Elasticsearch implementation of storage.VectorStore.

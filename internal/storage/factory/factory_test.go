@@ -7,9 +7,9 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/storage/es"
-	"github.com/tadjov/tusker/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/storage/es"
+	"github.com/tadjov/sengi/internal/storage/pg"
 )
 
 func TestVectorSearchers_RequireEmbedder(t *testing.T) {

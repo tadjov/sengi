@@ -20,9 +20,9 @@ I analyzed the PostgreSQL implementation and found:
 5. Different field queries returned same total_matches because WHERE clause didn't change
 
 Key files analyzed:
-- `/home/tadjo/projects/news-hunter/internal/storage/pg/fts_helpers.go` - WHERE clause and ranking logic
-- `/home/tadjo/projects/news-hunter/internal/storage/pg/searcher.go` - Match/MultiMatch implementations
-- `/home/tadjo/projects/news-hunter/db/migrations/003_add_search_vector_trigger.up.sql` - Database schema
+- `internal/storage/pg/fts_helpers.go` - WHERE clause and ranking logic
+- `internal/storage/pg/searcher.go` - Match/MultiMatch implementations
+- `db/migrations/003_add_search_vector_trigger.up.sql` - Database schema
 
 **Section 4: Migration File Bug Discovery**
 User message: "we should start with plain sql. You should just output plain sql. Start with search vector trigger migration: @db/migrations/003_add_search_vector_trigger.up.sql . Is there any bug?"
@@ -97,7 +97,7 @@ The user's explicit request was to debug and fix a PostgreSQL full-text search b
 
 ## 3. Files and Code Sections
 
-### `/home/tadjo/projects/news-hunter/db/migrations/003_add_search_vector_trigger.up.sql`
+### `db/migrations/003_add_search_vector_trigger.up.sql`
 
 **Why Important**: This migration creates the pre-computed search_vector with proper weight labels that enable field-specific filtering.
 
@@ -144,7 +144,7 @@ SET search_vector =
 WHERE search_vector IS NULL OR search_vector = ''::tsvector;
 ```
 
-### `/home/tadjo/projects/news-hunter/internal/storage/pg/fts_helpers.go`
+### `internal/storage/pg/fts_helpers.go`
 
 **Why Important**: Contains the WHERE clause and ranking logic that was causing the bug.
 
@@ -159,7 +159,7 @@ func buildTsWhereClause(fields []string, weights map[string]float64, lang query.
 // This IGNORES the fields parameter and always searches ALL fields
 ```
 
-### `/home/tadjo/projects/news-hunter/internal/storage/pg/searcher.go`
+### `internal/storage/pg/searcher.go`
 
 **Why Important**: Contains Match and MultiMatch implementations that return same total_matches.
 
@@ -259,7 +259,7 @@ User confirmed different counts after migration:
 
 ## 7. Pending Tasks
 
-- Implement the weight label filtering solution in Go code (`/home/tadjo/projects/news-hunter/internal/storage/pg/fts_helpers.go` and `searcher.go`)
+- Implement the weight label filtering solution in Go code (`internal/storage/pg/fts_helpers.go` and `searcher.go`)
 - Update `buildTsWhereClause()` to generate label-filtered tsquery
 - Update `buildRankExpression()` to use custom weights array
 - Update SearchMatch to filter by single field label
@@ -343,9 +343,9 @@ The next step is to implement the weight label filtering solution in the Go code
 
 **Next Action**: Update the PostgreSQL storage layer implementation:
 
-1. Modify `buildTsWhereClause()` in `/home/tadjo/projects/news-hunter/internal/storage/pg/fts_helpers.go` to generate label-filtered tsquery using the pattern `(query::text || ':LABEL')::tsquery`
+1. Modify `buildTsWhereClause()` in `internal/storage/pg/fts_helpers.go` to generate label-filtered tsquery using the pattern `(query::text || ':LABEL')::tsquery`
 
-2. Update `SearchMatch()` in `/home/tadjo/projects/news-hunter/internal/storage/pg/searcher.go` to use field-specific label filtering
+2. Update `SearchMatch()` in `internal/storage/pg/searcher.go` to use field-specific label filtering
 
 3. Update `SearchMultiMatch()` to OR together multiple field labels using `|| '|'::tsquery ||`
 

@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tadjov/tusker/internal/types/language"
-	"github.com/tadjov/tusker/internal/types/operator"
-	"github.com/tadjov/tusker/internal/types/query"
+	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/internal/types/operator"
+	"github.com/tadjov/sengi/internal/types/query"
 )
 
 // Field to PostgreSQL weight label mapping

@@ -9,11 +9,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/judgment"
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/bench/runner"
-	"github.com/tadjov/tusker/internal/bench/spec"
-	"github.com/tadjov/tusker/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/bench/judgment"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/runner"
+	"github.com/tadjov/sengi/internal/bench/spec"
+	"github.com/tadjov/sengi/internal/bench/trackctx"
 )
 
 func TestLoadRunJudgments_NoneConfiguredNeedsLatencyOnly(t *testing.T) {

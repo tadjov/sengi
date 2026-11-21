@@ -9,9 +9,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
-	"github.com/tadjov/tusker/internal/bench/suite"
-	"github.com/tadjov/tusker/internal/datapackage"
-	"github.com/tadjov/tusker/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/internal/storage/pg"
 )
 
 type Options struct {

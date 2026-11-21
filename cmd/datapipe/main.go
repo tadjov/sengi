@@ -12,7 +12,7 @@ import (
 
 const (
 	cliName  = "datapipe"
-	cliShort = "Tusker data pipeline: preprocess a dataset, embed it, load it into an engine"
+	cliShort = "Sengi data pipeline: preprocess a dataset, embed it, load it into an engine"
 	cliLong  = `datapipe moves news data from a raw dataset into one search engine.
 
 Stages:

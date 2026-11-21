@@ -10,10 +10,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pgvector/pgvector-go"
-	"github.com/tadjov/tusker/internal/datapackage"
-	"github.com/tadjov/tusker/internal/storage/pg"
-	"github.com/tadjov/tusker/internal/storage/queryvectors"
-	pkgtesting "github.com/tadjov/tusker/pkg/testing"
+	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/storage/queryvectors"
+	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 // The fixture holds two queries at width 1024; q2 is the unit vector e0.

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/labstack/gommon/bytes"
-	"github.com/tadjov/tusker/pkg/config/env"
-	"github.com/tadjov/tusker/pkg/utils"
+	"github.com/tadjov/sengi/pkg/config/env"
+	"github.com/tadjov/sengi/pkg/utils"
 )
 
 const (
