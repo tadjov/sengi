@@ -48,7 +48,7 @@ func thinDockerfile(engine storage.Engine) testcontainers.FromDockerfile {
 	_, thisFile, _, _ := runtime.Caller(0)
 	return testcontainers.FromDockerfile{
 		Context:   filepath.Join(filepath.Dir(thisFile), "..", "..", "docker", string(engine)),
-		Repo:      "tusker-test-" + string(engine),
+		Repo:      "sengi-test-" + string(engine),
 		Tag:       "latest",
 		KeepImage: true,
 	}
