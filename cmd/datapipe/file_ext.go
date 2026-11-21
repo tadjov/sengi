@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/tadjov/tusker/internal/ingest"
-	"github.com/tadjov/tusker/internal/ingest/reader"
+	"github.com/tadjov/sengi/internal/ingest"
+	"github.com/tadjov/sengi/internal/ingest/reader"
 )
 
 type FileExt string

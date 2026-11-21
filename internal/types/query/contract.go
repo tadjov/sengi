@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tadjov/tusker/internal/types/language"
-	"github.com/tadjov/tusker/internal/types/operator"
+	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/internal/types/operator"
 )
 
 // Field is an article field a query may search.

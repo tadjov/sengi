@@ -16,12 +16,12 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/judgment"
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/bench/pool"
-	"github.com/tadjov/tusker/internal/bench/report"
-	"github.com/tadjov/tusker/internal/bench/suite"
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/internal/bench/judgment"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/pool"
+	"github.com/tadjov/sengi/internal/bench/report"
+	"github.com/tadjov/sengi/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 type diffRun struct {
@@ -266,15 +266,15 @@ func TestPrintDiff_SameJudgmentsFileInAMovedTrackIsNotAWarning(t *testing.T) {
 	judge := &meta.Judge{Strategy: "keyword"}
 	before := diffRun{
 		runID: "a", kValues: []int{10}, ndcg: map[int]float64{10: 0.6}, threshold: 1, judge: judge,
-		spec:      "/Users/me/projects/news-hunter/tracks/cc-news/fts/spec.yaml",
-		judgments: "/Users/me/projects/news-hunter/tracks/cc-news/fts/trec/annotations.keyword.yaml",
+		spec:      "/Users/me/projects/sengi/tracks/cc-news/fts/spec.yaml",
+		judgments: "/Users/me/projects/sengi/tracks/cc-news/fts/trec/annotations.keyword.yaml",
 	}
 	moved := before
 	moved.runID = "b"
-	moved.spec = "/Users/me/projects/news-hunter-wt/fix-x/tracks/cc-news/fts/spec.yaml"
-	moved.judgments = "/Users/me/projects/news-hunter-wt/fix-x/tracks/cc-news/fts/trec/annotations.keyword.yaml"
+	moved.spec = "/Users/me/projects/sengi-wt/fix-x/tracks/cc-news/fts/spec.yaml"
+	moved.judgments = "/Users/me/projects/sengi-wt/fix-x/tracks/cc-news/fts/trec/annotations.keyword.yaml"
 	swapped := moved
-	swapped.judgments = "/Users/me/projects/news-hunter-wt/fix-x/tracks/cc-news/fts/trec/annotations.bm25.yaml"
+	swapped.judgments = "/Users/me/projects/sengi-wt/fix-x/tracks/cc-news/fts/trec/annotations.bm25.yaml"
 
 	var same bytes.Buffer
 	printDiff(&same, diffReport(before), diffReport(moved))

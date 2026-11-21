@@ -11,9 +11,9 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/ingest/reader"
-	"github.com/tadjov/tusker/internal/types/language"
-	"github.com/tadjov/tusker/pkg/apis/datamapping"
+	"github.com/tadjov/sengi/internal/ingest/reader"
+	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/pkg/apis/datamapping"
 	"gopkg.in/yaml.v3"
 )
 

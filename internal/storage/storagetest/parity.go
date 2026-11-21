@@ -9,11 +9,11 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/types/document"
-	"github.com/tadjov/tusker/internal/types/language"
-	"github.com/tadjov/tusker/internal/types/operator"
-	"github.com/tadjov/tusker/internal/types/query"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/internal/types/operator"
+	"github.com/tadjov/sengi/internal/types/query"
 )
 
 // Engine names the backend an engine-specific expectation belongs to.

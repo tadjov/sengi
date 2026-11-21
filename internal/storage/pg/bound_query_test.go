@@ -9,11 +9,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/dialect"
-	"github.com/tadjov/tusker/internal/bench/engine"
-	"github.com/tadjov/tusker/internal/bench/suite"
-	"github.com/tadjov/tusker/internal/storage/pg"
-	pkgtesting "github.com/tadjov/tusker/pkg/testing"
+	"github.com/tadjov/sengi/internal/bench/dialect"
+	"github.com/tadjov/sengi/internal/bench/engine"
+	"github.com/tadjov/sengi/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/storage/pg"
+	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 const awkwardQueryText = `Ukraine's voters don't trust the "election"`

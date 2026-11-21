@@ -11,13 +11,13 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	apiserver "github.com/tadjov/tusker/internal/api/server"
-	"github.com/tadjov/tusker/internal/apperr"
-	"github.com/tadjov/tusker/internal/storage/es"
-	"github.com/tadjov/tusker/internal/storage/pg/native"
-	"github.com/tadjov/tusker/internal/types/language"
-	"github.com/tadjov/tusker/internal/types/operator"
-	dquery "github.com/tadjov/tusker/internal/types/query"
+	apiserver "github.com/tadjov/sengi/internal/api/server"
+	"github.com/tadjov/sengi/internal/apperr"
+	"github.com/tadjov/sengi/internal/storage/es"
+	"github.com/tadjov/sengi/internal/storage/pg/native"
+	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/internal/types/operator"
+	dquery "github.com/tadjov/sengi/internal/types/query"
 )
 
 // The capabilities the real searchers declare, so a change to either shows up

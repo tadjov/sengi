@@ -1,7 +1,7 @@
 package reader
 
 import (
-	"github.com/tadjov/tusker/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/document"
 )
 
 type Mapper interface {

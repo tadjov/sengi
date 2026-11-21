@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/metrics"
+	"github.com/tadjov/sengi/internal/bench/metrics"
 )
 
 // fakeVectorStore returns canned vectors so the scoring logic can be tested

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/tadjov/tusker/internal/embedding"
+	"github.com/tadjov/sengi/internal/embedding"
 )
 
 type recordingClient struct {

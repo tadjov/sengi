@@ -11,7 +11,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/tadjov/tusker/internal/apperr"
+	"github.com/tadjov/sengi/internal/apperr"
 )
 
 type OllamaConfig func(client *OllamaClient)

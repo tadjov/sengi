@@ -8,12 +8,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/tadjov/tusker/internal/types/language"
+	"github.com/tadjov/sengi/internal/types/language"
 )
 
 // DataMapper defines field mapping configuration for data imports
 // +schema:root=true
-// +schema:group=tusker.sh
+// +schema:group=sengi.sh
 // +schema:version=v1
 type DataMapper struct {
 	// Kind is the resource type identifier

@@ -3,10 +3,10 @@ package dto
 import (
 	"fmt"
 
-	"github.com/tadjov/tusker/internal/apperr"
-	"github.com/tadjov/tusker/internal/types/language"
-	"github.com/tadjov/tusker/internal/types/operator"
-	"github.com/tadjov/tusker/internal/types/query"
+	"github.com/tadjov/sengi/internal/apperr"
+	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/internal/types/operator"
+	"github.com/tadjov/sengi/internal/types/query"
 )
 
 // parseLanguage returns the default language for an empty value. An unknown

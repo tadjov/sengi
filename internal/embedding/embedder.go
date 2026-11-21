@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/types/document"
+	"github.com/tadjov/sengi/internal/types/document"
 )
 
 // DefaultDim is Qwen3-Embedding-0.6B's native width.

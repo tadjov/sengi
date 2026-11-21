@@ -6,10 +6,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/tadjov/tusker/internal/storage"
-	"github.com/tadjov/tusker/internal/storage/es"
-	"github.com/tadjov/tusker/internal/storage/pg"
-	"github.com/tadjov/tusker/pkg/config/env"
+	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/storage/es"
+	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/pkg/config/env"
 )
 
 type StorageConfig struct {

@@ -9,8 +9,8 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/storage"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 // VectorStrategy grades a query's pool as exact search's top ten: the pool docs

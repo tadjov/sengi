@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/tusker/internal/ingest/reader"
+	"github.com/tadjov/sengi/internal/ingest/reader"
 	"gopkg.in/yaml.v3"
 )
 
@@ -37,7 +37,7 @@ type TestSuite struct {
 }
 
 // Corpus records the dataset the suite targets. Lets a report attest "this
-// was scored against the news_hunter_articles index, snapshot 2026-05-10".
+// was scored against the sengi_articles index, snapshot 2026-05-10".
 type Corpus struct {
 	Name       string `yaml:"name"`
 	Source     string `yaml:"source,omitempty"`

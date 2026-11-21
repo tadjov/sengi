@@ -9,9 +9,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/tusker/internal/bench/meta"
-	"github.com/tadjov/tusker/internal/bench/report"
-	"github.com/tadjov/tusker/internal/bench/version"
+	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/report"
+	"github.com/tadjov/sengi/internal/bench/version"
 )
 
 func writeCleanReport(t *testing.T, tr lineageTrack, runID string, incomplete ...string) string {

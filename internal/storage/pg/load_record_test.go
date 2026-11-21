@@ -3,7 +3,7 @@ package pg
 import (
 	"testing"
 
-	pkgtesting "github.com/tadjov/tusker/pkg/testing"
+	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 // The records match what the Postgres loader stores in corpus_load.
