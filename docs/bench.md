@@ -577,7 +577,7 @@ Key flags:
 - `--concurrency N`: parallel Grade calls (per-doc mode)
 - `--allow-unjudged`: exit 0 even when some pooled docs are left unjudged. A query with no usable terms still fails the run
 - `--force`: for `manual` only, rewrite the placeholders from scratch. Without it, `manual` keeps every existing hand grade, adds `-1` placeholders for new pool docs, and refuses a file another judge wrote
-- `--carry-over <annotations> --carry-over-pool <pool>`: after a re-pool, reuse the old grades and grade only new docs. A grade is reused when the judge and the query's text, category and filters are unchanged. Take the old pool from git (`git show <commit>:<track>/trec/pool.yaml`). Batched judges and `bm25`, `vector`, `hybrid` refuse it. The new file records where its grades came from under `carried_over`
+- `--carry-over <annotations> --carry-over-pool <pool>`: after a re-pool, reuse the old grades and grade only new docs. A grade is reused when the judge and the query's text, category and filters are unchanged. A pool records the canonical package its engines had loaded under `meta.canonical`, and carry-over refuses when the two pools' hashes differ. Take the old pool from git (`git show <commit>:<track>/trec/pool.yaml`). Batched judges and `bm25`, `vector`, `hybrid` refuse it. The new file records where its grades came from under `carried_over`
 - `--api-base URL`: the API `claude-api` or `jev` calls (defaults `https://api.anthropic.com`, `https://api.typesafe.ai`)
 
 `--strategy jev` grades with TypeSafe's Jev (`POST /v1/systemone`), a non-Anthropic cross-judge of the LLM judge, so it must grade exactly what the LLM judge graded:

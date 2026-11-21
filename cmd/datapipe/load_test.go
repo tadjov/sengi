@@ -50,7 +50,7 @@ func TestLoad(t *testing.T) {
 				embeddings := writeEmbeddingsPackage(t, root, canonical, articles, nil)
 
 				err := execDatapipe(t, db, "load", "--engine", string(engine),
-					"--canonical", canonical.location, "--embeddings", embeddings.location, "--batch-size", "500")
+					"--canonical", canonical.location, "--embeddings", embeddings.location, "--batch-size", "500", "--concurrency", "2")
 				require.NoError(t, err)
 
 				stored := readLoadedArticles(t, db, articles[0].ID, articles[1_999].ID)
@@ -66,6 +66,7 @@ func TestLoad(t *testing.T) {
 				assert.Equal(t, &storage.PackageRef{Name: "fixture-embeddings", Version: "lead-v1-1024-test", ResourceHash: embeddings.resourceHash}, written[0].Embeddings)
 				assert.Equal(t, loadFixtureModelTag, written[0].ModelTag)
 				assert.Equal(t, int64(2_000), written[0].Vectors)
+				assert.Equal(t, 2, written[0].Concurrency)
 			})
 
 			t.Run("loads a JSONL canonical package", func(t *testing.T) {

@@ -26,16 +26,20 @@ import (
 	"github.com/tadjov/tusker/pkg/config/env"
 )
 
-const defaultLoadBatchSize = 5_000
+const (
+	defaultLoadBatchSize   = 1_000
+	defaultLoadConcurrency = 1
+)
 
 type loadOptions struct {
-	Engine     string
-	Canonical  string
-	Embeddings string
-	SkipIndex  bool
-	Trial      bool
-	BatchSize  int
-	RecordsDir string
+	Engine      string
+	Canonical   string
+	Embeddings  string
+	SkipIndex   bool
+	Trial       bool
+	BatchSize   int
+	Concurrency int
+	RecordsDir  string
 }
 
 func newLoadCmd() *cobra.Command {
@@ -63,6 +67,7 @@ paradedb and tiger, ES_ADDRESSES and ES_INDEX_NAME for es.`,
 	flags.BoolVar(&opts.SkipIndex, "skip-index", false, "stop after the data: build no index and write no load record")
 	flags.BoolVar(&opts.Trial, "trial", false, "accept an embeddings package from a --limit trial")
 	flags.IntVar(&opts.BatchSize, "batch-size", defaultLoadBatchSize, "rows per COPY or bulk request, the same on every engine")
+	flags.IntVar(&opts.Concurrency, "concurrency", defaultLoadConcurrency, "batches written at once: COPY connections on Postgres, bulk requests in flight on Elasticsearch")
 	flags.StringVar(&opts.RecordsDir, "records-dir", "", "directory for the load record; derived from a local canonical path by default")
 	_ = cmd.MarkFlagRequired("engine")
 	_ = cmd.MarkFlagRequired("canonical")
@@ -98,7 +103,7 @@ func runLoad(ctx context.Context, out io.Writer, opts loadOptions) error {
 	defer release()
 
 	cli.Header(out, "tusker load", inputs.fields(engine, opts)...)
-	record, err := loader.LoadCorpus(ctx, inputs.corpus(ctx), storage.LoadOptions{BatchSize: opts.BatchSize, SkipIndex: opts.SkipIndex})
+	record, err := loader.LoadCorpus(ctx, inputs.corpus(ctx), storage.LoadOptions{BatchSize: opts.BatchSize, Concurrency: opts.Concurrency, SkipIndex: opts.SkipIndex})
 	if err != nil {
 		return fmt.Errorf("load %s: %w", engine, err)
 	}
@@ -325,7 +330,7 @@ func (in *loadInputs) fields(engine storage.Engine, opts loadOptions) []cli.Fiel
 	if opts.SkipIndex {
 		indexes = "skipped"
 	}
-	return append(fields, cli.IntField("batch", opts.BatchSize), cli.Field{Label: "indexes", Value: indexes})
+	return append(fields, cli.IntField("batch", opts.BatchSize), cli.IntField("concurrency", opts.Concurrency), cli.Field{Label: "indexes", Value: indexes})
 }
 
 func (in *loadInputs) Close() {

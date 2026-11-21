@@ -38,19 +38,19 @@ var engineImages = map[storage.Engine]string{
 }
 
 var serverFlags = []string{
-	"-c", "maintenance_work_mem=4GB", "-c", "max_parallel_maintenance_workers=4",
-	"-c", "shared_buffers=1GB", "-c", "effective_cache_size=4GB", "-c", "work_mem=4MB",
-	"-c", "random_page_cost=1.1", "-c", "effective_io_concurrency=200", "-c", "jit=on",
-	"-c", "max_parallel_workers_per_gather=2", "-c", "max_parallel_workers=8",
-	"-c", "wal_buffers=16MB", "-c", "min_wal_size=80MB",
-	"-c", "default_toast_compression=pglz",
+	"-c", "shared_buffers=1536MB", "-c", "effective_cache_size=4608MB",
+	"-c", "maintenance_work_mem=4GB", "-c", "max_parallel_maintenance_workers=3",
+	"-c", "random_page_cost=1.1", "-c", "effective_io_concurrency=200",
+	"-c", "max_wal_size=16GB", "-c", "checkpoint_timeout=30min",
 }
 
 // engineServerFlags mirrors the server-start settings in docker-compose.yml.
 var engineServerFlags = map[storage.Engine][]string{
 	storage.PostgresNative: serverFlags,
 	storage.ParadeDB:       serverFlags,
-	storage.Tiger:          append(slices.Clone(serverFlags), "-c", "pg_textsearch.memory_limit=2GB"),
+	storage.Tiger: append(slices.Clone(serverFlags),
+		"-c", "work_mem=4MB", "-c", "jit=on", "-c", "max_parallel_workers_per_gather=2", "-c", "default_toast_compression=pglz",
+		"-c", "pg_textsearch.memory_limit=2GB"),
 }
 
 func NewPGContainer(ctx context.Context, cfg PGConfig) (*PGContainer, error) {

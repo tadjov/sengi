@@ -8,17 +8,21 @@ import (
 	"fmt"
 	"iter"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/elastic/go-elasticsearch/v8/typedapi/core/bulk"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/google/uuid"
 	"github.com/tadjov/tusker/internal/embedding"
 	"github.com/tadjov/tusker/internal/storage"
 	"github.com/tadjov/tusker/internal/types/document"
 	"github.com/tadjov/tusker/internal/types/language"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -115,7 +119,7 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 
 	var written writeCounts
 	if err := timed("bulk", func() (err error) {
-		written, err = l.writeDocuments(ctx, c, opts.BatchSize)
+		written, err = l.writeDocuments(ctx, c, opts)
 		return err
 	}); err != nil {
 		return storage.LoadRecord{}, err
@@ -147,6 +151,7 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		Articles:      written.articles,
 		Vectors:       written.vectors,
 		BatchSize:     opts.BatchSize,
+		Concurrency:   opts.Concurrency,
 		Stages:        stages,
 		Settings:      settings,
 	}
@@ -163,6 +168,9 @@ func checkCorpus(c storage.Corpus, opts storage.LoadOptions) error {
 	}
 	if opts.BatchSize <= 0 {
 		return fmt.Errorf("batch size %d: want a positive number of articles per bulk request", opts.BatchSize)
+	}
+	if opts.Concurrency <= 0 {
+		return fmt.Errorf("concurrency %d: want at least 1 bulk request in flight", opts.Concurrency)
 	}
 	if opts.SkipIndex {
 		return errors.New("elasticsearch builds its search structures as it writes, so it cannot skip indexing")
@@ -292,8 +300,8 @@ func (l *CorpusLoader) searchSegments(ctx context.Context) (int, error) {
 	return segments, nil
 }
 
-// declaredSettings reads the settings back from the index, not from the request.
-func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string, error) {
+// indexSettings reads the index's flat settings back from Elasticsearch, not from the request.
+func (l *CorpusLoader) indexSettings(ctx context.Context) (map[string]any, error) {
 	index := l.client.indexName
 	res, err := l.client.typed.Indices.GetSettings().Index(index).FlatSettings(true).Perform(ctx)
 	if err != nil {
@@ -309,6 +317,16 @@ func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string,
 	if err := json.NewDecoder(res.Body).Decode(&byIndex); err != nil {
 		return nil, fmt.Errorf("parse settings of %s: %w", index, err)
 	}
+	return byIndex[index].Settings, nil
+}
+
+// declaredSettings reads the settings back from the index, not from the request.
+func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string, error) {
+	index := l.client.indexName
+	declared, err := l.indexSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	settings := make(map[string]string)
 	similarityPrefix := "index.similarity." + textSimilarity + "."
@@ -320,7 +338,7 @@ func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string,
 		similarityPrefix + "k1":    "similarity.k1",
 		similarityPrefix + "b":     "similarity.b",
 	} {
-		value, ok := byIndex[index].Settings[key].(string)
+		value, ok := declared[key].(string)
 		if !ok {
 			return nil, fmt.Errorf("settings of %s do not declare %s", index, key)
 		}
@@ -351,7 +369,29 @@ func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string,
 		return nil, err
 	}
 	settings["segments"] = strconv.Itoa(segments)
+	if err := l.readNodeSizing(ctx, settings); err != nil {
+		return nil, err
+	}
 	return settings, nil
+}
+
+// readNodeSizing records the heap and processors the node sized itself to from its container's limits.
+func (l *CorpusLoader) readNodeSizing(ctx context.Context, settings map[string]string) error {
+	info, err := l.client.typed.Nodes.Info().Metric("os,jvm").Do(ctx)
+	if err != nil {
+		return fmt.Errorf("read node info: %w", err)
+	}
+	if len(info.Nodes) != 1 {
+		return fmt.Errorf("node info: want one node, got %d", len(info.Nodes))
+	}
+	for _, node := range info.Nodes {
+		if node.Os == nil || node.Os.AllocatedProcessors == nil || node.Jvm == nil {
+			return errors.New("node info reports no allocated processors or JVM")
+		}
+		settings["node.allocated_processors"] = strconv.Itoa(*node.Os.AllocatedProcessors)
+		settings["node.heap_max_bytes"] = strconv.FormatInt(node.Jvm.Mem.HeapMaxInBytes, 10)
+	}
+	return nil
 }
 
 func (l *CorpusLoader) writeLoadRecord(ctx context.Context, record storage.LoadRecord) error {
@@ -378,7 +418,40 @@ type writeCounts struct {
 }
 
 // writeDocuments tries every article before failing on the rejected ones.
-func (l *CorpusLoader) writeDocuments(ctx context.Context, c storage.Corpus, batchSize int) (writeCounts, error) {
+func (l *CorpusLoader) writeDocuments(ctx context.Context, c storage.Corpus, opts storage.LoadOptions) (writeCounts, error) {
+	tally := &bulkTally{index: l.client.indexName, failures: &DocumentsFailedError{Index: l.client.indexName}}
+	group, ctx := errgroup.WithContext(ctx)
+	batches := make(chan documentBatch, opts.Concurrency)
+	group.Go(func() error {
+		defer close(batches)
+		return batchDocuments(ctx, c, opts, batches)
+	})
+	for range opts.Concurrency {
+		group.Go(func() error {
+			for batch := range batches {
+				if err := l.sendBatch(ctx, batch, tally); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	}
+	if err := group.Wait(); err != nil {
+		return tally.counts, err
+	}
+	if tally.failures.Failed > 0 {
+		return tally.counts, tally.failures
+	}
+	return tally.counts, nil
+}
+
+type documentBatch struct {
+	ids  []uuid.UUID
+	docs []loadedDocument
+}
+
+// batchDocuments pairs each article with its vector in corpus order before any batch leaves.
+func batchDocuments(ctx context.Context, c storage.Corpus, opts storage.LoadOptions, batches chan<- documentBatch) error {
 	vectors := vectorZip{modelTag: c.ModelTag}
 	if c.Vectors != nil {
 		next, stop := iter.Pull2(c.Vectors)
@@ -386,66 +459,51 @@ func (l *CorpusLoader) writeDocuments(ctx context.Context, c storage.Corpus, bat
 		vectors.next = next
 	}
 
-	var batch bulkBatch
-	var counts writeCounts
-	failures := &DocumentsFailedError{Index: l.client.indexName}
-	var reported int64
-	flush := func() error {
-		if len(batch.ids) == 0 {
+	var batch documentBatch
+	send := func() error {
+		select {
+		case batches <- batch:
+			batch = documentBatch{}
 			return nil
+		case <-ctx.Done():
+			return ctx.Err()
 		}
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if err := l.sendBatch(ctx, &batch, &counts, failures); err != nil {
-			return err
-		}
-		if counts.articles-reported >= storage.ProgressRows {
-			slog.Info("corpus load progress", "index", l.client.indexName, "articles", counts.articles)
-			reported = counts.articles
-		}
-		batch = bulkBatch{}
-		return nil
 	}
-
 	position := 0
 	for article, err := range c.Articles {
 		if err != nil {
-			return counts, fmt.Errorf("read article %d: %w", position, err)
+			return fmt.Errorf("read article %d: %w", position, err)
 		}
 		doc, err := documentFor(article, c.Language)
 		if err != nil {
-			return counts, fmt.Errorf("article %d: %w", position, err)
+			return fmt.Errorf("article %d: %w", position, err)
 		}
 		vector, err := vectors.vectorFor(article.ID, position)
 		if err != nil {
-			return counts, err
+			return err
 		}
 		if vector != nil {
 			doc.Embedding, doc.EmbeddingModel = vector, c.ModelTag
 		}
 		position++
 
-		if err := batch.add(article.ID, doc); err != nil {
-			failures.add(article.ID, err.Error())
-			continue
-		}
-		if len(batch.ids) == batchSize {
-			if err := flush(); err != nil {
-				return counts, err
+		batch.ids = append(batch.ids, article.ID)
+		batch.docs = append(batch.docs, doc)
+		if len(batch.ids) == opts.BatchSize {
+			if err := send(); err != nil {
+				return err
 			}
 		}
 	}
-	if err := flush(); err != nil {
-		return counts, err
+	if len(batch.ids) > 0 {
+		if err := send(); err != nil {
+			return err
+		}
 	}
 	if id, ok := vectors.leftover(); ok {
-		return counts, fmt.Errorf("vectors outlast the %d articles, starting with %s", position, id)
+		return fmt.Errorf("vectors outlast the %d articles, starting with %s", position, id)
 	}
-	if failures.Failed > 0 {
-		return counts, failures
-	}
-	return counts, nil
+	return nil
 }
 
 // vectorZip pairs by position; a trial package may cover only a prefix of the corpus.
@@ -516,27 +574,84 @@ func (b *bulkBatch) add(id uuid.UUID, doc loadedDocument) error {
 	return nil
 }
 
-func (l *CorpusLoader) sendBatch(ctx context.Context, batch *bulkBatch, counts *writeCounts, failures *DocumentsFailedError) error {
-	res, err := l.client.typed.Bulk().Index(l.client.indexName).Raw(&batch.body).Do(ctx)
+const bulkRetries = 6
+
+// bulk resends a request Elasticsearch turned away whole for indexing pressure, which stored nothing.
+func (l *CorpusLoader) bulk(ctx context.Context, payload []byte) (*bulk.Response, error) {
+	for attempt := 0; ; attempt++ {
+		res, err := l.client.typed.Bulk().Index(l.client.indexName).Raw(bytes.NewReader(payload)).Do(ctx)
+		var esErr *types.ElasticsearchError
+		if attempt == bulkRetries || !errors.As(err, &esErr) || esErr.Status != http.StatusTooManyRequests {
+			return res, err
+		}
+		// Randomised exponential backoff, as Elastic's indexing guide asks of a client that sees 429.
+		backoff := rand.N(100 * time.Millisecond << attempt)
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
+
+// sendBatch encodes on the sending goroutine, so a document that cannot be encoded fails alone.
+func (l *CorpusLoader) sendBatch(ctx context.Context, batch documentBatch, tally *bulkTally) error {
+	var body bulkBatch
+	var rejected []DocumentFailure
+	for i, doc := range batch.docs {
+		if err := body.add(batch.ids[i], doc); err != nil {
+			rejected = append(rejected, DocumentFailure{ID: batch.ids[i], Reason: err.Error()})
+		}
+	}
+	if len(body.ids) == 0 {
+		tally.merge(writeCounts{}, rejected)
+		return nil
+	}
+	res, err := l.bulk(ctx, body.body.Bytes())
 	if err != nil {
-		return fmt.Errorf("bulk write %d articles from %s: %w", len(batch.ids), batch.ids[0], err)
+		return fmt.Errorf("bulk write %d articles from %s: %w", len(body.ids), body.ids[0], err)
 	}
-	if len(res.Items) != len(batch.ids) {
-		return fmt.Errorf("bulk write of %d articles from %s answered %d items", len(batch.ids), batch.ids[0], len(res.Items))
+	if len(res.Items) != len(body.ids) {
+		return fmt.Errorf("bulk write of %d articles from %s answered %d items", len(body.ids), body.ids[0], len(res.Items))
 	}
+	var stored writeCounts
 	for i, item := range res.Items {
 		for _, result := range item {
 			if result.Error != nil || result.Status >= 300 {
-				failures.add(batch.ids[i], itemFailureReason(result))
+				rejected = append(rejected, DocumentFailure{ID: body.ids[i], Reason: itemFailureReason(result)})
 				continue
 			}
-			counts.articles++
-			if batch.hasVectors[i] {
-				counts.vectors++
+			stored.articles++
+			if body.hasVectors[i] {
+				stored.vectors++
 			}
 		}
 	}
+	tally.merge(stored, rejected)
 	return nil
+}
+
+// bulkTally adds up the bulk requests in flight at once.
+type bulkTally struct {
+	index    string
+	mu       sync.Mutex
+	counts   writeCounts
+	failures *DocumentsFailedError
+	reported int64
+}
+
+func (t *bulkTally) merge(stored writeCounts, rejected []DocumentFailure) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.counts.articles += stored.articles
+	t.counts.vectors += stored.vectors
+	for _, f := range rejected {
+		t.failures.add(f.ID, f.Reason)
+	}
+	if t.counts.articles-t.reported >= storage.ProgressRows {
+		slog.Info("corpus load progress", "index", t.index, "articles", t.counts.articles)
+		t.reported = t.counts.articles
+	}
 }
 
 func itemFailureReason(item types.ResponseItem) string {
