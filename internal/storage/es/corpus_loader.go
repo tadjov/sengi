@@ -90,26 +90,13 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		return storage.LoadRecord{}, fmt.Errorf("load corpus into %s: %w", index, err)
 	}
 
-	startedAt := time.Now().UTC()
+	load := storage.StartLoad("index", index)
 	info, err := l.client.typed.Info().Do(ctx)
 	if err != nil {
 		return storage.LoadRecord{}, fmt.Errorf("read elasticsearch version: %w", err)
 	}
 
-	var stages []storage.StageTiming
-	timed := func(name string, stage func() error) error {
-		slog.Info("corpus load stage started", "index", index, "stage", name)
-		began := time.Now()
-		if err := stage(); err != nil {
-			return err
-		}
-		seconds := time.Since(began).Seconds()
-		stages = append(stages, storage.StageTiming{Name: name, Seconds: seconds})
-		slog.Info("corpus load stage finished", "index", index, "stage", name, "seconds", seconds)
-		return nil
-	}
-
-	if err := timed("create_index", func() error { return l.createIndex(ctx, c.Language) }); err != nil {
+	if err := load.Stage("create_index", func() error { return l.createIndex(ctx, c.Language) }); err != nil {
 		return storage.LoadRecord{}, err
 	}
 	defer func() {
@@ -119,19 +106,19 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	}()
 
 	var written writeCounts
-	if err := timed("bulk", func() (err error) {
+	if err := load.Stage("bulk", func() (err error) {
 		written, err = l.writeDocuments(ctx, c, opts)
 		return err
 	}); err != nil {
 		return storage.LoadRecord{}, err
 	}
-	if err := timed("refresh", func() error {
+	if err := load.Stage("refresh", func() error {
 		defer storage.WatchStage(ctx, []any{"index", index, "stage", "refresh"}, nil)()
 		return l.refresh(ctx, written.articles)
 	}); err != nil {
 		return storage.LoadRecord{}, err
 	}
-	if err := timed("force_merge", func() error {
+	if err := load.Stage("force_merge", func() error {
 		defer storage.WatchStage(ctx, []any{"index", index, "stage", "force_merge"}, nil)()
 		return l.forceMerge(ctx)
 	}); err != nil {
@@ -145,7 +132,6 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	record = storage.LoadRecord{
 		Engine:        string(storage.ES),
 		EngineVersion: info.Version.Int,
-		StartedAt:     startedAt,
 		Canonical:     c.Canonical,
 		Embeddings:    c.Embeddings,
 		ModelTag:      c.ModelTag,
@@ -153,10 +139,9 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		Vectors:       written.vectors,
 		BatchSize:     opts.BatchSize,
 		Concurrency:   opts.Concurrency,
-		Stages:        stages,
 		Settings:      settings,
 	}
-	record.Finish(time.Now().UTC())
+	load.Finish(&record)
 	if err := l.writeLoadRecord(ctx, record); err != nil {
 		return storage.LoadRecord{}, err
 	}

@@ -59,9 +59,3 @@ type LoadRecord struct {
 	Stages        []StageTiming     `json:"stages"`
 	Settings      map[string]string `json:"settings"`
 }
-
-// Finish stamps the end of the load and its wall-clock total since StartedAt.
-func (r *LoadRecord) Finish(at time.Time) {
-	r.FinishedAt = at
-	r.TotalSeconds = at.Sub(r.StartedAt).Seconds()
-}
