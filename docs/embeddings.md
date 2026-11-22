@@ -114,7 +114,9 @@ also records `limit`.
 The version is a name you choose with `--version`, `v1` by default, and it is the
 folder the package lands in. `canonical.resourceHash` names the canonical file the
 vectors were made from, and the input package's resource is checked against its
-`bytes` and `hash` before anything is embedded.
+`bytes` and `hash` before anything is embedded. A package cut to fewer dimensions by
+`datapipe embed --truncate-to` also records `derivedFrom {name, version, tag, resourceHash}`,
+the package it was cut from.
 
 ### Shrink the upload first
 
@@ -250,6 +252,26 @@ EMBEDDING_BASE_URL=http://<ollama-host>:11434 go run ./cmd/datapipe embed \
 
 Go-made vectors share the Kaggle tag, so a bench run must use the thesis package; nothing
 refuses pairing them with Hugging Face query vectors.
+
+`datapipe embed --embeddings` makes a narrower package from a wider one without a model
+run. Qwen3-Embedding is Matryoshka-trained: the first N dimensions of its vector,
+L2-renormalised, are its N-dim embedding, the same cut `EMBEDDING_DIM` makes for queries.
+
+```bash
+go run ./cmd/datapipe embed \
+  --embeddings datasets/<ds>/embeddings/qwen3-embedding-0.6b@1024/v1/datapackage.json --truncate-to 512
+# writes datasets/<ds>/embeddings/qwen3-embedding-0.6b@512/v1/
+```
+
+- The source's resource is verified first, and N must be below its `dim`. Ids, query texts
+  and row order are kept.
+- The descriptor is the source's with `dim` N, tag `<model>@N`, `producedBy {tool: "datapipe embed"}`
+  and `derivedFrom`. `canonical` is unchanged, so `datapipe load` takes the package with the
+  same canonical package.
+- `--version` (default `v1`) is the folder under `<model>@N/` and must not exist. `--limit`
+  and `--hf-model` are refused; `--batch-size` and `--max-tokens` are not used.
+- A track's `trec/query-vectors/` package is written to `--out <dir>`, which must not exist.
+  It keeps `suite` and has no version.
 
 ### Query vectors
 
