@@ -4,10 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"regexp"
 	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
@@ -125,14 +123,8 @@ func (r UniqueRule) Values(article document.Article) []string {
 }
 
 func (r UniqueRule) validate(mapped map[string]FieldMapping) error {
-	if !uniqueRuleNamePattern.MatchString(r.Name) {
-		return fmt.Errorf("rule name %q must be lowercase kebab-case", r.Name)
-	}
 	if r.Name == URLRule {
 		return fmt.Errorf("rule name %q is reserved for records that repeat a kept article's url", r.Name)
-	}
-	if len(r.Fields) == 0 {
-		return fmt.Errorf("rule %q lists no fields", r.Name)
 	}
 	seen := make(map[string]bool, len(r.Fields))
 	for _, field := range r.Fields {
@@ -259,31 +251,9 @@ func IsListTarget(target string) bool {
 	return targets[target].list
 }
 
+// Validate checks the rules that span fields, on a mapping whose shape the
+// schema has already accepted.
 func (dm *DataMapper) Validate() error {
-	if dm.Kind != "DataMapper" {
-		return fmt.Errorf("kind %q, want %q", dm.Kind, "DataMapper")
-	}
-	if dm.Version != "v1" {
-		return fmt.Errorf("version %q, want %q", dm.Version, "v1")
-	}
-	if n := utf8.RuneCountInString(dm.Metadata.Name); n == 0 || n > 100 {
-		return fmt.Errorf("metadata.name must be 1 to 100 characters, got %d", n)
-	}
-	if n := utf8.RuneCountInString(dm.Metadata.Description); n > 500 {
-		return fmt.Errorf("metadata.description must be at most 500 characters, got %d", n)
-	}
-	if len(dm.Dataset) > 50 || !datasetPattern.MatchString(dm.Dataset) {
-		return fmt.Errorf("dataset %q must match %s and be at most 50 characters", dm.Dataset, datasetPattern)
-	}
-	if _, err := dm.Constants.ResolvedLanguage(); err != nil {
-		return err
-	}
-	if _, err := dm.Output.ResolvedFormat(); err != nil {
-		return err
-	}
-	if len(dm.FieldMappings) == 0 {
-		return errors.New("at least one field mapping is required")
-	}
 	byTarget := make(map[string]FieldMapping, len(dm.FieldMappings))
 	for i, fm := range dm.FieldMappings {
 		if err := fm.validate(); err != nil {
@@ -310,9 +280,6 @@ func (dm *DataMapper) Validate() error {
 }
 
 func (fm FieldMapping) validate() error {
-	if n := utf8.RuneCountInString(fm.Source); n == 0 || n > 100 {
-		return fmt.Errorf("source must be 1 to 100 characters, got %d", n)
-	}
 	sourceType, err := fm.ResolvedSourceType()
 	if err != nil {
 		return err
@@ -344,12 +311,6 @@ const ExtraTargetPrefix = "Metadata.Extra."
 
 var requiredTargets = []string{TargetURL, TargetTitle}
 
-var (
-	datasetPattern        = regexp.MustCompile(`^[a-z0-9-_]+$`)
-	extraKeyPattern       = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
-	uniqueRuleNamePattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
-)
-
 // targetSpec with nil sourceTypes accepts any source type.
 type targetSpec struct {
 	sourceTypes []SourceType
@@ -377,16 +338,10 @@ var targets = map[string]targetSpec{
 }
 
 func lookupTarget(target string) (targetSpec, error) {
-	if target == "" {
-		return targetSpec{}, errors.New("must have target defined")
-	}
 	if spec, ok := targets[target]; ok {
 		return spec, nil
 	}
-	if key, ok := strings.CutPrefix(target, ExtraTargetPrefix); ok {
-		if !extraKeyPattern.MatchString(key) {
-			return targetSpec{}, fmt.Errorf("target %q needs a key matching %s after %q", target, extraKeyPattern, ExtraTargetPrefix)
-		}
+	if strings.HasPrefix(target, ExtraTargetPrefix) {
 		return targetSpec{}, nil
 	}
 	return targetSpec{}, fmt.Errorf("unknown target %q", target)

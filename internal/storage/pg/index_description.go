@@ -11,8 +11,7 @@ import (
 	"github.com/tadjov/sengi/internal/storage"
 )
 
-// searchExtensions are the extensions whose version changes what a search
-// query computes; utility extensions such as uuid-ossp are left out.
+// searchExtensions are the extensions whose version changes what a search query computes.
 var searchExtensions = []string{"vector", "pg_search", "pg_textsearch", "pg_trgm", "fuzzystrmatch"}
 
 var describedTables = []string{"articles", "article_embeddings"}

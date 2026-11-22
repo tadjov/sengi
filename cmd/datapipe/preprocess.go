@@ -16,7 +16,6 @@ import (
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/ingest/datamapping"
-	"github.com/tadjov/sengi/internal/ingest/reader"
 )
 
 type preprocessConfig struct {
@@ -101,7 +100,7 @@ func loadPreprocessMapping(path string) (*datamapping.DataMapper, error) {
 		return nil, fmt.Errorf("open mapping config: %w", err)
 	}
 	defer f.Close()
-	mapping, err := reader.LoadMapping(f)
+	mapping, err := datamapping.Load(f)
 	if err != nil {
 		return nil, fmt.Errorf("load mapping %s: %w", path, err)
 	}

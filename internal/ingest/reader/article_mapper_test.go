@@ -1,11 +1,13 @@
 package reader_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tadjov/sengi/internal/ingest/datamapping"
 	"github.com/tadjov/sengi/internal/ingest/reader"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
@@ -72,7 +74,7 @@ func everyTargetRecord() map[string]string {
 
 func newMapper(t *testing.T, doc string) *reader.ArticleMapper {
 	t.Helper()
-	mapping, err := loadMapping(doc)
+	mapping, err := datamapping.Load(strings.NewReader(doc))
 	require.NoError(t, err)
 	lang, err := mapping.Constants.ResolvedLanguage()
 	require.NoError(t, err)

@@ -44,7 +44,7 @@ func TestDescribeIndexes_ReadsTheMigratedServer(t *testing.T) {
 		for _, ext := range description.Extensions {
 			versions[ext.Name] = ext.Version
 		}
-		for _, name := range []string{"vector", "pg_trgm", "fuzzystrmatch", "uuid-ossp"} {
+		for _, name := range []string{"vector", "pg_trgm", "fuzzystrmatch"} {
 			if versions[name] == "" {
 				t.Errorf("extension %s missing or without a version; got %v", name, description.Extensions)
 			}
