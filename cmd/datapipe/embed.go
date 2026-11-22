@@ -27,13 +27,14 @@ import (
 )
 
 const (
-	embeddingsFile     = "embeddings.parquet"
-	parquetMediaType   = "application/vnd.apache.parquet"
-	batchesPerChunk    = 64
-	embedProducingTool = "datapipe embed"
-	leadRecipe         = "lead-v1"
-	lastTokenPooling   = "last_token"
-	defaultMaxTokens   = 512
+	embeddingsFile        = "embeddings.parquet"
+	parquetMediaType      = "application/vnd.apache.parquet"
+	batchesPerChunk       = 64
+	embedProducingTool    = "datapipe embed"
+	leadRecipe            = "lead-v1"
+	lastTokenPooling      = "last_token"
+	defaultMaxTokens      = 512
+	defaultEmbedBatchSize = 64
 )
 
 type embedOptions struct {
@@ -67,7 +68,7 @@ EMBEDDING_DIM, as the search API reads them.`,
 	flags := cmd.Flags()
 	flags.StringVar(&opts.Canonical, "canonical", "", "local canonical package descriptor under datasets/<ds>/canonical/<version>/")
 	flags.StringVar(&opts.Version, "version", datapackage.DefaultVersion, "embeddings package version, a folder under embeddings/<tag-dir>/ that must not exist yet")
-	flags.IntVar(&opts.BatchSize, "batch-size", embedding.DefaultBatchSize, "articles per embedding request")
+	flags.IntVar(&opts.BatchSize, "batch-size", defaultEmbedBatchSize, "articles per embedding request")
 	flags.IntVar(&opts.MaxTokens, "max-tokens", defaultMaxTokens, "input tokens per article, sent to Ollama as num_ctx; a longer lead is cut")
 	flags.StringVar(&opts.HuggingFaceModel, "hf-model", "", "Hugging Face repo the model is built from; required unless EMBEDDING_MODEL is "+embedding.DefaultModel)
 	flags.IntVar(&opts.Limit, "limit", 0, "embed only the first N rows, as a trial with its own --version; 0 embeds every row")
@@ -152,16 +153,15 @@ func prepareEmbeddings(ctx context.Context, opts embedOptions) (embeddingsRun, e
 		return embeddingsRun{}, err
 	}
 	embedder := embedding.NewEmbedder(api.client,
-		embedding.WithExecutorModel(api.model),
+		embedding.WithModel(api.model),
 		embedding.WithDim(api.dim),
-		embedding.WithBatchSize(opts.BatchSize),
 		embedding.WithDocumentOptions(map[string]any{"num_ctx": opts.MaxTokens}),
 	)
 	tagDir := filepath.Join(embeddingsDir, strings.ReplaceAll(embedder.Model(), ":", "-"))
 	if err := refuseExistingVersion(filepath.Join(tagDir, opts.Version)); err != nil {
 		return embeddingsRun{}, err
 	}
-	model, err := api.describer.DescribeModel(ctx, api.model)
+	model, err := api.client.DescribeModel(ctx, api.model)
 	if err != nil {
 		return embeddingsRun{}, err
 	}
@@ -200,10 +200,9 @@ func (o embedOptions) validate() error {
 }
 
 type embeddingAPI struct {
-	client    embedding.Client
-	describer embedding.ModelDescriber
-	model     string
-	dim       int
+	client *embedding.OllamaClient
+	model  string
+	dim    int
 }
 
 func embeddingAPIFromEnv() (embeddingAPI, error) {
@@ -218,7 +217,7 @@ func embeddingAPIFromEnv() (embeddingAPI, error) {
 	if err != nil {
 		return embeddingAPI{}, fmt.Errorf("embedding client for %s: %w", cfg.BaseURL, err)
 	}
-	return embeddingAPI{client: client, describer: client, model: cmp.Or(cfg.Model, embedding.DefaultModel), dim: cfg.Dim}, nil
+	return embeddingAPI{client: client, model: cmp.Or(cfg.Model, embedding.DefaultModel), dim: cfg.Dim}, nil
 }
 
 func huggingFaceModelOf(model, flagValue string) (string, error) {

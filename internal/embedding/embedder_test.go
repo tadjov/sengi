@@ -155,7 +155,7 @@ func oneHot(width, position int) []float32 {
 	return v
 }
 
-func TestEmbedDocuments_ReturnsEachArticlesVectorInOrderAcrossBatches(t *testing.T) {
+func TestEmbedDocuments_SendsOneRequestAndReturnsEachArticlesVectorInOrder(t *testing.T) {
 	articles := storyArticles(5)
 	vectorOf := map[string][]float32{
 		"Storm 0 hits Lead 0": oneHot(5, 0),
@@ -172,16 +172,14 @@ func TestEmbedDocuments_ReturnsEachArticlesVectorInOrderAcrossBatches(t *testing
 		return vectors
 	})
 
-	vecs, err := NewEmbedder(client, WithDim(5), WithBatchSize(2)).EmbedDocuments(context.Background(), articles)
+	vecs, err := NewEmbedder(client, WithDim(5)).EmbedDocuments(context.Background(), articles)
 	if err != nil {
 		t.Fatalf("EmbedDocuments: %v", err)
 	}
 
-	wantInputs := [][]string{
-		{"Storm 0 hits Lead 0", "Storm 1 hits Lead 1"},
-		{"Storm 2 hits Lead 2", "Storm 3 hits Lead 3"},
-		{"Storm 4 hits Lead 4"},
-	}
+	wantInputs := [][]string{{
+		"Storm 0 hits Lead 0", "Storm 1 hits Lead 1", "Storm 2 hits Lead 2", "Storm 3 hits Lead 3", "Storm 4 hits Lead 4",
+	}}
 	if len(*requests) != len(wantInputs) {
 		t.Fatalf("sent %d requests, want %d: %+v", len(*requests), len(wantInputs), *requests)
 	}
@@ -244,7 +242,7 @@ func TestEmbedDocuments_RefusesAnArticleWithoutALeadBeforeAnyRequest(t *testing.
 		return vectors
 	})
 
-	_, err := NewEmbedder(client, WithDim(4), WithBatchSize(2)).EmbedDocuments(context.Background(), articles)
+	_, err := NewEmbedder(client, WithDim(4)).EmbedDocuments(context.Background(), articles)
 
 	if err == nil || !strings.Contains(err.Error(), articles[4].ID.String()) {
 		t.Errorf("error = %v, want one naming article %s", err, articles[4].ID)
@@ -259,42 +257,25 @@ func TestEmbedDocuments_RefusesABatchAnsweredWithAnotherNumberOfVectors(t *testi
 		name    string
 		vectors int
 	}{
-		{name: "short", vectors: 1},
-		{name: "long", vectors: 3},
+		{name: "short", vectors: 4},
+		{name: "long", vectors: 6},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			articles := storyArticles(5)
 			client, _ := fakeOllamaBatch(t, func(inputs []string) [][]float32 {
-				n := len(inputs)
-				if inputs[0] == "Storm 2 hits Lead 2" {
-					n = tt.vectors
-				}
-				vectors := make([][]float32, n)
+				vectors := make([][]float32, tt.vectors)
 				for i := range vectors {
 					vectors[i] = oneHot(4, 0)
 				}
 				return vectors
 			})
 
-			vecs, err := NewEmbedder(client, WithDim(4), WithBatchSize(2)).EmbedDocuments(context.Background(), articles)
+			vecs, err := NewEmbedder(client, WithDim(4)).EmbedDocuments(context.Background(), articles)
 
-			if err == nil || !strings.Contains(err.Error(), articles[2].ID.String()) {
-				t.Errorf("EmbedDocuments = %d vectors, error %v; want an error naming the batch's first article %s", len(vecs), err, articles[2].ID)
+			if err == nil || !strings.Contains(err.Error(), articles[0].ID.String()) {
+				t.Errorf("EmbedDocuments = %d vectors, error %v; want an error naming the batch's first article %s", len(vecs), err, articles[0].ID)
 			}
 		})
-	}
-}
-
-func TestEmbedDocuments_RefusesABatchSizeBelowOne(t *testing.T) {
-	client, requests := fakeOllamaBatch(t, func(inputs []string) [][]float32 { return nil })
-
-	_, err := NewEmbedder(client, WithBatchSize(0)).EmbedDocuments(context.Background(), storyArticles(1))
-
-	if err == nil {
-		t.Error("EmbedDocuments accepted a batch size of 0")
-	}
-	if len(*requests) != 0 {
-		t.Errorf("sent %d requests, want none", len(*requests))
 	}
 }

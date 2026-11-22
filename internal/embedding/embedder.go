@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -15,14 +14,10 @@ import (
 // DefaultDim is Qwen3-Embedding-0.6B's native width.
 const DefaultDim = 1024
 
-// DefaultBatchSize is the number of documents sent in one embedding request.
-const DefaultBatchSize = 64
-
 // Embedder slices every vector to its width, L2-normalises it, and tags it model@dim.
 type Embedder struct {
 	model           string
 	dim             int
-	batchSize       int
 	documentOptions map[string]any
 
 	client Client
@@ -34,45 +29,38 @@ type Vec struct {
 	ID        uuid.UUID
 }
 
-type EmbedderOption func(executor *Embedder)
+type EmbedderOption func(embedder *Embedder)
 
 func NewEmbedder(client Client, opts ...EmbedderOption) *Embedder {
-	base := &Embedder{
-		model:     DefaultModel,
-		dim:       DefaultDim,
-		batchSize: DefaultBatchSize,
-		client:    client,
+	embedder := &Embedder{
+		model:  DefaultModel,
+		dim:    DefaultDim,
+		client: client,
 	}
 
 	for _, opt := range opts {
-		opt(base)
+		opt(embedder)
 	}
 
-	return base
+	return embedder
 }
 
-func WithExecutorModel(model string) EmbedderOption {
-	return func(executor *Embedder) {
-		executor.model = model
+func WithModel(model string) EmbedderOption {
+	return func(embedder *Embedder) {
+		embedder.model = model
 	}
 }
 
 func WithDim(dim int) EmbedderOption {
-	return func(executor *Embedder) {
-		executor.dim = dim
+	return func(embedder *Embedder) {
+		embedder.dim = dim
 	}
 }
 
-func WithBatchSize(size int) EmbedderOption {
-	return func(executor *Embedder) {
-		executor.batchSize = size
-	}
-}
-
-// WithDocumentOptions sets the model options sent with every document batch, such as Ollama's num_ctx.
+// WithDocumentOptions sets the model options sent with every document request, such as Ollama's num_ctx.
 func WithDocumentOptions(options map[string]any) EmbedderOption {
-	return func(executor *Embedder) {
-		executor.documentOptions = options
+	return func(embedder *Embedder) {
+		embedder.documentOptions = options
 	}
 }
 
@@ -132,48 +120,30 @@ func wrapWithInstruct(task, query string) string {
 	return fmt.Sprintf("Instruct: %s\nQuery:%s", task, query)
 }
 
-// EmbedDocuments embeds each article's lead and returns one vector per article, in order.
-// It refuses an article without a lead before sending any request.
+// EmbedDocuments embeds each article's lead in one request and returns one vector per article, in order.
+// It refuses an article without a lead before sending the request.
 func (e *Embedder) EmbedDocuments(ctx context.Context, articles []document.Article) ([]Vec, error) {
-	if e.batchSize < 1 {
-		return nil, fmt.Errorf("embedding batch size must be at least 1, got %d", e.batchSize)
-	}
-	for _, article := range articles {
-		if article.Lead() == "" {
+	leads := make([]string, len(articles))
+	for i, article := range articles {
+		if leads[i] = article.Lead(); leads[i] == "" {
 			return nil, fmt.Errorf("article %s has no title or description to embed", article.ID)
 		}
 	}
-	vecs := make([]Vec, 0, len(articles))
-	for batch := range slices.Chunk(articles, e.batchSize) {
-		embedded, err := e.embedBatch(ctx, batch)
-		if err != nil {
-			return nil, err
-		}
-		vecs = append(vecs, embedded...)
-	}
-	return vecs, nil
-}
-
-func (e *Embedder) embedBatch(ctx context.Context, batch []document.Article) ([]Vec, error) {
-	leads := make([]string, len(batch))
-	for i, article := range batch {
-		leads[i] = article.Lead()
-	}
 	resp, err := e.client.GenerateBatch(ctx, BatchRequest{Model: e.model, Prompts: leads, Options: e.documentOptions})
 	if err != nil {
-		return nil, fmt.Errorf("embed the batch from article %s: %w", batch[0].ID, err)
+		return nil, fmt.Errorf("embed the batch from article %s: %w", articles[0].ID, err)
 	}
-	if len(resp.Embeddings) != len(batch) {
+	if len(resp.Embeddings) != len(articles) {
 		return nil, fmt.Errorf("embed the batch from article %s: model %s returned %d vectors for %d articles",
-			batch[0].ID, e.model, len(resp.Embeddings), len(batch))
+			articles[0].ID, e.model, len(resp.Embeddings), len(articles))
 	}
-	vecs := make([]Vec, len(batch))
+	vecs := make([]Vec, len(articles))
 	for i, raw := range resp.Embeddings {
 		fitted, err := e.fit(raw)
 		if err != nil {
-			return nil, fmt.Errorf("embed article %s: %w", batch[i].ID, err)
+			return nil, fmt.Errorf("embed article %s: %w", articles[i].ID, err)
 		}
-		vecs[i] = Vec{Embedding: fitted, Model: e.Model(), ID: batch[i].ID}
+		vecs[i] = Vec{Embedding: fitted, Model: e.Model(), ID: articles[i].ID}
 	}
 	return vecs, nil
 }

@@ -24,10 +24,6 @@ func LoadConfigFromEnv() (*Config, error) {
 		return nil, errors.New("EMBEDDING_BASE_URL environment variable not set")
 	}
 
-	// Ignoring the old name would quietly store vectors at DefaultDim.
-	if _, set := os.LookupEnv("EMBEDDING_MAX_LENGTH"); set {
-		return nil, errors.New("EMBEDDING_MAX_LENGTH is renamed EMBEDDING_DIM")
-	}
 	dim, err := DimFromEnv()
 	if err != nil {
 		return nil, err

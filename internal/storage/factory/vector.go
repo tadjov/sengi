@@ -36,7 +36,7 @@ func NewVectorStore(ctx context.Context, cfg VectorStoreConfig) (storage.VectorS
 	}
 	var opts []embedding.EmbedderOption
 	if cfg.Model != "" {
-		opts = append(opts, embedding.WithExecutorModel(cfg.Model))
+		opts = append(opts, embedding.WithModel(cfg.Model))
 	}
 	if cfg.Dim != 0 {
 		opts = append(opts, embedding.WithDim(cfg.Dim))
