@@ -3,7 +3,7 @@ package pg
 import (
 	"testing"
 
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 // The records match what the Postgres loader stores in corpus_load.
@@ -24,7 +24,7 @@ const (
 
 func newLoadRecordTestPool(t *testing.T) *ConnectionPool {
 	t.Helper()
-	container := pkgtesting.NewPGContainerWithCleanup(testCtx, t)
+	container := testcontainer.NewPGContainerWithCleanup(testCtx, t)
 	pool, err := NewConnectionPool(testCtx, PoolConfig{ConnStr: container.ConnString})
 	if err != nil {
 		t.Fatalf("NewConnectionPool: %v", err)

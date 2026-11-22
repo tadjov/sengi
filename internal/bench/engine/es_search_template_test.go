@@ -18,7 +18,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/runner"
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/suite"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 const (
@@ -32,7 +32,7 @@ var yamlQuoted = strings.ReplaceAll(awkwardQueryText, "'", "''")
 // only through queries that match them.
 func TestEsSearchTemplates(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewESContainer(ctx, t)
+	container := testcontainer.NewESContainer(ctx, t)
 	esRequest(t, http.MethodPut, container.Address+"/"+templateIndex, []byte(`{
 		"mappings": {"properties": {
 			"id": {"type": "keyword"},

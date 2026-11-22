@@ -7,7 +7,7 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v9/typedapi/esdsl"
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 // loadRecord matches what the Elasticsearch loader stores under _meta.load.
@@ -21,7 +21,7 @@ const loadRecord = `{"engine": "elasticsearch", "engineVersion": "8.12.0",
 
 func TestDescribeIndex_ReadsTheLoadRecordFromTheIndexMeta(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewESContainer(ctx, t)
+	container := testcontainer.NewESContainer(ctx, t)
 	cfg := ClientConfig{Addresses: []string{container.Address}, IndexName: "articles_load_record_test"}
 	createEmptyIndex(t, cfg)
 

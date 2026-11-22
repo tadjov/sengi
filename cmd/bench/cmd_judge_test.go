@@ -31,7 +31,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/pool"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/queryvectors"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 )
 
@@ -364,7 +364,7 @@ func TestJudge_ForceOutsideManualIsRejected(t *testing.T) {
 // puts the one doc stored at it among the ten nearest.
 func TestJudge_VectorGradesWithTheTracksQueryVectors(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 	track := queryVectorsTrack(t, container.ConnString)
 	const queryText = "central bank interest rates"
 	queryVector := packageQueryVector(t, track, queryText)

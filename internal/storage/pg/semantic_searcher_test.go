@@ -8,7 +8,7 @@ import (
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage/pg"
 	"github.com/tadjov/sengi/internal/storage/pg/pgtest"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 	dquery "github.com/tadjov/sengi/internal/types/query"
@@ -38,7 +38,7 @@ func vec(dim int, fill float32) []float32 {
 func loadedPool(t *testing.T, c pgtest.Corpus) *pg.ConnectionPool {
 	t.Helper()
 	ctx := context.Background()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 	pool, err := pg.NewConnectionPool(ctx, pg.PoolConfig{
 		ConnStr:          pgtest.Load(t, container.ConnString, c),
 		RegisterVecTypes: true,

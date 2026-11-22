@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	pkgserver "github.com/tadjov/sengi/internal/api/server"
+	"github.com/tadjov/sengi/internal/api/server"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/es"
@@ -20,7 +20,7 @@ type searchBackend struct {
 	fts      storage.FullTextBackend
 	semantic storage.SemanticSearcher
 	hybrid   storage.HybridSearcher
-	health   pkgserver.HealthChecker
+	health   server.HealthChecker
 	close    func()
 }
 

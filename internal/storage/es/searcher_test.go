@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/storagetest"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 	dquery "github.com/tadjov/sengi/internal/types/query"
@@ -71,7 +71,7 @@ var searchMethods = []searchMethod{
 func newSearcherTestEnv(t *testing.T) (ClientConfig, *Searcher) {
 	t.Helper()
 
-	container := pkgtesting.NewESContainer(context.Background(), t)
+	container := testcontainer.NewESContainer(context.Background(), t)
 	cfg := ClientConfig{Addresses: []string{container.Address}, IndexName: "articles_searcher_test"}
 	return cfg, NewSearcher(newTestClient(t, cfg))
 }

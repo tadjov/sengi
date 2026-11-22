@@ -19,7 +19,7 @@ import (
 	"github.com/tadjov/sengi/internal/storage/es"
 	"github.com/tadjov/sengi/internal/storage/factory"
 	"github.com/tadjov/sengi/internal/storage/pg"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	dquery "github.com/tadjov/sengi/internal/types/query"
 )
 
@@ -51,7 +51,7 @@ func healthStatus(t *testing.T, backend *searchBackend) int {
 
 func TestOpenSearchBackend_PostgresSearchersShareOnePool(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 
 	backend, err := openSearchBackend(ctx, pgSearchConfig(container.ConnString+"&pool_max_conns=1"))
 	if err != nil {
@@ -86,7 +86,7 @@ func TestOpenSearchBackend_PostgresSearchersShareOnePool(t *testing.T) {
 func TestOpenSearchBackend_HealthFollowsPostgres(t *testing.T) {
 	ctx := context.Background()
 	// The test stops its server.
-	container := pkgtesting.NewPGContainerWithConfig(ctx, t, pkgtesting.PGConfig{Isolated: true})
+	container := testcontainer.NewPGContainerWithConfig(ctx, t, testcontainer.PGConfig{Isolated: true})
 
 	running, err := openSearchBackend(ctx, pgSearchConfig(container.ConnString))
 	if err != nil {
@@ -243,7 +243,7 @@ func TestOpenSearchBackend_ElasticsearchSearchersShareOneClient(t *testing.T) {
 
 func TestServer_SearchPastRequestDeadlineReleasesItsConnection(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 	backend, err := openSearchBackend(ctx, pgSearchConfig(container.ConnString+"&pool_max_conns=1"))
 	if err != nil {
 		t.Fatalf("openSearchBackend: %v", err)

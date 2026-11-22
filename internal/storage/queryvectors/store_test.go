@@ -13,7 +13,7 @@ import (
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/storage/pg"
 	"github.com/tadjov/sengi/internal/storage/queryvectors"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 // The fixture holds two queries at width 1024; q2 is the unit vector e0.
@@ -250,7 +250,7 @@ func TestOpen_RefusesVectorsThatNoLongerMatchTheirHash(t *testing.T) {
 
 func TestDocVectors_ServesThePackageTagsVectorsFromPostgres(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 	pool, err := pg.NewConnectionPool(ctx, pg.PoolConfig{ConnStr: container.ConnString, RegisterVecTypes: true})
 	if err != nil {
 		t.Fatalf("NewConnectionPool: %v", err)

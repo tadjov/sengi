@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/embedding"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	dquery "github.com/tadjov/sengi/internal/types/query"
 )
 
@@ -28,7 +28,7 @@ func (s staticEmbedder) GenerateBatch(_ context.Context, _ embedding.BatchReques
 func newSemanticTestEnv(t *testing.T, queryVec []float32) (ClientConfig, *SemanticSearcher) {
 	t.Helper()
 
-	container := pkgtesting.NewESContainer(context.Background(), t)
+	container := testcontainer.NewESContainer(context.Background(), t)
 	cfg := ClientConfig{Addresses: []string{container.Address}, IndexName: "articles_semantic_test"}
 
 	qEmbedder := embedding.NewEmbedder(staticEmbedder{vec: queryVec})

@@ -16,7 +16,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
 	"github.com/tadjov/sengi/internal/storage"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 type stubVectorStore struct{ model string }
@@ -108,7 +108,7 @@ func copyQueryVectorsTrack(t *testing.T) string {
 // must give a store that passes it.
 func TestBuildQueryVectorStore_OllamaStoreTagsTheConfiguredWidth(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 	t.Setenv("EMBEDDING_BASE_URL", "http://127.0.0.1:1")
 	t.Setenv("EMBEDDING_MODEL", "qwen3-embedding:0.6b")
 	t.Setenv("EMBEDDING_DIM", "768")
@@ -118,7 +118,7 @@ func TestBuildQueryVectorStore_OllamaStoreTagsTheConfiguredWidth(t *testing.T) {
 		Params:     map[string]any{"embedding_model": "qwen3-embedding:0.6b@768"},
 	}}}
 
-	store, closeStore, err := buildQueryVectorStore(ctx, bs, &trackctx.Track{Root: t.TempDir()})
+	store, closeStore, err := openVectorStore(ctx, runVectorStoreSource(bs, &trackctx.Track{Root: t.TempDir()}))
 	require.NoError(t, err)
 	t.Cleanup(closeStore)
 
@@ -160,7 +160,7 @@ func TestBuildQueryVectorStore_RefusesAPackageItCannotCheck(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			track := copyQueryVectorsTrack(t)
 
-			store, closeStore, err := buildQueryVectorStore(context.Background(), tt.spec(track), &trackctx.Track{Root: track})
+			store, closeStore, err := openVectorStore(context.Background(), runVectorStoreSource(tt.spec(track), &trackctx.Track{Root: track}))
 			t.Cleanup(closeStore)
 
 			require.ErrorContains(t, err, tt.wantErr)

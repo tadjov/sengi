@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/testcontainers/testcontainers-go"
 )
 
@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 
 	testCtx = context.Background()
 
-	pg, err := pkgtesting.NewPGContainer(testCtx, pkgtesting.PGConfig{
+	pg, err := testcontainer.NewPGContainer(testCtx, testcontainer.PGConfig{
 		Database: "news_test_db",
 		Username: "test",
 		Password: "test",

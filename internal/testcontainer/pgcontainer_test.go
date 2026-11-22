@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/storage"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 type serverBuild struct {
@@ -26,7 +26,7 @@ func TestPostgresEnginesShareServerBuild(t *testing.T) {
 	builds := make(map[storage.Engine]serverBuild, len(engines))
 	for _, engine := range engines {
 		t.Run(string(engine), func(t *testing.T) {
-			container := pkgtesting.NewPGContainerWithConfig(ctx, t, pkgtesting.PGConfig{Engine: engine})
+			container := testcontainer.NewPGContainerWithConfig(ctx, t, testcontainer.PGConfig{Engine: engine})
 			builds[engine] = readServerBuild(ctx, t, container.ConnString)
 		})
 	}

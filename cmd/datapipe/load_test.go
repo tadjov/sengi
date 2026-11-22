@@ -19,7 +19,7 @@ import (
 	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/pg"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 )
@@ -37,7 +37,7 @@ type producerRow struct {
 func TestLoad(t *testing.T) {
 	for _, engine := range []storage.Engine{storage.PostgresNative, storage.ParadeDB, storage.Tiger} {
 		t.Run(string(engine), func(t *testing.T) {
-			server := pkgtesting.NewPGContainerWithConfig(context.Background(), t, pkgtesting.PGConfig{
+			server := testcontainer.NewPGContainerWithConfig(context.Background(), t, testcontainer.PGConfig{
 				Engine:     engine,
 				Unmigrated: true,
 			})

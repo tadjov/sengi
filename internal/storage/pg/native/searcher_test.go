@@ -15,7 +15,7 @@ import (
 	"github.com/tadjov/sengi/internal/storage/pg"
 	"github.com/tadjov/sengi/internal/storage/pg/pgtest"
 	"github.com/tadjov/sengi/internal/storage/storagetest"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 	"github.com/tadjov/sengi/internal/types/operator"
@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 
 func runWithContainer(m *testing.M) int {
 	testCtx = context.Background()
-	container, err := pkgtesting.NewPGContainer(testCtx, pkgtesting.PGConfig{
+	container, err := testcontainer.NewPGContainer(testCtx, testcontainer.PGConfig{
 		Database: "news_test_db",
 		Username: "test",
 		Password: "test",

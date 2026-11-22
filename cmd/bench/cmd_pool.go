@@ -96,7 +96,7 @@ func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
 		return fmt.Errorf("load suite queries: %w", err)
 	}
 
-	vectorStore, closeVectorStore, err := buildQueryVectorStore(cmd.Context(), bs, tr)
+	vectorStore, closeVectorStore, err := openVectorStore(cmd.Context(), runVectorStoreSource(bs, tr))
 	if err != nil {
 		return fmt.Errorf("build vector store: %w", err)
 	}

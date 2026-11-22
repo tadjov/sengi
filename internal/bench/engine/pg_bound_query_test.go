@@ -12,7 +12,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/engine"
 	"github.com/tadjov/sengi/internal/bench/suite"
 	"github.com/tadjov/sengi/internal/storage/pg"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 func TestPgExecutor_RunsSuiteQueryWithApostrophesAndQuotes(t *testing.T) {
@@ -120,7 +120,7 @@ queries:
 
 func newBoundQueryPool(ctx context.Context, t *testing.T) *pg.ConnectionPool {
 	t.Helper()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 	pool, err := pg.NewConnectionPool(ctx, pg.PoolConfig{ConnStr: container.ConnString})
 	require.NoError(t, err)
 	t.Cleanup(pool.Close)

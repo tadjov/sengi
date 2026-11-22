@@ -21,7 +21,7 @@ import (
 
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 	dquery "github.com/tadjov/sengi/internal/types/query"
@@ -31,7 +31,7 @@ const loadTestModelTag = "qwen3-embedding:0.6b@1024"
 
 func TestCorpusLoader_LoadCorpus(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewESContainer(ctx, t)
+	container := testcontainer.NewESContainer(ctx, t)
 
 	t.Run("declares the contract's index settings and mapping", func(t *testing.T) {
 		index := "articles_settings_test"
@@ -137,8 +137,8 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 			})
 
 			t.Run("records what was loaded and how", func(t *testing.T) {
-				if record.Engine != "es" || record.EngineVersion != pkgtesting.ElasticsearchVersion {
-					t.Errorf("engine = %q %q, want es %s", record.Engine, record.EngineVersion, pkgtesting.ElasticsearchVersion)
+				if record.Engine != "es" || record.EngineVersion != testcontainer.ElasticsearchVersion {
+					t.Errorf("engine = %q %q, want es %s", record.Engine, record.EngineVersion, testcontainer.ElasticsearchVersion)
 				}
 				if record.Articles != 2000 || record.Vectors != 2000 {
 					t.Errorf("articles, vectors = %d, %d, want 2000, 2000", record.Articles, record.Vectors)

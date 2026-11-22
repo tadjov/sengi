@@ -74,7 +74,7 @@ latest.json also stays put, with exit 0, unless the run took every spec job at
 the spec's warmup, iterations and K, from the track's own spec.yaml and
 spec.defaults.judgments.`,
 		Example: `  bench run tracks/cc-news/fts
-  bench run tracks/global-news-dataset/news_semantic
+  bench run tracks/cc-news/semantic-hybrid
   bench run 'tracks/cc-news/*'        # every paradigm of the dataset
   bench run tracks/cc-news/fts --judgments claude-api`,
 		Args: cobra.MaximumNArgs(1),
@@ -158,7 +158,7 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 		return fmt.Errorf("load suite queries: %w", err)
 	}
 
-	vectorStore, closeVectorStore, err := buildQueryVectorStore(cmd.Context(), bs, tr)
+	vectorStore, closeVectorStore, err := openVectorStore(cmd.Context(), runVectorStoreSource(bs, tr))
 	if err != nil {
 		return fmt.Errorf("build vector store: %w", err)
 	}

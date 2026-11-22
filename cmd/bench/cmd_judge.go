@@ -14,9 +14,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
 	"github.com/tadjov/sengi/internal/cli"
-	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
-	"github.com/tadjov/sengi/internal/storage/factory"
 	"github.com/tadjov/sengi/internal/storage/pg"
 )
 
@@ -99,9 +97,9 @@ After a re-pool, --carry-over <annotations> --carry-over-pool <their pool>
 reuses each old grade whose judge and query are unchanged and grades only the
 new docs. Take the old pool from git; whole-pool judges can't carry over, and
 neither can a pool built on another canonical package.`,
-		Example: `  bench judge tracks/global-news-dataset/fts_quality --strategy keyword
-  bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-cli --model sonnet
-  bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-api --model sonnet --resume
+		Example: `  bench judge tracks/cc-news/fts --strategy keyword
+  bench judge tracks/cc-news/fts --strategy llm --provider claude-cli --model sonnet
+  bench judge tracks/cc-news/fts --strategy llm --provider claude-api --model sonnet --resume
   bench judge --pool /tmp/p.yaml --strategy keyword --output /tmp/a.yaml
   bench judge tracks/cc-news/fuzzy --strategy llm --carry-over /tmp/old-annotations.yaml --carry-over-pool /tmp/old-pool.yaml
   bench judge tracks/cc-news/fts --strategy jev --pool /tmp/sample.yaml --output /tmp/a.jev.yaml`,
@@ -430,43 +428,24 @@ func buildVectorStore(ctx context.Context, f judgeFlags, tr *trackctx.Track) (st
 	if pgConn == "" {
 		return nil, "", noop, fmt.Errorf("vector/hybrid judging requires --pg or PG_CONNECTION_STRING")
 	}
-	packageDir, found, err := queryVectorsPackage(tr)
+	bs, err := spec.LoadFromFile(tr.Spec)
 	if err != nil {
-		return nil, "", noop, err
+		return nil, "", noop, fmt.Errorf("load spec to check query vectors: %w", err)
 	}
-	if found {
-		bs, err := spec.LoadFromFile(tr.Spec)
-		if err != nil {
-			return nil, "", noop, fmt.Errorf("load spec to check query vectors: %w", err)
-		}
-		store, closeStore, err := openQueryVectors(ctx, queryVectorsSource{spec: bs, packageDir: packageDir, postgres: pgConn})
-		if err != nil {
-			return nil, "", noop, err
-		}
-		return store, store.Model(), closeStore, nil
-	}
-	baseURL := envOrFlag("EMBEDDING_BASE_URL", f.embeddingBase)
-	if baseURL == "" {
-		return nil, "", noop, fmt.Errorf("vector/hybrid judging requires trec/query-vectors, or --embedding-base or EMBEDDING_BASE_URL (ollama endpoint)")
-	}
-	client, err := embedding.NewOllamaClient(baseURL)
-	if err != nil {
-		return nil, "", noop, fmt.Errorf("embedding client: %w", err)
-	}
-	dim, err := embedding.DimFromEnv()
-	if err != nil {
-		return nil, "", noop, err
-	}
-	store, err := factory.NewVectorStore(ctx, factory.VectorStoreConfig{
-		PgConnStr:       pgConn,
-		EmbeddingClient: client,
-		Model:           envOrFlag("EMBEDDING_MODEL", f.embeddingModel),
-		Dim:             dim,
+	store, closeStore, err := openVectorStore(ctx, vectorStoreSource{
+		track:          tr,
+		spec:           bs,
+		postgres:       pgConn,
+		embeddingBase:  envOrFlag("EMBEDDING_BASE_URL", f.embeddingBase),
+		embeddingModel: envOrFlag("EMBEDDING_MODEL", f.embeddingModel),
 	})
 	if err != nil {
 		return nil, "", noop, err
 	}
-	return store, store.Model(), noop, nil
+	if store == nil {
+		return nil, "", noop, fmt.Errorf("vector/hybrid judging requires trec/query-vectors, or --embedding-base or EMBEDDING_BASE_URL (ollama endpoint)")
+	}
+	return store, store.Model(), closeStore, nil
 }
 
 // openArticleReader opens the Postgres reader for pooled articles.
@@ -475,14 +454,12 @@ func openArticleReader(cmd *cobra.Command, pgConn string) (storage.Reader, error
 	if conn == "" {
 		return nil, fmt.Errorf("reading pooled articles requires --pg or PG_CONNECTION_STRING")
 	}
-	reader, err := factory.NewReader(cmd.Context(), factory.StorageConfig{
-		Type: storage.PG,
-		Pg:   &pg.PoolConfig{ConnStr: conn},
-	})
+	// The pool lives as long as the command, which exits when it is done reading.
+	pool, err := pg.NewConnectionPool(cmd.Context(), pg.PoolConfig{ConnStr: conn})
 	if err != nil {
 		return nil, fmt.Errorf("create reader: %w", err)
 	}
-	return reader, nil
+	return pg.NewArticleReader(pool), nil
 }
 
 // requireJudged fails on an ungraded doc, which bench run would score as non-relevant.

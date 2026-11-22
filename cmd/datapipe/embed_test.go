@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/storage"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 const (
@@ -386,7 +386,7 @@ func storedEmbeddings(t *testing.T, connString string) map[uuid.UUID]storedEmbed
 }
 
 func TestEmbed_LoadStoresTheVectorTheAPIReturnedForEachArticlesLead(t *testing.T) {
-	server := pkgtesting.NewPGContainerWithConfig(context.Background(), t, pkgtesting.PGConfig{
+	server := testcontainer.NewPGContainerWithConfig(context.Background(), t, testcontainer.PGConfig{
 		Engine:     storage.PostgresNative,
 		Unmigrated: true,
 	})

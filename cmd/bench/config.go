@@ -32,24 +32,42 @@ const trackRootEnv = "BENCH_TRACK_ROOT"
 // like any other path; pointing it at a folder of tracks is pure convenience.
 var trackRoot string
 
-// buildQueryVectorStore prefers the track's query-vectors package over live
-// Ollama embedding; the store is nil when neither is available.
-func buildQueryVectorStore(ctx context.Context, bs *spec.BenchSpec, tr *trackctx.Track) (storage.VectorStore, func(), error) {
+// vectorStoreSource is where a track's query and document vectors come from.
+type vectorStoreSource struct {
+	track *trackctx.Track
+	spec  *spec.BenchSpec
+	// postgres serves document vectors.
+	postgres       string
+	embeddingBase  string
+	embeddingModel string
+}
+
+func runVectorStoreSource(bs *spec.BenchSpec, tr *trackctx.Track) vectorStoreSource {
+	return vectorStoreSource{
+		track:          tr,
+		spec:           bs,
+		postgres:       postgresConnection(bs),
+		embeddingBase:  os.Getenv("EMBEDDING_BASE_URL"),
+		embeddingModel: os.Getenv("EMBEDDING_MODEL"),
+	}
+}
+
+// openVectorStore prefers the track's query-vectors package over live Ollama
+// embedding; the store is nil when the track has no package and Ollama or
+// Postgres is not configured.
+func openVectorStore(ctx context.Context, src vectorStoreSource) (storage.VectorStore, func(), error) {
 	noop := func() {}
-	packageDir, found, err := queryVectorsPackage(tr)
+	packageDir, found, err := queryVectorsPackage(src.track)
 	if err != nil {
 		return nil, noop, err
 	}
 	if found {
-		return openQueryVectors(ctx, queryVectorsSource{spec: bs, packageDir: packageDir, postgres: postgresConnection(bs)})
+		return openQueryVectors(ctx, queryVectorsSource{spec: src.spec, packageDir: packageDir, postgres: src.postgres})
 	}
-
-	baseURL := os.Getenv("EMBEDDING_BASE_URL")
-	pgConn := postgresConnection(bs)
-	if baseURL == "" || pgConn == "" {
+	if src.embeddingBase == "" || src.postgres == "" {
 		return nil, noop, nil
 	}
-	client, err := embedding.NewOllamaClient(baseURL)
+	client, err := embedding.NewOllamaClient(src.embeddingBase)
 	if err != nil {
 		return nil, noop, fmt.Errorf("embedding client: %w", err)
 	}
@@ -58,12 +76,15 @@ func buildQueryVectorStore(ctx context.Context, bs *spec.BenchSpec, tr *trackctx
 		return nil, noop, err
 	}
 	store, err := factory.NewVectorStore(ctx, factory.VectorStoreConfig{
-		PgConnStr:       pgConn,
+		PgConnStr:       src.postgres,
 		EmbeddingClient: client,
-		Model:           os.Getenv("EMBEDDING_MODEL"),
+		Model:           src.embeddingModel,
 		Dim:             dim,
 	})
-	return store, noop, err
+	if err != nil {
+		return nil, noop, err
+	}
+	return store, noop, nil
 }
 
 func queryVectorsPackage(tr *trackctx.Track) (string, bool, error) {

@@ -18,7 +18,7 @@ import (
 	"github.com/tadjov/sengi/internal/storage/pg"
 	"github.com/tadjov/sengi/internal/storage/pg/pgtest"
 	"github.com/tadjov/sengi/internal/storage/storagetest"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	dquery "github.com/tadjov/sengi/internal/types/query"
 )
@@ -28,7 +28,7 @@ import (
 func newPostgresSearchServer(t *testing.T) *server.Server {
 	t.Helper()
 	ctx := context.Background()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 
 	connString := pgtest.Load(t, container.ConnString, pgtest.Corpus{Articles: storagetest.ParityCorpus()})
 

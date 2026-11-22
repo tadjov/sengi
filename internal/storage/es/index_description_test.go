@@ -10,12 +10,12 @@ import (
 	"testing"
 
 	"github.com/tadjov/sengi/internal/storage"
-	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 func TestDescribeIndex_ReadsTheLiveIndex(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewESContainer(ctx, t)
+	container := testcontainer.NewESContainer(ctx, t)
 	cfg := ClientConfig{Addresses: []string{container.Address}, IndexName: "articles_described_test"}
 	createEmptyIndex(t, cfg)
 
@@ -35,8 +35,8 @@ func TestDescribeIndex_ReadsTheLiveIndex(t *testing.T) {
 				t.Fatalf("DescribeIndex: %v", err)
 			}
 
-			if description.Version != pkgtesting.ElasticsearchVersion {
-				t.Errorf("version = %q, want the container image's %s", description.Version, pkgtesting.ElasticsearchVersion)
+			if description.Version != testcontainer.ElasticsearchVersion {
+				t.Errorf("version = %q, want the container image's %s", description.Version, testcontainer.ElasticsearchVersion)
 			}
 			if description.Index != cfg.IndexName {
 				t.Errorf("index = %q, want the concrete index %q", description.Index, cfg.IndexName)
@@ -95,7 +95,7 @@ func TestDescribeIndex_ReadsTheLiveIndex(t *testing.T) {
 			t.Fatalf("DescribeIndex: %v", err)
 		}
 
-		if description.Version != pkgtesting.ElasticsearchVersion || description.Index != cfg.IndexName || len(description.Analysis) == 0 || len(description.Fields) == 0 {
+		if description.Version != testcontainer.ElasticsearchVersion || description.Index != cfg.IndexName || len(description.Analysis) == 0 || len(description.Fields) == 0 {
 			t.Errorf("description = %+v, want the index described in full", description)
 		}
 		if len(description.Unreadable) != 1 || !strings.Contains(description.Unreadable[0], "node stats") {
