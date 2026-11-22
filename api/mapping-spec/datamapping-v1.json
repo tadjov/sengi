@@ -100,7 +100,7 @@
       ],
       "properties": {
         "idKind": {
-          "description": "urlHash hashes the page url, the same id on every run; random mints a new id per article on every run",
+          "description": "urlHash hashes the url, the same id on every run; random mints a new id per article on every run",
           "type": "string",
           "enum": [
             "urlHash",
@@ -133,46 +133,6 @@
             },
             "additionalProperties": false
           }
-        },
-        "url": {
-          "description": "Which url spellings name one page; records with one page url are one article",
-          "type": "object",
-          "required": [
-            "ignore"
-          ],
-          "properties": {
-            "ignore": {
-              "description": "Url parts that do not change which page a url names",
-              "type": "object",
-              "properties": {
-                "fragment": {
-                  "description": "/story#comments and /story name one page",
-                  "type": "boolean"
-                },
-                "queryParams": {
-                  "description": "Query parameters that do not change the page, by name; a trailing * matches a prefix, as in utm_*",
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "scheme": {
-                  "description": "http and https name one page",
-                  "type": "boolean"
-                },
-                "trailingSlash": {
-                  "description": "/story and /story/ name one page",
-                  "type": "boolean"
-                },
-                "www": {
-                  "description": "www.example.com and example.com name one page",
-                  "type": "boolean"
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
         }
       },
       "additionalProperties": false

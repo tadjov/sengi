@@ -88,7 +88,6 @@ func fullPackage() datapackage.Package {
 		ArticleSchema: datapackage.ArticleSchema,
 		Language:      "eng",
 		Identity: &datapackage.Identity{
-			URL:       &datamapping.URLIdentity{Ignore: datamapping.IgnoredURLParts{Scheme: true, QueryParams: []string{"utm_*"}}},
 			Unique:    []datamapping.UniqueRule{{Name: "same-page", Fields: []string{"PublisherDomain", "Title", "Content"}}},
 			IDKind:    datamapping.IDKindURLHash,
 			Algorithm: "uuidv5",

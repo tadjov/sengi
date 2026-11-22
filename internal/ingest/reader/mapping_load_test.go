@@ -105,9 +105,9 @@ var unknownKeyMappings = []struct {
 		wantKey: "idkind",
 	},
 	{
-		name:    "inside identity.url.ignore",
-		doc:     replaced(validMapping, "  idKind: urlHash\n", "  idKind: urlHash\n  url:\n    ignore:\n      trailingslash: true\n"),
-		wantKey: "trailingslash",
+		name:    "the retired url block",
+		doc:     replaced(validMapping, "  idKind: urlHash\n", "  idKind: urlHash\n  url:\n    ignore:\n      scheme: true\n"),
+		wantKey: "url",
 	},
 	{
 		name:    "inside a unique rule",
@@ -173,14 +173,12 @@ var rejectedMappings = []struct {
 		wantInErr:  "Metadata.Extra.k",
 		crossField: true,
 	},
-	{name: "a url identity that ignores nothing", doc: withIdentity("  url:\n    ignore: {}\n"), wantInErr: "ignore names no url part", crossField: true},
-	{name: "a query param pattern with an inner *", doc: withIdentity("  url:\n    ignore:\n      queryParams: [\"utm_*_id\"]\n"), wantInErr: "utm_*_id", crossField: true},
-	{name: "a bare * query param pattern", doc: withIdentity("  url:\n    ignore:\n      queryParams: [\"*\"]\n"), wantInErr: "query param", crossField: true},
 	{name: "a unique rule named url", doc: withIdentity("  unique:\n    - {name: url, fields: [Title]}\n"), wantInErr: `"url"`, crossField: true},
 	{name: "two unique rules with one name", doc: withIdentity("  unique:\n    - {name: same-page, fields: [Title]}\n    - {name: same-page, fields: [URL]}\n"), wantInErr: `"same-page"`, crossField: true},
 	{name: "a unique field that is no article field", doc: withIdentity("  unique:\n    - {name: same-page, fields: [Body]}\n"), wantInErr: `"Body"`, crossField: true},
 	{name: "a unique field that is not mapped", doc: withIdentity("  unique:\n    - {name: same-page, fields: [Title, Content]}\n"), wantInErr: `"Content"`, crossField: true},
 	{name: "a unique field holding a list", doc: withMappings(withIdentity("  unique:\n    - {name: same-byline, fields: [Metadata.Authors]}\n"), "  - {source: byline, target: Metadata.Authors, separator: ';'}\n"), wantInErr: "Metadata.Authors", crossField: true},
+	{name: "a unique rule on the url, which is unique already", doc: withIdentity("  unique:\n    - {name: same-url, fields: [URL]}\n"), wantInErr: `"URL"`, crossField: true},
 	{name: "a unique field named twice", doc: withIdentity("  unique:\n    - {name: same-page, fields: [Title, Title]}\n"), wantInErr: `"Title"`, crossField: true},
 	{name: "no url", doc: replaced(validMapping, "  - source: link\n    sourceType: url\n    target: URL\n    required: true\n", ""), wantInErr: "URL", crossField: true},
 	{name: "an optional title", doc: replaced(validMapping, "    target: Title\n    required: true\n", "    target: Title\n"), wantInErr: "Title", crossField: true},
@@ -241,8 +239,7 @@ func TestMappingSchema_AgreesWithTheLoader(t *testing.T) {
 		{name: "a 500-character Cyrillic description", doc: replaced(validMapping, "name: Test", "name: Test\n  description: "+strings.Repeat("ж", 500))},
 		{name: "a 100-character Cyrillic source", doc: replaced(validMapping, "source: title", "source: "+strings.Repeat("ж", 100))},
 		{name: "every identity rule", doc: replaced(withIdentity(
-			"  url:\n    ignore:\n      scheme: true\n      www: true\n      trailingSlash: true\n      fragment: true\n      queryParams: [\"utm_*\", \"ref\"]\n"+
-				"  unique:\n    - {name: same-page, fields: [PublisherDomain, Title, URL]}\n    - {name: same-title, fields: [Title]}\n"),
+			"  unique:\n    - {name: same-page, fields: [PublisherDomain, Title]}\n    - {name: same-title, fields: [Title]}\n"),
 			"idKind: urlHash", "idKind: random")},
 	}
 	for _, tt := range accepted {

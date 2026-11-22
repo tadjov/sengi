@@ -88,23 +88,15 @@ The type system is organized into bounded contexts, each with its own package:
 ### Data Mapping System
 The project uses YAML configuration files to map source data fields to internal Article structure. Configuration files follow the DataMapping schema (`api/mapping-spec/datamapping-v1.json`) with fieldMappings that specify source/target fields and their source types, a `constants:` block (`Language: eng`) and `output.format` (`parquet` or `jsonl`). An unknown key, two sources on one target, or a target outside the list fails the load. `Title` and `URL` are required on every mapping, and `PublisherDomain` is always derived from the url.
 
-Every mapping has an `identity` block that decides which records are one article and how each article gets its id. Preprocess reads records in input order and keeps the first of those that are one article:
+Every mapping has an `identity` block that decides which records are one article and how each article gets its id. Preprocess reads records in input order and keeps the first of those that are one article. Records with the same url, as normalised, are always one article, and the url a duplicate carries stays with the article it repeats. No other url spelling is merged, since two spellings can hold different stories.
 
-- `url` (optional) lists the url parts that do not change which page a url names: `scheme`, `www`, `trailingSlash`, `fragment`, and `queryParams` by name or by a `prefix*`. Records with the same page url are always one article; without `url`, urls are compared as normalised. The stored url stays as written.
-- `unique` (optional) lists rules, each a `name` and the `fields` no two articles share, compared with whitespace collapsed. A record that repeats a kept article's fields is dropped, as an insert would be under SQL `UNIQUE`, and one with any of those fields empty never matches. The fields are `Title`, `Description`, `Content`, `URL`, `PublisherDomain`, `Metadata.ExternalID`, `Metadata.PublisherName` and `Metadata.Section`.
-- `idKind` (required) is `urlHash`, the uuidv5 of the page url, so the same input always yields the same ids and preprocess can be re-run without orphaning pools, qrels, or embeddings. `random` mints a new uuidv7 per article on every run, so a rerun never reproduces a published version.
+- `unique` (optional) lists rules, each a `name` and the `fields` no two articles share, compared with whitespace collapsed. A record that repeats a kept article's fields is dropped, as an insert would be under SQL `UNIQUE`, and one with any of those fields empty never matches. The fields are `Title`, `Description`, `Content`, `PublisherDomain`, `Metadata.ExternalID`, `Metadata.PublisherName` and `Metadata.Section`.
+- `idKind` (required) is `urlHash`, the uuidv5 of the url, so the same input always yields the same ids and preprocess can be re-run without orphaning pools, qrels, or embeddings. `random` mints a new uuidv7 per article on every run, so a rerun never reproduces a published version.
 
-The report counts each drop under `deduped`, keyed by the rule that matched (`url` for a repeated page url), and the canonical descriptor records the block with the id algorithm. No mapping sets the id directly: a dataset's own id, or any column unique per record, maps to `Metadata.ExternalID` so a canonical row can be traced back to its raw record.
+The report counts each drop under `deduped`, keyed by the rule that matched (`url` for a repeated url), and the canonical descriptor records the block with the id algorithm. No mapping sets the id directly: a dataset's own id, or any column unique per record, maps to `Metadata.ExternalID` so a canonical row can be traced back to its raw record.
 
 ```yaml
 identity:
-  url:
-    ignore:
-      scheme: true
-      www: true
-      trailingSlash: true
-      fragment: true
-      queryParams: ["utm_*"]
   unique:
     - name: same-page
       fields: [PublisherDomain, Title, Content]

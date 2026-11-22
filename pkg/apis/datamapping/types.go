@@ -3,11 +3,13 @@ package datamapping
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 )
 
@@ -48,7 +50,7 @@ type DataMapper struct {
 type IDKind string
 
 const (
-	// IDKindURLHash hashes the page url, so a page keeps its id on every run.
+	// IDKindURLHash hashes the url, so an article keeps its id on every run.
 	IDKindURLHash IDKind = "urlHash"
 	// IDKindRandom mints a new id per article on every run.
 	IDKindRandom IDKind = "random"
@@ -63,13 +65,14 @@ func ParseIDKind(v string) (IDKind, error) {
 	}
 }
 
-// URLRule names the drops of records that repeat a page url.
+// URLRule names the drops of records that repeat a kept article's url.
 const URLRule = "url"
 
+// Identity decides which records are one article and how each gets its id;
+// records with the same url, as normalised, are always one article.
 type Identity struct {
-	URL    *URLIdentity `json:"url,omitempty" yaml:"url,omitempty" description:"Which url spellings name one page; records with one page url are one article"`
 	Unique []UniqueRule `json:"unique,omitempty" yaml:"unique,omitempty" description:"Field sets no two articles share; a record that repeats one is dropped and the first kept"`
-	IDKind string       `json:"idKind" yaml:"idKind" schema:"required,enum=urlHash|random" description:"urlHash hashes the page url, the same id on every run; random mints a new id per article on every run"`
+	IDKind string       `json:"idKind" yaml:"idKind" schema:"required,enum=urlHash|random" description:"urlHash hashes the url, the same id on every run; random mints a new id per article on every run"`
 }
 
 func (i Identity) ResolvedIDKind() (IDKind, error) {
@@ -82,11 +85,6 @@ func (i Identity) ResolvedIDKind() (IDKind, error) {
 func (i Identity) validate(mapped map[string]FieldMapping) error {
 	if _, err := i.ResolvedIDKind(); err != nil {
 		return err
-	}
-	if i.URL != nil {
-		if err := i.URL.Ignore.validate(); err != nil {
-			return fmt.Errorf("url: %w", err)
-		}
 	}
 	names := make(map[string]bool, len(i.Unique))
 	for n, rule := range i.Unique {
@@ -101,60 +99,37 @@ func (i Identity) validate(mapped map[string]FieldMapping) error {
 	return nil
 }
 
-type URLIdentity struct {
-	Ignore IgnoredURLParts `json:"ignore" yaml:"ignore" schema:"required" description:"Url parts that do not change which page a url names"`
-}
-
-type IgnoredURLParts struct {
-	Scheme        bool     `json:"scheme,omitempty" yaml:"scheme,omitempty" description:"http and https name one page"`
-	WWW           bool     `json:"www,omitempty" yaml:"www,omitempty" description:"www.example.com and example.com name one page"`
-	TrailingSlash bool     `json:"trailingSlash,omitempty" yaml:"trailingSlash,omitempty" description:"/story and /story/ name one page"`
-	Fragment      bool     `json:"fragment,omitempty" yaml:"fragment,omitempty" description:"/story#comments and /story name one page"`
-	QueryParams   []string `json:"queryParams,omitempty" yaml:"queryParams,omitempty" description:"Query parameters that do not change the page, by name; a trailing * matches a prefix, as in utm_*"`
-}
-
-// IgnoresQueryParam matches key case-insensitively.
-func (p IgnoredURLParts) IgnoresQueryParam(key string) bool {
-	key = strings.ToLower(key)
-	for _, pattern := range p.QueryParams {
-		pattern = strings.ToLower(pattern)
-		if prefix, ok := strings.CutSuffix(pattern, "*"); ok {
-			if strings.HasPrefix(key, prefix) {
-				return true
-			}
-		} else if key == pattern {
-			return true
-		}
-	}
-	return false
-}
-
-func (p IgnoredURLParts) validate() error {
-	if !p.Scheme && !p.WWW && !p.TrailingSlash && !p.Fragment && len(p.QueryParams) == 0 {
-		return errors.New("ignore names no url part; leave url out to compare urls as written")
-	}
-	for _, pattern := range p.QueryParams {
-		if name := strings.TrimSuffix(pattern, "*"); name == "" || strings.Contains(name, "*") {
-			return fmt.Errorf("query param %q: want a name, or a prefix followed by one trailing *", pattern)
-		}
-	}
-	return nil
-}
-
 type UniqueRule struct {
 	Name   string   `json:"name" yaml:"name" schema:"required,pattern=^[a-z0-9]+(-[a-z0-9]+)*$" description:"Name the preprocess report counts this rule's drops under"`
 	Fields []string `json:"fields" yaml:"fields" schema:"required,minItems=1" description:"Article fields whose values together no two articles share; a record with any of them empty never matches"`
 }
 
-// UniqueFields are the article fields a unique rule can compare, all single text values.
-var UniqueFields = []string{TargetTitle, "Description", "Content", TargetURL, TargetPublisherDomain, "Metadata.ExternalID", "Metadata.PublisherName", "Metadata.Section"}
+// uniqueFields reads the article fields a unique rule can compare, all single text values.
+var uniqueFields = map[string]func(document.Article) string{
+	TargetTitle:              func(a document.Article) string { return a.Title },
+	"Description":            func(a document.Article) string { return a.Description },
+	"Content":                func(a document.Article) string { return a.Content },
+	TargetPublisherDomain:    func(a document.Article) string { return a.PublisherDomain },
+	"Metadata.ExternalID":    func(a document.Article) string { return a.Metadata.ExternalID },
+	"Metadata.PublisherName": func(a document.Article) string { return a.Metadata.PublisherName },
+	"Metadata.Section":       func(a document.Article) string { return a.Metadata.Section },
+}
+
+// Values returns the rule's fields of article in order; the rule must have passed Validate.
+func (r UniqueRule) Values(article document.Article) []string {
+	values := make([]string, len(r.Fields))
+	for i, field := range r.Fields {
+		values[i] = uniqueFields[field](article)
+	}
+	return values
+}
 
 func (r UniqueRule) validate(mapped map[string]FieldMapping) error {
 	if !uniqueRuleNamePattern.MatchString(r.Name) {
 		return fmt.Errorf("rule name %q must be lowercase kebab-case", r.Name)
 	}
 	if r.Name == URLRule {
-		return fmt.Errorf("rule name %q is reserved for records that repeat a page url", r.Name)
+		return fmt.Errorf("rule name %q is reserved for records that repeat a kept article's url", r.Name)
 	}
 	if len(r.Fields) == 0 {
 		return fmt.Errorf("rule %q lists no fields", r.Name)
@@ -165,8 +140,8 @@ func (r UniqueRule) validate(mapped map[string]FieldMapping) error {
 			return fmt.Errorf("rule %q names field %q twice", r.Name, field)
 		}
 		seen[field] = true
-		if !slices.Contains(UniqueFields, field) {
-			return fmt.Errorf("rule %q: field %q is not one of %q", r.Name, field, UniqueFields)
+		if _, ok := uniqueFields[field]; !ok {
+			return fmt.Errorf("rule %q: field %q is not one of %q", r.Name, field, slices.Sorted(maps.Keys(uniqueFields)))
 		}
 		if _, ok := mapped[field]; !ok && field != TargetPublisherDomain {
 			return fmt.Errorf("rule %q: field %q is not mapped, so every record would leave it empty", r.Name, field)

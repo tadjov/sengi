@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
 )
 
 func TestNormalizeURL(t *testing.T) {
@@ -35,71 +34,4 @@ func TestNormalizeURL_RejectsWhatIsNotAnAbsoluteHTTPURL(t *testing.T) {
 			assert.False(t, ok)
 		})
 	}
-}
-
-func TestPageURL_WithoutRulesIsTheURLAsNormalized(t *testing.T) {
-	for _, raw := range []string{
-		"https://example.com/a%20b",
-		"http://www.example.com/story/?utm_source=feed#top",
-		"https://example.com/view?b=2&a=1",
-	} {
-		normalized, ok := NormalizeURL(raw)
-		require.True(t, ok)
-		assert.Equal(t, normalized, PageURL(normalized, nil), raw)
-	}
-}
-
-func TestPageURL_EachRuleMergesOnlyItsOwnVariant(t *testing.T) {
-	rules := map[string]struct {
-		ignore datamapping.IgnoredURLParts
-		a, b   string
-	}{
-		"scheme":        {datamapping.IgnoredURLParts{Scheme: true}, "https://example.com/story", "http://example.com/story"},
-		"www":           {datamapping.IgnoredURLParts{WWW: true}, "https://example.com/story", "https://www.example.com/story"},
-		"trailingSlash": {datamapping.IgnoredURLParts{TrailingSlash: true}, "https://example.com/story", "https://example.com/story/"},
-		"fragment":      {datamapping.IgnoredURLParts{Fragment: true}, "https://example.com/story", "https://example.com/story#comments"},
-		"queryParams":   {datamapping.IgnoredURLParts{QueryParams: []string{"utm_*"}}, "https://example.com/story", "https://example.com/story?utm_source=feed"},
-	}
-	for name, rule := range rules {
-		identity := &datamapping.URLIdentity{Ignore: rule.ignore}
-		for pairName, pair := range rules {
-			t.Run(name+" on the "+pairName+" pair", func(t *testing.T) {
-				same := pageOf(t, pair.a, identity) == pageOf(t, pair.b, identity)
-				assert.Equal(t, name == pairName, same)
-			})
-		}
-	}
-}
-
-func TestPageURL_IgnoresQueryParamsByNameOrPrefix(t *testing.T) {
-	identity := &datamapping.URLIdentity{Ignore: datamapping.IgnoredURLParts{QueryParams: []string{"utm_*", "ref"}}}
-
-	assert.Equal(t,
-		pageOf(t, "https://example.com/view?id=7&page=2", identity),
-		pageOf(t, "https://example.com/view?UTM_Source=x&id=7&ref=home&page=2&utm_medium=rss", identity))
-	assert.NotEqual(t,
-		pageOf(t, "https://example.com/view?id=7", identity),
-		pageOf(t, "https://example.com/view?id=7&referrer=home", identity))
-}
-
-func TestPageURL_KeepsDifferentPagesApart(t *testing.T) {
-	every := &datamapping.URLIdentity{Ignore: datamapping.IgnoredURLParts{
-		Scheme: true, WWW: true, TrailingSlash: true, Fragment: true, QueryParams: []string{"utm_*"},
-	}}
-	pairs := [][2]string{
-		{"https://example.com/view?id=7", "https://example.com/view?id=8"},
-		{"https://example.com/a/story", "https://example.com/b/story"},
-		{"https://news.example.com/story", "https://example.com/story"},
-		{"https://example.com/Story", "https://example.com/story"},
-	}
-	for _, pair := range pairs {
-		assert.NotEqual(t, pageOf(t, pair[0], every), pageOf(t, pair[1], every), "%s and %s", pair[0], pair[1])
-	}
-}
-
-func pageOf(t *testing.T, raw string, identity *datamapping.URLIdentity) string {
-	t.Helper()
-	normalized, ok := NormalizeURL(raw)
-	require.True(t, ok, raw)
-	return PageURL(normalized, identity)
 }

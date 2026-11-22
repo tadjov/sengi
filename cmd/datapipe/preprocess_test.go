@@ -355,8 +355,7 @@ func validateAgainstDescriptorSchema(t *testing.T, descriptorPath string) error 
 }
 
 func TestPreprocess_WritesADescriptorTheCommittedSchemaAccepts(t *testing.T) {
-	everyIdentityRule := mappingWithIdentity(t, "random",
-		"  url:\n    ignore:\n      scheme: true\n      queryParams: [\"utm_*\"]\n"+samePageRule)
+	everyIdentityRule := mappingWithIdentity(t, "random", samePageRule)
 	tests := []struct {
 		name       string
 		mapping    string
@@ -463,7 +462,7 @@ func TestPreprocess_KeepsTheFirstOfRecordsSharingAURL(t *testing.T) {
 	assert.Equal(t, &datapackage.Report{Read: 4, Written: 2, Deduped: map[string]int64{"url": 2}}, pkg.Report)
 }
 
-func TestPreprocess_KeepsURLVariantsApartWithoutURLRules(t *testing.T) {
+func TestPreprocess_KeepsURLVariantsApart(t *testing.T) {
 	run := newPreprocessRun(t, ccNewsLikeMapping,
 		csvFile("part.csv", "title,text,url\nFirst,Body,https://example.com/story\nVariant,Body,http://www.example.com/story/?utm_source=feed#top\n"),
 	)
@@ -473,26 +472,6 @@ func TestPreprocess_KeepsURLVariantsApartWithoutURLRules(t *testing.T) {
 	pkg, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/story", "http://www.example.com/story/?utm_source=feed#top"}, rows.urls)
 	assert.Equal(t, &datapackage.Report{Read: 2, Written: 2}, pkg.Report)
-	assert.Nil(t, pkg.Identity.URL)
-}
-
-func TestPreprocess_MergesTheURLVariantsItsIdentityIgnores(t *testing.T) {
-	urlRules := "  url:\n    ignore:\n      scheme: true\n      www: true\n      trailingSlash: true\n      fragment: true\n      queryParams: [\"utm_*\"]\n"
-	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", urlRules),
-		csvFile("part.csv", "title,text,url\nFirst,Body,https://example.com/story\nVariant,Body,http://www.example.com/story/?utm_source=feed#top\nOther,Body,https://example.com/story?page=2\n"),
-	)
-
-	require.NoError(t, run.execute(t.Context()))
-
-	pkg, rows := readArticles(t, run.packageDir(t))
-	assert.Equal(t, []string{"https://example.com/story", "https://example.com/story?page=2"}, rows.urls)
-	assert.Equal(t, "First", rows.byURL["https://example.com/story"].Title)
-	assert.Equal(t, &datapackage.Report{Read: 3, Written: 2, Deduped: map[string]int64{"url": 1}}, pkg.Report)
-	require.NotNil(t, pkg.Identity.URL)
-	assert.Equal(t, datamapping.IgnoredURLParts{Scheme: true, WWW: true, TrailingSlash: true, Fragment: true, QueryParams: []string{"utm_*"}}, pkg.Identity.URL.Ignore)
-	namespace, err := uuid.Parse(pkg.Identity.Namespace)
-	require.NoError(t, err)
-	assert.Equal(t, uuid.NewSHA1(namespace, []byte("example.com/story")), rows.byURL["https://example.com/story"].ID)
 }
 
 func TestPreprocess_KeepsTheFirstOfArticlesAUniqueRuleMatches(t *testing.T) {
@@ -551,6 +530,38 @@ func TestPreprocess_ADroppedRecordNeverKnocksOutALaterOne(t *testing.T) {
 	pkg, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/story", "https://example.com/other"}, rows.urls)
 	assert.Equal(t, map[string]int64{"url": 1}, pkg.Report.Deduped)
+}
+
+func TestPreprocess_ADuplicatesURLStaysWithTheArticleItRepeats(t *testing.T) {
+	rules := "  unique:\n    - {name: same-body, fields: [Content]}\n"
+	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", rules),
+		csvFile("part.csv", "title,text,url\n"+
+			"One,Body A,https://example.com/1\n"+
+			"Two,Body A,https://example.com/2\n"+
+			"Three,Body C,https://example.com/2\n"),
+	)
+
+	require.NoError(t, run.execute(t.Context()))
+
+	pkg, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, []string{"https://example.com/1"}, rows.urls)
+	assert.Equal(t, map[string]int64{"same-body": 1, "url": 1}, pkg.Report.Deduped)
+}
+
+func TestPreprocess_ADuplicateRegistersNoKeys(t *testing.T) {
+	rules := "  unique:\n    - {name: same-title, fields: [Title]}\n    - {name: same-body, fields: [Content]}\n"
+	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", rules),
+		csvFile("part.csv", "title,text,url\n"+
+			"One,Body A,https://example.com/1\n"+
+			"Two,Body A,https://example.com/2\n"+
+			"Two,Body B,https://example.com/3\n"),
+	)
+
+	require.NoError(t, run.execute(t.Context()))
+
+	pkg, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, []string{"https://example.com/1", "https://example.com/3"}, rows.urls)
+	assert.Equal(t, map[string]int64{"same-body": 1}, pkg.Report.Deduped)
 }
 
 func TestPreprocess_CountsEachDropUnderTheFirstRuleThatMatches(t *testing.T) {

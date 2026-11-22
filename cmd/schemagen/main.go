@@ -85,11 +85,6 @@ metadata:
 dataset: "example"
 dateFormat: "2006-01-02T15:04:05Z"
 identity:
-  url:
-    ignore:
-      scheme: true
-      www: true
-      queryParams: ["utm_*"]
   unique:
     - name: same-page
       fields: [PublisherDomain, Title, Content]

@@ -56,7 +56,6 @@ type Source struct {
 // Identity is the mapping's identity block, plus how its ids were minted;
 // Namespace is set only for urlHash ids.
 type Identity struct {
-	URL       *datamapping.URLIdentity `json:"url,omitempty"`
 	Unique    []datamapping.UniqueRule `json:"unique,omitempty"`
 	IDKind    datamapping.IDKind       `json:"idKind" schema:"enum=urlHash|random"`
 	Algorithm string                   `json:"algorithm" schema:"enum=uuidv5|uuidv7"`
