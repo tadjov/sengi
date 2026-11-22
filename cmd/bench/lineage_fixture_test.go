@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -23,12 +24,58 @@ import (
 	"github.com/tadjov/sengi/internal/bench/report"
 )
 
-// fakeIndex is one engine's index in fakeCluster: its document count and the
-// ranked ids each query returns. A query listed in failing answers 500.
+// fakeIndex answers 500 to a query in failing, and reports took, in ms, as every search's server time.
 type fakeIndex struct {
 	count   int64
 	ranked  map[string][]uuid.UUID
 	failing map[string]bool
+	took    *int
+	// A query in drifted switches ranking after driftAfter searches of it in log.
+	log        *searchLog
+	drifted    map[string][]uuid.UUID
+	driftAfter int
+}
+
+type searchLog struct {
+	mu       sync.Mutex
+	searches []loggedSearch
+}
+
+type loggedSearch struct {
+	index   string
+	queryID string
+}
+
+// add returns the query's search count since the last reset, this one included.
+func (l *searchLog) add(search loggedSearch) int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.searches = append(l.searches, search)
+	n := 0
+	for _, s := range l.searches {
+		if s == search {
+			n++
+		}
+	}
+	return n
+}
+
+func (l *searchLog) reset() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.searches = nil
+}
+
+func (i *fakeIndex) ranking(name, queryID string) []uuid.UUID {
+	if i.log == nil {
+		return i.ranked[queryID]
+	}
+	if i.log.add(loggedSearch{index: name, queryID: queryID}) > i.driftAfter {
+		if drifted, ok := i.drifted[queryID]; ok {
+			return drifted
+		}
+	}
+	return i.ranked[queryID]
 }
 
 // fakeCluster serves the part of the Elasticsearch API the bench executors
@@ -56,7 +103,7 @@ func fakeCluster(t *testing.T, indexes map[string]*fakeIndex) string {
 			_, _ = fmt.Fprintf(w, `{"count": %d}`, index.count)
 		case "_search", "_search/template":
 			body, _ := io.ReadAll(r.Body)
-			for queryID, ids := range index.ranked {
+			for queryID := range index.ranked {
 				if !bytes.Contains(body, []byte(`"`+queryID+`"`)) {
 					continue
 				}
@@ -64,10 +111,10 @@ func fakeCluster(t *testing.T, indexes map[string]*fakeIndex) string {
 					http.Error(w, "shard failure", http.StatusInternalServerError)
 					return
 				}
-				writeHits(w, ids)
+				writeHits(w, index.ranking(parts[0], queryID), index.took)
 				return
 			}
-			writeHits(w, nil)
+			writeHits(w, nil, index.took)
 		default:
 			http.NotFound(w, r)
 		}
@@ -76,14 +123,18 @@ func fakeCluster(t *testing.T, indexes map[string]*fakeIndex) string {
 	return srv.URL
 }
 
-func writeHits(w io.Writer, ids []uuid.UUID) {
+func writeHits(w io.Writer, ids []uuid.UUID, took *int) {
 	hits := make([]map[string]any, 0, len(ids))
 	for _, id := range ids {
 		hits = append(hits, map[string]any{"_source": map[string]string{"id": id.String()}})
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	response := map[string]any{
 		"hits": map[string]any{"total": map[string]any{"value": len(ids), "relation": "eq"}, "hits": hits},
-	})
+	}
+	if took != nil {
+		response["took"] = *took
+	}
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // lineageTrack is a track with engines a and b over queries q1 and q2, in two

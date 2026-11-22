@@ -27,6 +27,8 @@ type PGConfig struct {
 	Password   string
 	Engine     storage.Engine
 	Unmigrated bool
+	// ServerFlags follow the engine's own server-start flags, e.g. "-c", "work_mem=8MB".
+	ServerFlags []string
 }
 
 var engineImages = map[storage.Engine]string{
@@ -98,7 +100,7 @@ func createPGContainer(ctx context.Context, cfg PGConfig) (*PGContainer, error) 
 		postgres.WithDatabase(cfg.Database),
 		postgres.WithUsername(cfg.Username),
 		postgres.WithPassword(cfg.Password),
-		testcontainers.WithCmdArgs(engineServerFlags[cfg.Engine]...),
+		testcontainers.WithCmdArgs(append(slices.Clone(engineServerFlags[cfg.Engine]), cfg.ServerFlags...)...),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).

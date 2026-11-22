@@ -72,6 +72,8 @@ type Execution struct {
 	RankedDocIDs  []uuid.UUID
 	CorpusMatches *int64 // nil when the engine cannot report one
 	Latency       time.Duration
+	// ServerTime is the engine's own search time, without transport; nil when it reports none.
+	ServerTime *time.Duration
 }
 
 var (

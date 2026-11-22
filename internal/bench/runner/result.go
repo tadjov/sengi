@@ -15,7 +15,11 @@ type QueryResult struct {
 	ReturnedCount int
 	CorpusMatches *int64
 	Latency       LatencyStats
-	Error         error
+	// ServerLatency is nil when the engine reports no server time.
+	ServerLatency *LatencyStats
+	// UnstableIterations are the iterations, from 1, that rank differently from the first.
+	UnstableIterations []int
+	Error              error
 }
 
 type JobResult struct {

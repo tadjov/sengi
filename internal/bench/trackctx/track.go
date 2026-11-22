@@ -173,6 +173,22 @@ func (t *Track) ReportPath(runID string) string {
 	return filepath.Join(t.reportsDir, runID+".json")
 }
 
+// Relative writes path relative to the track, so artifacts read the same from any checkout.
+func (t *Track) Relative(path string) string {
+	if path == "" {
+		return ""
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return path
+	}
+	rel, err := filepath.Rel(canonicalise(t.Root), canonicalise(abs))
+	if err != nil {
+		return path
+	}
+	return filepath.ToSlash(rel)
+}
+
 // LatestReportPath is the conventional pointer to the most-recent report.
 func (t *Track) LatestReportPath() string {
 	return filepath.Join(t.reportsDir, latestReport)
@@ -297,13 +313,18 @@ func suggestTracks(base, arg string) []string {
 	return nil
 }
 
-// canonicalise resolves symlinks so a track's Root is stable across OS quirks
-// (notably macOS where /tmp -> /private/tmp). Failure falls back to the input.
+// canonicalise resolves symlinks (macOS /tmp is /private/tmp), through the nearest existing folder for a path not written yet.
 func canonicalise(p string) string {
-	if realPath, err := filepath.EvalSymlinks(p); err == nil {
-		return realPath
+	missing := ""
+	for dir := p; ; dir = filepath.Dir(dir) {
+		if realPath, err := filepath.EvalSymlinks(dir); err == nil {
+			return filepath.Join(realPath, missing)
+		}
+		if filepath.Dir(dir) == dir {
+			return p
+		}
+		missing = filepath.Join(filepath.Base(dir), missing)
 	}
-	return p
 }
 
 // walkUp searches cwd and its parents for a track-shaped folder. Stops at the

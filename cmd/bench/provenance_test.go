@@ -141,3 +141,21 @@ func TestCollectIndexProvenance_RecordsFailuresWithoutFailing(t *testing.T) {
 	require.Contains(t, provenance, "api", "an engine that cannot describe its index still gets a block")
 	assert.NotEmpty(t, provenance["api"].Error)
 }
+
+func TestPrintDiff_ListsAServerSettingThatChanged(t *testing.T) {
+	withWorkMem := func(runID, workMem string) *report.Report {
+		rpt := diffReport(diffRun{runID: runID, kValues: []int{10}, ndcg: map[int]float64{10: 0.6}, threshold: 1})
+		rpt.Environment.Engines = map[string]report.EngineInfo{"pg": {Type: "postgres", Index: &report.IndexProvenance{
+			IndexDescription: engine.IndexDescription{Postgres: &pg.IndexDescription{
+				ServerVersion:  "PostgreSQL 18.1",
+				ServerSettings: []pg.ServerSetting{{Name: "work_mem", Setting: workMem, Unit: "kB", Source: "command line"}},
+			}},
+		}}}
+		return rpt
+	}
+
+	var out bytes.Buffer
+	printDiff(&out, withWorkMem("a", "4096"), withWorkMem("b", "8192"))
+
+	assert.Regexp(t, `pg\s+server_setting\.work_mem\s+4096kB \(command line\)\s+8192kB \(command line\)`, out.String())
+}

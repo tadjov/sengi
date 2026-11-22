@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"maps"
+	"math/rand/v2"
 	"slices"
 	"sync"
 	"time"
@@ -354,122 +356,198 @@ func (r *Runner) runQueries(ctx context.Context, jr *JobResult, req JobRequest) 
 	}
 	engineSem := make(chan struct{}, ep)
 
+	runQuery := func(q *suite.Query) {
+		if ctx.Err() != nil {
+			return
+		}
+		cells := r.prepareCells(ctx, req, jr.EngineNames, q)
+		r.measureQuery(ctx, queryCells{query: q, cells: cells}, engineSem)
+		for _, c := range cells {
+			jr.Results[q.ID][c.engine] = r.queryResult(q, c)
+		}
+	}
+	// Goroutines would take queries in scheduler order, not suite order.
+	if qp == QueryParallelismSerial {
+		for i := range queries {
+			runQuery(&queries[i])
+		}
+		return
+	}
 	var wg sync.WaitGroup
 	for i := range queries {
-		q := &queries[i]
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			querySem <- struct{}{}
 			defer func() { <-querySem }()
-			if ctx.Err() != nil {
-				return
-			}
-			r.runEnginesForQuery(ctx, jr, q, req, engineSem)
+			runQuery(&queries[i])
 		}()
 	}
 	wg.Wait()
 }
 
-// runEnginesForQuery fans out to all engines for a single query concurrently.
-// Each goroutine writes only to its own index in the slots slice (no mutex),
-// and the merge into jr.Results happens after all goroutines finish.
-func (r *Runner) runEnginesForQuery(ctx context.Context, jr *JobResult, q *suite.Query, req JobRequest, engineSem chan struct{}) {
-	judgments := r.judgmentsFor(q)
+// cell is one query on one engine.
+type cell struct {
+	engine      string
+	measurement measurement
+	digest      string
+	// unsent is why the request couldn't be built; the cell is never measured.
+	unsent   error
+	measured execResult
+}
+
+type queryCells struct {
+	query *suite.Query
+	cells []*cell
+}
+
+func (r *Runner) prepareCells(ctx context.Context, req JobRequest, engines []string, q *suite.Query) []*cell {
 	queryVector := r.queryVector(ctx, req.Suite, q)
-
-	type slot struct {
-		engName string
-		qr      QueryResult
-		present bool
-	}
-	slots := make([]slot, len(jr.EngineNames))
-	for idx, name := range jr.EngineNames {
-		slots[idx].engName = name
-	}
-
-	var wg sync.WaitGroup
-	for idx, engName := range jr.EngineNames {
+	cells := make([]*cell, 0, len(engines))
+	for _, engName := range engines {
 		exec, ok := req.Executors[engName]
 		if !ok {
 			continue
 		}
-		idx, engName := idx, engName
+		c := &cell{engine: engName}
+		cells = append(cells, c)
+
+		request, err := BuildRequest(RequestInput{
+			Engine:      engName,
+			Query:       q,
+			Track:       req.Track,
+			Suite:       req.Suite,
+			Bindings:    req.Bindings,
+			Dialects:    req.Dialects,
+			QueryVector: queryVector,
+		})
+		if err != nil {
+			c.unsent = err
+			slog.Warn("resolve query failed", "query", q.ID, "engine", engName, "error", err)
+			continue
+		}
+		if c.digest, err = requestDigest(request); err != nil {
+			c.unsent = err
+			slog.Warn("request digest failed", "query", q.ID, "engine", engName, "error", err)
+			continue
+		}
+		c.measurement = measurement{
+			queryID:  q.ID,
+			engine:   engName,
+			executor: exec,
+			request:  request,
+			timeout:  req.QueryTimeout,
+		}
+	}
+	return cells
+}
+
+// measureQuery interleaves engines that run one at a time and gives the rest a goroutine each.
+func (r *Runner) measureQuery(ctx context.Context, q queryCells, engineSem chan struct{}) {
+	if r.config.EngineParallelism == EngineParallelismSerial {
+		r.measureInterleaved(ctx, q, engineSem)
+		return
+	}
+	var wg sync.WaitGroup
+	for _, c := range q.cells {
+		if c.unsent != nil {
+			continue
+		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			engineSem <- struct{}{}
 			defer func() { <-engineSem }()
-
-			request, err := BuildRequest(RequestInput{
-				Engine:      engName,
-				Query:       q,
-				Track:       req.Track,
-				Suite:       req.Suite,
-				Bindings:    req.Bindings,
-				Dialects:    req.Dialects,
-				QueryVector: queryVector,
-			})
-			if err != nil {
-				slots[idx] = slot{
-					engName: engName,
-					qr:      QueryResult{QueryID: q.ID, EngineName: engName, Error: err},
-					present: true,
-				}
-				slog.Warn("resolve query failed", "query", q.ID, "engine", engName, "error", err)
-				return
-			}
-			digest, err := requestDigest(request)
-			if err != nil {
-				slots[idx] = slot{
-					engName: engName,
-					qr:      QueryResult{QueryID: q.ID, EngineName: engName, Error: err},
-					present: true,
-				}
-				slog.Warn("request digest failed", "query", q.ID, "engine", engName, "error", err)
-				return
-			}
-
-			result := r.measure(ctx, measurement{
-				queryID:  q.ID,
-				engine:   engName,
-				executor: exec,
-				request:  request,
-				timeout:  req.QueryTimeout,
-			})
-
-			var scores metrics.ScoreSet
-			if result.err == nil && len(judgments) > 0 {
-				scores = metrics.ComputeAll(result.rankedIDs, judgments, r.config.KValues, r.config.RelevanceThreshold)
-			}
-			if result.err != nil {
-				slog.Warn("query failed", "query", q.ID, "engine", engName, "error", result.err)
-			}
-
-			slots[idx] = slot{
-				engName: engName,
-				qr: QueryResult{
-					QueryID:       q.ID,
-					Category:      string(q.Category),
-					EngineName:    engName,
-					RequestDigest: digest,
-					Scores:        scores,
-					RankedDocIDs:  result.rankedIDs,
-					ReturnedCount: result.returnedCount,
-					CorpusMatches: result.corpusMatches,
-					Latency:       result.latencyStats,
-					Error:         result.err,
-				},
-				present: true,
-			}
+			c.measured = r.measure(ctx, c.measurement)
 		}()
 	}
 	wg.Wait()
+}
 
-	for _, s := range slots {
-		if s.present {
-			jr.Results[q.ID][s.engName] = s.qr
+// measureInterleaved runs each iteration across all engines in a seeded order, so host noise spreads over them.
+func (r *Runner) measureInterleaved(ctx context.Context, q queryCells, engineSem chan struct{}) {
+	var sendable []*cell
+	for _, c := range q.cells {
+		if c.unsent == nil {
+			sendable = append(sendable, c)
 		}
+	}
+	for warmup := 1; warmup <= r.config.WarmupRuns; warmup++ {
+		for _, c := range engineOrder(sendable, orderStep{seed: r.config.Seed, queryID: q.query.ID, phase: warmupPhase, number: warmup}) {
+			if _, err := c.measurement.executeAlone(ctx, engineSem); err != nil {
+				slog.Warn("warmup failed", "query", q.query.ID, "engine", c.engine, "iteration", warmup, "error", err)
+			}
+		}
+	}
+	logs := make(map[*cell]*iterationLog, len(sendable))
+	for _, c := range sendable {
+		logs[c] = &iterationLog{iterations: r.config.Runs}
+	}
+	for iteration := 1; iteration <= r.config.Runs; iteration++ {
+		for _, c := range engineOrder(sendable, orderStep{seed: r.config.Seed, queryID: q.query.ID, phase: iterationPhase, number: iteration}) {
+			if logs[c].err != nil {
+				continue
+			}
+			exec, err := c.measurement.executeAlone(ctx, engineSem)
+			logs[c].record(iteration, exec, err)
+		}
+	}
+	for _, c := range sendable {
+		c.measured = logs[c].result(r.config.RankingDepth)
+	}
+}
+
+type orderPhase string
+
+const (
+	warmupPhase    orderPhase = "warmup"
+	iterationPhase orderPhase = "iteration"
+)
+
+type orderStep struct {
+	seed    uint64
+	queryID string
+	phase   orderPhase
+	number  int
+}
+
+// engineOrder is the same for the same seed and step.
+func engineOrder(cells []*cell, step orderStep) []*cell {
+	stream := fnv.New64a()
+	fmt.Fprintf(stream, "%s\x00%s\x00%d", step.queryID, step.phase, step.number)
+	rng := rand.New(rand.NewPCG(step.seed, stream.Sum64()))
+	ordered := make([]*cell, len(cells))
+	for i, j := range rng.Perm(len(cells)) {
+		ordered[i] = cells[j]
+	}
+	return ordered
+}
+
+func (r *Runner) queryResult(q *suite.Query, c *cell) QueryResult {
+	if c.unsent != nil {
+		return QueryResult{QueryID: q.ID, EngineName: c.engine, Error: c.unsent}
+	}
+	measured := c.measured
+	if measured.err != nil {
+		slog.Warn("query failed", "query", q.ID, "engine", c.engine, "error", measured.err)
+	}
+	var scores metrics.ScoreSet
+	if judgments := r.judgmentsFor(q); measured.err == nil && len(judgments) > 0 {
+		scores = metrics.ComputeAll(measured.rankedIDs, judgments, r.config.KValues, r.config.RelevanceThreshold)
+	}
+	return QueryResult{
+		QueryID:            q.ID,
+		Category:           string(q.Category),
+		EngineName:         c.engine,
+		RequestDigest:      c.digest,
+		Scores:             scores,
+		RankedDocIDs:       measured.rankedIDs,
+		ReturnedCount:      measured.returnedCount,
+		CorpusMatches:      measured.corpusMatches,
+		Latency:            measured.latencyStats,
+		ServerLatency:      measured.serverStats,
+		UnstableIterations: measured.unstableIterations,
+		Error:              measured.err,
 	}
 }
 
@@ -564,11 +642,13 @@ func (r *Runner) judgmentsFor(q *suite.Query) map[uuid.UUID]int {
 }
 
 type execResult struct {
-	rankedIDs     []uuid.UUID
-	returnedCount int
-	corpusMatches *int64
-	latencyStats  LatencyStats
-	err           error
+	rankedIDs          []uuid.UUID
+	returnedCount      int
+	corpusMatches      *int64
+	latencyStats       LatencyStats
+	serverStats        *LatencyStats
+	unstableIterations []int
+	err                error
 }
 
 // measurement is one query on one engine, executed for warmup and then for the
@@ -581,39 +661,82 @@ type measurement struct {
 	timeout  time.Duration
 }
 
-// measure fails on the first failed measured iteration: keeping the others
-// would drop a timeout from the latency tail and report the query as answered.
 func (r *Runner) measure(ctx context.Context, m measurement) execResult {
 	for i := 0; i < r.config.WarmupRuns; i++ {
 		if _, err := m.execute(ctx); err != nil {
 			slog.Warn("warmup failed", "query", m.queryID, "engine", m.engine, "iteration", i+1, "error", err)
 		}
 	}
-
-	var latencies []time.Duration
-	var lastExec *engine.Execution
-	for i := 0; i < r.config.Runs; i++ {
-		result, err := m.execute(ctx)
-		if err != nil {
-			return execResult{err: fmt.Errorf("measured iteration %d of %d: %w", i+1, r.config.Runs, err)}
-		}
-		lastExec = result
-		latencies = append(latencies, result.Latency)
+	log := &iterationLog{iterations: r.config.Runs}
+	for iteration := 1; iteration <= r.config.Runs && log.err == nil; iteration++ {
+		exec, err := m.execute(ctx)
+		log.record(iteration, exec, err)
 	}
+	return log.result(r.config.RankingDepth)
+}
 
-	if lastExec == nil {
+// iterationLog fails the cell at its first failed iteration, so a timeout never drops out of the latency tail.
+type iterationLog struct {
+	iterations  int
+	latencies   []time.Duration
+	serverTimes []time.Duration
+	rankings    [][]uuid.UUID
+	last        *engine.Execution
+	err         error
+}
+
+func (l *iterationLog) record(iteration int, exec *engine.Execution, err error) {
+	if err != nil {
+		l.err = fmt.Errorf("measured iteration %d of %d: %w", iteration, l.iterations, err)
+		return
+	}
+	l.last = exec
+	l.rankings = append(l.rankings, exec.RankedDocIDs)
+	l.latencies = append(l.latencies, exec.Latency)
+	if exec.ServerTime != nil {
+		l.serverTimes = append(l.serverTimes, *exec.ServerTime)
+	}
+}
+
+// result scores the last iteration, cut at depth, and lists the iterations that rank differently from the first.
+func (l *iterationLog) result(depth int) execResult {
+	if l.err != nil {
+		return execResult{err: l.err}
+	}
+	if l.last == nil {
 		return execResult{err: errors.New("no measured iteration ran")}
 	}
-	ranked := lastExec.RankedDocIDs
-	if depth := r.config.RankingDepth; depth > 0 && len(ranked) > depth {
-		ranked = ranked[:depth]
+	measured := execResult{
+		rankedIDs:     cutRanking(l.last.RankedDocIDs, depth),
+		returnedCount: len(l.last.RankedDocIDs),
+		corpusMatches: l.last.CorpusMatches,
+		latencyStats:  ComputeLatencyStats(l.latencies),
 	}
-	return execResult{
-		rankedIDs:     ranked,
-		returnedCount: len(lastExec.RankedDocIDs),
-		corpusMatches: lastExec.CorpusMatches,
-		latencyStats:  ComputeLatencyStats(latencies),
+	if len(l.serverTimes) > 0 {
+		serverStats := ComputeLatencyStats(l.serverTimes)
+		measured.serverStats = &serverStats
 	}
+	first := cutRanking(l.rankings[0], depth)
+	for i, ranking := range l.rankings[1:] {
+		if !slices.Equal(cutRanking(ranking, depth), first) {
+			measured.unstableIterations = append(measured.unstableIterations, i+2)
+		}
+	}
+	return measured
+}
+
+func cutRanking(ranked []uuid.UUID, depth int) []uuid.UUID {
+	if depth > 0 && len(ranked) > depth {
+		return ranked[:depth]
+	}
+	return ranked
+}
+
+// executeAlone holds the engine semaphore, so nothing else runs while it is measured.
+func (m measurement) executeAlone(ctx context.Context, engineSem chan struct{}) (*engine.Execution, error) {
+	engineSem <- struct{}{}
+	defer func() { <-engineSem }()
+	return m.execute(ctx)
 }
 
 // execute runs once under the query deadline, which the runner owns so that no

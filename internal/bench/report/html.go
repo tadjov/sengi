@@ -47,12 +47,10 @@ func RenderHTML(r *Report) ([]byte, error) {
 
 // ─── git-relative path helper ────────────────────────────────────────────────
 
-// repoRelPath makes path relative to the nearest .git root it can find by
-// walking up. Falls back to the path's basename if no git root is found.
-// This keeps source paths readable in shared reports.
+// repoRelPath shortens an older report's absolute path to the repo root, or to its basename.
 func repoRelPath(path string) string {
-	if path == "" {
-		return ""
+	if path == "" || !filepath.IsAbs(path) {
+		return path
 	}
 	root := findGitRoot(filepath.Dir(path))
 	if root == "" {
@@ -107,6 +105,7 @@ type htmlJob struct {
 	Name         string
 	Aggregated   []htmlAggRow
 	Latency      []htmlLatRow
+	ServerTime   []htmlServerTimeRow
 	Significance []htmlSigRow
 	PerQuery     []htmlQueryRow
 	NDCGChart    template.HTML
@@ -139,6 +138,12 @@ type htmlLatRow struct {
 	Min, P50, P75, P90, P95, P99, Max, Mean, Stddev string
 	Samples                                         int
 	ExcludedQueries                                 int
+}
+
+type htmlServerTimeRow struct {
+	Engine              string
+	P50, P95, P99, Mean string
+	Samples             int
 }
 
 type htmlSigRow struct {
@@ -255,6 +260,18 @@ func buildViewModel(r *Report) htmlReport {
 				Stddev:          fmtDuration(s.Stddev),
 				Samples:         s.SampleCount,
 				ExcludedQueries: agg.LatencyExcludedQueries,
+			})
+		}
+
+		for _, agg := range serverTimed(jr.Aggregated) {
+			s := agg.ServerLatency
+			job.ServerTime = append(job.ServerTime, htmlServerTimeRow{
+				Engine:  agg.EngineName,
+				P50:     fmtServerTime(s.P50()),
+				P95:     fmtServerTime(s.P95()),
+				P99:     fmtServerTime(s.P99()),
+				Mean:    fmtServerTime(s.Mean),
+				Samples: s.SampleCount,
 			})
 		}
 

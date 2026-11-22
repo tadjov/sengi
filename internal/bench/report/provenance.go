@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/tadjov/sengi/internal/bench/engine"
@@ -14,9 +15,8 @@ import (
 	"github.com/tadjov/sengi/internal/storage/es"
 )
 
-// IndexProvenance is how an engine had the corpus indexed when the run
-// started. Error is set instead of a description when it could not be read;
-// a run never fails over provenance.
+// IndexProvenance is how an engine was indexed and set up when the run started.
+// Error replaces it when it can't be read; a run never fails over provenance.
 type IndexProvenance struct {
 	engine.IndexDescription
 	Error string `json:"error,omitempty"`
@@ -66,6 +66,14 @@ func (p IndexProvenance) Fields() []ProvenanceField {
 		for name, value := range d.Settings {
 			add("setting."+name, value)
 		}
+		for _, setting := range d.ServerSettings {
+			add("server_setting."+setting.Name, fmt.Sprintf("%s%s (%s)", setting.Setting, setting.Unit, setting.Source))
+		}
+		if d.Limits != nil {
+			add("cgroup.cpu_max", d.Limits.CPUMax)
+			add("cgroup.memory_max", d.Limits.MemoryMax)
+		}
+		addUnreadable(add, d.Unreadable)
 		addLoadFields(add, d.Load)
 	}
 	if d := p.Elasticsearch; d != nil {
@@ -74,13 +82,31 @@ func (p IndexProvenance) Fields() []ProvenanceField {
 		if len(d.Analysis) > 0 {
 			add("analysis", digest(d.Analysis))
 		}
+		for _, node := range d.Nodes {
+			addNodeFields(add, node)
+		}
 		for path, field := range d.Fields {
 			add("field."+path, describeField(field))
 		}
+		addUnreadable(add, d.Unreadable)
 		addLoadFields(add, d.Load)
 	}
 	sort.Slice(fields, func(i, j int) bool { return fields[i].Name < fields[j].Name })
 	return fields
+}
+
+func addNodeFields(add func(name, value string), node es.NodeStats) {
+	prefix := "node." + node.Name + "."
+	add(prefix+"heap_max_bytes", strconv.FormatInt(node.HeapMaxBytes, 10))
+	if node.MemoryLimit != "" {
+		add(prefix+"memory_limit", node.MemoryLimit)
+	}
+}
+
+func addUnreadable(add func(name, value string), unreadable []string) {
+	if len(unreadable) > 0 {
+		add("unreadable", strings.Join(unreadable, "; "))
+	}
 }
 
 // Summary is a one-line account of the provenance for `bench show report`.
@@ -90,7 +116,7 @@ func (p IndexProvenance) Summary() string {
 		parts = append(parts, "fuses "+strings.Join(d.Legs, ", "))
 	}
 	if d := p.Postgres; d != nil {
-		parts = append(parts, "postgres "+d.ServerVersion)
+		parts = append(parts, "postgres "+postgresRelease(d.ServerVersion))
 		if len(d.Extensions) > 0 {
 			extensions := make([]string, len(d.Extensions))
 			for i, ext := range d.Extensions {
@@ -102,7 +128,14 @@ func (p IndexProvenance) Summary() string {
 		if len(d.Settings) > 0 {
 			parts = append(parts, "settings: "+formatSettings(d.Settings))
 		}
+		if len(d.ServerSettings) > 0 {
+			parts = append(parts, fmt.Sprintf("server settings: %d", len(d.ServerSettings)))
+		}
+		if d.Limits != nil {
+			parts = append(parts, fmt.Sprintf("cgroup: cpu.max %s, memory.max %s", d.Limits.CPUMax, d.Limits.MemoryMax))
+		}
 		parts = appendLoadSummary(parts, d.Load)
+		parts = appendUnreadableSummary(parts, d.Unreadable)
 	}
 	if d := p.Elasticsearch; d != nil {
 		parts = append(parts, "elasticsearch "+d.Version, "index: "+d.Index)
@@ -110,7 +143,11 @@ func (p IndexProvenance) Summary() string {
 			parts = append(parts, "analyzers: "+strings.Join(analyzers, ", "))
 		}
 		parts = append(parts, fmt.Sprintf("fields: %d", len(d.Fields)))
+		for _, node := range d.Nodes {
+			parts = append(parts, fmt.Sprintf("node %s: heap %d MiB", node.Name, node.HeapMaxBytes>>20))
+		}
 		parts = appendLoadSummary(parts, d.Load)
+		parts = appendUnreadableSummary(parts, d.Unreadable)
 	}
 	if p.Error != "" {
 		parts = append(parts, "error: "+p.Error)
@@ -138,6 +175,19 @@ func DiffProvenance(before, after *Report) []ProvenanceChange {
 		}
 	}
 	return changes
+}
+
+// postgresRelease drops the platform from version(); older reports hold the bare release.
+func postgresRelease(version string) string {
+	release, _, _ := strings.Cut(version, " on ")
+	return strings.TrimPrefix(release, "PostgreSQL ")
+}
+
+func appendUnreadableSummary(parts []string, unreadable []string) []string {
+	if len(unreadable) == 0 {
+		return parts
+	}
+	return append(parts, "unread: "+strings.Join(unreadable, "; "))
 }
 
 func addLoadFields(add func(name, value string), load *storage.LoadRecord) {

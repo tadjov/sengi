@@ -126,6 +126,8 @@ type Entry struct {
 	ReturnedCount int
 	CorpusMatches *int64
 	Latency       LatencyStats
+	// ServerLatency is nil for an engine that reports no server time.
+	ServerLatency *LatencyStats `json:",omitempty"`
 	Error         string
 	// Ranking is what the engine returned, best first; nil in reports written
 	// before rankings were recorded.
@@ -156,7 +158,9 @@ type AggregatedEntry struct {
 	// LatencyExcludedQueries counts the rest.
 	Latency                LatencyStats
 	LatencyExcludedQueries int
-	QueryCount             int
+	// ServerLatency covers the same queries as Latency; nil when the engine reports none.
+	ServerLatency *LatencyStats `json:",omitempty"`
+	QueryCount    int
 	// JudgedCount is the size of the job's judged query set, the denominator
 	// of every quality mean. A query this engine failed or had no block for
 	// scores 0.
@@ -178,6 +182,14 @@ type LatencyStats struct {
 	Stddev      time.Duration         `json:"stddev"`
 	Percentiles map[int]time.Duration `json:"percentiles"`
 	SampleCount int                   `json:"sample_count"`
+}
+
+func fromRunnerServerLatency(s *runner.LatencyStats) *LatencyStats {
+	if s == nil {
+		return nil
+	}
+	stats := fromRunnerLatencyStats(*s)
+	return &stats
 }
 
 func fromRunnerLatencyStats(s runner.LatencyStats) LatencyStats {
@@ -202,6 +214,8 @@ func (s LatencyStats) P99() time.Duration { return s.Percentiles[99] }
 type RunSettings struct {
 	Warmup     int `json:"warmup"`
 	Iterations int `json:"iterations"`
+	// Seed drew each query's engine order; 0 in older reports.
+	Seed uint64 `json:"seed"`
 	// QueryTimeout is the deadline each execution ran under.
 	QueryTimeout time.Duration `json:"query_timeout"`
 	// JobFilter is the --jobs selection; empty when the run took every job.

@@ -157,6 +157,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	if err != nil {
 		return fmt.Errorf("read pool: %w", err)
 	}
+	poolRef := tr.Relative(poolPath)
 
 	kind, provider, err := resolveJudge(f)
 	if err != nil {
@@ -189,7 +190,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 					outPath, existing.Judge())
 			}
 		}
-		jf, err := manualJudgments{pool: pf, poolPath: poolPath, path: outPath}.write(existing)
+		jf, err := manualJudgments{pool: pf, poolRef: poolRef, path: outPath}.write(existing)
 		if err != nil {
 			return err
 		}
@@ -244,7 +245,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	judge := cfg.Judge()
 	runMeta := meta.New("judge")
 	runMeta.Judge = &judge
-	runMeta.PoolRef = poolPath
+	runMeta.PoolRef = poolRef
 	runMeta.PoolRunID = pf.Meta.RunID
 	runMeta.RelevanceScale = []int{0, 1, 2, 3}
 	var carried *judgment.File
@@ -492,9 +493,10 @@ func buildManualJudgments(pf *pool.PoolFile, existing *judgment.File) *judgment.
 
 // manualJudgments is a hand-grading file bound to the pool it was built from.
 type manualJudgments struct {
-	pool     *pool.PoolFile
-	poolPath string
-	path     string
+	pool *pool.PoolFile
+	// poolRef is relative to the track.
+	poolRef string
+	path    string
 }
 
 // write merges existing (nil starts over) with placeholders for missing docs and
@@ -504,7 +506,7 @@ func (m manualJudgments) write(existing *judgment.File) (*judgment.File, error) 
 	judge := judgment.NewManualStrategy().Describe()
 	jf.Meta = meta.New("judge")
 	jf.Meta.Judge = &judge
-	jf.Meta.PoolRef = m.poolPath
+	jf.Meta.PoolRef = m.poolRef
 	jf.Meta.PoolRunID = m.pool.Meta.RunID
 	if err := judgment.WriteFile(jf, m.path); err != nil {
 		return nil, fmt.Errorf("write manual judgments: %w", err)

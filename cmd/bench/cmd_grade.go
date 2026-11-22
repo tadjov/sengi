@@ -97,7 +97,7 @@ func (g gradeCommand) execute(cmd *cobra.Command, args []string) error {
 	}
 
 	manualPath := tr.JudgmentsPath(judgment.JudgmentSetName(judgment.StrategyManual, ""))
-	manual, err := mergeManualJudgments(manualJudgments{pool: pf, poolPath: tr.Pool, path: manualPath})
+	manual, err := mergeManualJudgments(manualJudgments{pool: pf, poolRef: tr.Relative(tr.Pool), path: manualPath})
 	if err != nil {
 		return err
 	}

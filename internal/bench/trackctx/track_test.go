@@ -316,3 +316,44 @@ func TestReportPath_UsesRunID(t *testing.T) {
 		filepath.Join(canon, "reports", "latest.json"),
 		tr.LatestReportPath())
 }
+
+func TestTrack_Relative(t *testing.T) {
+	root := t.TempDir()
+	trackDir := filepath.Join(root, "tracks", "fts")
+	makeTrack(t, trackDir)
+	linked := filepath.Join(root, "linked")
+	require.NoError(t, os.Symlink(trackDir, linked))
+	direct, err := Resolve(Inputs{TrackArg: trackDir})
+	require.NoError(t, err)
+	throughLink := &Track{Root: linked}
+
+	tests := []struct {
+		name  string
+		track *Track
+		path  string
+		want  string
+	}{
+		{name: "inside the track", track: direct, path: filepath.Join(trackDir, "trec", "pool.yaml"), want: "trec/pool.yaml"},
+		{name: "outside the track", track: direct, path: filepath.Join(root, "tracks", "shared", "suite.yaml"), want: "../shared/suite.yaml"},
+		{name: "track reached through a symlink", track: throughLink, path: filepath.Join(trackDir, "spec.yaml"), want: "spec.yaml"},
+		{name: "file reached through a symlink", track: direct, path: filepath.Join(linked, "trec", "pool.yaml"), want: "trec/pool.yaml"},
+		{name: "a file not written yet", track: throughLink, path: filepath.Join(trackDir, "trec", "annotations.manual.yaml"), want: "trec/annotations.manual.yaml"},
+		{name: "nothing recorded", track: direct},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.track.Relative(tt.path))
+		})
+	}
+}
+
+func TestTrack_RelativeReadsARelativePathFromTheWorkingDirectory(t *testing.T) {
+	trackDir := t.TempDir()
+	makeTrack(t, trackDir)
+	tr, err := Resolve(Inputs{TrackArg: trackDir})
+	require.NoError(t, err)
+	t.Chdir(filepath.Join(trackDir, "trec"))
+
+	assert.Equal(t, "trec/annotations.keyword.yaml", tr.Relative("annotations.keyword.yaml"))
+}

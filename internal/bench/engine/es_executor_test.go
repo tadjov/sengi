@@ -140,6 +140,32 @@ func TestEsExecutor_Execute_ReadsTheDocumentIDFromTheHitID(t *testing.T) {
 	}
 }
 
+func TestEsExecutor_Execute_ReportsTookAsTheServerTime(t *testing.T) {
+	tests := []struct {
+		name string
+		took string
+		want *time.Duration
+	}{
+		{name: "took in milliseconds", took: `"took": 7, `, want: ptr(7 * time.Millisecond)},
+		{name: "a search under a millisecond", took: `"took": 0, `, want: ptr(time.Duration(0))},
+		{name: "took absent"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(`{` + tt.took + `"hits": {"hits": []}}`))
+			}))
+			defer es.Close()
+
+			got, err := NewEsExecutor("es", es.URL, "articles").Execute(context.Background(), Request{Query: `{"query": {"match_all": {}}}`})
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got.ServerTime)
+		})
+	}
+}
+
 func ptr[T any](v T) *T { return &v }
 
 // stallingServer answers only after the request is abandoned, or after a

@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/tadjov/sengi/internal/storage"
 )
 
-// IndexDescription is how an Elasticsearch engine had its corpus indexed, read
-// from the live cluster.
+// IndexDescription is how an ES engine was indexed and set up, read from the live cluster.
 type IndexDescription struct {
 	Version string `json:"version"`
 	// Index is the concrete index the configured name resolved to, which
@@ -26,7 +26,18 @@ type IndexDescription struct {
 	// keyed by dotted path.
 	Fields map[string]FieldMapping `json:"fields,omitempty"`
 	// Load is nil when the corpus load left no record.
-	Load *storage.LoadRecord `json:"load,omitempty"`
+	Load  *storage.LoadRecord `json:"load,omitempty"`
+	Nodes []NodeStats         `json:"nodes,omitempty"`
+	// Unreadable lists the cluster reads that failed; the rest still stands.
+	Unreadable []string `json:"unreadable,omitempty"`
+}
+
+// NodeStats is a node's heap ceiling and cgroup memory limit.
+type NodeStats struct {
+	Name         string `json:"name"`
+	HeapMaxBytes int64  `json:"heap_max_bytes"`
+	// MemoryLimit is a byte count, "max" when the cgroup sets none, empty outside a cgroup.
+	MemoryLimit string `json:"memory_limit,omitempty"`
 }
 
 type FieldMapping struct {
@@ -47,7 +58,8 @@ type VectorIndexOptions struct {
 	EfConstruction int    `json:"ef_construction,omitempty"`
 }
 
-// DescribeIndex records how cfg.IndexName was configured and loaded.
+// DescribeIndex records how cfg.IndexName was configured and loaded, and each node's heap and memory limit.
+// A failed node stats read goes to Unreadable instead of the error.
 func DescribeIndex(ctx context.Context, cfg ClientConfig) (*IndexDescription, error) {
 	client, err := newTypedClient(cfg)
 	if err != nil {
@@ -78,13 +90,66 @@ func DescribeIndex(ctx context.Context, cfg ClientConfig) (*IndexDescription, er
 		return nil, fmt.Errorf("read load record of %s: %w", index, err)
 	}
 
-	return &IndexDescription{
+	description := &IndexDescription{
 		Version:  info.Version.Int,
 		Index:    index,
 		Analysis: analysis,
 		Fields:   searchFieldMappings(record.Mappings.Properties),
 		Load:     load,
-	}, nil
+	}
+	if description.Nodes, err = readNodeStats(ctx, client); err != nil {
+		description.Unreadable = append(description.Unreadable, err.Error())
+	}
+	return description, nil
+}
+
+func readNodeStats(ctx context.Context, client *elasticsearch.TypedClient) ([]NodeStats, error) {
+	res, err := client.Nodes.Stats().Metric("os,jvm").Perform(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("read node stats: %w", err)
+	}
+	var stats struct {
+		Nodes map[string]struct {
+			Name string `json:"name"`
+			JVM  struct {
+				Mem struct {
+					HeapMaxInBytes int64 `json:"heap_max_in_bytes"`
+				} `json:"mem"`
+			} `json:"jvm"`
+			OS struct {
+				Cgroup struct {
+					Memory struct {
+						LimitInBytes string `json:"limit_in_bytes"`
+					} `json:"memory"`
+				} `json:"cgroup"`
+			} `json:"os"`
+		} `json:"nodes"`
+	}
+	if err := decodeBody(res, &stats); err != nil {
+		return nil, fmt.Errorf("read node stats: %w", err)
+	}
+	nodes := make([]NodeStats, 0, len(stats.Nodes))
+	for _, n := range stats.Nodes {
+		nodes = append(nodes, NodeStats{
+			Name:         n.Name,
+			HeapMaxBytes: n.JVM.Mem.HeapMaxInBytes,
+			MemoryLimit:  n.OS.Cgroup.Memory.LimitInBytes,
+		})
+	}
+	sort.Slice(nodes, func(i, j int) bool { return nodes[i].Name < nodes[j].Name })
+	return nodes, nil
+}
+
+func decodeBody(res *http.Response, into any) error {
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("status %d: %s", res.StatusCode, body)
+	}
+	return json.Unmarshal(body, into)
 }
 
 func decodeLoadRecord(meta types.Metadata) (*storage.LoadRecord, error) {

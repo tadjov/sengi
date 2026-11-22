@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -60,6 +62,8 @@ report is marked latency_only and never becomes latest.json.
 The report is always written. bench run then exits non-zero and leaves
 latest.json alone when the run failed:
   • a (query, engine) execution errored
+  • a (query, engine) cell ranked differently in a later iteration than in
+    the first
   • it measured a (query, engine) cell the pool dropped (--allow-partial)
   • it ran a query the pool holds no entry for
   • it measured an engine the pool never saw
@@ -115,6 +119,7 @@ func newRunConfig(f runFlags, bs *spec.BenchSpec, ks []int, kFromFlag bool) runn
 		RelevanceThreshold: bs.Metrics.RelevanceThreshold,
 		WarmupRuns:         firstNonZero(f.warmup, bs.Runs.Warmup),
 		Runs:               firstNonZero(f.iters, bs.Runs.Iterations),
+		Seed:               rand.Uint64(),
 		QueryParallelism:   runner.QueryParallelismSerial,
 		EngineParallelism:  runner.EngineParallelismSerial,
 	}
@@ -217,10 +222,10 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 	})
 	rpt.Provenance.SpecID = bs.ID
 	rpt.Provenance.Sources = &meta.Sources{
-		Spec:      tr.Spec,
-		Suites:    loadedSuitePaths(bs),
-		Pool:      tr.Pool,
-		Judgments: judgments.path,
+		Spec:      tr.Relative(tr.Spec),
+		Suites:    loadedSuitePaths(bs, tr),
+		Pool:      tr.Relative(tr.Pool),
+		Judgments: tr.Relative(judgments.path),
 	}
 	if judgments.meta != nil {
 		rpt.Provenance.PoolRunID = judgments.pool.Meta.RunID
@@ -229,11 +234,13 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 		rpt.Provenance.Judge = judgments.meta.Judge
 		rpt.Provenance.GradedCount = judgments.meta.GradedCount
 		rpt.Provenance.UnjudgedCount = &judgments.coverage.unjudged
-		rpt.Provenance.PoolRef = judgments.meta.PoolRef
+		// checkPoolBinding already matched the judgments to this pool by run id.
+		rpt.Provenance.PoolRef = tr.Relative(tr.Pool)
 	}
 	rpt.Settings = report.RunSettings{
 		Warmup:       runCfg.WarmupRuns,
 		Iterations:   runCfg.Runs,
+		Seed:         runCfg.Seed,
 		QueryTimeout: bs.Runs.QueryTimeout,
 		JobFilter:    jobFilter,
 		LatencyOnly:  f.latencyOnly,
@@ -315,11 +322,11 @@ func measuredAsSpecified(cfg runner.Config, bs *spec.BenchSpec) bool {
 		slices.Equal(cfg.KValues, bs.Metrics.KValues)
 }
 
-func loadedSuitePaths(bs *spec.BenchSpec) []string {
+func loadedSuitePaths(bs *spec.BenchSpec, tr *trackctx.Track) []string {
 	var suites []string
 	for _, job := range bs.Jobs {
-		if !slices.Contains(suites, job.Suite) {
-			suites = append(suites, job.Suite)
+		if suite := tr.Relative(job.Suite); !slices.Contains(suites, suite) {
+			suites = append(suites, suite)
 		}
 	}
 	return suites
@@ -435,6 +442,10 @@ func runFailures(result *runner.BenchmarkResult, judgments *runJudgments, suiteQ
 	}
 	if cells := erroredCells(result); len(cells) > 0 {
 		failures = append(failures, fmt.Sprintf("%d (query, engine) executions errored: %s", len(cells), strings.Join(cells, ", ")))
+	}
+	if cells := unstableRankings(result); len(cells) > 0 {
+		failures = append(failures, fmt.Sprintf("%d (query, engine) cells ranked differently in a later iteration than in the first: %s; an unstable tie or a corpus that changed under the run",
+			len(cells), strings.Join(cells, ", ")))
 	}
 	if judgments.meta != nil {
 		if engines := unpooledEngines(result, judgments); len(engines) > 0 {
@@ -640,6 +651,26 @@ func erroredCells(result *runner.BenchmarkResult) []string {
 				if qr, ok := jr.Results[queryID][engineName]; ok && qr.Error != nil {
 					cells = append(cells, fmt.Sprintf("%s:%s/%s", jr.JobName, queryID, engineName))
 				}
+			}
+		}
+	}
+	return cells
+}
+
+func unstableRankings(result *runner.BenchmarkResult) []string {
+	var cells []string
+	for _, jr := range result.Jobs {
+		for _, queryID := range jr.QueryOrder {
+			for _, engineName := range jr.EngineNames {
+				qr, ok := jr.Results[queryID][engineName]
+				if !ok || len(qr.UnstableIterations) == 0 {
+					continue
+				}
+				iterations := make([]string, len(qr.UnstableIterations))
+				for i, iteration := range qr.UnstableIterations {
+					iterations[i] = strconv.Itoa(iteration)
+				}
+				cells = append(cells, fmt.Sprintf("%s:%s/%s (iteration %s)", jr.JobName, queryID, engineName, strings.Join(iterations, ", ")))
 			}
 		}
 	}

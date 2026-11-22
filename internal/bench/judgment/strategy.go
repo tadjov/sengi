@@ -114,13 +114,3 @@ func NewStrategy(kind StrategyKind, opts StrategyOptions) (Strategy, error) {
 		return nil, fmt.Errorf("unknown strategy %q (known: %s)", kind, strings.Join(KnownStrategies(), ", "))
 	}
 }
-
-// NewStrategyFromSelector builds the strategy behind a judgment-set name, for read paths.
-func NewStrategyFromSelector(sel string, opts StrategyOptions) (Strategy, error) {
-	kind, provider, err := ParseSelector(sel)
-	if err != nil {
-		return nil, err
-	}
-	opts.Provider = provider
-	return NewStrategy(kind, opts)
-}

@@ -2,6 +2,10 @@ package es
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -60,6 +64,44 @@ func TestDescribeIndex_ReadsTheLiveIndex(t *testing.T) {
 			if _, ok := description.Fields["title.keyword"]; ok {
 				t.Errorf("title.keyword recorded, but keyword fields are not analysed")
 			}
+
+			if len(description.Nodes) != 1 || description.Nodes[0].HeapMaxBytes != 512<<20 {
+				t.Errorf("nodes = %+v, want the one node with the container's -Xmx512m heap", description.Nodes)
+			} else if description.Nodes[0].MemoryLimit == "" {
+				t.Errorf("memory limit not recorded, want the container's cgroup limit or max")
+			}
+			if len(description.Unreadable) != 0 {
+				t.Errorf("unreadable = %v, want every read to succeed", description.Unreadable)
+			}
 		})
 	}
+
+	t.Run("a cluster read refused keeps the rest", func(t *testing.T) {
+		target, err := url.Parse(container.Address)
+		if err != nil {
+			t.Fatalf("parse address: %v", err)
+		}
+		proxy := httputil.NewSingleHostReverseProxy(target)
+		refusingNodeStats := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/_nodes") {
+				w.Header().Set("X-Elastic-Product", "Elasticsearch")
+				http.Error(w, `{"error": "forbidden"}`, http.StatusForbidden)
+				return
+			}
+			proxy.ServeHTTP(w, r)
+		}))
+		t.Cleanup(refusingNodeStats.Close)
+
+		description, err := DescribeIndex(ctx, ClientConfig{Addresses: []string{refusingNodeStats.URL}, IndexName: cfg.IndexName})
+		if err != nil {
+			t.Fatalf("DescribeIndex: %v", err)
+		}
+
+		if description.Version != "8.12.0" || description.Index != cfg.IndexName || len(description.Analysis) == 0 || len(description.Fields) == 0 {
+			t.Errorf("description = %+v, want the index described in full", description)
+		}
+		if len(description.Unreadable) != 1 || !strings.Contains(description.Unreadable[0], "node stats") {
+			t.Errorf("unreadable = %v, want the refused node stats named", description.Unreadable)
+		}
+	})
 }
