@@ -93,7 +93,7 @@ func (g gradeCommand) execute(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("read --against judgments: %w", err)
 	}
-	if err := checkPoolBinding(against.Meta.PoolRunID, pf); err != nil {
+	if err := pf.CheckJudgedAgainst(against.Meta.PoolRunID); err != nil {
 		return fmt.Errorf("--against %s: %w", againstPath, err)
 	}
 

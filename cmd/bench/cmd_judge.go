@@ -279,7 +279,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 			if err := checkResumeCompat(existing, judge); err != nil {
 				return err
 			}
-			if err := checkPoolBinding(existing.Meta.PoolRunID, pf); err != nil {
+			if err := pf.CheckJudgedAgainst(existing.Meta.PoolRunID); err != nil {
 				return fmt.Errorf("--resume: %w\n  • re-run without --resume to grade the current pool from scratch", err)
 			}
 			// A resumed file keeps the grades an earlier run carried over.
