@@ -7,12 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tadjov/sengi/pkg/schema"
+	"github.com/tadjov/sengi/internal/schema"
 )
 
 func strictGenerator() *schema.Generator {
-	return schema.NewGeneratorWithConfig(schema.GeneratorConfig{
-		StrictValidation:     true,
+	return schema.NewGenerator(schema.GeneratorConfig{
 		ClosedObjects:        true,
 		RequireUnlessOmitted: true,
 	})
@@ -48,7 +47,7 @@ func TestClosedObjectsClosesEveryStruct(t *testing.T) {
 		}
 	}
 
-	open := generate[closedProbe](t, schema.NewGenerator())
+	open := generate[closedProbe](t, schema.NewGenerator(schema.GeneratorConfig{}))
 	if open.AdditionalProperties != nil {
 		t.Errorf("without ClosedObjects, additionalProperties = %v, want unset", open.AdditionalProperties)
 	}

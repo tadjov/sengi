@@ -12,10 +12,10 @@ import (
 	"strings"
 
 	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/internal/ingest/datamapping"
 	"github.com/tadjov/sengi/internal/ingest/reader"
 	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/types/document"
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
 )
 
 // PreprocessOptions with an empty Version publishes datapackage.DefaultVersion.

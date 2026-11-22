@@ -1,46 +1,26 @@
 package main
 
 import (
-	"log/slog"
-	"os"
+	"fmt"
 
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage/factory"
-	"github.com/tadjov/sengi/pkg/config/env"
 )
-
-type AppConfig struct {
-	ENV string
-}
-
-func NewAppConfig() *AppConfig {
-	return &AppConfig{
-		ENV: os.Getenv("ENV"),
-	}
-}
 
 type NewsSearchConfig struct {
 	StorageConfig   factory.StorageConfig
 	EmbeddingConfig embedding.Config
 }
 
-func (as *AppConfig) Load() (*NewsSearchConfig, error) {
-
-	err := env.LoadDotEnv(as.ENV, "cmd/news_api/.env")
-	if err != nil {
-		slog.Info("Failed to .env load environment variables, continuing with existing environment variables", "error", err)
-	}
-
+func loadConfig() (*NewsSearchConfig, error) {
 	storageCfg, err := factory.LoadEnv()
 	if err != nil {
-		slog.Error("Failed to load storage configuration from environment", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("load storage configuration: %w", err)
 	}
 
 	embed, err := embedding.LoadConfigFromEnv()
 	if err != nil {
-		slog.Error("Failed to load embedding configuration from environment", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("load embedding configuration: %w", err)
 	}
 
 	return &NewsSearchConfig{

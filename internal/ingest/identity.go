@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/internal/ingest/datamapping"
 	"github.com/tadjov/sengi/internal/types/document"
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
 )
 
 // articleIdentity drops records that repeat a kept article and gives each kept one its id.

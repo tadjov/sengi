@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/tadjov/sengi/internal/apperr"
-	"github.com/tadjov/sengi/pkg/pagination"
 )
 
 func isValidationError(err error) bool {
@@ -73,10 +72,10 @@ func TestPageSize(t *testing.T) {
 		want      int
 		wantErr   bool
 	}{
-		{name: "unset takes the default", requested: 0, want: pagination.PageDefaultSize},
+		{name: "unset takes the default", requested: 0, want: PageDefaultSize},
 		{name: "within bounds", requested: 25, want: 25},
-		{name: "at the maximum", requested: pagination.PageMaxSize, want: pagination.PageMaxSize},
-		{name: "over the maximum", requested: pagination.PageMaxSize + 1, wantErr: true},
+		{name: "at the maximum", requested: PageMaxSize, want: PageMaxSize},
+		{name: "over the maximum", requested: PageMaxSize + 1, wantErr: true},
 		{name: "negative", requested: -1, wantErr: true},
 	}
 
@@ -102,7 +101,7 @@ func TestParsePageSize(t *testing.T) {
 		want    int
 		wantErr bool
 	}{
-		{raw: "", want: pagination.PageDefaultSize},
+		{raw: "", want: PageDefaultSize},
 		{raw: "25", want: 25},
 		{raw: "0", wantErr: true},
 		{raw: "ten", wantErr: true},

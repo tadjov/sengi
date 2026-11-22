@@ -13,7 +13,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/engine"
 	"github.com/tadjov/sengi/internal/bench/suite"
 	"github.com/tadjov/sengi/internal/storage/pg"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 )
 
 const awkwardQueryText = `Ukraine's voters don't trust the "election"`

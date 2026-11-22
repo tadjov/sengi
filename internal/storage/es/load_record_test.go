@@ -7,7 +7,7 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v9/typedapi/esdsl"
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 )
 
 // loadRecord matches what the Elasticsearch loader stores under _meta.load.

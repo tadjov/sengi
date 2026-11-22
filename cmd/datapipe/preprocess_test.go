@@ -25,10 +25,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/ingest"
+	"github.com/tadjov/sengi/internal/ingest/datamapping"
 	"github.com/tadjov/sengi/internal/progress/progresstest"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
 )
 
 const ccNewsLikeMapping = `kind: DataMapper

@@ -17,9 +17,9 @@ import (
 	"github.com/tadjov/sengi/internal/storage/factory"
 	"github.com/tadjov/sengi/internal/storage/pg"
 	"github.com/tadjov/sengi/internal/storage/storagetest"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 // newPostgresSearchServer serves the search API from a Postgres container

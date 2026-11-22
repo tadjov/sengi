@@ -9,10 +9,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/storagetest"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 type searchMethod struct {

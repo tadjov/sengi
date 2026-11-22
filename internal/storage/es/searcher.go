@@ -16,7 +16,7 @@ import (
 	"github.com/tadjov/sengi/internal/token"
 	queryoperator "github.com/tadjov/sengi/internal/types/operator"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	"github.com/tadjov/sengi/pkg/utils"
+	"github.com/tadjov/sengi/internal/utils"
 )
 
 type Searcher struct {

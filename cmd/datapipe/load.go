@@ -18,12 +18,12 @@ import (
 	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/env"
 	"github.com/tadjov/sengi/internal/ingest/reader"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/factory"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
-	"github.com/tadjov/sengi/pkg/config/env"
 )
 
 const (
@@ -54,7 +54,7 @@ The load record goes to the engine and to datasets/<ds>/loads/<engine>/.
 The connection comes from the environment: PG_CONNECTION_STRING for native,
 paradedb and tiger, ES_ADDRESSES and ES_INDEX_NAME for es.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := env.LoadDotEnv(os.Getenv("ENV")); err != nil {
+			if err := env.LoadDotEnv(".env"); err != nil {
 				slog.Info("Skipping .env environment variables", "error", err)
 			}
 			return runLoad(cmd.Context(), cmd.OutOrStdout(), opts)

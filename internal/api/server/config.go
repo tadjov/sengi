@@ -3,15 +3,13 @@ package server
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/labstack/gommon/bytes"
-	"github.com/tadjov/sengi/pkg/config/env"
-	"github.com/tadjov/sengi/pkg/utils"
+	"github.com/tadjov/sengi/internal/env"
 )
 
 const (
@@ -42,41 +40,29 @@ type Config struct {
 	BodyLimit int64
 }
 
+// LoadConfig reads the server settings from the environment.
 func LoadConfig() (*Config, error) {
-	err := env.LoadDotEnv("cmd/news_api/.env")
-	if err != nil {
-		slog.Info("Skipping .env ...", "error", err)
-	}
-
-	useHttp2Str := os.Getenv("USE_HTTP2")
-	useHttp2 := useHttp2Str == "true"
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-
 	if err := validatePort(port); err != nil {
 		return nil, fmt.Errorf("invalid port: %w", err)
 	}
 
 	var origins []string
-	corsOriginsEnv := os.Getenv("CORS_ORIGINS")
-	if corsOriginsEnv != "" {
-		origins = strings.Split(corsOriginsEnv, ",")
-		for i, origin := range origins {
-			origins[i] = strings.TrimSpace(origin)
+	for origin := range strings.SplitSeq(os.Getenv("CORS_ORIGINS"), ",") {
+		if origin = strings.TrimSpace(origin); origin != "" {
+			origins = append(origins, origin)
 		}
-		origins = utils.RemoveEmptyStrings(origins)
 	}
-
 	if len(origins) == 0 {
 		origins = []string{"*"}
 	}
 
 	cfg := &Config{
 		Port:        port,
-		UseHttp2:    useHttp2,
+		UseHttp2:    os.Getenv("USE_HTTP2") == "true",
 		CorsOrigins: origins,
 	}
 
@@ -87,6 +73,7 @@ func LoadConfig() (*Config, error) {
 		"HTTP_IDLE_TIMEOUT":        &cfg.IdleTimeout,
 		"HTTP_REQUEST_TIMEOUT":     &cfg.RequestTimeout,
 	}
+	var err error
 	for name, target := range timeouts {
 		if *target, err = env.PositiveDuration(name); err != nil {
 			return nil, err

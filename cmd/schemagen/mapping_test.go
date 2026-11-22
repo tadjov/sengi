@@ -12,7 +12,7 @@ func TestCommittedMappingSchemaMatchesTheGenerator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read committed schema: %v", err)
 	}
-	generated, err := mappingSchema(true)
+	generated, err := mappingSchema()
 	if err != nil {
 		t.Fatalf("mappingSchema: %v", err)
 	}

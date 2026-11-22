@@ -31,8 +31,8 @@ import (
 	"github.com/tadjov/sengi/internal/bench/pool"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/queryvectors"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 	"gopkg.in/yaml.v3"
 )
 

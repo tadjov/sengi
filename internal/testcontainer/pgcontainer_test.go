@@ -1,4 +1,4 @@
-package testing_test
+package testcontainer_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/storage"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 )
 
 type serverBuild struct {

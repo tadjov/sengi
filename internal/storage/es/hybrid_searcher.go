@@ -14,7 +14,7 @@ import (
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	"github.com/tadjov/sengi/pkg/utils"
+	"github.com/tadjov/sengi/internal/utils"
 )
 
 // hybridCandidateDepth bounds how many candidates each leg contributes to the fusion.

@@ -17,7 +17,6 @@ import (
 	echoSwagger "github.com/swaggo/echo-swagger"
 	openapi "github.com/tadjov/sengi/api/openapi-spec"
 	"github.com/tadjov/sengi/internal/apperr"
-	"github.com/tadjov/sengi/pkg/server"
 )
 
 const (
@@ -30,12 +29,12 @@ type Server struct {
 
 	cfg *Config
 
-	checker server.HealthChecker
+	checker HealthChecker
 
 	gracefulShutdownTimeout time.Duration
 }
 
-func New(cfg *Config, checker server.HealthChecker) (*Server, error) {
+func New(cfg *Config, checker HealthChecker) (*Server, error) {
 	cfg, err := cfg.validated()
 	if err != nil {
 		return nil, fmt.Errorf("server config: %w", err)

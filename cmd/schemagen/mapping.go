@@ -3,18 +3,15 @@ package main
 import (
 	"fmt"
 
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
-	"github.com/tadjov/sengi/pkg/schema"
+	"github.com/tadjov/sengi/internal/ingest/datamapping"
+	"github.com/tadjov/sengi/internal/schema"
 )
 
 const mappingSchemaFile = "datamapping-v1.json"
 
 // mappingSchema is closed because the loader rejects unknown keys too.
-func mappingSchema(strict bool) ([]byte, error) {
-	generator := schema.NewGeneratorWithConfig(schema.GeneratorConfig{
-		StrictValidation: strict,
-		ClosedObjects:    true,
-	})
+func mappingSchema() ([]byte, error) {
+	generator := schema.NewGenerator(schema.GeneratorConfig{ClosedObjects: true})
 	generated, err := generator.GenerateJSONSchema(datamapping.DataMapper{})
 	if err != nil {
 		return nil, fmt.Errorf("generate data mapping schema: %w", err)

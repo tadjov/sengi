@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/api/dto"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 func TestIndexer(t *testing.T) {

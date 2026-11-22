@@ -19,9 +19,9 @@ import (
 	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/pg"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 const loadFixtureModelTag = "qwen3-embedding:0.6b@1024"

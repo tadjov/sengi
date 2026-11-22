@@ -9,7 +9,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types/enums/densevectorsimilarity"
 	"github.com/tadjov/sengi/internal/storage"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 )
 
 func TestIndexBuilder_DenseVectorDeclaresHNSWBuildParams(t *testing.T) {

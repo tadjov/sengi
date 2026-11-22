@@ -15,10 +15,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/internal/env"
 	"github.com/tadjov/sengi/internal/ingest"
+	"github.com/tadjov/sengi/internal/ingest/datamapping"
 	"github.com/tadjov/sengi/internal/ingest/reader"
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
-	"github.com/tadjov/sengi/pkg/config/env"
 )
 
 type preprocessConfig struct {
@@ -61,7 +61,7 @@ var preprocessMappingExtensions = map[FileExt]struct{}{
 }
 
 func applyPreprocessEnvDefaults(cfg *preprocessConfig) {
-	if err := env.LoadDotEnv(os.Getenv("ENV"), "cmd/datapipe/preprocess.env"); err != nil {
+	if err := env.LoadDotEnv("cmd/datapipe/preprocess.env"); err != nil {
 		slog.Info("Skipping .env environment variables...", "error", err)
 	}
 	if cfg.InputPath == "" {

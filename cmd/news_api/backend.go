@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 
+	pkgserver "github.com/tadjov/sengi/internal/api/server"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/es"
 	"github.com/tadjov/sengi/internal/storage/factory"
 	"github.com/tadjov/sengi/internal/storage/pg"
-	pkgserver "github.com/tadjov/sengi/pkg/server"
 )
 
 // searchBackend is everything the API serves from. semantic and hybrid are nil

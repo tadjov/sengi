@@ -12,7 +12,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/judgment"
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/cli"
-	"github.com/tadjov/sengi/pkg/config/env"
+	"github.com/tadjov/sengi/internal/env"
 )
 
 func init() {
@@ -59,7 +59,7 @@ defaulting to the current directory.
 
 func main() {
 	// Loaded before the flags are defined: --track-root defaults to BENCH_TRACK_ROOT.
-	if err := env.LoadDotEnv(os.Getenv("ENV"), "cmd/bench/.env"); err != nil {
+	if err := env.LoadDotEnv("cmd/bench/.env"); err != nil {
 		slog.Info("Skipping .env environment variables", "error", err)
 	}
 	root := &cobra.Command{

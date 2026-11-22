@@ -19,8 +19,8 @@ import (
 	"github.com/tadjov/sengi/internal/storage/es"
 	"github.com/tadjov/sengi/internal/storage/factory"
 	"github.com/tadjov/sengi/internal/storage/pg"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 func pgSearchConfig(connStr string) *NewsSearchConfig {
