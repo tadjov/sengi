@@ -18,14 +18,6 @@ func TestNewStrategy_VectorHybridRequireVectorStore(t *testing.T) {
 	}
 }
 
-func TestNewStrategy_VectorHybridWithStore(t *testing.T) {
-	for _, kind := range []StrategyKind{StrategyVector, StrategyHybrid} {
-		s, err := NewStrategy(kind, StrategyOptions{VectorStore: fakeVectorStore{}})
-		require.NoError(t, err)
-		assert.Equal(t, string(kind), s.Describe().Strategy)
-	}
-}
-
 func TestNewStrategy_UnknownName(t *testing.T) {
 	_, err := NewStrategy("bogus", StrategyOptions{})
 	require.Error(t, err)

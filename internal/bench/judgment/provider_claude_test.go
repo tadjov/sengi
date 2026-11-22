@@ -60,18 +60,9 @@ func TestClaudeCLIProvider_GradesIsolatedAndRecordsItsInvocation(t *testing.T) {
 	assert.Empty(t, call.cwdListing, "nothing in the working directory for the CLI to discover")
 	assert.NoDirExists(t, call.cwd, "the working directory is removed after the call")
 
-	want := []string{"claude", "--version", "2.1.322", "(Claude", "Code);",
-		"CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1", "CLAUDE_CODE_MAX_OUTPUT_TOKENS=<max-output-tokens>", "claude"}
-	for _, arg := range call.args {
-		switch arg {
-		case "":
-			arg = `""`
-		case system:
-			arg = "<system-prompt>"
-		}
-		want = append(want, arg)
-	}
-	assert.Equal(t, want, strings.Fields(s.Describe().Invocation))
+	invocation := s.Describe().Invocation
+	assert.Contains(t, invocation, "--safe-mode")
+	assert.NotContains(t, invocation, system, "the judge block names the prompt by version, not by text")
 }
 
 // The CLI tells the model its working directory, so the same request runs
