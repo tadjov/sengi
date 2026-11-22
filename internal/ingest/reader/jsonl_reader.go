@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"iter"
-	"log/slog"
 )
 
 type JSONLReader struct {
@@ -44,7 +43,7 @@ func (jr *JSONLReader) Records() iter.Seq2[map[string]string, error] {
 }
 
 func decodeJSONLine(line []byte) (map[string]string, error) {
-	var raw map[string]interface{}
+	var raw map[string]any
 	if err := json.Unmarshal(line, &raw); err != nil {
 		return nil, fmt.Errorf("failed to decode JSON line: %w", err)
 	}
@@ -54,8 +53,6 @@ func decodeJSONLine(line []byte) (map[string]string, error) {
 		case string:
 			record[k] = s
 		case nil:
-			slog.Info("skipping null value")
-			// skip null values
 		case map[string]any, []any:
 			// Nested values stay JSON so canonical metadata survives a flat record.
 			nested, err := json.Marshal(s)
