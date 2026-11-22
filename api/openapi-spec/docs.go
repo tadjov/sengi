@@ -25,7 +25,7 @@ const docTemplate = `{
     "paths": {
         "/v1/articles/_search": {
             "post": {
-                "description": "Structured match, multi_match, phrase, boolean or hybrid search. A stated operator, field, fuzziness or language is honoured by the engine or the request is a 400 naming the parameter and the engine. An omitted operator takes the engine's default (PostgreSQL AND, Elasticsearch OR). Boosts are best effort. A key the query type does not define is a 400. With ` + "`" + `Prefer: handling=lenient` + "`" + ` an unsupported parameter is removed before the search runs and listed in ` + "`" + `ignored` + "`" + `. Every response echoes ` + "`" + `effective` + "`" + ` and ` + "`" + `ignored` + "`" + `.",
+                "description": "Structured match, multi_match, phrase, boolean or hybrid search. A stated operator, field, fuzziness or language is honoured by the engine or the request is a 400 naming the parameter and the engine. An omitted operator takes the engine's default (PostgreSQL AND, Elasticsearch OR). Boosts are best effort. A key the query type does not define is a 400, and so is a query type the backend does not serve. With ` + "`" + `Prefer: handling=lenient` + "`" + ` an unsupported parameter is removed before the search runs and listed in ` + "`" + `ignored` + "`" + `. Every response echoes ` + "`" + `effective` + "`" + ` and ` + "`" + `ignored` + "`" + `.",
                 "consumes": [
                     "application/json"
                 ],
@@ -43,7 +43,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.SearchRequest"
+                            "$ref": "#/definitions/dto.SearchRequest"
                         }
                     },
                     {
@@ -55,13 +55,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "SearchStringQuery results with pagination metadata",
+                        "description": "Search results with pagination metadata",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.SearchResponse"
+                            "$ref": "#/definitions/dto.SearchResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad request - invalid query structure or parameters",
+                        "description": "Bad request - invalid query structure or parameters, or a query type the backend does not serve",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -71,15 +71,6 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "501": {
-                        "description": "Query type not supported by searcher backend",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -107,7 +98,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "example": "\"climate change\"",
-                        "description": "SearchStringQuery query text",
+                        "description": "Query text",
                         "name": "q",
                         "in": "query",
                         "required": true
@@ -141,9 +132,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "SearchStringQuery results with pagination metadata",
+                        "description": "Search results with pagination metadata",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.SearchResponse"
+                            "$ref": "#/definitions/dto.SearchResponse"
                         }
                     },
                     "400": {
@@ -169,10 +160,7 @@ const docTemplate = `{
         },
         "/v1/articles/semantic_search": {
             "get": {
-                "description": "Perform vector-based semantic search using the embedding model. Supports pagination via cursor. Application determines optimal search strategy based on index configuration. Results are cacheable and bookmarkable.",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Vector similarity search over the article embeddings, with the query embedded by the model the corpus was loaded with. Any query parameter not listed here is a 400. Routed only when the backend serves semantic search.",
                 "produces": [
                     "application/json"
                 ],
@@ -184,7 +172,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "example": "\"climate change\"",
-                        "description": "SearchStringQuery query text",
+                        "description": "Query text",
                         "name": "q",
                         "in": "query",
                         "required": true
@@ -205,9 +193,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "SearchStringQuery results with pagination metadata",
+                        "description": "Search results with pagination metadata",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.SemanticSearchResponse"
+                            "$ref": "#/definitions/dto.SemanticSearchResponse"
                         }
                     },
                     "400": {
@@ -245,7 +233,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Supported query types and parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.CapabilitiesResponse"
+                            "$ref": "#/definitions/dto.CapabilitiesResponse"
                         }
                     }
                 }
@@ -253,7 +241,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_tadjov_sengi_internal_api_dto.Article": {
+        "dto.Article": {
             "type": "object",
             "properties": {
                 "content": {
@@ -269,7 +257,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "metadata": {
-                    "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.Metadata"
+                    "$ref": "#/definitions/dto.Metadata"
                 },
                 "publishedAt": {
                     "type": "string"
@@ -286,14 +274,14 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_api_dto.ArticleSearchResult": {
+        "dto.ArticleSearchResult": {
             "type": "object",
             "properties": {
                 "article": {
                     "description": "Embedded Article struct for search results",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.Article"
+                            "$ref": "#/definitions/dto.Article"
                         }
                     ]
                 },
@@ -307,7 +295,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_api_dto.BooleanParams": {
+        "dto.BooleanParams": {
             "type": "object",
             "required": [
                 "expression"
@@ -322,18 +310,18 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_api_dto.CapabilitiesResponse": {
+        "dto.CapabilitiesResponse": {
             "type": "object",
             "properties": {
                 "full_text": {
-                    "$ref": "#/definitions/github_com_tadjov_sengi_internal_types_query.Capabilities"
+                    "$ref": "#/definitions/query.Capabilities"
                 },
                 "query_types": {
-                    "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.QueryTypes"
+                    "$ref": "#/definitions/dto.QueryTypes"
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_api_dto.HybridParams": {
+        "dto.HybridParams": {
             "type": "object",
             "required": [
                 "query"
@@ -352,7 +340,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_api_dto.MatchParams": {
+        "dto.MatchParams": {
             "type": "object",
             "required": [
                 "field",
@@ -377,7 +365,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_api_dto.Metadata": {
+        "dto.Metadata": {
             "type": "object",
             "properties": {
                 "authors": {
@@ -414,7 +402,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_api_dto.MultiMatchParams": {
+        "dto.MultiMatchParams": {
             "type": "object",
             "required": [
                 "fields",
@@ -441,7 +429,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_api_dto.PhraseParams": {
+        "dto.PhraseParams": {
             "type": "object",
             "required": [
                 "fields",
@@ -469,7 +457,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_api_dto.QueryTypes": {
+        "dto.QueryTypes": {
             "type": "object",
             "properties": {
                 "boolean": {
@@ -495,34 +483,34 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_api_dto.QueryWrapper": {
+        "dto.QueryWrapper": {
             "type": "object",
             "properties": {
                 "boolean": {
-                    "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.BooleanParams"
+                    "$ref": "#/definitions/dto.BooleanParams"
                 },
                 "hybrid": {
-                    "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.HybridParams"
+                    "$ref": "#/definitions/dto.HybridParams"
                 },
                 "match": {
-                    "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.MatchParams"
+                    "$ref": "#/definitions/dto.MatchParams"
                 },
                 "multi_match": {
-                    "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.MultiMatchParams"
+                    "$ref": "#/definitions/dto.MultiMatchParams"
                 },
                 "phrase": {
-                    "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.PhraseParams"
+                    "$ref": "#/definitions/dto.PhraseParams"
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_api_dto.SearchRequest": {
+        "dto.SearchRequest": {
             "type": "object",
             "properties": {
                 "cursor": {
                     "type": "string"
                 },
                 "query": {
-                    "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.QueryWrapper"
+                    "$ref": "#/definitions/dto.QueryWrapper"
                 },
                 "size": {
                     "type": "integer",
@@ -530,14 +518,14 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_api_dto.SearchResponse": {
+        "dto.SearchResponse": {
             "type": "object",
             "properties": {
                 "effective": {
                     "description": "Effective is the contract the search ran under, with every omitted\nparameter filled by the engine.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_tadjov_sengi_internal_types_query.Effective"
+                            "$ref": "#/definitions/query.Effective"
                         }
                     ]
                 },
@@ -547,14 +535,14 @@ const docTemplate = `{
                 "hits": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.ArticleSearchResult"
+                        "$ref": "#/definitions/dto.ArticleSearchResult"
                     }
                 },
                 "ignored": {
                     "description": "Ignored lists the stated parameters the engine did not honour.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_tadjov_sengi_internal_types_query.Ignored"
+                        "$ref": "#/definitions/query.Ignored"
                     }
                 },
                 "max_score": {
@@ -571,7 +559,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_api_dto.SemanticSearchResponse": {
+        "dto.SemanticSearchResponse": {
             "type": "object",
             "properties": {
                 "has_more": {
@@ -580,7 +568,7 @@ const docTemplate = `{
                 "hits": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_tadjov_sengi_internal_api_dto.Article"
+                        "$ref": "#/definitions/dto.Article"
                     }
                 },
                 "next_cursor": {
@@ -588,7 +576,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_types_language.Code": {
+        "language.Code": {
             "type": "string",
             "enum": [
                 "eng"
@@ -597,7 +585,7 @@ const docTemplate = `{
                 "English"
             ]
         },
-        "github_com_tadjov_sengi_internal_types_operator.Operator": {
+        "operator.Operator": {
             "type": "string",
             "enum": [
                 "AND",
@@ -608,7 +596,7 @@ const docTemplate = `{
                 "Or"
             ]
         },
-        "github_com_tadjov_sengi_internal_types_query.Capabilities": {
+        "query.Capabilities": {
             "type": "object",
             "properties": {
                 "boosts": {
@@ -618,7 +606,7 @@ const docTemplate = `{
                     "description": "DefaultOperator combines terms when a request names no operator.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_tadjov_sengi_internal_types_operator.Operator"
+                            "$ref": "#/definitions/operator.Operator"
                         }
                     ]
                 },
@@ -629,7 +617,7 @@ const docTemplate = `{
                     "description": "Fields are the fields the engine can match apart from every other field.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_tadjov_sengi_internal_types_query.Field"
+                        "$ref": "#/definitions/query.Field"
                     }
                 },
                 "fuzziness": {
@@ -640,24 +628,24 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_types_query.Effective": {
+        "query.Effective": {
             "type": "object",
             "properties": {
                 "fields": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_tadjov_sengi_internal_types_query.Field"
+                        "$ref": "#/definitions/query.Field"
                     }
                 },
                 "language": {
-                    "$ref": "#/definitions/github_com_tadjov_sengi_internal_types_language.Code"
+                    "$ref": "#/definitions/language.Code"
                 },
                 "operator": {
-                    "$ref": "#/definitions/github_com_tadjov_sengi_internal_types_operator.Operator"
+                    "$ref": "#/definitions/operator.Operator"
                 }
             }
         },
-        "github_com_tadjov_sengi_internal_types_query.Field": {
+        "query.Field": {
             "type": "string",
             "enum": [
                 "title",
@@ -670,7 +658,7 @@ const docTemplate = `{
                 "FieldContent"
             ]
         },
-        "github_com_tadjov_sengi_internal_types_query.Ignored": {
+        "query.Ignored": {
             "type": "object",
             "properties": {
                 "engine": {
