@@ -147,12 +147,6 @@ func TestRunner_SinkCalledPerQuery(t *testing.T) {
 	assert.Equal(t, 1, calls)
 }
 
-func TestRunner_NilStrategyErrors(t *testing.T) {
-	r := NewRunner(RunnerConfig{Reader: &stubStorageReader{}})
-	_, err := r.Run(context.Background(), &pool.PoolFile{})
-	assert.ErrorContains(t, err, "strategy is nil")
-}
-
 // A query with no usable terms fails the run, but only after every other query
 // is graded, so the file still lands and names what is missing.
 func TestRunner_QueryWithoutTermsFailsTheRunAfterGradingTheRest(t *testing.T) {

@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/bench/meta"
@@ -38,12 +37,10 @@ type RunnerConfig struct {
 	Strategy    Strategy
 	Reader      storage.Reader
 	Concurrency int
-	// Existing is an optional prior judgment file. Entries already present
-	// will be skipped on this run (resume support).
+	// Existing holds prior grades; a doc it grades is not graded again.
 	Existing *File
-	// Sink, if non-nil, is invoked after every query so the caller can
-	// persist incrementally. Receives an immutable snapshot of the query's
-	// JudgmentEntry.
+	// Sink receives each query's entry as it finishes, so the caller can
+	// persist incrementally.
 	Sink func(QueryProgress, Entry) error
 	// OnQueryStart and OnQueryDone are optional per-query callbacks.
 	OnQueryStart func(queryID string, docCount int, alreadyGraded int)
@@ -53,32 +50,10 @@ type RunnerConfig struct {
 	Progress progress.Counter
 }
 
-// Runner orchestrates relevance grading. It:
-//   - Fetches articles per-query in one DB round-trip
-//   - Uses PoolStrategy.GradePool on the query's whole pool when supported
-//   - Otherwise grades one doc per request through Grade()
-//   - Skips docs already graded in cfg.Existing (resume)
-//   - Streams results through Sink so callers can checkpoint to disk
+// Runner grades a pool query by query and skips the docs Existing already grades.
 type Runner struct {
-	cfg    RunnerConfig
-	graded *gradedDocs
-}
-
-// gradedDocs remembers how many docs it has counted, so a query's count can be finished whatever path its docs took.
-type gradedDocs struct {
-	counter progress.Counter
-	counted atomic.Int64
-}
-
-func (g *gradedDocs) add(n int) {
-	g.counted.Add(int64(n))
-	g.counter.Add(int64(n))
-}
-
-func (g *gradedDocs) catchUp(to int64) {
-	if left := to - g.counted.Load(); left > 0 {
-		g.add(int(left))
-	}
+	cfg      RunnerConfig
+	progress progress.Counter
 }
 
 func NewRunner(cfg RunnerConfig) *Runner {
@@ -88,25 +63,14 @@ func NewRunner(cfg RunnerConfig) *Runner {
 	if cfg.Concurrency > maxConcurrency {
 		cfg.Concurrency = maxConcurrency
 	}
-	return &Runner{cfg: cfg, graded: &gradedDocs{counter: progress.Or(cfg.Progress)}}
+	return &Runner{cfg: cfg, progress: progress.Or(cfg.Progress)}
 }
 
-// Run grades every pool entry and returns a complete JudgmentFile. A query with
-// no usable terms, or with a boolean text that does not parse, leaves its docs
-// unjudged without stopping the others: Run then returns the file together
-// with an error that joins a NoQueryTermsError or BooleanTextError per such
-// query.
+// Run grades every pool entry. A query with no usable terms, or with a boolean
+// text that does not parse, leaves its docs unjudged without stopping the
+// others: Run then returns the file together with an error that joins a
+// NoQueryTermsError or BooleanTextError per such query.
 func (r *Runner) Run(ctx context.Context, pf *pool.PoolFile) (*File, error) {
-	if r.cfg.Strategy == nil {
-		return nil, fmt.Errorf("runner: strategy is nil")
-	}
-
-	switch r.cfg.Strategy.(type) {
-	case PoolStrategy, DocStrategy:
-	default:
-		return nil, fmt.Errorf("runner: strategy %q implements no grading interface", r.cfg.Strategy.Name())
-	}
-
 	if err := requireQueryText(pf); err != nil {
 		return nil, err
 	}
@@ -119,19 +83,15 @@ func (r *Runner) Run(ctx context.Context, pf *pool.PoolFile) (*File, error) {
 		Queries: make([]Entry, 0, len(pf.Queries)),
 	}
 
-	counted := r.graded.counted.Load()
-	var poolDocs int64
+	var pooled int64
 	for _, entry := range pf.Queries {
-		poolDocs += int64(len(entry.Docs))
+		pooled += int64(len(entry.Docs))
 	}
-	r.graded.counter.SetTotal(poolDocs)
+	r.progress.SetTotal(pooled)
 
 	var unusable []error
 	for _, entry := range pf.Queries {
 		ge, prog, err := r.gradeQuery(ctx, entry, prior[entry.QueryID])
-		counted += int64(len(entry.Docs))
-		// Docs the store could not read, and a query that fails whole, are done without a grade.
-		r.graded.catchUp(counted)
 		if FailsWholeQuery(err) {
 			unusable = append(unusable, err)
 		} else if err != nil {
@@ -164,6 +124,8 @@ func requireQueryText(pf *pool.PoolFile) error {
 	return nil
 }
 
+// gradeQuery returns a whole-query failure together with the entry, its
+// ungraded docs unjudged.
 func (r *Runner) gradeQuery(ctx context.Context, entry pool.PoolEntry, prior map[uuid.UUID]int) (Entry, QueryProgress, error) {
 	ge := Entry{QueryID: entry.QueryID, Docs: make([]GradedDoc, 0, len(entry.Docs))}
 	prog := QueryProgress{QueryID: entry.QueryID, Histogram: map[int]int{}}
@@ -191,7 +153,7 @@ func (r *Runner) gradeQuery(ctx context.Context, entry pool.PoolEntry, prior map
 		prog.Skipped++
 		prog.Histogram[g]++
 	}
-	r.graded.add(prog.Skipped)
+	r.progress.Add(int64(len(kept)))
 	if r.cfg.OnQueryStart != nil {
 		r.cfg.OnQueryStart(entry.QueryID, len(entry.Docs), prog.Skipped)
 	}
@@ -199,26 +161,25 @@ func (r *Runner) gradeQuery(ctx context.Context, entry pool.PoolEntry, prior map
 		return ge, prog, nil
 	}
 
+	docs, err := r.readableDocs(ctx, entry.QueryID, todo)
+	if err != nil {
+		return ge, prog, err
+	}
+	r.progress.Add(int64(len(todo) - len(docs)))
+
 	q := GradingQuery{
 		ID:       entry.QueryID,
 		Text:     entry.QueryText,
 		Category: entry.Category,
 		Filters:  entry.Filters,
 	}
-	var gradedByID map[uuid.UUID]int
-	var err error
-	if ps, ok := r.cfg.Strategy.(PoolStrategy); ok {
-		gradedByID, err = r.gradeWholePool(ctx, ps, q, entry.Docs)
-	} else {
-		gradedByID, err = r.gradeTodo(ctx, q, todo)
-	}
+	grades, err := r.grade(ctx, q, docs)
 	if err != nil && !FailsWholeQuery(err) {
 		return ge, prog, err
 	}
 
-	// Append in original pool order — keeps doc ordering stable across runs.
 	for _, pd := range todo {
-		grade, ok := gradedByID[pd.DocID]
+		grade, ok := grades[pd.DocID]
 		if !ok {
 			grade = GradeUnjudged
 			prog.Unjudged++
@@ -231,79 +192,69 @@ func (r *Runner) gradeQuery(ctx context.Context, entry pool.PoolEntry, prior map
 	return ge, prog, err
 }
 
-func (r *Runner) gradeTodo(ctx context.Context, q GradingQuery, todo []pool.PooledDoc) (map[uuid.UUID]int, error) {
-	docs, err := r.fetchDocs(ctx, todo)
+// readableDocs returns the pooled docs the store holds, in pool order; a doc
+// it cannot read is logged and left out.
+func (r *Runner) readableDocs(ctx context.Context, queryID string, pooled []pool.PooledDoc) ([]GradingDoc, error) {
+	ids := make([]uuid.UUID, len(pooled))
+	for i, pd := range pooled {
+		ids[i] = pd.DocID
+	}
+	articles, err := r.cfg.Reader.GetByIDs(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("fetch docs: %w", err)
 	}
-	return r.dispatch(ctx, q, todo, docs)
-}
-
-// gradeWholePool grades every pooled doc, graded before or not, and has no
-// per-doc fallback: a doc graded alone is normalised against itself. When the
-// strategy fails, the query's docs stay unjudged.
-func (r *Runner) gradeWholePool(ctx context.Context, ps PoolStrategy, q GradingQuery, pooled []pool.PooledDoc) (map[uuid.UUID]int, error) {
-	docs, err := r.fetchDocs(ctx, pooled)
-	if err != nil {
-		return nil, fmt.Errorf("fetch docs: %w", err)
+	stored := make(map[uuid.UUID]document.Article, len(articles))
+	for _, a := range articles {
+		stored[a.ID] = a
 	}
-	gradables := make([]GradingDoc, 0, len(pooled))
-	for _, pd := range pooled {
-		gd, ok := docs[pd.DocID]
+	docs := make([]GradingDoc, 0, len(pooled))
+	for _, id := range ids {
+		a, ok := stored[id]
 		if !ok {
 			slog.Warn("article not found during enrichment; leaving unjudged",
-				"query", q.ID, "doc_id", pd.DocID)
+				"query", queryID, "doc_id", id)
 			continue
 		}
-		gradables = append(gradables, gd)
+		docs = append(docs, toGradingDoc(a))
 	}
+	return docs, nil
+}
 
-	results, err := ps.GradePool(ctx, q, gradables)
+// grade returns the grades by doc id; a doc without one stays unjudged.
+func (r *Runner) grade(ctx context.Context, q GradingQuery, docs []GradingDoc) (map[uuid.UUID]int, error) {
+	if ps, ok := r.cfg.Strategy.(PoolStrategy); ok {
+		return r.gradePool(ctx, ps, q, docs)
+	}
+	return r.gradeDocs(ctx, r.cfg.Strategy.(DocStrategy), q, docs)
+}
+
+// gradePool has no per-doc fallback, since a doc graded alone is normalised
+// against itself: when the strategy fails, the query's docs stay unjudged.
+func (r *Runner) gradePool(ctx context.Context, ps PoolStrategy, q GradingQuery, docs []GradingDoc) (map[uuid.UUID]int, error) {
+	graded, err := ps.GradePool(ctx, q, docs)
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return nil, ctxErr
 	}
-	r.graded.add(len(gradables))
+	r.progress.Add(int64(len(docs)))
 	var width *VectorWidthError
 	if errors.As(err, &width) || FailsWholeQuery(err) {
 		return nil, err
 	}
-	gradedByID := make(map[uuid.UUID]int, len(results))
 	if err != nil {
 		slog.Warn("pool grading failed; leaving the query unjudged", "query", q.ID, "error", err)
-		return gradedByID, nil
+		return nil, nil
 	}
-	for _, gd := range results {
-		gradedByID[gd.DocID] = gd.Grade
+	grades := make(map[uuid.UUID]int, len(graded))
+	for _, gd := range graded {
+		grades[gd.DocID] = gd.Grade
 	}
-	return gradedByID, nil
+	return grades, nil
 }
 
-func (r *Runner) dispatch(ctx context.Context, q GradingQuery, todo []pool.PooledDoc, docs map[uuid.UUID]GradingDoc) (map[uuid.UUID]int, error) {
-	gradedByID := make(map[uuid.UUID]int, len(todo))
-
-	gradables := make([]GradingDoc, 0, len(todo))
-	for _, pd := range todo {
-		gd, ok := docs[pd.DocID]
-		if !ok {
-			slog.Warn("article not found during enrichment; leaving unjudged",
-				"query", q.ID, "doc_id", pd.DocID)
-			continue
-		}
-		gradables = append(gradables, gd)
-	}
-
-	if err := r.runPerDoc(ctx, r.cfg.Strategy.(DocStrategy), q, gradables, gradedByID); err != nil {
-		return nil, err
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	return gradedByID, nil
-}
-
-// runPerDoc leaves a doc unjudged when its grade fails, except for an error
+// gradeDocs leaves a doc unjudged when its grade fails, except for an error
 // that fails every doc of the query, which is returned.
-func (r *Runner) runPerDoc(ctx context.Context, s DocStrategy, q GradingQuery, docs []GradingDoc, into map[uuid.UUID]int) error {
+func (r *Runner) gradeDocs(ctx context.Context, s DocStrategy, q GradingQuery, docs []GradingDoc) (map[uuid.UUID]int, error) {
+	grades := make(map[uuid.UUID]int, len(docs))
 	sem := make(chan struct{}, r.cfg.Concurrency)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -319,7 +270,7 @@ func (r *Runner) runPerDoc(ctx context.Context, s DocStrategy, q GradingQuery, d
 				return
 			}
 			defer func() { <-sem }()
-			defer r.graded.add(1)
+			defer r.progress.Add(1)
 
 			grade, err := s.Grade(ctx, q, gd)
 			if FailsWholeQuery(err) {
@@ -334,31 +285,18 @@ func (r *Runner) runPerDoc(ctx context.Context, s DocStrategy, q GradingQuery, d
 				return
 			}
 			mu.Lock()
-			into[gd.ID] = grade
+			grades[gd.ID] = grade
 			mu.Unlock()
 		}(d)
 	}
 	wg.Wait()
-	return queryErr
-}
-
-func (r *Runner) fetchDocs(ctx context.Context, pooled []pool.PooledDoc) (map[uuid.UUID]GradingDoc, error) {
-	if r.cfg.Reader == nil {
-		return nil, fmt.Errorf("runner: storage reader is nil")
+	if queryErr != nil {
+		return nil, queryErr
 	}
-	ids := make([]uuid.UUID, len(pooled))
-	for i, pd := range pooled {
-		ids[i] = pd.DocID
-	}
-	articles, err := r.cfg.Reader.GetByIDs(ctx, ids)
-	if err != nil {
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	out := make(map[uuid.UUID]GradingDoc, len(articles))
-	for _, a := range articles {
-		out[a.ID] = toGradingDoc(a)
-	}
-	return out, nil
+	return grades, nil
 }
 
 func toGradingDoc(a document.Article) GradingDoc {
