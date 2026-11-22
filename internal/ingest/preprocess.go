@@ -78,7 +78,8 @@ func Preprocess(ctx context.Context, opts PreprocessOptions) (datapackage.Publis
 
 	run := newPreprocessRun(opts, mapper)
 	run.record = datapackage.Preprocess{ID: describeIDs(opts.Spec.ID.Kind), Lock: lock}
-	return run.publish(ctx, opts.OutputRoot, opts.Version, pkg, format)
+	run.pkg, run.format = pkg, format
+	return run.publish(ctx)
 }
 
 func newLock(opts PreprocessOptions) (datapackage.Lock, error) {
@@ -133,6 +134,14 @@ type preprocessRun struct {
 	origins   []recordOrigin
 	record    datapackage.Preprocess
 	counter   progress.Counter
+
+	// pkg lists articles, rejects and changes, in that order.
+	pkg        datapackage.Package
+	format     preprocess.OutputFormat
+	outputRoot string
+	version    string
+	staging    string
+	rejects    rowWriter[rejectRow]
 }
 
 // recordOrigin is where a kept article sits in the raw package.
@@ -144,13 +153,15 @@ type recordOrigin struct {
 func newPreprocessRun(opts PreprocessOptions, mapper *reader.ArticleMapper) *preprocessRun {
 	digests := newFieldDigests()
 	run := &preprocessRun{
-		spec:      opts.Spec,
-		raw:       opts.Raw,
-		mapper:    mapper,
-		digests:   digests,
-		finder:    newDuplicateFinder(opts.Spec, digests),
-		clearBits: map[string]uint{},
-		counter:   progress.Or(opts.Progress),
+		spec:       opts.Spec,
+		raw:        opts.Raw,
+		mapper:     mapper,
+		digests:    digests,
+		finder:     newDuplicateFinder(opts.Spec, digests),
+		clearBits:  map[string]uint{},
+		counter:    progress.Or(opts.Progress),
+		outputRoot: opts.OutputRoot,
+		version:    opts.Version,
 	}
 	if field, ok := opts.Mapping.Field(mapping.TargetURL); ok {
 		run.urlSource = field.Source
@@ -167,37 +178,44 @@ func newPreprocessRun(opts PreprocessOptions, mapper *reader.ArticleMapper) *pre
 	return run
 }
 
+func (r *preprocessRun) stagedPath(resource int) string {
+	return filepath.Join(r.staging, r.pkg.Resources[resource].Path)
+}
+
+func (r *preprocessRun) keptPath() string {
+	return filepath.Join(r.staging, ".kept.parquet")
+}
+
 // publish stages the package so a failed, cancelled or over-budget run leaves nothing behind.
-func (r *preprocessRun) publish(ctx context.Context, outputRoot, version string, pkg datapackage.Package, format preprocess.OutputFormat) (_ datapackage.Published, err error) {
-	if err := os.MkdirAll(outputRoot, 0o755); err != nil {
+func (r *preprocessRun) publish(ctx context.Context) (_ datapackage.Published, err error) {
+	if err := os.MkdirAll(r.outputRoot, 0o755); err != nil {
 		return datapackage.Published{}, fmt.Errorf("create canonical output folder: %w", err)
 	}
-	staging, err := os.MkdirTemp(outputRoot, ".staging-*")
-	if err != nil {
+	if r.staging, err = os.MkdirTemp(r.outputRoot, ".staging-*"); err != nil {
 		return datapackage.Published{}, fmt.Errorf("create staging package folder: %w", err)
 	}
 	defer func() {
-		if removeErr := os.RemoveAll(staging); removeErr != nil && err == nil {
+		if removeErr := os.RemoveAll(r.staging); removeErr != nil && err == nil {
 			err = fmt.Errorf("remove staging package folder: %w", removeErr)
 		}
 	}()
 
-	keptPath := filepath.Join(staging, ".kept.parquet")
-	rejects, err := createOutput(filepath.Join(staging, pkg.Resources[1].Path))
+	rejects, err := createOutput(r.stagedPath(1))
 	if err != nil {
 		return datapackage.Published{}, err
 	}
 	defer rejects.abort()
 	rejectRows := newParquetRowWriter[rejectRow](rejects.buffered)
+	r.rejects = rejectRows
 
-	if err := r.readAndDeduplicate(ctx, keptPath, rejectRows); err != nil {
+	if err := r.readAndDeduplicate(ctx); err != nil {
 		return datapackage.Published{}, err
 	}
-	values, err := r.judge()
+	decided, err := r.judge()
 	if err != nil {
 		return datapackage.Published{}, err
 	}
-	if err := r.write(ctx, keptPath, staging, pkg, format, values, rejectRows); err != nil {
+	if err := r.write(ctx, decided); err != nil {
 		return datapackage.Published{}, err
 	}
 	if err := rejectRows.Close(); err != nil {
@@ -206,18 +224,19 @@ func (r *preprocessRun) publish(ctx context.Context, outputRoot, version string,
 	if err := rejects.finish(); err != nil {
 		return datapackage.Published{}, err
 	}
-	if err := os.Remove(keptPath); err != nil {
+	if err := os.Remove(r.keptPath()); err != nil {
 		return datapackage.Published{}, fmt.Errorf("remove kept articles: %w", err)
 	}
 
+	pkg := r.pkg
 	pkg.Preprocess = &r.record
 	// MkdirTemp creates the folder 0700, and Publish renames this very folder.
-	if err := os.Chmod(staging, 0o755); err != nil {
+	if err := os.Chmod(r.staging, 0o755); err != nil {
 		return datapackage.Published{}, fmt.Errorf("open up staging package folder: %w", err)
 	}
-	published, err := datapackage.Publish(ctx, pkg, datapackage.PublishOptions{StagingDir: staging, ParentDir: outputRoot, Version: version})
+	published, err := datapackage.Publish(ctx, pkg, datapackage.PublishOptions{StagingDir: r.staging, ParentDir: r.outputRoot, Version: r.version})
 	if err != nil {
-		return datapackage.Published{}, fmt.Errorf("publish canonical package into %s: %w", outputRoot, err)
+		return datapackage.Published{}, fmt.Errorf("publish canonical package into %s: %w", r.outputRoot, err)
 	}
 	return published, nil
 }
@@ -226,8 +245,8 @@ const writeBatchSize = 1000
 
 // readAndDeduplicate is the first pass: read, map, id and duplicates. It writes the
 // kept articles to keptPath and every removed record to rejects.
-func (r *preprocessRun) readAndDeduplicate(ctx context.Context, keptPath string, rejects rowWriter[rejectRow]) error {
-	kept, err := createOutput(keptPath)
+func (r *preprocessRun) readAndDeduplicate(ctx context.Context) error {
+	kept, err := createOutput(r.keptPath())
 	if err != nil {
 		return err
 	}
@@ -247,8 +266,8 @@ func (r *preprocessRun) readAndDeduplicate(ctx context.Context, keptPath string,
 	r.counter.SetTotal(sources.records())
 
 	batch := make([]canonicalRow, 0, writeBatchSize)
-	for i, source := range sources {
-		err := r.eachRecord(ctx, i, source, rejects, func(row canonicalRow) error {
+	for _, source := range sources {
+		err := r.eachRecord(ctx, source, func(row canonicalRow) error {
 			batch = append(batch, row)
 			if len(batch) < writeBatchSize {
 				return nil
@@ -274,7 +293,7 @@ func (r *preprocessRun) readAndDeduplicate(ctx context.Context, keptPath string,
 	return kept.finish()
 }
 
-func (r *preprocessRun) eachRecord(ctx context.Context, resource int, source rawSource, rejects rowWriter[rejectRow], keep func(canonicalRow) error) error {
+func (r *preprocessRun) eachRecord(ctx context.Context, source rawSource, keep func(canonicalRow) error) error {
 	counts := &r.record.Counts
 	row := int64(-1)
 	for record, err := range source.records.Records() {
@@ -289,7 +308,7 @@ func (r *preprocessRun) eachRecord(ctx context.Context, resource int, source raw
 		if errors.As(err, &malformed) {
 			reject.Stage, reject.Reason = string(stageRead), optional(reasonMalformed)
 			counts.Dropped[string(stageRead)+"/"+reasonMalformed]++
-			if err := rejects.Write([]rejectRow{reject}); err != nil {
+			if err := r.rejects.Write([]rejectRow{reject}); err != nil {
 				return fmt.Errorf("write rejects: %w", err)
 			}
 			continue
@@ -304,7 +323,7 @@ func (r *preprocessRun) eachRecord(ctx context.Context, resource int, source raw
 			slog.Debug("dropped record", "resource", source.resource.Name, "row", row, "error", err)
 			reject.Stage, reject.Field, reject.Reason, reject.URL = string(stageRequired), optional(drop.Target), optional(string(drop.Reason)), optional(record[r.urlSource])
 			counts.Dropped[string(stageRequired)+"/"+drop.Target]++
-			if err := rejects.Write([]rejectRow{reject}); err != nil {
+			if err := r.rejects.Write([]rejectRow{reject}); err != nil {
 				return fmt.Errorf("write rejects: %w", err)
 			}
 			continue
@@ -321,13 +340,13 @@ func (r *preprocessRun) eachRecord(ctx context.Context, resource int, source raw
 		if repeated != nil {
 			reject.Stage, reject.Rule, reject.KeptID, reject.URL = string(stageDuplicates), optional(repeated.key), optional(repeated.twin.String()), optional(article.URL)
 			counts.Duplicates[repeated.key]++
-			if err := rejects.Write([]rejectRow{reject}); err != nil {
+			if err := r.rejects.Write([]rejectRow{reject}); err != nil {
 				return fmt.Errorf("write rejects: %w", err)
 			}
 			continue
 		}
 
-		r.keep(resource, row)
+		r.keep(recordOrigin{resource: source.index, row: row})
 		canonical, err := toCanonicalRow(article)
 		if err != nil {
 			return err
@@ -339,8 +358,8 @@ func (r *preprocessRun) eachRecord(ctx context.Context, resource int, source raw
 	return nil
 }
 
-func (r *preprocessRun) keep(resource int, row int64) {
-	r.origins = append(r.origins, recordOrigin{resource: resource, row: row})
+func (r *preprocessRun) keep(origin recordOrigin) {
+	r.origins = append(r.origins, origin)
 	for _, signal := range r.signals {
 		signal.add(r.digests)
 	}
@@ -351,6 +370,10 @@ func (r *preprocessRun) keep(resource int, row int64) {
 		}
 	}
 	r.filled = append(r.filled, filled)
+}
+
+func (r *preprocessRun) isFilled(k int, field string) bool {
+	return r.filled[k]&(1<<r.clearBits[field]) != 0
 }
 
 // judge computes the signals, decides the rules and runs the checks; it publishes
@@ -369,9 +392,7 @@ func (r *preprocessRun) judge() (judged, error) {
 		}
 	}
 
-	outcome := applyRules(r.spec.Rules, values, func(k int, field string) bool {
-		return r.filled[k]&(1<<r.clearBits[field]) != 0
-	})
+	outcome := r.applyRules(values)
 	counts := &r.record.Counts
 	dropped, cleared := outcome.counts(r.spec.Rules)
 	for key, n := range dropped {
@@ -388,7 +409,12 @@ func (r *preprocessRun) judge() (judged, error) {
 		return judged{}, fmt.Errorf("counts do not reconcile: read %d, written plus dropped plus duplicates %d", counts.Read, accounted)
 	}
 
-	if checks := evaluateChecks(r.spec.Checks, *counts, int64(len(outcome.clears))); len(checks) > 0 {
+	observed := observedShares{
+		dropped:    share(sum(counts.Dropped), counts.Read),
+		duplicates: share(sum(counts.Duplicates), counts.Read),
+		cleared:    share(int64(len(outcome.clears)), counts.Written),
+	}
+	if checks := evaluateChecks(r.spec.Checks, observed); len(checks) > 0 {
 		r.record.Checks = checks
 		if failedChecks(checks) {
 			return judged{}, &ChecksFailedError{Preprocess: r.record}
@@ -403,42 +429,38 @@ type judged struct {
 }
 
 // write is the second pass: the kept articles with the rules applied, to articles and changes.
-func (r *preprocessRun) write(ctx context.Context, keptPath, staging string, pkg datapackage.Package, format preprocess.OutputFormat, decided judged, rejects rowWriter[rejectRow]) error {
-	articles, err := createOutput(filepath.Join(staging, pkg.Resources[0].Path))
+func (r *preprocessRun) write(ctx context.Context, decided judged) error {
+	articles, err := createOutput(r.stagedPath(0))
 	if err != nil {
 		return err
 	}
 	defer articles.abort()
-	changes, err := createOutput(filepath.Join(staging, pkg.Resources[2].Path))
+	changes, err := createOutput(r.stagedPath(2))
 	if err != nil {
 		return err
 	}
 	defer changes.abort()
 	articleRows := rowWriter[canonicalRow](newParquetRowWriter[canonicalRow](articles.buffered))
-	if format == preprocess.OutputJSONL {
+	if r.format == preprocess.OutputJSONL {
 		articleRows = newJSONLRowWriter[canonicalRow](articles.buffered)
 	}
 	changeRows := newParquetRowWriter[changeRow](changes.buffered)
 
-	var samples []signalSamples
+	editor := articleEditor{outcome: decided.outcome}
 	for _, signal := range r.spec.Signals {
-		samples = append(samples, newSignalSamples(decided.values[signal.Name], r.record.Signals[signal.Name].Top))
+		editor.samples = append(editor.samples, newSignalSamples(decided.values[signal.Name], r.record.Signals[signal.Name].Top))
 	}
 
-	kept, err := os.Open(keptPath)
+	kept, err := os.Open(r.keptPath())
 	if err != nil {
 		return fmt.Errorf("open kept articles: %w", err)
 	}
 	defer kept.Close()
-	info, err := kept.Stat()
-	if err != nil {
-		return fmt.Errorf("stat kept articles: %w", err)
-	}
 
 	r.counter.Stage("write")
 	r.counter.SetTotal(int64(len(r.origins)))
 	k := 0
-	err = readRows(kept, info.Size(), func(batch []canonicalRow) error {
+	err = readRows(kept, func(batch []canonicalRow) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -446,7 +468,7 @@ func (r *preprocessRun) write(ctx context.Context, keptPath, staging string, pkg
 		var changed []changeRow
 		var dropped []rejectRow
 		for _, row := range batch {
-			edited, edits, err := r.applyTo(k, row, decided.outcome, samples)
+			edited, edits, err := editor.edit(k, row)
 			if err != nil {
 				return err
 			}
@@ -469,7 +491,7 @@ func (r *preprocessRun) write(ctx context.Context, keptPath, staging string, pkg
 		if err := changeRows.Write(changed); err != nil {
 			return fmt.Errorf("write changes: %w", err)
 		}
-		if err := rejects.Write(dropped); err != nil {
+		if err := r.rejects.Write(dropped); err != nil {
 			return fmt.Errorf("write rejects: %w", err)
 		}
 		return nil
@@ -490,11 +512,16 @@ func (r *preprocessRun) write(ctx context.Context, keptPath, staging string, pkg
 	return changes.finish()
 }
 
-// applyTo clears the fields the rules chose for article k and captures any signal sample it holds.
-func (r *preprocessRun) applyTo(k int, row canonicalRow, outcome ruleOutcome, samples []signalSamples) (canonicalRow, []changeRow, error) {
-	hits := outcome.clears[k]
+// articleEditor applies the rules' clears to a kept article and captures any signal sample it holds.
+type articleEditor struct {
+	outcome ruleOutcome
+	samples []signalSamples
+}
+
+func (e articleEditor) edit(k int, row canonicalRow) (canonicalRow, []changeRow, error) {
+	hits := e.outcome.clears[k]
 	sampled := false
-	for _, s := range samples {
+	for _, s := range e.samples {
 		_, holds := s.byKey[k]
 		sampled = sampled || holds
 	}
@@ -505,7 +532,7 @@ func (r *preprocessRun) applyTo(k int, row canonicalRow, outcome ruleOutcome, sa
 	if err != nil {
 		return canonicalRow{}, nil, fmt.Errorf("read kept article back: %w", err)
 	}
-	for _, s := range samples {
+	for _, s := range e.samples {
 		s.capture(k, article)
 	}
 	if len(hits) == 0 {
@@ -561,6 +588,7 @@ func (o *outputFile) abort() {
 
 // rawSource is a raw resource opened, and its hash verified, before preprocessing starts.
 type rawSource struct {
+	index    int
 	resource datapackage.Resource
 	file     *datapackage.ResourceFile
 	records  reader.RecordReader
@@ -571,7 +599,7 @@ type rawSources []rawSource
 // openSources opens every resource up front, so their footers can total the records before the first one is read.
 func openSources(ctx context.Context, raw *datapackage.Opened) (rawSources, error) {
 	sources := make(rawSources, 0, len(raw.Package.Resources))
-	for _, resource := range raw.Package.Resources {
+	for i, resource := range raw.Package.Resources {
 		file, err := raw.Resource(ctx, resource.Name)
 		if err != nil {
 			return sources, fmt.Errorf("open raw resource %s: %w", resource.Name, err)
@@ -581,7 +609,7 @@ func openSources(ctx context.Context, raw *datapackage.Opened) (rawSources, erro
 			file.Close()
 			return sources, err
 		}
-		sources = append(sources, rawSource{resource: resource, file: file, records: records})
+		sources = append(sources, rawSource{index: i, resource: resource, file: file, records: records})
 	}
 	return sources, nil
 }

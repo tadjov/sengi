@@ -19,10 +19,10 @@ type ruleOutcome struct {
 
 // applyRules runs the rules in order. A drop wins over any clear, the first rule to drop
 // or to clear a field names the edit, and clearing a field that is already empty changes nothing.
-func applyRules(rules []preprocess.Rule, signals map[string]signalValues, filled func(k int, field string) bool) ruleOutcome {
+func (r *preprocessRun) applyRules(signals map[string]signalValues) ruleOutcome {
 	outcome := ruleOutcome{drops: map[int]ruleHit{}, clears: map[int][]ruleHit{}}
 	cleared := map[int]map[string]bool{}
-	for _, rule := range rules {
+	for _, rule := range r.spec.Rules {
 		for k, value := range signals[rule.When.Signal].values {
 			if value < rule.When.AtLeast {
 				continue
@@ -34,7 +34,7 @@ func applyRules(rules []preprocess.Rule, signals map[string]signalValues, filled
 					outcome.drops[k] = hit
 				}
 			case preprocess.ActionClear:
-				if cleared[k][rule.Field] || !filled(k, rule.Field) {
+				if cleared[k][rule.Field] || !r.isFilled(k, rule.Field) {
 					continue
 				}
 				if cleared[k] == nil {

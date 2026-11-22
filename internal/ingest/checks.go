@@ -26,17 +26,21 @@ func (e *ChecksFailedError) Error() string {
 	return "checks failed, nothing published: " + strings.Join(failed, "; ")
 }
 
-// evaluateChecks shares dropped and duplicates out of the records read, cleared out of the articles written.
-func evaluateChecks(checks preprocess.Checks, counts datapackage.Counts, clearedArticles int64) map[string]datapackage.CheckResult {
+// observedShares are dropped and duplicates out of the records read, cleared out of the articles written.
+type observedShares struct {
+	dropped, duplicates, cleared float64
+}
+
+func evaluateChecks(checks preprocess.Checks, observed observedShares) map[string]datapackage.CheckResult {
 	results := map[string]datapackage.CheckResult{}
 	for _, check := range []struct {
 		name     string
 		budget   *preprocess.Budget
 		observed float64
 	}{
-		{"dropped", checks.Dropped, share(sum(counts.Dropped), counts.Read)},
-		{"duplicates", checks.Duplicates, share(sum(counts.Duplicates), counts.Read)},
-		{"cleared", checks.Cleared, share(clearedArticles, counts.Written)},
+		{"dropped", checks.Dropped, observed.dropped},
+		{"duplicates", checks.Duplicates, observed.duplicates},
+		{"cleared", checks.Cleared, observed.cleared},
 	} {
 		if check.budget == nil {
 			continue

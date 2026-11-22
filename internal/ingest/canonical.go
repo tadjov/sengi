@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -196,8 +197,12 @@ func (a articleWriter) Close() error {
 }
 
 // readRows streams the rows of a parquet file in batches.
-func readRows[T any](r io.ReaderAt, size int64, each func([]T) error) error {
-	file, err := parquet.OpenFile(r, size)
+func readRows[T any](f *os.File, each func([]T) error) error {
+	info, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	file, err := parquet.OpenFile(f, info.Size())
 	if err != nil {
 		return err
 	}
