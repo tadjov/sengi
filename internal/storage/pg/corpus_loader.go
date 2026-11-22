@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"log/slog"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -53,19 +52,16 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	if err := validateCorpus(c, opts); err != nil {
 		return storage.LoadRecord{}, err
 	}
+	load := storage.StartLoad(opts.Progress, "engine", string(l.engine))
 	record := storage.LoadRecord{
 		Engine:      string(l.engine),
-		StartedAt:   now(),
 		Canonical:   c.Canonical,
 		Embeddings:  c.Embeddings,
 		ModelTag:    c.ModelTag,
 		BatchSize:   opts.BatchSize,
 		Concurrency: opts.Concurrency,
-		Stages:      []storage.StageTiming{},
 		Settings:    map[string]string{},
 	}
-
-	stages := loadStages{record: &record, counter: progress.Or(opts.Progress)}
 
 	// One session, so index settings read back from it and never reach the pool.
 	pooled, err := l.pool.conn.Acquire(ctx)
@@ -78,7 +74,7 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	if err := lockLoad(ctx, conn); err != nil {
 		return storage.LoadRecord{}, err
 	}
-	if err := stages.timed("schema", func() error { return l.schema.Up(ctx, conn) }); err != nil {
+	if err := load.Stage("schema", func() error { return l.schema.Up(ctx, conn) }); err != nil {
 		return storage.LoadRecord{}, err
 	}
 	if err := l.refuseLoaded(ctx, conn); err != nil {
@@ -92,10 +88,10 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		return storage.LoadRecord{}, err
 	}
 	defer copyPool.Close()
-	copier := &corpusCopier{pool: copyPool, concurrency: opts.Concurrency, batchSize: opts.BatchSize, counter: stages.counter}
+	copier := &corpusCopier{pool: copyPool, concurrency: opts.Concurrency, batchSize: opts.BatchSize, counter: load.Counter()}
 
 	var ids []uuid.UUID
-	err = stages.timed("copy_articles", func() error {
+	err = load.Stage("copy_articles", func() error {
 		ids, err = copier.copyArticles(ctx, c)
 		return err
 	})
@@ -108,7 +104,7 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	record.Articles = int64(len(ids))
 
 	if c.Vectors != nil {
-		err = stages.timed("copy_embeddings", func() error {
+		err = load.Stage("copy_embeddings", func() error {
 			record.Vectors, err = copier.copyVectors(ctx, c, ids)
 			return err
 		})
@@ -119,11 +115,14 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	copyPool.Close()
 
 	if !opts.SkipIndex {
-		if err := l.buildIndexes(ctx, conn, stages); err != nil {
+		if err := l.buildIndexes(ctx, conn, load); err != nil {
+			return storage.LoadRecord{}, err
+		}
+		if err := l.readSettings(ctx, conn, record.Settings); err != nil {
 			return storage.LoadRecord{}, err
 		}
 	}
-	err = stages.timed("vacuum_analyze", func() error {
+	err = load.Stage("vacuum_analyze", func() error {
 		_, err := conn.Exec(ctx, "VACUUM (ANALYZE) articles, article_embeddings")
 		return err
 	})
@@ -142,7 +141,7 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		return storage.LoadRecord{}, err
 	}
 
-	record.Finish(now())
+	load.Finish(&record)
 	// An unindexed corpus is not what a bench run measures, so corpus_load skips it.
 	if opts.SkipIndex {
 		return record, nil
@@ -234,7 +233,7 @@ var serverSettings = []string{
 }
 
 // buildIndexes times each search index and each derived-table fill as its own stage; a SET or ANALYZE runs untimed.
-func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, stages loadStages) error {
+func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, load *storage.LoadStopwatch) error {
 	for _, s := range l.indexes {
 		run := func() error {
 			if _, err := conn.Exec(ctx, s.SQL); err != nil {
@@ -252,20 +251,24 @@ func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, stages 
 			}
 			continue
 		}
-		err := stages.timed(s.Stage, func() error {
-			defer l.watchIndexBuild(ctx, stages.counter, conn.PgConn().PID())()
+		err := load.Stage(s.Stage, func() error {
+			defer l.watchIndexBuild(ctx, load.Counter(), conn.PgConn().PID())()
 			return run()
 		})
 		if err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+func (l *CorpusLoader) readSettings(ctx context.Context, conn *pgx.Conn, settings map[string]string) error {
 	for _, name := range slices.Concat(serverSettings, engineKnobs[l.engine].settings) {
 		var value string
 		if err := conn.QueryRow(ctx, "SELECT current_setting($1)", name).Scan(&value); err != nil {
 			return fmt.Errorf("read setting %s: %w", name, err)
 		}
-		stages.record.Settings[name] = value
+		settings[name] = value
 	}
 	return nil
 }
@@ -314,30 +317,6 @@ func (l *CorpusLoader) indexBuildProgress(ctx context.Context, pid uint32) []any
 		attrs = append(attrs, "tuples", fmt.Sprintf("%d/%d", tuplesDone, tuplesTotal))
 	}
 	return attrs
-}
-
-// now truncates to timestamptz's microseconds, so records round-trip through corpus_load.
-func now() time.Time {
-	return time.Now().UTC().Truncate(time.Microsecond)
-}
-
-// loadStages times each stage into the record and names it on the progress counter.
-type loadStages struct {
-	record  *storage.LoadRecord
-	counter progress.Counter
-}
-
-func (s loadStages) timed(stage string, run func() error) error {
-	s.counter.Stage(stage)
-	slog.Info("corpus load stage started", "engine", s.record.Engine, "stage", stage)
-	start := time.Now()
-	if err := run(); err != nil {
-		return err
-	}
-	seconds := time.Since(start).Seconds()
-	s.record.Stages = append(s.record.Stages, storage.StageTiming{Name: stage, Seconds: seconds})
-	slog.Info("corpus load stage finished", "engine", s.record.Engine, "stage", stage, "seconds", seconds)
-	return nil
 }
 
 var corpusTables = []string{"articles", "article_embeddings"}

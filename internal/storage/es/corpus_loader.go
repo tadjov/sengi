@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"log/slog"
 	"math/rand/v2"
 	"net/http"
 	"strconv"
@@ -91,28 +90,14 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		return storage.LoadRecord{}, fmt.Errorf("load corpus into %s: %w", index, err)
 	}
 
-	startedAt := time.Now().UTC()
+	opts.Progress = progress.Or(opts.Progress)
+	load := storage.StartLoad(opts.Progress, "index", index)
 	info, err := l.client.typed.Info().Do(ctx)
 	if err != nil {
 		return storage.LoadRecord{}, fmt.Errorf("read elasticsearch version: %w", err)
 	}
 
-	opts.Progress = progress.Or(opts.Progress)
-	var stages []storage.StageTiming
-	timed := func(name string, stage func() error) error {
-		opts.Progress.Stage(name)
-		slog.Info("corpus load stage started", "index", index, "stage", name)
-		began := time.Now()
-		if err := stage(); err != nil {
-			return err
-		}
-		seconds := time.Since(began).Seconds()
-		stages = append(stages, storage.StageTiming{Name: name, Seconds: seconds})
-		slog.Info("corpus load stage finished", "index", index, "stage", name, "seconds", seconds)
-		return nil
-	}
-
-	if err := timed("create_index", func() error { return l.createIndex(ctx, c.Language) }); err != nil {
+	if err := load.Stage("create_index", func() error { return l.createIndex(ctx, c.Language) }); err != nil {
 		return storage.LoadRecord{}, err
 	}
 	defer func() {
@@ -122,18 +107,18 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	}()
 
 	var written writeCounts
-	if err := timed("bulk", func() (err error) {
+	if err := load.Stage("bulk", func() (err error) {
 		written, err = l.writeDocuments(ctx, c, opts)
 		return err
 	}); err != nil {
 		return storage.LoadRecord{}, err
 	}
-	if err := timed("refresh", func() error {
+	if err := load.Stage("refresh", func() error {
 		return l.refresh(ctx, written.articles)
 	}); err != nil {
 		return storage.LoadRecord{}, err
 	}
-	if err := timed("force_merge", func() error {
+	if err := load.Stage("force_merge", func() error {
 		return l.forceMerge(ctx)
 	}); err != nil {
 		return storage.LoadRecord{}, err
@@ -146,7 +131,6 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	record = storage.LoadRecord{
 		Engine:        string(storage.ES),
 		EngineVersion: info.Version.Int,
-		StartedAt:     startedAt,
 		Canonical:     c.Canonical,
 		Embeddings:    c.Embeddings,
 		ModelTag:      c.ModelTag,
@@ -154,10 +138,9 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		Vectors:       written.vectors,
 		BatchSize:     opts.BatchSize,
 		Concurrency:   opts.Concurrency,
-		Stages:        stages,
 		Settings:      settings,
 	}
-	record.Finish(time.Now().UTC())
+	load.Finish(&record)
 	if err := l.writeLoadRecord(ctx, record); err != nil {
 		return storage.LoadRecord{}, err
 	}
@@ -331,7 +314,7 @@ func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string,
 	}
 
 	settings := make(map[string]string)
-	similarityPrefix := "index.similarity." + textSimilarity + "."
+	similarityPrefix := "index.similarity." + defaultSimilarity + "."
 	for key, recorded := range map[string]string{
 		"index.number_of_shards":   "index.number_of_shards",
 		"index.number_of_replicas": "index.number_of_replicas",
@@ -354,7 +337,6 @@ func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string,
 	fields := searchFieldMappings(mappings[index].Mappings.Properties)
 	for _, name := range []string{"title", "description", "content"} {
 		settings[name+".analyzer"] = fields[name].Analyzer
-		settings[name+".similarity"] = fields[name].Similarity
 	}
 	vector := fields["embedding"]
 	if vector.VectorIndex == nil {
