@@ -24,7 +24,7 @@ const (
 
 // Inputs are a command's track arg and path overrides; a blank field falls back to the track's layout.
 type Inputs struct {
-	TrackArg   string // --track value OR positional arg (already merged by caller)
+	TrackArg   string // the positional track arg; empty walks up from the current directory
 	TrackRoot  string // --track-root / BENCH_TRACK_ROOT; base for relative args (default: cwd)
 	SpecPath   string // --spec override
 	PoolPath   string // --pool override

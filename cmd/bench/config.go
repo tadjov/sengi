@@ -214,23 +214,15 @@ func envOrFlag(envKey, flagVal string) string {
 	return os.Getenv(envKey)
 }
 
-// trackInputs builds the resolution inputs shared by every subcommand: the
-// track from a flag or positional arg, resolved against the active track root.
-// Callers layer their own --spec/--pool/--output overrides on top.
-func trackInputs(flag string, args []string) trackctx.Inputs {
-	return trackctx.Inputs{TrackArg: trackArg(flag, args), TrackRoot: trackRoot}
-}
-
-// trackArg picks up the track from a flag or first positional arg. The CLI
-// allows either form: `bench pool tracks/news/fts` or `bench pool --track tracks/news/fts`.
-func trackArg(flag string, args []string) string {
-	if flag != "" {
-		return flag
-	}
+// trackInputs reads the track from the command's one positional arg, against
+// the active track root; without an arg the track is found from the current
+// directory.
+func trackInputs(args []string) trackctx.Inputs {
+	in := trackctx.Inputs{TrackRoot: trackRoot}
 	if len(args) > 0 {
-		return args[0]
+		in.TrackArg = args[0]
 	}
-	return ""
+	return in
 }
 
 // forEachTrack runs fn once per track. A glob arg (news/*) fans out across every

@@ -152,7 +152,7 @@ func newPreprocessRun(t *testing.T, mapping string, files ...rawFile) preprocess
 
 func (r preprocessRun) execute(ctx context.Context, flags ...string) error {
 	cmd := newPreprocessCmd()
-	cmd.SetArgs(append([]string{"--input", r.rawDir, "--mapping", r.mappingPath, "--output", r.outputRoot}, flags...))
+	cmd.SetArgs(append([]string{r.rawDir, "--mapping", r.mappingPath, "--output", r.outputRoot}, flags...))
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
 	return cmd.ExecuteContext(ctx)

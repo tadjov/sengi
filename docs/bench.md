@@ -319,7 +319,7 @@ bench diff judgments [<name>] --judgments <set,...>
 bench clean  [<name>]              remove old report files
 ```
 
-Every command accepts a track path as a positional arg (`bench run tracks/cc-news/fts`), a `--track` flag, or resolves from the current directory when you `cd` into a track. Relative paths start at `--track-root` / `BENCH_TRACK_ROOT` — see [Track resolution](#track-resolution--the-track-root).
+Every command takes the track as its one positional arg (`bench run tracks/cc-news/fts`), and resolves it from the current directory when you `cd` into a track and pass none. Everything else is a flag. Relative paths start at `--track-root` / `BENCH_TRACK_ROOT` — see [Track resolution](#track-resolution--the-track-root).
 
 ## Strategy taxonomy
 
@@ -684,15 +684,15 @@ A read of the server settings, cgroup limits or node stats that fails, as `pg_re
 
 | Format               | Output                  | Description                                                                          |
 |----------------------|-------------------------|--------------------------------------------------------------------------------------|
-| `qrels` (or `tsv`)   | `trec/qrels.<S>.tsv`    | TREC qrels TSV for `trec_eval`, R, pytrec_eval                                       |
+| `qrels`              | `trec/qrels.<S>.tsv`    | TREC qrels TSV for `trec_eval`, R, pytrec_eval                                       |
 | `html`               | `reports/<run_id>.html` | Self-contained HTML with sortable tables, SVG charts, significance table, provenance |
-| `markdown` (or `md`) | `reports/<run_id>.md`   | GitHub-Flavored Markdown tables for thesis writing and PRs                           |
+| `markdown`           | `reports/<run_id>.md`   | GitHub-Flavored Markdown tables for thesis writing and PRs                           |
 | `run`                | `reports/<run_id>.run/` | TREC run files, one per job and engine (`<job>.<engine>.run`), for `trec_eval`        |
 
 Examples:
 ```bash
 bench export tracks/cc-news/fts --format qrels
-bench export tracks/cc-news/fts --format qrels --strategy claude-api
+bench export tracks/cc-news/fts --format qrels --judgments claude-cli
 bench export tracks/cc-news/fts --format html
 bench export tracks/cc-news/fts --format markdown
 bench export tracks/cc-news/fts --format markdown --output /tmp/results.md
@@ -704,7 +704,7 @@ Prints a one-glance dashboard showing which artifacts exist, when they were last
 
 ### `bench diff runs [<name>]`
 
-Compares the report `latest.json` points at with the newest earlier complete report: judged metrics, no failed queries and nothing in `settings.incomplete`. When no earlier report qualifies, it warns and falls back to the newest earlier one. It warns when the judge, relevance threshold or judgments file differ, lists the index provenance fields that changed, then shows per-engine metric deltas (NDCG, MAP, MRR, latency) and per-query NDCG regressions sorted by magnitude. NDCG is compared at the largest K both runs computed. Pass `--a` / `--b` to compare specific run IDs.
+Compares the report `latest.json` points at with the newest earlier complete report: judged metrics, no failed queries and nothing in `settings.incomplete`. When no earlier report qualifies, it warns and falls back to the newest earlier one. It warns when the judge, relevance threshold or judgments file differ, lists the index provenance fields that changed, then shows per-engine metric deltas (NDCG, MAP, MRR, latency) and per-query NDCG regressions sorted by magnitude. NDCG is compared at the largest K both runs computed. Pass `--before` / `--after` to compare specific runs, each a run ID or a report path.
 
 `bench diff` itself takes no track: `bench diff <name>` fails and names `runs` and `judgments`.
 
@@ -750,10 +750,8 @@ Pretty-prints a one-page summary of any artifact:
 |-----------|-------|
 | `show spec` | `spec.yaml` |
 | `show pool` | `trec/pool.yaml` |
-| `show judgments [--strategy S]` | `trec/annotations.<S>.yaml` |
+| `show judgments [--judgments S]` | `trec/annotations.<S>.yaml` |
 | `show report` | `reports/latest.json` → actual report |
-
-`bench report [<name>]` is a top-level shorthand for `bench show report`.
 
 ### `bench clean [<name>] [--keep N]`
 
@@ -791,7 +789,7 @@ Latency (min/p50/p75/p90/p95/p99/max/mean/stddev) covers only the queries every 
 Each report records every (query, engine) ranking, so `trec_eval` can reproduce its MAP, P@k and linear-gain NDCG:
 
 ```bash
-bench export <track> --format qrels --strategy <S>
+bench export <track> --format qrels --judgments <S>
 bench export <track> --format run
 trec_eval -c -l <relevance_threshold> -m map -m P.5,10 -m ndcg_cut.5,10 trec/qrels.<S>.tsv reports/<run_id>.run/<job>.<engine>.run
 ```

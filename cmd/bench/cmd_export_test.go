@@ -25,7 +25,7 @@ func gradedTrack(t *testing.T) (lineageTrack, uuid.UUID) {
 func TestExportQrels_AnnotationsPathAsStrategyWritesQrelsBesideIt(t *testing.T) {
 	tr, doc := gradedTrack(t)
 
-	_, err := execute(t, newExportCmd(), tr.dir, "--format", "qrels", "--strategy", tr.judgments)
+	_, err := execute(t, newExportCmd(), tr.dir, "--format", "qrels", "--judgments", tr.judgments)
 	require.NoError(t, err)
 
 	_, err = judgment.ReadFile(tr.judgments)

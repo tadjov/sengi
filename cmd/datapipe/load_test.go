@@ -50,7 +50,7 @@ func TestLoad(t *testing.T) {
 				embeddings := writeEmbeddingsPackage(t, root, canonical, articles, nil)
 
 				err := execDatapipe(t, db, "load", "--engine", string(engine),
-					"--canonical", canonical.location, "--embeddings", embeddings.location, "--batch-size", "500", "--concurrency", "2")
+					canonical.location, "--embeddings", embeddings.location, "--batch-size", "500", "--concurrency", "2")
 				require.NoError(t, err)
 
 				stored := readLoadedArticles(t, db, articles[0].ID, articles[1_999].ID)
@@ -78,7 +78,7 @@ func TestLoad(t *testing.T) {
 				embeddings := writeEmbeddingsPackage(t, root, canonical, articles, nil)
 
 				err := execDatapipe(t, db, "load", "--engine", string(engine),
-					"--canonical", canonical.location, "--embeddings", embeddings.location)
+					canonical.location, "--embeddings", embeddings.location)
 				require.NoError(t, err)
 
 				stored := readLoadedArticles(t, db, articles[4].ID, articles[19].ID)
@@ -96,7 +96,7 @@ func TestLoad(t *testing.T) {
 				embeddings := writeEmbeddingsPackage(t, root, other, articles, nil)
 
 				err := execDatapipe(t, db, "load", "--engine", string(engine),
-					"--canonical", canonical.location, "--embeddings", embeddings.location)
+					canonical.location, "--embeddings", embeddings.location)
 
 				require.ErrorContains(t, err, other.resourceHash)
 				require.ErrorContains(t, err, canonical.resourceHash)
@@ -110,7 +110,7 @@ func TestLoad(t *testing.T) {
 				canonical := writeCanonicalPackage(t, root, articles)
 				limit := 5
 				trial := writeEmbeddingsPackage(t, root, canonical, articles[:limit], &limit)
-				args := []string{"load", "--engine", string(engine), "--canonical", canonical.location, "--embeddings", trial.location}
+				args := []string{"load", "--engine", string(engine), canonical.location, "--embeddings", trial.location}
 
 				err := execDatapipe(t, db, args...)
 				require.ErrorContains(t, err, "--trial")
@@ -133,7 +133,7 @@ func TestLoad(t *testing.T) {
 						short := writeEmbeddingsPackage(t, root, canonical, articles[:5], nil)
 
 						err := execDatapipe(t, db, "load", "--engine", string(engine),
-							"--canonical", canonical.location, "--embeddings", short.location)
+							canonical.location, "--embeddings", short.location)
 
 						require.ErrorContains(t, err, "5 vectors for 20 articles")
 						assert.False(t, loadedTableExists(t, db, "articles"))
@@ -147,7 +147,7 @@ func TestLoad(t *testing.T) {
 				articles := loadFixtureArticles(20)
 				canonical := writeCanonicalPackage(t, root, articles)
 
-				err := execDatapipe(t, db, "load", "--engine", string(engine), "--canonical", canonical.location, "--skip-index")
+				err := execDatapipe(t, db, "load", "--engine", string(engine), canonical.location, "--skip-index")
 				require.NoError(t, err)
 
 				assert.Equal(t, articles[3], readLoadedArticles(t, db, articles[3].ID)[articles[3].ID])
@@ -167,7 +167,7 @@ func TestLoad_RefusesBeforeReachingAnEngine(t *testing.T) {
 		canonical := writeCanonicalPackage(t, root, loadFixtureArticles(20))
 		corruptByte(t, canonical.resourcePath)
 
-		err := execDatapipe(t, "", "load", "--engine", "es", "--canonical", canonical.location)
+		err := execDatapipe(t, "", "load", "--engine", "es", canonical.location)
 
 		var mismatch *datapackage.HashMismatchError
 		require.ErrorAs(t, err, &mismatch)
@@ -180,7 +180,7 @@ func TestLoad_RefusesBeforeReachingAnEngine(t *testing.T) {
 		limit := 5
 		trial := writeEmbeddingsPackage(t, root, canonical, articles[:limit], &limit)
 
-		err := execDatapipe(t, "", "load", "--engine", "es", "--canonical", canonical.location, "--embeddings", trial.location)
+		err := execDatapipe(t, "", "load", "--engine", "es", canonical.location, "--embeddings", trial.location)
 
 		require.ErrorContains(t, err, "--trial")
 	})
@@ -191,7 +191,7 @@ func TestLoad_RefusesBeforeReachingAnEngine(t *testing.T) {
 		canonical := writeCanonicalPackage(t, root, articles)
 		short := writeEmbeddingsPackage(t, root, canonical, articles[:5], nil)
 
-		err := execDatapipe(t, "", "load", "--engine", "es", "--canonical", canonical.location, "--embeddings", short.location)
+		err := execDatapipe(t, "", "load", "--engine", "es", canonical.location, "--embeddings", short.location)
 
 		require.ErrorContains(t, err, "5 vectors for 20 articles")
 	})

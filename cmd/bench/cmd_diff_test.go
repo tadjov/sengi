@@ -213,7 +213,7 @@ func TestExecuteDiff_BaselineSearchSkipsUnreadableReports(t *testing.T) {
 	require.NoError(t, executeDiff(&out, diffFlags{}, []string{"demo"}))
 	assert.Regexp(t, `A \(before\):\s+2026-01-01T00-00-01-run-aaaaaa`, out.String())
 
-	err := executeDiff(&bytes.Buffer{}, diffFlags{pathA: "2026-01-01T00-00-02-run-bbbbbb"}, []string{"demo"})
+	err := executeDiff(&bytes.Buffer{}, diffFlags{before: "2026-01-01T00-00-02-run-bbbbbb"}, []string{"demo"})
 	assert.Error(t, err, "an explicitly named unreadable report is still an error")
 }
 

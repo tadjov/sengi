@@ -17,12 +17,6 @@ import (
 	"github.com/tadjov/sengi/internal/bench/trackctx"
 )
 
-func newReportCmd() *cobra.Command {
-	cmd := newShowReportCmd()
-	cmd.Short = "Show the latest report for a track (alias: bench show report)"
-	return cmd
-}
-
 func newShowCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show",
@@ -56,14 +50,14 @@ func newShowPoolCmd() *cobra.Command {
 }
 
 func newShowJudgmentsCmd() *cobra.Command {
-	var strategy string
+	var judgments string
 	cmd := &cobra.Command{
 		Use:     "judgments [track|file]",
 		Short:   "Summarise a judgments file",
 		Args:    cobra.MaximumNArgs(1),
-		Example: "  bench show judgments tracks/cc-news/fts --strategy claude-api\n  bench show judgments /path/to/annotations.yaml",
+		Example: "  bench show judgments tracks/cc-news/fts --judgments claude-cli\n  bench show judgments /path/to/annotations.yaml",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, err := artifactPath(args, func(tr *trackctx.Track) string { return tr.JudgmentsPath(strategy) })
+			path, err := artifactPath(args, func(tr *trackctx.Track) string { return tr.JudgmentsPath(judgments) })
 			if err != nil {
 				return err
 			}
@@ -75,7 +69,7 @@ func newShowJudgmentsCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&strategy, "strategy", string(judgment.StrategyKeyword), "Judgment set to summarise when the arg is a track")
+	cmd.Flags().StringVar(&judgments, "judgments", string(judgment.StrategyKeyword), "Judgment set to summarise when the arg is a track")
 	return cmd
 }
 
@@ -124,7 +118,7 @@ func readReportArg(args []string) (*report.Report, error) {
 	if file, ok := fileArg(args); ok {
 		return report.ReadJSON(file)
 	}
-	tr, err := trackctx.Resolve(trackInputs("", args))
+	tr, err := trackctx.Resolve(trackInputs(args))
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +131,7 @@ func artifactPath(args []string, inTrack func(*trackctx.Track) string) (string, 
 	if file, ok := fileArg(args); ok {
 		return file, nil
 	}
-	tr, err := trackctx.Resolve(trackInputs("", args))
+	tr, err := trackctx.Resolve(trackInputs(args))
 	if err != nil {
 		return "", err
 	}

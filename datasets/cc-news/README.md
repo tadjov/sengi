@@ -61,13 +61,12 @@ artifact. `--format parquet` writes the same columns. Slices are not data packag
 ## Preprocess and load
 
 ```bash
-go run ./cmd/datapipe preprocess \
-  --input datasets/cc-news/raw \
+go run ./cmd/datapipe preprocess datasets/cc-news/raw \
   --mapping datasets/cc-news/mapping.yaml \
   --output datasets/cc-news/canonical
 
-ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load --engine native \
-  --canonical datasets/cc-news/canonical/<version>/datapackage.json \
+ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load datasets/cc-news/canonical/<version>/datapackage.json \
+  --engine native \
   --embeddings datasets/cc-news/embeddings/<tag-dir>/<version>/datapackage.json
 ```
 

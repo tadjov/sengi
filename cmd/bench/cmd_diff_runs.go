@@ -22,9 +22,8 @@ import (
 )
 
 type diffFlags struct {
-	trackArg string
-	pathA    string
-	pathB    string
+	before string
+	after  string
 }
 
 func newDiffRunsCmd() *cobra.Command {
@@ -35,39 +34,38 @@ func newDiffRunsCmd() *cobra.Command {
 		Long: `Shows per-engine metric deltas between two reports and the per-query NDCG
 regressions, largest first.
 
-Without --b, B is latest.json's report. Without --a, A is the newest earlier
-fully scored report, or the newest earlier one with a warning. --a and --b
-take run IDs or report paths.`,
+Without --after, the later run is latest.json's report. Without --before, the
+earlier run is the newest fully scored report before it, or the newest earlier
+one with a warning. Both take a run ID or a report path.`,
 		Example: `  bench diff runs tracks/cc-news/fts                               # latest two runs
-  bench diff runs tracks/cc-news/fts --b 2026-05-26T23-39-05-run-7e0750
-  bench diff runs --a /tmp/before.json --b /tmp/after.json`,
+  bench diff runs tracks/cc-news/fts --after 2026-05-26T23-39-05-run-7e0750
+  bench diff runs --before /tmp/before.json --after /tmp/after.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return executeDiff(cmd.OutOrStdout(), f, args)
 		},
 	}
-	cmd.Flags().StringVar(&f.trackArg, "track", "", "Track path (relative to --track-root)")
-	cmd.Flags().StringVar(&f.pathA, "a", "", "Before run: run ID or path to report.json")
-	cmd.Flags().StringVar(&f.pathB, "b", "", "After run: run ID or path to report.json")
+	cmd.Flags().StringVar(&f.before, "before", "", "Earlier run: a run ID or a report path (default: the newest scored run before --after)")
+	cmd.Flags().StringVar(&f.after, "after", "", "Later run: a run ID or a report path (default: the track's latest)")
 	return cmd
 }
 
 func executeDiff(w io.Writer, f diffFlags, args []string) error {
-	tr, err := trackctx.Resolve(trackInputs(f.trackArg, args))
+	tr, err := trackctx.Resolve(trackInputs(args))
 	if err != nil {
 		// If both paths are explicit we don't need a track.
-		if f.pathA != "" && f.pathB != "" {
+		if f.before != "" && f.after != "" {
 			tr = nil
 		} else {
 			return err
 		}
 	}
 
-	rptB, err := afterReport(tr, f.pathB)
+	rptB, err := afterReport(tr, f.after)
 	if err != nil {
 		return fmt.Errorf("resolve after report: %w", err)
 	}
-	rptA, err := beforeReport(tr, f.pathA, rptB)
+	rptA, err := beforeReport(tr, f.before, rptB)
 	if err != nil {
 		return fmt.Errorf("resolve before report: %w", err)
 	}

@@ -30,9 +30,13 @@ type preprocessConfig struct {
 func newPreprocessCmd() *cobra.Command {
 	var cfg preprocessConfig
 	cmd := &cobra.Command{
-		Use:   "preprocess",
+		Use:   "preprocess <raw-package>",
 		Short: "Map a raw data package into a canonical data package",
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Long: `preprocess reads a raw data package (a datapackage.json or its folder, https://
+or s3://) and maps it through --mapping into a canonical package under --output.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg.InputPath = args[0]
 			if ext := strings.ToLower(filepath.Ext(cfg.MappingPath)); ext != ".yaml" {
 				return fmt.Errorf("mapping %s has extension %q, want .yaml", cfg.MappingPath, ext)
 			}
@@ -42,11 +46,10 @@ func newPreprocessCmd() *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&cfg.InputPath, "input", "", "Raw data package: a datapackage.json or its folder, https:// or s3://")
 	f.StringVar(&cfg.OutputPath, "output", "", "Folder that receives the canonical package as <version>/, e.g. datasets/<ds>/canonical")
 	f.StringVar(&cfg.MappingPath, "mapping", "", "Path to the YAML field-mapping config")
 	f.StringVar(&cfg.Version, "version", datapackage.DefaultVersion, "Canonical package version, the folder name under --output")
-	for _, required := range []string{"input", "output", "mapping"} {
+	for _, required := range []string{"output", "mapping"} {
 		_ = cmd.MarkFlagRequired(required)
 	}
 	return cmd

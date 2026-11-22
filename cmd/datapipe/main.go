@@ -24,11 +24,10 @@ Stages:
                        package built from it, into native, paradedb, tiger or es
 
 Typical flow:
-  datapipe preprocess --input datasets/<name>/raw \
-      --output datasets/<name>/canonical --mapping datasets/<name>/mapping.yaml
-  datapipe embed --canonical datasets/<name>/canonical/<version>/datapackage.json
-  datapipe load --engine native \
-      --canonical datasets/<name>/canonical/<version>/datapackage.json \
+  datapipe preprocess datasets/<name>/raw \
+      --mapping datasets/<name>/mapping.yaml --output datasets/<name>/canonical
+  datapipe embed datasets/<name>/canonical/<version>/datapackage.json
+  datapipe load datasets/<name>/canonical/<version>/datapackage.json --engine native \
       --embeddings datasets/<name>/embeddings/<tag-dir>/<version>/datapackage.json
 `
 )

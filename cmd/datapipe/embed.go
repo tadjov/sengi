@@ -48,26 +48,27 @@ type embedOptions struct {
 func newEmbedCmd() *cobra.Command {
 	var opts embedOptions
 	cmd := &cobra.Command{
-		Use:   "embed",
+		Use:   "embed <canonical-descriptor>",
 		Short: "Embed a canonical package's articles through an embedding API into an embeddings package",
-		Long: `embed verifies a canonical package, embeds each article's lead-v1 text through
+		Long: `embed verifies a local canonical package (its descriptor under
+datasets/<ds>/canonical/<version>/), embeds each article's lead-v1 text through
 Ollama and publishes the vectors as an embeddings package under
 datasets/<ds>/embeddings/<tag-dir>/<version>/, one row per canonical row in order.
 
 Ollama comes from the environment: EMBEDDING_BASE_URL, EMBEDDING_MODEL and
 EMBEDDING_DIM, as the search API reads them.`,
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Canonical = args[0]
 			return runEmbed(cmd.Context(), cmd.OutOrStdout(), opts)
 		},
 	}
 	flags := cmd.Flags()
-	flags.StringVar(&opts.Canonical, "canonical", "", "local canonical package descriptor under datasets/<ds>/canonical/<version>/")
-	flags.StringVar(&opts.Version, "version", datapackage.DefaultVersion, "embeddings package version, a folder under embeddings/<tag-dir>/ that must not exist yet")
-	flags.IntVar(&opts.BatchSize, "batch-size", defaultEmbedBatchSize, "articles per embedding request")
-	flags.IntVar(&opts.MaxTokens, "max-tokens", defaultMaxTokens, "input tokens per article, sent to Ollama as num_ctx; a longer lead is cut")
+	flags.StringVar(&opts.Version, "version", datapackage.DefaultVersion, "Embeddings package version, a folder under embeddings/<tag-dir>/ that must not exist yet")
+	flags.IntVar(&opts.BatchSize, "batch-size", defaultEmbedBatchSize, "Articles per embedding request")
+	flags.IntVar(&opts.MaxTokens, "max-tokens", defaultMaxTokens, "Input tokens per article, sent to Ollama as num_ctx; a longer lead is cut")
 	flags.StringVar(&opts.HuggingFaceModel, "hf-model", "", "Hugging Face repo the model is built from; required unless EMBEDDING_MODEL is "+embedding.DefaultModel)
-	flags.IntVar(&opts.Limit, "limit", 0, "embed only the first N rows, as a trial with its own --version; 0 embeds every row")
-	_ = cmd.MarkFlagRequired("canonical")
+	flags.IntVar(&opts.Limit, "limit", 0, "Embed only the first N rows, as a trial with its own --version; 0 embeds every row")
 	return cmd
 }
 

@@ -18,7 +18,6 @@ import (
 )
 
 func newStatusCmd() *cobra.Command {
-	var trackArg string
 	cmd := &cobra.Command{
 		Use:   "status [track]",
 		Short: "Show what has been generated for a track",
@@ -28,15 +27,14 @@ exist, when they were last generated, and how much they hold.`,
   bench status          # walk-up from CWD`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return executeStatus(cmd.Context(), cmd.OutOrStdout(), trackArg, args)
+			return executeStatus(cmd.Context(), cmd.OutOrStdout(), args)
 		},
 	}
-	cmd.Flags().StringVar(&trackArg, "track", "", "Track path (relative to --track-root)")
 	return cmd
 }
 
-func executeStatus(ctx context.Context, w io.Writer, track string, args []string) error {
-	return forEachTrack(ctx, w, trackInputs(track, args), func(tr *trackctx.Track) error {
+func executeStatus(ctx context.Context, w io.Writer, args []string) error {
+	return forEachTrack(ctx, w, trackInputs(args), func(tr *trackctx.Track) error {
 		return statusTrack(w, tr)
 	})
 }

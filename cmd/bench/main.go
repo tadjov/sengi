@@ -83,7 +83,6 @@ func main() {
 		newStatusCmd(),
 		newDiffCmd(),
 		newCleanCmd(),
-		newReportCmd(), // top-level alias for bench show report
 	)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

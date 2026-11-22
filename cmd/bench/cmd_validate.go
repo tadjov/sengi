@@ -20,7 +20,6 @@ import (
 )
 
 type validateFlags struct {
-	trackArg string
 	specPath string
 	failFast bool
 }
@@ -41,13 +40,12 @@ func newValidateCmd() *cobra.Command {
 
 Returns non-zero exit if any query fails — wire it into CI.`,
 		Example: `  bench validate tracks/cc-news/fts
-  bench validate --track tracks/cc-news/fts --fail-fast`,
+  bench validate tracks/cc-news/fts --fail-fast`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return executeValidate(cmd, f, args)
 		},
 	}
-	cmd.Flags().StringVar(&f.trackArg, "track", "", "Track path (relative to --track-root)")
 	cmd.Flags().StringVar(&f.specPath, "spec", "", "Override spec.yaml path")
 	cmd.Flags().BoolVar(&f.failFast, "fail-fast", false, "Stop at first failure")
 	return cmd
@@ -61,7 +59,7 @@ type validateRow struct {
 }
 
 func executeValidate(cmd *cobra.Command, f validateFlags, args []string) error {
-	in := trackInputs(f.trackArg, args)
+	in := trackInputs(args)
 	in.SpecPath = f.specPath
 	return forEachTrack(cmd.Context(), cmd.OutOrStdout(), in, func(tr *trackctx.Track) error {
 		return validateTrack(cmd, f, tr)

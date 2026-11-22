@@ -39,7 +39,7 @@ bench run {{.Name}} --judgments claude-api       # explicit override
 bench run {{.Name}} --judgments keyword          # compare against the baseline
 
 # 5. (Optional) Export TREC qrels.
-bench export {{.Name}} --format qrels --strategy claude-api
+bench export {{.Name}} --format qrels --judgments claude-api
 ```
 
 ## Inspecting state
@@ -47,7 +47,7 @@ bench export {{.Name}} --format qrels --strategy claude-api
 ```bash
 bench show spec {{.Name}}
 bench show pool {{.Name}}
-bench show judgments {{.Name}} --strategy claude-api
+bench show judgments {{.Name}} --judgments claude-api
 ```
 
 ## Resumable judging

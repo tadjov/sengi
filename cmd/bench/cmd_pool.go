@@ -20,7 +20,6 @@ import (
 )
 
 type poolFlags struct {
-	trackArg     string
 	specPath     string
 	output       string
 	depth        int
@@ -45,13 +44,12 @@ the engines that answered in meta.engines and records the failed pairs in
 meta.dropped_executions.`,
 		Example: `  bench pool tracks/cc-news/fts
   bench pool tracks/cc-news/fts --depth 50
-  bench pool --track tracks/cc-news/fts --output /tmp/adhoc-pool.yaml`,
+  bench pool tracks/cc-news/fts --output /tmp/adhoc-pool.yaml`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return executePool(cmd, f, args)
 		},
 	}
-	cmd.Flags().StringVar(&f.trackArg, "track", "", "Track path (relative to --track-root)")
 	cmd.Flags().StringVar(&f.specPath, "spec", "", "Override spec.yaml path")
 	cmd.Flags().IntVar(&f.depth, "depth", 0, "Top-K per engine (0 = spec.defaults.pool_depth or 100)")
 	cmd.Flags().StringVar(&f.output, "output", "", "Override pool output path")
@@ -61,7 +59,7 @@ meta.dropped_executions.`,
 }
 
 func executePool(cmd *cobra.Command, f poolFlags, args []string) error {
-	in := trackInputs(f.trackArg, args)
+	in := trackInputs(args)
 	in.SpecPath = f.specPath
 	in.OutputPath = f.output
 	return forEachTrack(cmd.Context(), cmd.OutOrStdout(), in, func(tr *trackctx.Track) error {

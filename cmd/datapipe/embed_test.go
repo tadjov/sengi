@@ -141,7 +141,7 @@ func TestEmbed_PublishesEachCanonicalRowsVectorInCanonicalOrder(t *testing.T) {
 	canonical := writeCanonicalPackage(t, root, articles)
 	fakeEmbeddingAPI(t, fixtureLeadVectors(5, 0))
 
-	require.NoError(t, execDatapipe(t, "", "embed", "--canonical", canonical.location, "--version", "go-test"))
+	require.NoError(t, execDatapipe(t, "", "embed", canonical.location, "--version", "go-test"))
 
 	dir := embeddingsVersionDir(root, "go-test")
 	pkg := openEmbeddings(t, dir)
@@ -165,7 +165,7 @@ func TestEmbed_PublishesEachCanonicalRowsVectorInCanonicalOrder(t *testing.T) {
 func TestEmbed_RefusesAnExistingVersionBeforeAnyRequest(t *testing.T) {
 	root := t.TempDir()
 	canonical := writeCanonicalPackage(t, root, loadFixtureArticles(5))
-	args := []string{"embed", "--canonical", canonical.location, "--version", "go-test"}
+	args := []string{"embed", canonical.location, "--version", "go-test"}
 	fakeEmbeddingAPI(t, fixtureLeadVectors(5, 0))
 	require.NoError(t, execDatapipe(t, "", args...))
 	dir := embeddingsVersionDir(root, "go-test")
@@ -197,7 +197,7 @@ func TestEmbed_AFailedRunPublishesNothing(t *testing.T) {
 		return known(lead)
 	})
 
-	err := execDatapipe(t, "", "embed", "--canonical", canonical.location, "--version", "go-test", "--batch-size", "2")
+	err := execDatapipe(t, "", "embed", canonical.location, "--version", "go-test", "--batch-size", "2")
 
 	require.Error(t, err)
 	tagDir := filepath.Join(root, "datasets", "fixture", "embeddings", fixtureTagDir)
@@ -212,7 +212,7 @@ func TestEmbed_SendsEveryRequestButTheLastAtTheBatchSize(t *testing.T) {
 	canonical := writeCanonicalPackage(t, root, loadFixtureArticles(articleCount))
 	calls := fakeEmbeddingAPI(t, fixtureLeadVectors(articleCount, 0))
 
-	require.NoError(t, execDatapipe(t, "", "embed", "--canonical", canonical.location, "--version", "go-test", "--batch-size", "3"))
+	require.NoError(t, execDatapipe(t, "", "embed", canonical.location, "--version", "go-test", "--batch-size", "3"))
 
 	require.NotEmpty(t, *calls)
 	embedded := 0
@@ -231,7 +231,7 @@ func TestEmbed_SendsMaxTokensAsTheContextLengthAndRecordsIt(t *testing.T) {
 	canonical := writeCanonicalPackage(t, root, loadFixtureArticles(5))
 	calls := fakeEmbeddingAPI(t, fixtureLeadVectors(5, 0))
 
-	require.NoError(t, execDatapipe(t, "", "embed", "--canonical", canonical.location, "--version", "go-test", "--batch-size", "2", "--max-tokens", "256"))
+	require.NoError(t, execDatapipe(t, "", "embed", canonical.location, "--version", "go-test", "--batch-size", "2", "--max-tokens", "256"))
 
 	require.NotEmpty(t, *calls)
 	for i, call := range *calls {
@@ -246,7 +246,7 @@ func TestEmbed_RecordsTheSourceRepoGivenForAnotherModel(t *testing.T) {
 	fakeEmbeddingAPI(t, fixtureLeadVectors(5, 0))
 	t.Setenv("EMBEDDING_MODEL", "embeddinggemma:300m")
 
-	require.NoError(t, execDatapipe(t, "", "embed", "--canonical", canonical.location, "--version", "go-test", "--hf-model", "google/embeddinggemma-300m"))
+	require.NoError(t, execDatapipe(t, "", "embed", canonical.location, "--version", "go-test", "--hf-model", "google/embeddinggemma-300m"))
 
 	pkg := openEmbeddings(t, filepath.Join(root, "datasets", "fixture", "embeddings", "embeddinggemma-300m@1024", "go-test"))
 	assert.Equal(t, "embeddinggemma:300m", pkg.Embedding.Model)
@@ -262,7 +262,7 @@ func TestEmbed_LimitEmbedsOnlyTheFirstRowsAndMarksATrial(t *testing.T) {
 	canonical := writeCanonicalPackage(t, root, articles)
 	fakeEmbeddingAPI(t, fixtureLeadVectors(5, 0))
 
-	require.NoError(t, execDatapipe(t, "", "embed", "--canonical", canonical.location, "--version", "go-test-trial", "--limit", "3"))
+	require.NoError(t, execDatapipe(t, "", "embed", canonical.location, "--version", "go-test-trial", "--limit", "3"))
 
 	dir := embeddingsVersionDir(root, "go-test-trial")
 	rows := readEmbeddingRows(t, dir)
@@ -283,9 +283,9 @@ func TestEmbed_LoadRefusesALimitedRunWithoutTrial(t *testing.T) {
 	canonical := writeCanonicalPackage(t, root, articles)
 	fakeEmbeddingAPI(t, fixtureLeadVectors(5, 0))
 	// A limit covering every row leaves the trial mark as the only reason to refuse.
-	require.NoError(t, execDatapipe(t, "", "embed", "--canonical", canonical.location, "--version", "go-test-trial", "--limit", fmt.Sprint(len(articles))))
+	require.NoError(t, execDatapipe(t, "", "embed", canonical.location, "--version", "go-test-trial", "--limit", fmt.Sprint(len(articles))))
 
-	err := execDatapipe(t, "", "load", "--engine", "es", "--canonical", canonical.location,
+	err := execDatapipe(t, "", "load", "--engine", "es", canonical.location,
 		"--embeddings", filepath.Join(embeddingsVersionDir(root, "go-test-trial"), datapackage.DescriptorName))
 
 	require.ErrorContains(t, err, "--trial")
@@ -300,7 +300,7 @@ func TestEmbed_RefusesBeforeAnyRequest(t *testing.T) {
 			name: "no embedding API configured",
 			setup: func(t *testing.T, canonical fixturePackage) []string {
 				t.Setenv("EMBEDDING_BASE_URL", "")
-				return []string{"--canonical", canonical.location}
+				return []string{canonical.location}
 			},
 		},
 		{
@@ -308,33 +308,33 @@ func TestEmbed_RefusesBeforeAnyRequest(t *testing.T) {
 			setup: func(t *testing.T, canonical fixturePackage) []string {
 				moved := filepath.Join(t.TempDir(), "elsewhere")
 				require.NoError(t, os.Rename(filepath.Dir(canonical.location), moved))
-				return []string{"--canonical", filepath.Join(moved, datapackage.DescriptorName)}
+				return []string{filepath.Join(moved, datapackage.DescriptorName)}
 			},
 		},
 		{
 			name: "a batch size below one",
 			setup: func(t *testing.T, canonical fixturePackage) []string {
-				return []string{"--canonical", canonical.location, "--batch-size", "0"}
+				return []string{canonical.location, "--batch-size", "0"}
 			},
 		},
 		{
 			name: "max tokens below one",
 			setup: func(t *testing.T, canonical fixturePackage) []string {
-				return []string{"--canonical", canonical.location, "--max-tokens", "0"}
+				return []string{canonical.location, "--max-tokens", "0"}
 			},
 		},
 		{
 			name: "another model without its source repo",
 			setup: func(t *testing.T, canonical fixturePackage) []string {
 				t.Setenv("EMBEDDING_MODEL", "embeddinggemma:300m")
-				return []string{"--canonical", canonical.location}
+				return []string{canonical.location}
 			},
 		},
 		{
 			name: "a model the API does not list",
 			setup: func(t *testing.T, canonical fixturePackage) []string {
 				t.Setenv("EMBEDDING_MODEL", "qwen3-embedding:4b")
-				return []string{"--canonical", canonical.location, "--hf-model", "Qwen/Qwen3-Embedding-4B"}
+				return []string{canonical.location, "--hf-model", "Qwen/Qwen3-Embedding-4B"}
 			},
 		},
 	}
@@ -396,9 +396,9 @@ func TestEmbed_LoadStoresTheVectorTheAPIReturnedForEachArticlesLead(t *testing.T
 	canonical := writeCanonicalPackage(t, root, articles)
 	vectorOf := fixtureLeadVectors(len(articles), 0)
 	fakeEmbeddingAPI(t, vectorOf)
-	require.NoError(t, execDatapipe(t, "", "embed", "--canonical", canonical.location, "--version", "go-test", "--batch-size", "8"))
+	require.NoError(t, execDatapipe(t, "", "embed", canonical.location, "--version", "go-test", "--batch-size", "8"))
 
-	err := execDatapipe(t, db, "load", "--engine", string(storage.PostgresNative), "--canonical", canonical.location,
+	err := execDatapipe(t, db, "load", "--engine", string(storage.PostgresNative), canonical.location,
 		"--embeddings", filepath.Join(embeddingsVersionDir(root, "go-test"), datapackage.DescriptorName))
 	require.NoError(t, err)
 

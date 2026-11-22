@@ -19,7 +19,6 @@ import (
 )
 
 type judgeFlags struct {
-	trackArg       string
 	poolPath       string
 	output         string
 	strategy       string
@@ -108,7 +107,6 @@ neither can a pool built on another canonical package.`,
 			return judgeCommand{flags: f, openReader: openReader}.execute(cmd, args)
 		},
 	}
-	cmd.Flags().StringVar(&f.trackArg, "track", "", "Track path (relative to --track-root)")
 	cmd.Flags().StringVar(&f.poolPath, "pool", "", "Override pool YAML path")
 	cmd.Flags().StringVar(&f.output, "output", "", "Override annotations output path")
 	cmd.Flags().StringVar(&f.strategy, "strategy", string(judgment.StrategyKeyword), "Judge strategy")
@@ -134,7 +132,7 @@ neither can a pool built on another canonical package.`,
 }
 
 func (j judgeCommand) execute(cmd *cobra.Command, args []string) error {
-	in := trackInputs(j.flags.trackArg, args)
+	in := trackInputs(args)
 	in.PoolPath = j.flags.poolPath
 	in.OutputPath = j.flags.output
 	return forEachTrack(cmd.Context(), cmd.OutOrStdout(), in, func(tr *trackctx.Track) error {

@@ -101,7 +101,7 @@ type judgmentComparison struct {
 
 func (d diffJudgmentsCommand) compare(cmd *cobra.Command, args []string) (judgmentComparison, error) {
 	f := d.flags
-	tr, err := trackctx.Resolve(trackInputs("", args))
+	tr, err := trackctx.Resolve(trackInputs(args))
 	if err != nil {
 		return judgmentComparison{}, err
 	}

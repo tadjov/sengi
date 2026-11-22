@@ -34,29 +34,30 @@ type loadOptions struct {
 func newLoadCmd() *cobra.Command {
 	var opts loadOptions
 	cmd := &cobra.Command{
-		Use:   "load",
+		Use:   "load <canonical-descriptor>",
 		Short: "Load a canonical package, and optionally its embeddings, into one engine",
-		Long: `load verifies a canonical package, and an embeddings package built from it,
+		Long: `load verifies a canonical package (its descriptor: a path, https:// or s3://),
+and an embeddings package built from it,
 loads both into an empty engine and builds the engine's indexes after the data.
 The load record goes to the engine and to datasets/<ds>/loads/<engine>/.
 
 The connection comes from the environment: PG_CONNECTION_STRING for native,
 paradedb and tiger, ES_ADDRESSES and ES_INDEX_NAME for es.`,
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Canonical = args[0]
 			return runLoad(cmd.Context(), cmd.OutOrStdout(), opts)
 		},
 	}
 	flags := cmd.Flags()
-	flags.StringVar(&opts.Engine, "engine", "", "engine to load: native, paradedb, tiger or es")
-	flags.StringVar(&opts.Canonical, "canonical", "", "canonical package descriptor: a path, https:// or s3://")
-	flags.StringVar(&opts.Embeddings, "embeddings", "", "embeddings package descriptor built from the canonical package")
-	flags.BoolVar(&opts.SkipIndex, "skip-index", false, "stop after the data: build no index and write no load record")
-	flags.BoolVar(&opts.Trial, "trial", false, "accept an embeddings package from a --limit trial")
-	flags.IntVar(&opts.BatchSize, "batch-size", defaultLoadBatchSize, "rows per COPY or bulk request, the same on every engine")
-	flags.IntVar(&opts.Concurrency, "concurrency", defaultLoadConcurrency, "batches written at once: COPY connections on Postgres, bulk requests in flight on Elasticsearch")
-	flags.StringVar(&opts.RecordsDir, "records-dir", "", "directory for the load record; derived from a local canonical path by default")
+	flags.StringVar(&opts.Engine, "engine", "", "Engine to load: native, paradedb, tiger or es")
+	flags.StringVar(&opts.Embeddings, "embeddings", "", "Embeddings package descriptor built from the canonical package")
+	flags.BoolVar(&opts.SkipIndex, "skip-index", false, "Stop after the data: build no index and write no load record")
+	flags.BoolVar(&opts.Trial, "trial", false, "Accept an embeddings package from a --limit trial")
+	flags.IntVar(&opts.BatchSize, "batch-size", defaultLoadBatchSize, "Rows per COPY or bulk request, the same on every engine")
+	flags.IntVar(&opts.Concurrency, "concurrency", defaultLoadConcurrency, "Batches written at once: COPY connections on Postgres, bulk requests in flight on Elasticsearch")
+	flags.StringVar(&opts.RecordsDir, "records-dir", "", "Directory for the load record; derived from a local canonical path by default")
 	_ = cmd.MarkFlagRequired("engine")
-	_ = cmd.MarkFlagRequired("canonical")
 	return cmd
 }
 

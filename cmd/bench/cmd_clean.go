@@ -14,9 +14,8 @@ import (
 )
 
 type cleanFlags struct {
-	trackArg string
-	keep     int
-	dryRun   bool
+	keep   int
+	dryRun bool
 }
 
 func newCleanCmd() *cobra.Command {
@@ -42,7 +41,6 @@ chronological).`,
 			return executeClean(cmd, f, args)
 		},
 	}
-	cmd.Flags().StringVar(&f.trackArg, "track", "", "Track path (relative to --track-root)")
 	cmd.Flags().IntVar(&f.keep, "keep", 5, "Number of most-recent reports to keep")
 	cmd.Flags().BoolVar(&f.dryRun, "dry-run", false, "Print what would be deleted without deleting")
 	return cmd
@@ -52,7 +50,7 @@ func executeClean(cmd *cobra.Command, f cleanFlags, args []string) error {
 	if f.keep < 0 {
 		return fmt.Errorf("--keep must be 0 or more, got %d", f.keep)
 	}
-	tr, err := trackctx.Resolve(trackInputs(f.trackArg, args))
+	tr, err := trackctx.Resolve(trackInputs(args))
 	if err != nil {
 		return err
 	}

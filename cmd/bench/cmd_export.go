@@ -14,11 +14,9 @@ import (
 )
 
 type exportFlags struct {
-	trackArg      string
-	format        string
-	strategy      string
-	judgmentsPath string
-	output        string
+	format    string
+	judgments string
+	output    string
 }
 
 func newExportCmd() *cobra.Command {
@@ -29,7 +27,6 @@ func newExportCmd() *cobra.Command {
 		Long: `Exports bench artifacts in a machine-readable or presentation format.
 
   --format qrels     TREC qrels TSV (query_id 0 doc_id grade) for trec_eval, R, Python
-  --format tsv       Alias for qrels
   --format html      Self-contained HTML report with sortable tables, SVG charts,
                      significance table, and provenance block — suitable for thesis
                      appendices or sharing without tooling.
@@ -37,36 +34,34 @@ func newExportCmd() *cobra.Command {
   --format run       TREC run files (qid Q0 docid rank score tag), one per job and
                      engine, written to --output or reports/<run_id>.run/
 
-qrels/tsv picks the judgments file in this order: --judgments PATH > --strategy NAME >
-defaults to keyword. Without --output the qrels go to qrels.<name>.tsv beside the
-judgments file. html, markdown and run read the track's latest report.`,
+qrels reads the judgment set --judgments names (a set name or an annotations
+path, keyword by default). Without --output the qrels go to qrels.<name>.tsv
+beside the judgments file. html, markdown and run read the track's latest report.`,
 		Example: `  bench export tracks/cc-news/fts --format qrels
-  bench export tracks/cc-news/fts --format qrels --strategy claude-api
+  bench export tracks/cc-news/fts --format qrels --judgments claude-cli
   bench export tracks/cc-news/fts --format html
   bench export tracks/cc-news/fts --format markdown
   bench export tracks/cc-news/fts --format markdown --output /tmp/results.md
   bench export tracks/cc-news/fts --format run
-  bench export --judgments /tmp/ad-hoc.yaml --format qrels --output /tmp/q.tsv`,
+  bench export tracks/cc-news/fts --format qrels --judgments /tmp/ad-hoc.yaml --output /tmp/q.tsv`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return executeExport(cmd, f, args)
 		},
 	}
-	cmd.Flags().StringVar(&f.trackArg, "track", "", "Track path (relative to --track-root)")
 	cmd.Flags().StringVar(&f.format, "format", "qrels", "Export format: qrels (TREC TSV), html, markdown, or run (TREC run files)")
-	cmd.Flags().StringVar(&f.strategy, "strategy", string(judgment.StrategyKeyword), "Judgment strategy for TSV export")
-	cmd.Flags().StringVar(&f.judgmentsPath, "judgments", "", "Override annotations YAML path (TSV only)")
+	cmd.Flags().StringVar(&f.judgments, "judgments", string(judgment.StrategyKeyword), "Judgment set or annotations path to export as qrels")
 	cmd.Flags().StringVar(&f.output, "output", "", "Override output path")
 	return cmd
 }
 
 func executeExport(cmd *cobra.Command, f exportFlags, args []string) error {
 	switch strings.ToLower(f.format) {
-	case "qrels", "tsv":
+	case "qrels":
 		return exportTSV(cmd, f, args)
 	case "html":
 		return exportHTML(cmd, f, args)
-	case "markdown", "md":
+	case "markdown":
 		return exportMarkdown(cmd, f, args)
 	case "run":
 		return exportRun(cmd, f, args)
@@ -76,21 +71,17 @@ func executeExport(cmd *cobra.Command, f exportFlags, args []string) error {
 }
 
 func exportTSV(cmd *cobra.Command, f exportFlags, args []string) error {
-	in := trackInputs(f.trackArg, args)
+	in := trackInputs(args)
 	in.OutputPath = f.output
 	tr, err := trackctx.Resolve(in)
 	if err != nil {
 		return err
 	}
 
-	jPath, qrelsName := f.judgmentsPath, f.judgmentsPath
-	if jPath == "" {
-		jPath, qrelsName = tr.JudgmentsPath(f.strategy), f.strategy
-	}
-
+	jPath := tr.JudgmentsPath(f.judgments)
 	outPath := f.output
 	if outPath == "" {
-		outPath = tr.QrelsPath(qrelsName)
+		outPath = tr.QrelsPath(f.judgments)
 	}
 
 	if samePath(jPath, outPath) {
@@ -131,7 +122,7 @@ func resolvedPath(p string) string {
 // latestReportExport reads the track's latest report and names the export
 // beside it, reports/<run_id><extension>, unless --output says otherwise.
 func latestReportExport(f exportFlags, args []string, extension string) (*report.Report, string, error) {
-	tr, err := trackctx.Resolve(trackInputs(f.trackArg, args))
+	tr, err := trackctx.Resolve(trackInputs(args))
 	if err != nil {
 		return nil, "", err
 	}

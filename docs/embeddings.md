@@ -13,7 +13,7 @@ datasets/<ds>/canonical/<version>/      canonical package (preprocess)
   → slim_corpus.py                      id, title, description only; the cloud upload
   → embed_corpus.py on a cloud GPU      Kaggle or Colab; Qwen3-Embedding-0.6B, lead-v1
   → datasets/<ds>/embeddings/<tag-dir>/<version>/
-  → datapipe load --canonical … --embeddings …   → articles + article_embeddings
+  → datapipe load <canonical> --embeddings …   → articles + article_embeddings
 ```
 
 The embeddings package names the canonical resource it was built from
@@ -230,8 +230,7 @@ one vector per canonical row, in canonical order, so `datapipe load` takes the
 package unchanged.
 
 ```bash
-EMBEDDING_BASE_URL=http://<ollama-host>:11434 go run ./cmd/datapipe embed \
-  --canonical datasets/<ds>/canonical/<version>/datapackage.json --version go-v1
+EMBEDDING_BASE_URL=http://<ollama-host>:11434 go run ./cmd/datapipe embed datasets/<ds>/canonical/<version>/datapackage.json --version go-v1
 # writes datasets/<ds>/embeddings/<tag-dir>/go-v1/
 ```
 
@@ -340,8 +339,8 @@ uv run --no-project --python 3.11 --with-requirements scripts/tests/requirements
 ### Running
 
 ```bash
-ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load --engine native \
-  --canonical datasets/cc-news/canonical/<version>/datapackage.json \
+ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load datasets/cc-news/canonical/<version>/datapackage.json \
+  --engine native \
   --embeddings datasets/cc-news/embeddings/<tag-dir>/<version>/datapackage.json
 ```
 

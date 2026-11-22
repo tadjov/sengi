@@ -80,7 +80,7 @@ func (g gradeCommand) execute(cmd *cobra.Command, args []string) error {
 	if g.flags.sample < 0 {
 		return fmt.Errorf("--sample must be 0 or more, got %d", g.flags.sample)
 	}
-	tr, err := trackctx.Resolve(trackInputs("", args))
+	tr, err := trackctx.Resolve(trackInputs(args))
 	if err != nil {
 		return err
 	}

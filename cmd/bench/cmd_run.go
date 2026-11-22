@@ -23,7 +23,6 @@ import (
 )
 
 type runFlags struct {
-	trackArg    string
 	specPath    string
 	judgments   string
 	output      string
@@ -82,7 +81,6 @@ spec.defaults.judgments.`,
 			return executeRun(cmd, f, args)
 		},
 	}
-	cmd.Flags().StringVar(&f.trackArg, "track", "", "Track path (relative to --track-root)")
 	cmd.Flags().StringVar(&f.specPath, "spec", "", "Override spec.yaml path")
 	cmd.Flags().StringVar(&f.judgments, "judgments", "", "Strategy name (e.g. keyword) or annotations YAML path")
 	cmd.Flags().StringVar(&f.output, "output", "", "Override report path (default: <track>/reports/<run_id>.json)")
@@ -99,7 +97,7 @@ func executeRun(cmd *cobra.Command, f runFlags, args []string) error {
 	if err != nil {
 		return err
 	}
-	in := trackInputs(f.trackArg, args)
+	in := trackInputs(args)
 	in.SpecPath = f.specPath
 	in.OutputPath = f.output
 	return forEachTrack(cmd.Context(), cmd.OutOrStdout(), in, func(tr *trackctx.Track) error {
