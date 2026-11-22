@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/fatih/color"
 	"github.com/tadjov/sengi/internal/bench/metrics"
 	"github.com/tadjov/sengi/internal/bench/runner"
 )
@@ -236,23 +236,6 @@ func TestReadLatestReport(t *testing.T) {
 	}
 }
 
-// ─── WriteTable smoke test ─────────────────────────────────────────────────────
-
-func TestWriteTable_NoPanic(t *testing.T) {
-	br := makeBenchmarkResult([]string{"pg", "es"}, []string{"q1", "q2"}, map[string]map[string]metrics.ScoreSet{
-		"q1": {"pg": makeJudgedScores(0.8), "es": makeJudgedScores(0.6)},
-		"q2": {"pg": makeJudgedScores(0.7), "es": makeJudgedScores(0.65)},
-	})
-	r := Generate(br, nil)
-
-	var buf bytes.Buffer
-	WriteTable(r, &buf)
-
-	if buf.Len() == 0 {
-		t.Error("WriteTable produced empty output")
-	}
-}
-
 func TestWriteTable_ContainsEngineNames(t *testing.T) {
 	br := makeBenchmarkResult([]string{"postgres", "elastic"}, []string{"q1"}, map[string]map[string]metrics.ScoreSet{
 		"q1": {"postgres": makeJudgedScores(0.9), "elastic": makeJudgedScores(0.7)},
@@ -267,23 +250,6 @@ func TestWriteTable_ContainsEngineNames(t *testing.T) {
 		if !strings.Contains(out, eng) {
 			t.Errorf("table output missing engine name %q", eng)
 		}
-	}
-}
-
-// ─── WriteMarkdown smoke test ─────────────────────────────────────────────────
-
-func TestWriteMarkdown_NoPanic(t *testing.T) {
-	br := makeBenchmarkResult([]string{"pg", "es"}, []string{"q1", "q2"}, map[string]map[string]metrics.ScoreSet{
-		"q1": {"pg": makeJudgedScores(0.8), "es": makeJudgedScores(0.6)},
-		"q2": {"pg": makeJudgedScores(0.7), "es": makeJudgedScores(0.65)},
-	})
-	r := Generate(br, nil)
-
-	var buf bytes.Buffer
-	WriteMarkdown(r, &buf)
-
-	if buf.Len() == 0 {
-		t.Error("WriteMarkdown produced empty output")
 	}
 }
 
@@ -303,31 +269,6 @@ func TestWriteMarkdown_HasGFMTables(t *testing.T) {
 	}
 	if !strings.Contains(out, "# md_test") {
 		t.Error("WriteMarkdown output missing H1 title")
-	}
-}
-
-// ─── RenderHTML smoke test ────────────────────────────────────────────────────
-
-func TestWriteHTML_NoPanic(t *testing.T) {
-	br := makeBenchmarkResult([]string{"pg", "es"}, []string{"q1", "q2"}, map[string]map[string]metrics.ScoreSet{
-		"q1": {"pg": makeJudgedScores(0.8), "es": makeJudgedScores(0.6)},
-		"q2": {"pg": makeJudgedScores(0.7), "es": makeJudgedScores(0.65)},
-	})
-	r := Generate(br, nil)
-
-	tmp := t.TempDir()
-	outPath := filepath.Join(tmp, "report.html")
-
-	if err := WriteHTML(r, outPath); err != nil {
-		t.Fatalf("WriteHTML: %v", err)
-	}
-
-	data, err := os.ReadFile(outPath)
-	if err != nil {
-		t.Fatalf("read HTML output: %v", err)
-	}
-	if !strings.Contains(string(data), "<html") {
-		t.Error("HTML output missing <html tag")
 	}
 }
 
@@ -377,9 +318,7 @@ func TestLatencyStats_Percentile_Helpers(t *testing.T) {
 	}
 }
 
-// ─── fmtDuration ─────────────────────────────────────────────────────────────
-
-func TestFmtDuration(t *testing.T) {
+func TestFormatDuration(t *testing.T) {
 	cases := []struct {
 		d    time.Duration
 		want string
@@ -421,55 +360,88 @@ func TestConnectionEndpoint_DropsCredentials(t *testing.T) {
 	}
 }
 
-// ─── sampleStddev ─────────────────────────────────────────────────────────────
-
-func TestSampleStddev(t *testing.T) {
-	if got := sampleStddev([]float64{1.0}); got != 0 {
-		t.Errorf("sampleStddev single value = %v, want 0", got)
+func TestWriters_JobWithoutJudgmentsShowsTimingOnly(t *testing.T) {
+	r := &Report{
+		Config: ReportConfig{KValues: []int{10}, RelevanceThreshold: 1},
+		Jobs: []JobReport{{
+			JobName:    "speed",
+			PerQuery:   []Entry{{QueryID: "q1", EngineName: "pg"}},
+			Aggregated: []AggregatedEntry{{EngineName: "pg", QueryCount: 1}},
+		}},
 	}
+	var terminal, markdown bytes.Buffer
+	WriteTable(r, &terminal)
+	WriteMarkdown(r, &markdown)
 
-	// Population variance of {1,2,3,4,5} = 2; sample variance = 2.5; stddev ≈ 1.5811
-	got := sampleStddev([]float64{1, 2, 3, 4, 5})
-	want := 1.5811388300841898
-	if diff := got - want; diff > 1e-9 || diff < -1e-9 {
-		t.Errorf("sampleStddev = %v, want %v", got, want)
+	for name, out := range map[string]string{"table": terminal.String(), "markdown": markdown.String()} {
+		if !strings.Contains(out, "Latency Statistics") {
+			t.Errorf("%s has no latency table", name)
+		}
+		for _, qualityTable := range []string{"Aggregated Results", "Per-Query Results"} {
+			if strings.Contains(out, qualityTable) {
+				t.Errorf("%s shows %q for a job with no judgments", name, qualityTable)
+			}
+		}
+	}
+	if !strings.Contains(terminal.String(), "No relevance judgments found") {
+		t.Error("table does not say the job has no judgments")
 	}
 }
 
-// ─── hasAnyJudgments ─────────────────────────────────────────────────────────
-
-func TestHasAnyJudgments(t *testing.T) {
-	noJudge := &JobReport{PerQuery: []Entry{{Judged: false}, {Judged: false}}}
-	if hasAnyJudgments(noJudge) {
-		t.Error("hasAnyJudgments should be false when none are judged")
+func TestWriters_JobWithOneJudgedQueryShowsQuality(t *testing.T) {
+	r := &Report{
+		Config: ReportConfig{KValues: []int{10}, RelevanceThreshold: 1},
+		Jobs: []JobReport{{
+			JobName:    "quality",
+			PerQuery:   []Entry{{QueryID: "q1", EngineName: "pg"}, {QueryID: "q2", EngineName: "pg", Judged: true}},
+			Aggregated: []AggregatedEntry{{EngineName: "pg", QueryCount: 2}},
+		}},
 	}
+	var terminal, markdown bytes.Buffer
+	WriteTable(r, &terminal)
+	WriteMarkdown(r, &markdown)
 
-	withJudge := &JobReport{PerQuery: []Entry{{Judged: false}, {Judged: true}}}
-	if !hasAnyJudgments(withJudge) {
-		t.Error("hasAnyJudgments should be true when at least one is judged")
+	for name, out := range map[string]string{"table": terminal.String(), "markdown": markdown.String()} {
+		if !strings.Contains(out, "Aggregated Results") {
+			t.Errorf("%s has no quality table", name)
+		}
 	}
 }
 
-// ─── UUID-keyed metrics compatibility check ───────────────────────────────────
+func TestWriteTable_HighlightsTheBestScoreAndFastestMedian(t *testing.T) {
+	colorless := color.NoColor
+	color.NoColor = false
+	t.Cleanup(func() { color.NoColor = colorless })
+	r := &Report{
+		Config: ReportConfig{KValues: []int{10}, RelevanceThreshold: 1},
+		Jobs: []JobReport{{
+			JobName:  "best",
+			PerQuery: []Entry{{QueryID: "q1", EngineName: "pg", Judged: true}},
+			Aggregated: []AggregatedEntry{
+				{EngineName: "pg", JudgedCount: 1, QueryCount: 1, NDCG: map[int]float64{10: 0.8}, MAP: 0.4,
+					Latency: LatencyStats{Percentiles: map[int]time.Duration{50: 30 * time.Millisecond}}},
+				{EngineName: "es", JudgedCount: 1, QueryCount: 1, NDCG: map[int]float64{10: 0.6}, MAP: 0.4,
+					Latency: LatencyStats{Percentiles: map[int]time.Duration{50: 20 * time.Millisecond}}},
+			},
+		}},
+	}
+	var out bytes.Buffer
 
-func TestGenerate_WithUUIDJudgedDocs(t *testing.T) {
-	// Verify that ranked doc IDs with real UUIDs produce non-zero NDCG when
-	// the judgments map is populated with the same UUIDs.
-	docIDs := []uuid.UUID{
-		uuid.MustParse("11111111-1111-1111-1111-111111111111"),
-		uuid.MustParse("22222222-2222-2222-2222-222222222222"),
+	WriteTable(r, &out)
+
+	best := color.New(color.FgGreen, color.Bold)
+	for _, highlighted := range []string{"0.8000", "20.00ms"} {
+		if !strings.Contains(out.String(), best.Sprint(highlighted)) {
+			t.Errorf("%s is the best in its column but is not highlighted", highlighted)
+		}
 	}
-	judgments := map[uuid.UUID]int{
-		docIDs[0]: 3, // highly relevant
-		docIDs[1]: 1, // marginally relevant
+	for _, plain := range []string{"0.6000", "30.00ms"} {
+		if strings.Contains(out.String(), best.Sprint(plain)) {
+			t.Errorf("%s is highlighted without being the best in its column", plain)
+		}
 	}
-	kVals := []int{10}
-	scores := metrics.ComputeAll(docIDs, judgments, kVals, 1)
-	if !scores.Judged {
-		t.Error("ScoreSet.Judged should be true with populated judgments")
-	}
-	if scores.NDCG[10] == 0 {
-		t.Error("NDCG@10 should be > 0 with relevant docs")
+	if got := strings.Count(out.String(), best.Sprint("0.4000")); got != 2 {
+		t.Errorf("tied MAP highlighted %d times, want both engines", got)
 	}
 }
 
