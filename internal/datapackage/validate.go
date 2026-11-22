@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/tadjov/sengi/internal/types/language"
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
+	"github.com/tadjov/sengi/pkg/apis/preprocess"
 )
 
 func (p Package) validate() error {
@@ -16,8 +16,8 @@ func (p Package) validate() error {
 			return fmt.Errorf("package %s: %w", p.Name, err)
 		}
 	}
-	if p.Identity != nil {
-		if _, err := datamapping.ParseIDKind(string(p.Identity.IDKind)); err != nil {
+	if p.Preprocess != nil {
+		if _, err := preprocess.ParseIDKind(string(p.Preprocess.ID.Kind)); err != nil {
 			return fmt.Errorf("package %s: %w", p.Name, err)
 		}
 	}

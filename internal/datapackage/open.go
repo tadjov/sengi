@@ -23,10 +23,11 @@ type Options struct {
 	TempDir string
 }
 
-// Opened is a descriptor read from its location.
+// Opened is a descriptor read from its location; Digest is the sha256 of its bytes.
 type Opened struct {
 	Package  Package
 	Location string
+	Digest   string
 	store    store
 	tempDir  string
 }
@@ -47,39 +48,40 @@ func OpenWith(ctx context.Context, location string, opts Options) (*Opened, erro
 	if err != nil {
 		return nil, err
 	}
-	pkg, err := readDescriptor(ctx, st, descriptorName)
+	pkg, digest, err := readDescriptor(ctx, st, descriptorName)
 	if err != nil {
 		return nil, err
 	}
-	return &Opened{Package: pkg, Location: st.location(descriptorName), store: st, tempDir: opts.TempDir}, nil
+	return &Opened{Package: pkg, Location: st.location(descriptorName), Digest: digest, store: st, tempDir: opts.TempDir}, nil
 }
 
-func readDescriptor(ctx context.Context, st store, name string) (Package, error) {
+func readDescriptor(ctx context.Context, st store, name string) (Package, string, error) {
 	body, err := st.open(ctx, name)
 	if err != nil {
-		return Package{}, err
+		return Package{}, "", err
 	}
 	defer body.Close()
 	raw, err := io.ReadAll(io.LimitReader(body, maxDescriptorBytes+1))
 	if err != nil {
-		return Package{}, fmt.Errorf("read descriptor %s: %w", st.location(name), err)
+		return Package{}, "", fmt.Errorf("read descriptor %s: %w", st.location(name), err)
 	}
 	if len(raw) > maxDescriptorBytes {
-		return Package{}, fmt.Errorf("descriptor %s exceeds %d bytes", st.location(name), maxDescriptorBytes)
+		return Package{}, "", fmt.Errorf("descriptor %s exceeds %d bytes", st.location(name), maxDescriptorBytes)
 	}
 	var pkg Package
 	if err := json.Unmarshal(raw, &pkg); err != nil {
-		return Package{}, fmt.Errorf("decode descriptor %s: %w", st.location(name), err)
+		return Package{}, "", fmt.Errorf("decode descriptor %s: %w", st.location(name), err)
 	}
 	if err := pkg.validate(); err != nil {
-		return Package{}, fmt.Errorf("descriptor %s: %w", st.location(name), err)
+		return Package{}, "", fmt.Errorf("descriptor %s: %w", st.location(name), err)
 	}
 	for _, r := range pkg.Resources {
 		if err := validateDigest(r); err != nil {
-			return Package{}, fmt.Errorf("descriptor %s: resource %s: %w", st.location(name), r.Name, err)
+			return Package{}, "", fmt.Errorf("descriptor %s: resource %s: %w", st.location(name), r.Name, err)
 		}
 	}
-	return pkg, nil
+	sum := sha256.Sum256(raw)
+	return pkg, hashPrefix + hex.EncodeToString(sum[:]), nil
 }
 
 func validateDigest(r Resource) error {

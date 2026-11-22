@@ -224,7 +224,7 @@ func writeCanonicalPackageAs(t *testing.T, root string, articles []document.Arti
 	path := filepath.Join(dir, "articles."+format)
 	f, err := os.Create(path)
 	require.NoError(t, err)
-	var w ingest.CanonicalWriter = ingest.NewParquetCanonicalWriter(f)
+	w := ingest.NewParquetCanonicalWriter(f)
 	if format == "jsonl" {
 		w = ingest.NewJsonlCanonicalWriter(f)
 	}

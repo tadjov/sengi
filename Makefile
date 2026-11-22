@@ -71,7 +71,7 @@ build-schemagen:
 # Generate schemas from Go structs
 schema-gen: build-schemagen
 	@echo "Generating schemas..."
-	@./$(BIN_DIR)/schemagen -output=api/mapping-spec -datapackage-output=api/datapackage-spec
+	@./$(BIN_DIR)/schemagen -output=api/mapping-spec -preprocess-output=api/preprocess-spec -datapackage-output=api/datapackage-spec
 	@echo "Schemas generated in api/ directory"
 
 # Development commands
@@ -124,16 +124,16 @@ deps:
 
 run-schemagen: build-schemagen
 	@echo "Running schema generator..."
-	@./$(BIN_DIR)/schemagen -output=api/mapping-spec
+	@./$(BIN_DIR)/schemagen -output=api/mapping-spec -preprocess-output=api/preprocess-spec
 
-# The preprocess env selects the raw dataset, e.g.
-#   make run-datapipe-preprocess PREPROCESS_ENV=cmd/datapipe/preprocess-cc-news.env
-PREPROCESS_ENV ?= cmd/datapipe/preprocess.env
+# Preprocess a raw data package as its spec says, e.g.
+#   make run-datapipe-preprocess PREPROCESS_SPEC=datasets/all-the-news/preprocess.yaml PREPROCESS_VERSION=v1
+PREPROCESS_SPEC ?= datasets/cc-news/preprocess.yaml
+PREPROCESS_VERSION ?= v1
 
-# Preprocess a raw dataset (.csv/.jsonl/.parquet) into canonical JSONL
 run-datapipe-preprocess: build-datapipe
-	@echo "Running datapipe preprocess ($(PREPROCESS_ENV))..."
-	@ENV_PATHS="$(PREPROCESS_ENV)" ./$(BIN_DIR)/datapipe preprocess
+	@echo "Running datapipe preprocess ($(PREPROCESS_SPEC), $(PREPROCESS_VERSION))..."
+	@./$(BIN_DIR)/datapipe preprocess $(PREPROCESS_SPEC) --version $(PREPROCESS_VERSION)
 
 # Load a canonical package, and optionally its embeddings, into one engine:
 #   make run-datapipe-load-native CANONICAL=datasets/cc-news/canonical/<version>/datapackage.json \
