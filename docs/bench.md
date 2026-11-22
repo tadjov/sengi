@@ -253,7 +253,7 @@ records the merge settings with the legs' requests, so changing `rank_constant` 
 changes the request digest. Having no index of its own, a fusion engine records the legs it
 fuses as its [index provenance](#index-provenance).
 
-Elasticsearch 8.12 refuses its own RRF on the basic licence, so a fusion engine is how the
+Elasticsearch refuses its own RRF on the basic licence, so a fusion engine is how the
 hybrid track fuses Elasticsearch with the same RRF the Postgres engines run in SQL.
 
 #### `embedding_model`

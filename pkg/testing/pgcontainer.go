@@ -31,10 +31,11 @@ type PGConfig struct {
 	ServerFlags []string
 }
 
+// engineImages are the digest-pinned images docker-compose.yml runs.
 var engineImages = map[storage.Engine]string{
-	storage.PostgresNative: "pgvector/pgvector:pg18",
-	storage.ParadeDB:       "paradedb/paradedb:0.21.5-pg18",
-	storage.Tiger:          "timescale/timescaledb-ha:pg18.6-ts2.32.0-r599.1",
+	storage.PostgresNative: "pgvector/pgvector:0.8.7-pg18-bookworm@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782",
+	storage.ParadeDB:       "paradedb/paradedb:0.26.8-pg18@sha256:97a698fdf5dbd1748052f60eaf19befb716fe6313c990d91b365715e3d6532d9",
+	storage.Tiger:          "timescale/timescaledb-ha:pg18.7-ts2.32.1-r606.1@sha256:ff4362ab6890052930ef75a72d94b7072fcc510bc79c84722700c1b2b68f3474",
 }
 
 var serverFlags = []string{
@@ -47,7 +48,8 @@ var serverFlags = []string{
 // engineServerFlags mirrors the server-start settings in docker-compose.yml.
 var engineServerFlags = map[storage.Engine][]string{
 	storage.PostgresNative: serverFlags,
-	storage.ParadeDB:       serverFlags,
+	storage.ParadeDB: append(slices.Clone(serverFlags),
+		"-c", "work_mem=4MB", "-c", "max_parallel_workers_per_gather=2"),
 	storage.Tiger: append(slices.Clone(serverFlags),
 		"-c", "work_mem=4MB", "-c", "jit=on", "-c", "max_parallel_workers_per_gather=2", "-c", "default_toast_compression=pglz",
 		"-c", "pg_textsearch.memory_limit=2GB"),

@@ -37,8 +37,8 @@ func TestDescribeIndex_ReadsTheLiveIndex(t *testing.T) {
 				t.Fatalf("DescribeIndex: %v", err)
 			}
 
-			if description.Version != "8.12.0" {
-				t.Errorf("version = %q, want the container image's 8.12.0", description.Version)
+			if description.Version != pkgtesting.ElasticsearchVersion {
+				t.Errorf("version = %q, want the container image's %s", description.Version, pkgtesting.ElasticsearchVersion)
 			}
 			if description.Index != cfg.IndexName {
 				t.Errorf("index = %q, want the concrete index %q", description.Index, cfg.IndexName)

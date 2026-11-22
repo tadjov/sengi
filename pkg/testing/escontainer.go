@@ -11,6 +11,31 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+// ElasticsearchVersion is the version NewESContainer runs.
+const ElasticsearchVersion = "9.5.5"
+
+const (
+	elasticsearchImage  = "docker.elastic.co/elasticsearch/elasticsearch:" + ElasticsearchVersion
+	elasticsearchDigest = "sha256:13b4a40bb095774f5fda635e45fd5677cc6a26565e42b24997b0c72b88e75984"
+)
+
+// digestPin adds the digest at creation, since the module reads its defaults from the bare tag.
+type digestPin struct {
+	image  string
+	digest string
+}
+
+func (p digestPin) Description() string {
+	return "digest pin"
+}
+
+func (p digestPin) Substitute(image string) (string, error) {
+	if image != p.image {
+		return image, nil
+	}
+	return image + "@" + p.digest, nil
+}
+
 // ESContainer represents a running Elasticsearch test container
 type ESContainer struct {
 	Container testcontainers.Container
@@ -24,11 +49,11 @@ func NewESContainer(ctx context.Context, tb testing.TB) *ESContainer {
 		tb.Skip("skipping testcontainer-backed test in -short mode")
 	}
 
-	// Elasticsearch 8 enables security, and with it TLS, by default; the
-	// readiness probe below speaks plaintext and would poll until it times out.
+	// Security is off because the plaintext probe below would never pass TLS.
 	// ES_JAVA_OPTS overrides the module's 2 GB heap with 512 MB.
 	esContainer, err := elasticsearch.Run(ctx,
-		"docker.elastic.co/elasticsearch/elasticsearch:8.12.0",
+		elasticsearchImage,
+		testcontainers.WithImageSubstitutors(digestPin{image: elasticsearchImage, digest: elasticsearchDigest}),
 		testcontainers.WithEnv(map[string]string{
 			"xpack.security.enabled": "false",
 			"discovery.type":         "single-node",

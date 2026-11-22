@@ -137,8 +137,8 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 			})
 
 			t.Run("records what was loaded and how", func(t *testing.T) {
-				if record.Engine != "es" || record.EngineVersion != "8.12.0" {
-					t.Errorf("engine = %q %q, want es 8.12.0", record.Engine, record.EngineVersion)
+				if record.Engine != "es" || record.EngineVersion != pkgtesting.ElasticsearchVersion {
+					t.Errorf("engine = %q %q, want es %s", record.Engine, record.EngineVersion, pkgtesting.ElasticsearchVersion)
 				}
 				if record.Articles != 2000 || record.Vectors != 2000 {
 					t.Errorf("articles, vectors = %d, %d, want 2000, 2000", record.Articles, record.Vectors)
@@ -360,7 +360,7 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 		stored := fetchByID(t, container.Address, index, articles)
 		for i, a := range articles {
 			doc := stored[a.ID.String()]
-			if i < 3 && (!slices.Equal(doc.Embedding, vectorFor(i)) || doc.EmbeddingModel != loadTestModelTag) {
+			if i < 3 && (!sameVector(doc.Embedding, vectorFor(i)) || doc.EmbeddingModel != loadTestModelTag) {
 				t.Errorf("article %d lost its vector or tag: model %q", i, doc.EmbeddingModel)
 			}
 			if i >= 3 && (doc.Embedding != nil || doc.EmbeddingModel != "") {
@@ -497,8 +497,21 @@ type storedDocument struct {
 	EmbeddingModel  string         `json:"embedding_model"`
 }
 
+// sameVector allows float32 rounding: ES 9 rebuilds a cosine vector from its normalized copy.
+func sameVector(got, want []float32) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range want {
+		if math.Abs(float64(got[i]-want[i])) > 1e-6*math.Abs(float64(want[i])) {
+			return false
+		}
+	}
+	return true
+}
+
 func cmpDocuments(got, want storedDocument) string {
-	if !slices.Equal(got.Embedding, want.Embedding) {
+	if !sameVector(got.Embedding, want.Embedding) {
 		return "carries another vector than its own"
 	}
 	got.Embedding, want.Embedding = nil, nil
@@ -527,7 +540,8 @@ func fetchByID(t *testing.T, address, index string, articles []document.Article)
 			Source storedDocument `json:"_source"`
 		} `json:"docs"`
 	}
-	postJSON(t, address+"/"+index+"/_mget", string(body), &res)
+	// ES 9 leaves vectors out of _source unless asked.
+	postJSON(t, address+"/"+index+"/_mget?_source_exclude_vectors=false", string(body), &res)
 	stored := make(map[string]storedDocument, len(res.Docs))
 	for _, doc := range res.Docs {
 		if doc.Found {

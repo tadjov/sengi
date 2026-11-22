@@ -19,7 +19,7 @@ x-postgres: &postgres
 services:
   pg-news-native:
     <<: *postgres
-    image: pgvector/pgvector:pg18
+    image: pgvector/pgvector:0.8.7-pg18-bookworm@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
     container_name: pg-native-news
     ports:
       - "54320:5432"
@@ -28,8 +28,16 @@ services:
 
   pg-news-parade:
     <<: *postgres
-    image: paradedb/paradedb:0.21.5-pg18
+    image: paradedb/paradedb:0.26.8-pg18@sha256:97a698fdf5dbd1748052f60eaf19befb716fe6313c990d91b365715e3d6532d9
     container_name: pg-parade-news
+    # The image retunes work_mem and gather workers; they go back to stock here.
+    command: >-
+      postgres
+      -c shared_buffers=1536MB -c effective_cache_size=4608MB
+      -c maintenance_work_mem=4GB -c max_parallel_maintenance_workers=3
+      -c random_page_cost=1.1 -c effective_io_concurrency=200
+      -c max_wal_size=16GB -c checkpoint_timeout=30min
+      -c work_mem=4MB -c max_parallel_workers_per_gather=2
     ports:
       - "54321:5432"
     volumes:
@@ -37,7 +45,7 @@ services:
 
   pg-news-tiger:
     <<: *postgres
-    image: timescale/timescaledb-ha:pg18.6-ts2.32.0-r599.1
+    image: timescale/timescaledb-ha:pg18.7-ts2.32.1-r606.1@sha256:ff4362ab6890052930ef75a72d94b7072fcc510bc79c84722700c1b2b68f3474
     container_name: pg-tiger-news
     # The image retunes work_mem, jit, gather workers and TOAST compression at startup; they go back to stock here.
     # pg_textsearch.memory_limit is sighup, so no migration can SET it.
@@ -56,7 +64,7 @@ services:
 
   elasticsearch:
     <<: *budget
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5@sha256:13b4a40bb095774f5fda635e45fd5677cc6a26565e42b24997b0c72b88e75984
     container_name: es-news
     environment:
       - node.name=es-news
@@ -77,7 +85,7 @@ services:
       - "9300:9300"
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.12.0
+    image: docker.elastic.co/kibana/kibana:9.5.5@sha256:13b72ce7222c36e4213229004ae62a87aeb32fd372ebfa6fb38f7a3285fdbb78
     container_name: kibana-news
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
