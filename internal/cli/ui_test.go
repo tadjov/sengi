@@ -21,14 +21,14 @@ func TestSummary_AlignsLabelsAndKeepsValues(t *testing.T) {
 	noColor(t)
 	var out bytes.Buffer
 
-	Summary(&out, "Embedding load complete",
+	printSummary(&out, Summary{Message: "Embedding load complete", Fields: []Field{
 		IntField("sent", 707910),
 		IntField("stored", 707910),
 		IntField("dim mismatches", 0),
-	)
+	}}, 12.5)
 
 	lines := strings.Split(strings.TrimRight(out.String(), "\n"), "\n")
-	require.Len(t, lines, 4)
+	require.Len(t, lines, 5)
 	assert.Contains(t, lines[0], "Embedding load complete")
 	assert.Contains(t, lines[1], "707910")
 

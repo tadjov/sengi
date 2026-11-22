@@ -3,6 +3,7 @@ package runner
 import (
 	"fmt"
 
+	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/storage"
 )
 
@@ -59,6 +60,8 @@ type Config struct {
 	// query-vector placeholder and injects the result before execution. nil for
 	// non-vector tracks (and validate, which is structural only).
 	VectorStore storage.VectorStore
+	// Progress counts each job's queries as they finish; nil counts nothing.
+	Progress progress.Counter
 }
 
 func DefaultConfig() Config {

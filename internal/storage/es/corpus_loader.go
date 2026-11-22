@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"log/slog"
 	"math/rand/v2"
 	"net/http"
 	"strconv"
@@ -20,6 +19,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
@@ -90,7 +90,8 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		return storage.LoadRecord{}, fmt.Errorf("load corpus into %s: %w", index, err)
 	}
 
-	load := storage.StartLoad("index", index)
+	opts.Progress = progress.Or(opts.Progress)
+	load := storage.StartLoad(opts.Progress, "index", index)
 	info, err := l.client.typed.Info().Do(ctx)
 	if err != nil {
 		return storage.LoadRecord{}, fmt.Errorf("read elasticsearch version: %w", err)
@@ -113,13 +114,11 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		return storage.LoadRecord{}, err
 	}
 	if err := load.Stage("refresh", func() error {
-		defer storage.WatchStage(ctx, []any{"index", index, "stage", "refresh"}, nil)()
 		return l.refresh(ctx, written.articles)
 	}); err != nil {
 		return storage.LoadRecord{}, err
 	}
 	if err := load.Stage("force_merge", func() error {
-		defer storage.WatchStage(ctx, []any{"index", index, "stage", "force_merge"}, nil)()
 		return l.forceMerge(ctx)
 	}); err != nil {
 		return storage.LoadRecord{}, err
@@ -404,7 +403,7 @@ type writeCounts struct {
 
 // writeDocuments tries every article before failing on the rejected ones.
 func (l *CorpusLoader) writeDocuments(ctx context.Context, c storage.Corpus, opts storage.LoadOptions) (writeCounts, error) {
-	tally := &bulkTally{index: l.client.indexName, failures: &DocumentsFailedError{Index: l.client.indexName}}
+	tally := &bulkTally{counter: opts.Progress, failures: &DocumentsFailedError{Index: l.client.indexName}}
 	group, ctx := errgroup.WithContext(ctx)
 	batches := make(chan documentBatch, opts.Concurrency)
 	group.Go(func() error {
@@ -618,11 +617,10 @@ func (l *CorpusLoader) sendBatch(ctx context.Context, batch documentBatch, tally
 
 // bulkTally adds up the bulk requests in flight at once.
 type bulkTally struct {
-	index    string
+	counter  progress.Counter
 	mu       sync.Mutex
 	counts   writeCounts
 	failures *DocumentsFailedError
-	reported int64
 }
 
 func (t *bulkTally) merge(stored writeCounts, rejected []DocumentFailure) {
@@ -633,10 +631,7 @@ func (t *bulkTally) merge(stored writeCounts, rejected []DocumentFailure) {
 	for _, f := range rejected {
 		t.failures.add(f.ID, f.Reason)
 	}
-	if t.counts.articles-t.reported >= storage.ProgressRows {
-		slog.Info("corpus load progress", "index", t.index, "articles", t.counts.articles)
-		t.reported = t.counts.articles
-	}
+	t.counter.Add(stored.articles)
 }
 
 func itemFailureReason(item types.ResponseItem) string {

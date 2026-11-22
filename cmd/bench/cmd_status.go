@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/cli"
 )
 
 func newStatusCmd() *cobra.Command {
@@ -41,8 +42,8 @@ func executeStatus(ctx context.Context, w io.Writer, track string, args []string
 }
 
 func statusTrack(w io.Writer, tr *trackctx.Track) error {
-	fmt.Fprintf(w, "%s %s\n", cBold.Sprint("Track:"), cBold.Sprint(tr.Name()))
-	fmt.Fprintf(w, "  %s %s\n\n", cDim.Sprint("root:"), tr.Root)
+	fmt.Fprintf(w, "%s %s\n", cli.Strong.Sprint("Track:"), cli.Strong.Sprint(tr.Name()))
+	fmt.Fprintf(w, "  %s %s\n\n", cli.Muted.Sprint("root:"), tr.Root)
 
 	trecDir := filepath.Dir(tr.Pool)
 
@@ -56,8 +57,8 @@ func statusTrack(w io.Writer, tr *trackctx.Track) error {
 	annotations, _ := filepath.Glob(annotationGlob)
 	if len(annotations) == 0 {
 		fmt.Fprintf(w, "  Judgments    %s  %s\n",
-			cFail.Sprint("✗"),
-			cDim.Sprintf("none found — run: bench judge %s --strategy keyword", tr.Name()))
+			cli.Failure.Sprint("✗"),
+			cli.Muted.Sprintf("none found — run: bench judge %s --strategy keyword", tr.Name()))
 	} else {
 		for i, path := range annotations {
 			prefix := "  Judgments   "
@@ -75,8 +76,8 @@ func statusTrack(w io.Writer, tr *trackctx.Track) error {
 	latest := tr.LatestReportPath()
 	if _, err := os.Stat(latest); os.IsNotExist(err) {
 		fmt.Fprintf(w, "  Reports      %s  %s\n",
-			cFail.Sprint("✗"),
-			cDim.Sprintf("none — run: bench run %s", tr.Name()))
+			cli.Failure.Sprint("✗"),
+			cli.Muted.Sprintf("none — run: bench run %s", tr.Name()))
 	} else {
 		printArtifact(w, "Reports", latest, func(path string) string {
 			return readLatestMeta(path)
@@ -86,18 +87,18 @@ func statusTrack(w io.Writer, tr *trackctx.Track) error {
 	// Suggest next step.
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "  %s  %s\n",
-		cDim.Sprint("Next steps:"),
-		cDim.Sprint("bench validate → bench pool → bench judge → bench run"))
+		cli.Muted.Sprint("Next steps:"),
+		cli.Muted.Sprint("bench validate → bench pool → bench judge → bench run"))
 	return nil
 }
 
 func printArtifact(w io.Writer, label, path string, describe func(string) string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		fmt.Fprintf(w, "  %-14s %s  %s\n", label, cFail.Sprint("✗"), cDim.Sprint(filepath.Base(path)+" (not found)"))
+		fmt.Fprintf(w, "  %-14s %s  %s\n", label, cli.Failure.Sprint("✗"), cli.Muted.Sprint(filepath.Base(path)+" (not found)"))
 		return
 	}
 	desc := describe(path)
-	fmt.Fprintf(w, "  %-14s %s  %s\n", label, cOK.Sprint("✓"), desc)
+	fmt.Fprintf(w, "  %-14s %s  %s\n", label, cli.Success.Sprint("✓"), desc)
 }
 
 // extractStrategy pulls the strategy name out of "annotations.<strategy>.yaml".

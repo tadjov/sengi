@@ -11,11 +11,14 @@ import (
 	"github.com/fatih/color"
 )
 
+// The palette every sengi command colours its output with.
 var (
-	cOK   = color.New(color.FgGreen, color.Bold)
-	cWarn = color.New(color.FgYellow)
-	cDim  = color.New(color.FgHiBlack)
-	cBold = color.New(color.Bold)
+	Success = color.New(color.FgGreen, color.Bold)
+	Failure = color.New(color.FgRed, color.Bold)
+	Caution = color.New(color.FgYellow)
+	Muted   = color.New(color.FgHiBlack)
+	Strong  = color.New(color.Bold)
+	Accent  = color.New(color.FgCyan)
 )
 
 // Field is one labelled value in a summary block.
@@ -46,24 +49,17 @@ func humanBytes(n int64) string {
 }
 
 func Done(w io.Writer, msg string) {
-	fmt.Fprintf(w, "%s %s\n", cOK.Sprint("✓"), msg)
+	fmt.Fprintf(w, "%s %s\n", Success.Sprint("✓"), msg)
 }
 
 func Warn(w io.Writer, msg string) {
-	fmt.Fprintf(w, "%s %s\n", cWarn.Sprint("⚠"), msg)
+	fmt.Fprintf(w, "%s %s\n", Caution.Sprint("⚠"), msg)
 }
 
-// Header announces what a command is about to do.
-func Header(w io.Writer, title string, fields ...Field) {
-	fmt.Fprintf(w, "%s\n", cBold.Sprint(title))
+func printHeader(w io.Writer, title string, fields []Field) {
+	fmt.Fprintf(w, "%s\n", Strong.Sprint(title))
 	writeFields(w, fields)
 	fmt.Fprintln(w)
-}
-
-// Summary prints msg followed by fields aligned on their labels.
-func Summary(w io.Writer, msg string, fields ...Field) {
-	Done(w, msg)
-	writeFields(w, fields)
 }
 
 func writeFields(w io.Writer, fields []Field) {
@@ -74,6 +70,6 @@ func writeFields(w io.Writer, fields []Field) {
 		}
 	}
 	for _, f := range fields {
-		fmt.Fprintf(w, "  %s  %s\n", cDim.Sprintf("%-*s", width, f.Label), f.Value)
+		fmt.Fprintf(w, "  %s  %s\n", Muted.Sprintf("%-*s", width, f.Label), f.Value)
 	}
 }

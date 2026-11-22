@@ -54,6 +54,7 @@ The project follows a layered architecture pattern:
         - `factory/`: Storage factory for creating storage instances
         - `pg/`: PostgreSQL storage implementation with full-text search
         - `es/`: Elasticsearch storage implementation
+    - `progress/`: The counter long-running domain code reports to (records read, rows copied, queries run); `internal/cli` draws it as one status line on stderr
     - `resilience/`: Retry policy for HTTP calls: 408, 429 and 5xx or a dropped connection, honouring `Retry-After`, else backing off with jitter; only the `jev` judge uses it today
 
 - **pkg/**: Shared packages and APIs

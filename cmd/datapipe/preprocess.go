@@ -11,7 +11,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/tadjov/sengi/internal/cli"
@@ -77,8 +76,6 @@ func applyPreprocessEnvDefaults(cfg *preprocessConfig) {
 }
 
 func runPreprocess(ctx context.Context, out io.Writer, cfg preprocessConfig) error {
-	start := time.Now()
-
 	mapping, err := loadPreprocessMapping(cfg.MappingPath)
 	if err != nil {
 		return err
@@ -88,31 +85,36 @@ func runPreprocess(ctx context.Context, out io.Writer, cfg preprocessConfig) err
 		return fmt.Errorf("open raw package: %w", err)
 	}
 
-	cli.Header(out, "sengi preprocess",
-		cli.Field{Label: "raw", Value: raw.Location},
-		cli.IntField("resources", len(raw.Package.Resources)),
-		cli.Field{Label: "mapping", Value: cfg.MappingPath},
-		cli.Field{Label: "output", Value: cfg.OutputPath},
-		cli.Field{Label: "version", Value: cfg.Version},
-	)
-
-	result, err := ingest.Preprocess(ctx, ingest.PreprocessOptions{
-		Raw:        raw,
-		Mapping:    mapping,
-		OutputRoot: cfg.OutputPath,
-		Version:    cfg.Version,
-		ProducedBy: datapackage.ProducedBy{Tool: "datapipe preprocess"},
+	command := cli.Command{
+		Title: "sengi preprocess",
+		Fields: []cli.Field{
+			{Label: "raw", Value: raw.Location},
+			cli.IntField("resources", len(raw.Package.Resources)),
+			{Label: "mapping", Value: cfg.MappingPath},
+			{Label: "output", Value: cfg.OutputPath},
+			{Label: "version", Value: cfg.Version},
+		},
+		Label: "preprocess",
+		Unit:  "records",
+	}
+	return command.Run(out, func(p *cli.Progress) (cli.Summary, error) {
+		result, err := ingest.Preprocess(ctx, ingest.PreprocessOptions{
+			Raw:        raw,
+			Mapping:    mapping,
+			OutputRoot: cfg.OutputPath,
+			Version:    cfg.Version,
+			ProducedBy: datapackage.ProducedBy{Tool: "datapipe preprocess"},
+			Progress:   p,
+		})
+		var conflict *datapackage.VersionConflictError
+		if errors.As(err, &conflict) {
+			return cli.Summary{}, fmt.Errorf("canonical version %s already holds other articles; publish this run under a new --version: %w", conflict.Version, err)
+		}
+		if err != nil {
+			return cli.Summary{}, err
+		}
+		return preprocessSummary(result), nil
 	})
-	var conflict *datapackage.VersionConflictError
-	if errors.As(err, &conflict) {
-		return fmt.Errorf("canonical version %s already holds other articles; publish this run under a new --version: %w", conflict.Version, err)
-	}
-	if err != nil {
-		return err
-	}
-
-	renderSummary(out, result, time.Since(start))
-	return nil
 }
 
 func loadPreprocessMapping(path string) (*datamapping.DataMapper, error) {
@@ -128,30 +130,33 @@ func loadPreprocessMapping(path string) (*datamapping.DataMapper, error) {
 	return mapping, nil
 }
 
-func renderSummary(w io.Writer, result datapackage.Published, elapsed time.Duration) {
+func preprocessSummary(result datapackage.Published) cli.Summary {
 	report := result.Package.Report
 	dropped, deduped := total(report.Dropped), total(report.Deduped)
-	cli.Summary(w, "Preprocess complete",
-		cli.Field{Label: "read", Value: strconv.FormatInt(report.Read, 10)},
-		cli.Field{Label: "written", Value: strconv.FormatInt(report.Written, 10)},
-		cli.Field{Label: "dropped", Value: strconv.FormatInt(dropped, 10)},
-		cli.Field{Label: "deduped", Value: strconv.FormatInt(deduped, 10)},
-		cli.Field{Label: "version", Value: result.Package.Version},
-		cli.Field{Label: "hash", Value: result.Package.Resources[0].Hash},
-		cli.Field{Label: "package", Value: result.Dir},
-		cli.Field{Label: "duration", Value: fmt.Sprintf("%.2fs", elapsed.Seconds())},
-	)
+	summary := cli.Summary{
+		Message: "Preprocess complete",
+		Fields: []cli.Field{
+			{Label: "read", Value: strconv.FormatInt(report.Read, 10)},
+			{Label: "written", Value: strconv.FormatInt(report.Written, 10)},
+			{Label: "dropped", Value: strconv.FormatInt(dropped, 10)},
+			{Label: "deduped", Value: strconv.FormatInt(deduped, 10)},
+			{Label: "version", Value: result.Package.Version},
+			{Label: "hash", Value: result.Package.Resources[0].Hash},
+			{Label: "package", Value: result.Dir},
+		},
+	}
 	if dropped > 0 {
-		cli.Warn(w, fmt.Sprintf("%d dropped: %s", dropped, breakdown(report.Dropped)))
+		summary.Notes = append(summary.Notes, cli.Note{Text: fmt.Sprintf("%d dropped: %s", dropped, breakdown(report.Dropped)), Warning: true})
 	}
 	if deduped > 0 {
-		cli.Done(w, fmt.Sprintf("%d deduped: %s", deduped, breakdown(report.Deduped)))
+		summary.Notes = append(summary.Notes, cli.Note{Text: fmt.Sprintf("%d deduped: %s", deduped, breakdown(report.Deduped))})
 	}
 	if result.Restored {
-		cli.Done(w, "version "+result.Package.Version+" was published without its resource; restored it from this run")
+		summary.Notes = append(summary.Notes, cli.Note{Text: "version " + result.Package.Version + " was published without its resource; restored it from this run"})
 	} else if result.Existing {
-		cli.Done(w, "version "+result.Package.Version+" was already published; kept it and discarded this run's copy")
+		summary.Notes = append(summary.Notes, cli.Note{Text: "version " + result.Package.Version + " was already published; kept it and discarded this run's copy"})
 	}
+	return summary
 }
 
 func total(counts map[string]int64) int64 {

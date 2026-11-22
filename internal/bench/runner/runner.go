@@ -18,6 +18,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/metrics"
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/storage"
 )
 
@@ -55,6 +56,12 @@ func (r *Runner) RunAll(
 		return nil, err
 	}
 	bindings := QueryBindings(bs)
+
+	var queries int64
+	for _, job := range bs.Jobs {
+		queries += int64(len(suites[job.Suite].Suite.Queries))
+	}
+	progress.Or(r.config.Progress).SetTotal(queries)
 
 	for _, job := range bs.Jobs {
 		jr, err := r.RunJob(ctx, JobRequest{
@@ -356,6 +363,7 @@ func (r *Runner) runQueries(ctx context.Context, jr *JobResult, req JobRequest) 
 	}
 	engineSem := make(chan struct{}, ep)
 
+	counter := progress.Or(r.config.Progress)
 	runQuery := func(q *suite.Query) {
 		if ctx.Err() != nil {
 			return
@@ -365,6 +373,7 @@ func (r *Runner) runQueries(ctx context.Context, jr *JobResult, req JobRequest) 
 		for _, c := range cells {
 			jr.Results[q.ID][c.engine] = r.queryResult(q, c)
 		}
+		counter.Add(1)
 	}
 	// Goroutines would take queries in scheduler order, not suite order.
 	if qp == QueryParallelismSerial {

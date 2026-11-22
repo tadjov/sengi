@@ -18,6 +18,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/pool"
 	"github.com/tadjov/sengi/internal/bench/suite"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
 )
@@ -119,7 +120,7 @@ func (g gradeCommand) execute(cmd *cobra.Command, args []string) error {
 	}
 	// A session reports progress only, since agreement would reveal the judge's grades.
 	w := cmd.OutOrStdout()
-	printDone(w, "Hand grades saved: "+manualPath)
+	cli.Done(w, "Hand grades saved: "+manualPath)
 	walked := len(session.walk)
 	if left := session.remaining(); left > 0 {
 		fmt.Fprintf(w, "graded %d of %d; rerun to continue\n", walked-left, walked)
@@ -317,7 +318,7 @@ func readLines(r io.Reader) <-chan string {
 // readAction reads until an answer is valid; end of input or an interrupt quits.
 func (s *gradingSession) readAction(ctx context.Context, canUndo bool) (gradingAction, int) {
 	for {
-		fmt.Fprint(s.out, cBold.Sprint("grade 0-3 · s skip · u undo · q quit > "))
+		fmt.Fprint(s.out, cli.Strong.Sprint("grade 0-3 · s skip · u undo · q quit > "))
 		var line string
 		select {
 		case <-ctx.Done():
@@ -341,9 +342,9 @@ func (s *gradingSession) readAction(ctx context.Context, canUndo bool) (gradingA
 			if canUndo {
 				return actionUndo, 0
 			}
-			printWarn(s.out, "nothing to undo in this session")
+			cli.Warn(s.out, "nothing to undo in this session")
 		default:
-			printWarn(s.out, fmt.Sprintf("%q is not 0-3, s, u or q", answer))
+			cli.Warn(s.out, fmt.Sprintf("%q is not 0-3, s, u or q", answer))
 		}
 	}
 }
@@ -360,12 +361,12 @@ func (s *gradingSession) show(ctx context.Context, position int) error {
 	if pair.query.Category != "" {
 		header += " · " + string(pair.query.Category)
 	}
-	fmt.Fprintf(w, "\n%s\n", cCyan.Sprint(header))
+	fmt.Fprintf(w, "\n%s\n", cli.Accent.Sprint(header))
 	printField(w, "query", pair.query.QueryText)
 	printField(w, "query description", pair.query.QueryDesc)
 	printField(w, "filters", formatFilters(pair.query.Filters))
 	if len(articles) == 0 {
-		printWarn(w, fmt.Sprintf("article %s is not in the store", pair.docID))
+		cli.Warn(w, fmt.Sprintf("article %s is not in the store", pair.docID))
 		return nil
 	}
 	a := articles[0]
@@ -383,7 +384,7 @@ func printField(w io.Writer, label, value string) {
 	if value == "" {
 		return
 	}
-	fmt.Fprintf(w, "%s %s\n", cDim.Sprintf("%-18s", label+":"), value)
+	fmt.Fprintf(w, "%s %s\n", cli.Muted.Sprintf("%-18s", label+":"), value)
 }
 
 // publisher shows the domain, which publisher_domain filters compare.

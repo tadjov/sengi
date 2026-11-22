@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/parquet-go/parquet-go"
@@ -18,6 +19,7 @@ import (
 	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/pkg/config/env"
@@ -84,23 +86,41 @@ func runEmbed(ctx context.Context, out io.Writer, opts embedOptions) error {
 	defer inputs.Close()
 	run.corpus = inputs.corpus(ctx)
 
-	cli.Header(out, "sengi embed",
-		cli.Field{Label: "canonical", Value: run.corpus.Canonical.Name + "@" + run.corpus.Canonical.Version},
-		cli.Field{Label: "model", Value: run.embedding.Tag},
-		cli.IntField("batch", opts.BatchSize),
-		cli.IntField("max tokens", opts.MaxTokens),
-		cli.Field{Label: "output", Value: filepath.Join(run.tagDir, opts.Version)},
-	)
-	published, err := publishEmbeddings(ctx, run)
-	if err != nil {
-		return err
+	command := cli.Command{
+		Title: "sengi embed",
+		Fields: []cli.Field{
+			{Label: "canonical", Value: run.corpus.Canonical.Name + "@" + run.corpus.Canonical.Version},
+			{Label: "model", Value: run.embedding.Tag},
+			cli.IntField("batch", opts.BatchSize),
+			cli.IntField("max tokens", opts.MaxTokens),
+			{Label: "output", Value: filepath.Join(run.tagDir, opts.Version)},
+		},
+		Label: "embed",
+		Unit:  "articles",
 	}
-	cli.Summary(out, "Embeddings published",
-		cli.Field{Label: "version", Value: published.Package.Version},
-		cli.Field{Label: "hash", Value: published.Package.Resources[0].Hash},
-		cli.Field{Label: "package", Value: published.Dir},
-	)
-	return nil
+	return command.Run(out, func(p *cli.Progress) (cli.Summary, error) {
+		articles, err := countArticles(ctx, inputs.articles, inputs.articlesFormat)
+		if err != nil {
+			return cli.Summary{}, fmt.Errorf("count articles of canonical package %s: %w", run.corpus.Canonical.Name, err)
+		}
+		if opts.Limit > 0 {
+			articles = min(articles, int64(opts.Limit))
+		}
+		p.SetTotal(articles)
+		run.progress = p
+		published, err := publishEmbeddings(ctx, run)
+		if err != nil {
+			return cli.Summary{}, err
+		}
+		return cli.Summary{
+			Message: "Embeddings published",
+			Fields: []cli.Field{
+				{Label: "version", Value: published.Package.Version},
+				{Label: "hash", Value: published.Package.Resources[0].Hash},
+				{Label: "package", Value: published.Dir},
+			},
+		}, nil
+	})
 }
 
 type embeddingsRun struct {
@@ -109,6 +129,8 @@ type embeddingsRun struct {
 	corpus    storage.Corpus
 	tagDir    string
 	opts      embedOptions
+	// progress counts articles as each embedding request returns; nil counts nothing.
+	progress progress.Counter
 }
 
 // prepareEmbeddings describes the run, and refuses it before any article is read or embedded.
@@ -280,17 +302,22 @@ func writeEmbeddings(ctx context.Context, path string, run embeddingsRun) error 
 	}
 	defer f.Close()
 	writer := parquet.NewGenericWriter[embeddingRow](f)
+	counter := progress.Or(run.progress)
 	for chunk, err := range articleChunks(run.corpus.Articles, run.opts.BatchSize*batchesPerChunk, run.opts.Limit) {
 		if err != nil {
 			return err
 		}
-		vecs, err := run.embedder.EmbedDocuments(ctx, chunk)
-		if err != nil {
-			return err
-		}
-		rows := make([]embeddingRow, len(vecs))
-		for i, vec := range vecs {
-			rows[i] = embeddingRow{ID: vec.ID.String(), Embedding: vec.Embedding}
+		rows := make([]embeddingRow, 0, len(chunk))
+		// One request per batch, so the count moves as each one returns rather than once per chunk.
+		for batch := range slices.Chunk(chunk, run.opts.BatchSize) {
+			vecs, err := run.embedder.EmbedDocuments(ctx, batch)
+			if err != nil {
+				return err
+			}
+			for _, vec := range vecs {
+				rows = append(rows, embeddingRow{ID: vec.ID.String(), Embedding: vec.Embedding})
+			}
+			counter.Add(int64(len(batch)))
 		}
 		if _, err := writer.Write(rows); err != nil {
 			return fmt.Errorf("write %s: %w", path, err)

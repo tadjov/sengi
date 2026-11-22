@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tadjov/sengi/internal/bench/judgment"
 	"github.com/tadjov/sengi/internal/bench/spec"
+	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/pkg/config/env"
 )
 
@@ -92,7 +93,7 @@ func main() {
 	}()
 	if err := root.ExecuteContext(ctx); err != nil {
 		// Printed, not logged: slog would escape the hint lines' newlines.
-		fmt.Fprintf(os.Stderr, "%s %v\n", cFail.Sprint("Error:"), err)
+		fmt.Fprintf(os.Stderr, "%s %v\n", cli.Failure.Sprint("Error:"), err)
 		os.Exit(1)
 	}
 }

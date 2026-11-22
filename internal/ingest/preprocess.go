@@ -13,6 +13,7 @@ import (
 
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/ingest/reader"
+	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/pkg/apis/datamapping"
 )
@@ -24,6 +25,8 @@ type PreprocessOptions struct {
 	OutputRoot string
 	Version    string
 	ProducedBy datapackage.ProducedBy
+	// Progress counts raw records as they are read; nil counts nothing.
+	Progress progress.Counter
 }
 
 // Preprocess publishes to OutputRoot/<version> and keeps a version already there.
@@ -66,6 +69,7 @@ func Preprocess(ctx context.Context, opts PreprocessOptions) (datapackage.Publis
 		mapper:   mapper,
 		identity: identity,
 		report:   datapackage.Report{Dropped: map[string]int64{}, Deduped: map[string]int64{}},
+		counter:  progress.Or(opts.Progress),
 	}
 	return builder.publish(ctx, opts.OutputRoot, opts.Version, pkg)
 }
@@ -155,19 +159,27 @@ type canonicalBuilder struct {
 	mapper   reader.Mapper
 	identity *articleIdentity
 	report   datapackage.Report
+	counter  progress.Counter
 }
 
 const writeBatchSize = 1000
 
 func (b *canonicalBuilder) writeTo(ctx context.Context, w CanonicalWriter) error {
+	sources, err := b.openSources(ctx)
+	defer sources.close()
+	if err != nil {
+		return err
+	}
+	b.counter.SetTotal(sources.records())
+
 	batch := make([]document.Article, 0, writeBatchSize)
-	for _, resource := range b.raw.Package.Resources {
-		err := b.eachArticle(ctx, resource, func(article document.Article) error {
+	for _, source := range sources {
+		err := b.eachArticle(ctx, source, func(article document.Article) error {
 			batch = append(batch, article)
 			if len(batch) < writeBatchSize {
 				return nil
 			}
-			err := w.Write(batch)
+			err := b.flush(w, batch)
 			batch = batch[:0]
 			return err
 		})
@@ -175,7 +187,7 @@ func (b *canonicalBuilder) writeTo(ctx context.Context, w CanonicalWriter) error
 			return err
 		}
 	}
-	if err := w.Write(batch); err != nil {
+	if err := b.flush(w, batch); err != nil {
 		return fmt.Errorf("write articles: %w", err)
 	}
 	if b.report.Written == 0 {
@@ -184,21 +196,72 @@ func (b *canonicalBuilder) writeTo(ctx context.Context, w CanonicalWriter) error
 	return nil
 }
 
-func (b *canonicalBuilder) eachArticle(ctx context.Context, resource datapackage.Resource, emit func(document.Article) error) error {
-	file, err := b.raw.Resource(ctx, resource.Name)
-	if err != nil {
-		return fmt.Errorf("open raw resource %s: %w", resource.Name, err)
-	}
-	defer file.Close()
-	records, err := recordReaderFor(resource, file)
-	if err != nil {
+func (b *canonicalBuilder) flush(w CanonicalWriter, batch []document.Article) error {
+	if err := w.Write(batch); err != nil {
 		return err
 	}
-	for record, err := range records.Records() {
+	var deduped int64
+	for _, n := range b.report.Deduped {
+		deduped += n
+	}
+	b.counter.Detail("written", b.report.Written, "deduped", deduped)
+	return nil
+}
+
+// rawSource is a raw resource opened, and its hash verified, before preprocessing starts.
+type rawSource struct {
+	resource datapackage.Resource
+	file     *datapackage.ResourceFile
+	records  reader.RecordReader
+}
+
+type rawSources []rawSource
+
+// openSources opens every resource up front, so their footers can total the records before the first one is read.
+func (b *canonicalBuilder) openSources(ctx context.Context) (rawSources, error) {
+	sources := make(rawSources, 0, len(b.raw.Package.Resources))
+	for _, resource := range b.raw.Package.Resources {
+		file, err := b.raw.Resource(ctx, resource.Name)
+		if err != nil {
+			return sources, fmt.Errorf("open raw resource %s: %w", resource.Name, err)
+		}
+		records, err := recordReaderFor(resource, file)
+		if err != nil {
+			file.Close()
+			return sources, err
+		}
+		sources = append(sources, rawSource{resource: resource, file: file, records: records})
+	}
+	return sources, nil
+}
+
+// records is 0, unknown, when any source is in a format that does not record its row count.
+func (s rawSources) records() int64 {
+	var total int64
+	for _, source := range s {
+		counted, ok := source.records.(interface{ NumRows() int64 })
+		if !ok {
+			return 0
+		}
+		total += counted.NumRows()
+	}
+	return total
+}
+
+func (s rawSources) close() {
+	for _, source := range s {
+		source.file.Close()
+	}
+}
+
+func (b *canonicalBuilder) eachArticle(ctx context.Context, source rawSource, emit func(document.Article) error) error {
+	resource := source.resource
+	for record, err := range source.records.Records() {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return ctxErr
 		}
 		b.report.Read++
+		b.counter.Add(1)
 		var malformed *reader.MalformedRecordError
 		if errors.As(err, &malformed) {
 			b.report.Dropped[dropMalformed]++
@@ -225,10 +288,10 @@ func (b *canonicalBuilder) eachArticle(ctx context.Context, resource datapackage
 			b.report.Deduped[rule]++
 			continue
 		}
+		b.report.Written++
 		if err := emit(article); err != nil {
 			return fmt.Errorf("write articles: %w", err)
 		}
-		b.report.Written++
 	}
 	return nil
 }

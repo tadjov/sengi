@@ -11,10 +11,12 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/bench/meta"
 	"github.com/tadjov/sengi/internal/bench/pool"
+	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
 )
@@ -24,19 +26,6 @@ const (
 	minConcurrency     = 1
 	maxConcurrency     = 32
 )
-
-// BatchProgress is delivered to RunnerConfig.OnBatch after each batch call.
-// Lets the CLI print live progress like:
-//
-//	[qs-climate] batch 2/8: graded=20 (3:5 2:8 1:4 0:3) missing=0 elapsed=820ms
-type BatchProgress struct {
-	QueryID   string
-	BatchIdx  int
-	BatchN    int
-	Graded    int
-	Missing   int
-	Histogram map[int]int
-}
 
 // QueryProgress reports a single query's outcome.
 type QueryProgress struct {
@@ -66,10 +55,12 @@ type RunnerConfig struct {
 	// persist incrementally. Receives an immutable snapshot of the query's
 	// JudgmentEntry.
 	Sink func(QueryProgress, Entry) error
-	// OnQueryStart, OnQueryDone, OnBatch are optional progress callbacks.
+	// OnQueryStart and OnQueryDone are optional per-query callbacks.
 	OnQueryStart func(queryID string, docCount int, alreadyGraded int)
 	OnQueryDone  func(QueryProgress)
-	OnBatch      func(BatchProgress)
+	// Progress counts pooled docs as their grading finishes, graded or left
+	// unjudged, against the pool's total; nil counts nothing.
+	Progress progress.Counter
 }
 
 // Judge is the strategy's judge block plus the batching it grades with.
@@ -99,7 +90,25 @@ func (c RunnerConfig) batchSize() int {
 //   - Skips docs already graded in cfg.Existing (resume)
 //   - Streams results through Sink so callers can checkpoint to disk
 type Runner struct {
-	cfg RunnerConfig
+	cfg    RunnerConfig
+	graded *gradedDocs
+}
+
+// gradedDocs remembers how many docs it has counted, so a query's count can be finished whatever path its docs took.
+type gradedDocs struct {
+	counter progress.Counter
+	counted atomic.Int64
+}
+
+func (g *gradedDocs) add(n int) {
+	g.counted.Add(int64(n))
+	g.counter.Add(int64(n))
+}
+
+func (g *gradedDocs) catchUp(to int64) {
+	if left := to - g.counted.Load(); left > 0 {
+		g.add(int(left))
+	}
 }
 
 func NewRunner(cfg RunnerConfig) *Runner {
@@ -109,7 +118,7 @@ func NewRunner(cfg RunnerConfig) *Runner {
 	if cfg.Concurrency > maxConcurrency {
 		cfg.Concurrency = maxConcurrency
 	}
-	return &Runner{cfg: cfg}
+	return &Runner{cfg: cfg, graded: &gradedDocs{counter: progress.Or(cfg.Progress)}}
 }
 
 // Run grades every pool entry and returns a complete JudgmentFile. A query with
@@ -144,9 +153,19 @@ func (r *Runner) Run(ctx context.Context, pf *pool.PoolFile) (*File, error) {
 		Queries: make([]Entry, 0, len(pf.Queries)),
 	}
 
+	counted := r.graded.counted.Load()
+	var poolDocs int64
+	for _, entry := range pf.Queries {
+		poolDocs += int64(len(entry.Docs))
+	}
+	r.graded.counter.SetTotal(poolDocs)
+
 	var unusable []error
 	for _, entry := range pf.Queries {
 		ge, prog, err := r.gradeQuery(ctx, entry, prior[entry.QueryID])
+		counted += int64(len(entry.Docs))
+		// Docs the store could not read, and a query that fails whole, are done without a grade.
+		r.graded.catchUp(counted)
 		if FailsWholeQuery(err) {
 			unusable = append(unusable, err)
 		} else if err != nil {
@@ -206,6 +225,7 @@ func (r *Runner) gradeQuery(ctx context.Context, entry pool.PoolEntry, prior map
 		prog.Skipped++
 		prog.Histogram[g]++
 	}
+	r.graded.add(prog.Skipped)
 	if r.cfg.OnQueryStart != nil {
 		r.cfg.OnQueryStart(entry.QueryID, len(entry.Docs), prog.Skipped)
 	}
@@ -277,6 +297,7 @@ func (r *Runner) gradeWholePool(ctx context.Context, ps PoolStrategy, q GradingQ
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return nil, ctxErr
 	}
+	r.graded.add(len(gradables))
 	var width *VectorWidthError
 	if errors.As(err, &width) || FailsWholeQuery(err) {
 		return nil, err
@@ -328,7 +349,6 @@ func (r *Runner) runBatched(ctx context.Context, bs BatchStrategy, q GradingQuer
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		histo := map[int]int{}
 		results, err := bs.GradeBatch(ctx, q, batch)
 
 		// A width mismatch or an unusable query is a property of the models or
@@ -340,12 +360,15 @@ func (r *Runner) runBatched(ctx context.Context, bs BatchStrategy, q GradingQuer
 			return err
 		}
 
+		// runPerDoc counts the docs it retries.
+		retried := 0
 		// Partial batch — keep what came back, retry the missing IDs per-doc.
 		var partial *PartialBatchError
 		if errors.As(err, &partial) {
 			slog.Warn("batch partial; retrying missing docs per-doc",
 				"query", q.ID, "batch", i+1, "missing", len(partial.Missing))
 			missingDocs := pickByID(batch, partial.Missing)
+			retried = len(missingDocs)
 			perDoc := map[uuid.UUID]int{}
 			if err := r.runPerDoc(ctx, bs, q, missingDocs, perDoc); err != nil {
 				return err
@@ -356,6 +379,7 @@ func (r *Runner) runBatched(ctx context.Context, bs BatchStrategy, q GradingQuer
 		} else if err != nil {
 			slog.Warn("batch failed; falling back to per-doc",
 				"query", q.ID, "batch", i+1, "error", err)
+			retried = len(batch)
 			perDoc := map[uuid.UUID]int{}
 			if err := r.runPerDoc(ctx, bs, q, batch, perDoc); err != nil {
 				return err
@@ -368,19 +392,8 @@ func (r *Runner) runBatched(ctx context.Context, bs BatchStrategy, q GradingQuer
 
 		for _, gd := range results {
 			into[gd.DocID] = gd.Grade
-			histo[gd.Grade]++
 		}
-		if r.cfg.OnBatch != nil {
-			missing := len(batch) - len(results)
-			r.cfg.OnBatch(BatchProgress{
-				QueryID:   q.ID,
-				BatchIdx:  i + 1,
-				BatchN:    len(batches),
-				Graded:    len(results),
-				Missing:   missing,
-				Histogram: histo,
-			})
-		}
+		r.graded.add(len(batch) - retried)
 	}
 	return nil
 }
@@ -403,6 +416,7 @@ func (r *Runner) runPerDoc(ctx context.Context, s DocStrategy, q GradingQuery, d
 				return
 			}
 			defer func() { <-sem }()
+			defer r.graded.add(1)
 
 			grade, err := s.Grade(ctx, q, gd)
 			if FailsWholeQuery(err) {

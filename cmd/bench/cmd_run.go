@@ -24,6 +24,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/suite"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/cli"
 )
 
 type runFlags struct {
@@ -205,12 +206,16 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 	}
 	indexes := collectIndexProvenance(cmd.Context(), cmd.OutOrStdout(), executors)
 
-	r := runner.New(runCfg)
-	sp := startSpinner("Running " + tr.Name() + "…")
-	start := time.Now()
-	result, err := r.RunAll(cmd.Context(), bs, executors)
-	elapsed := time.Since(start)
-	sp.Stop()
+	var result *runner.BenchmarkResult
+	var elapsed time.Duration
+	err = cli.Command{Label: "run " + tr.Name(), Unit: "queries"}.Run(cmd.OutOrStdout(), func(p *cli.Progress) (cli.Summary, error) {
+		runCfg.Progress = p
+		start := time.Now()
+		var runErr error
+		result, runErr = runner.New(runCfg).RunAll(cmd.Context(), bs, executors)
+		elapsed = time.Since(start)
+		return cli.Summary{}, runErr
+	})
 	if err != nil {
 		return fmt.Errorf("run benchmark: %w", err)
 	}
@@ -257,7 +262,7 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 		}.deviations()...)
 
 	report.WriteTable(rpt, os.Stdout)
-	fmt.Fprintf(os.Stdout, "%s %s\n", cDim.Sprint("Elapsed:"), elapsed.Round(time.Millisecond))
+	fmt.Fprintf(os.Stdout, "%s %s\n", cli.Muted.Sprint("Elapsed:"), elapsed.Round(time.Millisecond))
 
 	outPath := f.output
 	if outPath == "" {
@@ -266,18 +271,18 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 	if err := report.WriteJSON(rpt, outPath); err != nil {
 		return fmt.Errorf("write report: %w", err)
 	}
-	printDone(cmd.OutOrStdout(), "Report written: "+outPath)
+	cli.Done(cmd.OutOrStdout(), "Report written: "+outPath)
 
 	if len(failures) > 0 {
 		return fmt.Errorf("%s\n  • report written to %s; latest.json was not moved", strings.Join(failures, "\n"), outPath)
 	}
 	switch {
 	case len(rpt.Settings.Incomplete) > 0:
-		printWarn(cmd.OutOrStdout(), "latest.json not moved: "+strings.Join(rpt.Settings.Incomplete, "; "))
+		cli.Warn(cmd.OutOrStdout(), "latest.json not moved: "+strings.Join(rpt.Settings.Incomplete, "; "))
 	case f.output != "":
 	default:
 		if err := updateLatestPointer(tr.LatestReportPath(), outPath); err != nil {
-			printWarn(cmd.OutOrStdout(), fmt.Sprintf("could not update latest.json pointer: %v", err))
+			cli.Warn(cmd.OutOrStdout(), fmt.Sprintf("could not update latest.json pointer: %v", err))
 		}
 	}
 	return nil
@@ -785,7 +790,7 @@ func collectIndexProvenance(ctx context.Context, w io.Writer, executors map[stri
 		}
 		description, err := describeIndex(ctx, describer)
 		if err != nil {
-			printWarn(w, fmt.Sprintf("index provenance for %q not recorded: %v", name, err))
+			cli.Warn(w, fmt.Sprintf("index provenance for %q not recorded: %v", name, err))
 			provenance[name] = report.IndexProvenance{Error: err.Error()}
 			continue
 		}

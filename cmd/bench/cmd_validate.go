@@ -15,6 +15,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/suite"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/storage"
 )
 
@@ -162,11 +163,11 @@ func validateTrack(cmd *cobra.Command, f validateFlags, tr *trackctx.Track) erro
 	fmt.Fprintln(cmd.OutOrStdout())
 	if failures > 0 {
 		fmt.Fprintf(cmd.OutOrStdout(), "Total: %d checks  %s\n",
-			len(rows), cFail.Sprintf("%d failed", failures))
+			len(rows), cli.Failure.Sprintf("%d failed", failures))
 		return fmt.Errorf("%d query/engine pair(s) failed validation", failures)
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "Total: %d checks  %s\n",
-		len(rows), cOK.Sprint("all passed"))
+		len(rows), cli.Success.Sprint("all passed"))
 	return nil
 }
 
@@ -258,17 +259,17 @@ func warnKindDrift(w io.Writer, bs *spec.BenchSpec, suites map[string]*suite.Loa
 	}
 	switch {
 	case bs.Kind.RequiresEmbedder() && !anyNeedsVector:
-		printWarn(w, fmt.Sprintf("kind %q expects vector queries, but no query takes the %q arg",
+		cli.Warn(w, fmt.Sprintf("kind %q expects vector queries, but no query takes the %q arg",
 			bs.Kind, suite.QueryVectorArg))
 	case bs.Kind != "" && !bs.Kind.RequiresEmbedder() && anyNeedsVector:
-		printWarn(w, fmt.Sprintf("queries take the %q arg but kind %q is not semantic/hybrid",
+		cli.Warn(w, fmt.Sprintf("queries take the %q arg but kind %q is not semantic/hybrid",
 			suite.QueryVectorArg, bs.Kind))
 	}
 }
 
 func printValidateRows(w io.Writer, rows []validateRow) {
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, cBold.Sprint("QUERY")+"\t"+cBold.Sprint("ENGINE")+"\t"+cBold.Sprint("STATUS")+"\t"+cBold.Sprint("DETAIL"))
+	fmt.Fprintln(tw, cli.Strong.Sprint("QUERY")+"\t"+cli.Strong.Sprint("ENGINE")+"\t"+cli.Strong.Sprint("STATUS")+"\t"+cli.Strong.Sprint("DETAIL"))
 	fmt.Fprintln(tw, "-----\t------\t------\t------")
 	for _, r := range rows {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", r.queryID, r.engine, colorStatus(r.status), r.detail)
@@ -282,4 +283,19 @@ func truncate(s string, max int) string {
 		return s
 	}
 	return s[:max-3] + "..."
+}
+
+func colorStatus(s string) string {
+	switch s {
+	case "OK":
+		return cli.Success.Sprint(s)
+	case "INVALID", "TEMPLATE_ERR":
+		return cli.Failure.Sprint(s)
+	case "SKIP":
+		return cli.Muted.Sprint(s)
+	case "UNSUPPORTED":
+		return cli.Caution.Sprint(s)
+	default:
+		return s
+	}
 }
