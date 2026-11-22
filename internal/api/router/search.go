@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -27,30 +28,21 @@ type SearchRouter struct {
 	hybridSearcher      storage.HybridSearcher
 }
 
-type SearchRouterOption func(*SearchRouter)
-
-func NewSearchRouter(e *echo.Echo, searcher storage.FullTextBackend, opts ...SearchRouterOption) *SearchRouter {
-	router := &SearchRouter{
-		e:        e,
-		searcher: searcher,
-	}
-
-	for _, opt := range opts {
-		opt(router)
-	}
-
-	return router
+// Searchers are the backends a SearchRouter serves. FullText serves each
+// paradigm whose searcher interface it implements; a nil Semantic or Hybrid
+// leaves that paradigm unserved.
+type Searchers struct {
+	FullText storage.FullTextBackend
+	Semantic storage.SemanticSearcher
+	Hybrid   storage.HybridSearcher
 }
 
-func WithSemanticSearcher(searcher storage.SemanticSearcher) SearchRouterOption {
-	return func(r *SearchRouter) {
-		r.semanticSearcher = searcher
-	}
-}
-
-func WithHybridSearcher(searcher storage.HybridSearcher) SearchRouterOption {
-	return func(r *SearchRouter) {
-		r.hybridSearcher = searcher
+func NewSearchRouter(e *echo.Echo, searchers Searchers) *SearchRouter {
+	return &SearchRouter{
+		e:                e,
+		searcher:         searchers.FullText,
+		semanticSearcher: searchers.Semantic,
+		hybridSearcher:   searchers.Hybrid,
 	}
 }
 
@@ -61,28 +53,16 @@ func (r *SearchRouter) Bind() {
 	r.phraseSearcher, _ = r.searcher.(storage.PhraseSearcher)
 	r.booleanSearcher, _ = r.searcher.(storage.BooleanSearcher)
 
-	// Simple query_string API (application-determined fields/weights)
 	if r.stringQuerySearcher != nil {
 		r.e.GET("/v1/articles/search", r.searchHandler)
 	}
-
-	// Unified structured search API (match/multi_match with query wrapper)
 	r.e.POST("/v1/articles/_search", r.structuredSearchHandler)
-
-	// Semantic search endpoint (only if provided via options)
 	if r.semanticSearcher != nil {
-		r.e.GET("/v1/articles/semantic_search", r.handleSematicQuery)
+		r.e.GET("/v1/articles/semantic_search", r.semanticSearchHandler)
 	}
-
-	// Capabilities discovery endpoint
 	r.e.GET("/v1/capabilities", r.capabilitiesHandler)
 }
 
-// capabilitiesHandler reports what the running backend supports (GET)
-//
-// A query type is available when its searcher is wired. full_text is what the
-// engine itself declares it can honour.
-//
 // @Summary Report supported query types and parameters
 // @Description Returns the query types the running backend serves and the full-text parameters its engine honours: the operator it applies when a request names none, whether it supports fuzziness, phrase slop and boosts, and the fields it can match apart from every other field. A stated parameter outside these is a 400 unless the request sends `Prefer: handling=lenient`.
 // @Tags capabilities
@@ -104,160 +84,126 @@ func (r *SearchRouter) capabilitiesHandler(c echo.Context) error {
 	})
 }
 
+// preferredHandling reads the request's Prefer handling and confirms a lenient
+// one in Preference-Applied.
+func preferredHandling(c echo.Context) dquery.Handling {
+	handling := dto.HandlingFromPrefer(c.Request().Header.Values("Prefer"))
+	if handling == dquery.HandlingLenient {
+		c.Response().Header().Set("Preference-Applied", "handling=lenient")
+	}
+	return handling
+}
+
 // paramQuery is a query whose stated params an engine may not honour.
 type paramQuery interface {
 	Params() dquery.Params
 	Apply(dquery.Params)
 }
 
-// honour applies the request's Prefer handling to the params of q the engine
-// cannot honour: an error for a strict request; for a lenient one q loses them
-// before it runs and they are returned as ignored. A nil q states no params.
-func (r *SearchRouter) honour(c echo.Context, q paramQuery) ([]dquery.Ignored, error) {
-	handling := dto.HandlingFromPrefer(c.Request().Header.Values("Prefer"))
-	if handling == dquery.HandlingLenient {
-		c.Response().Header().Set("Preference-Applied", "handling=lenient")
-	}
-	var stated dquery.Params
-	if q != nil {
-		stated = q.Params()
-	}
-	honoured, ignored, err := dquery.CheckCapabilities(r.searcher.Capabilities(), stated, handling)
+// honour checks the params of q against what the engine can honour: an error
+// under strict handling; under lenient handling q loses them before it runs
+// and they are returned as ignored.
+func (r *SearchRouter) honour(q paramQuery, handling dquery.Handling) ([]dquery.Ignored, error) {
+	honoured, ignored, err := dquery.CheckCapabilities(r.searcher.Capabilities(), q.Params(), handling)
 	if err != nil {
 		return nil, apperr.NewValidationWrap(err.Error(), err)
 	}
-	if q != nil {
-		q.Apply(honoured)
-	}
+	q.Apply(honoured)
 	return ignored, nil
 }
 
-// searchHandler handles simple query string search (GET)
-//
-// This endpoint provides a simple, Google-like search experience.
-// The application automatically determines optimal fields and weights.
-// Results are cacheable and URLs are bookmarkable.
-//
 // @Summary Simple query string search
 // @Description Free-text search over title, description and content: operators and quotes are read as words. Terms combine under the engine's default operator (PostgreSQL AND, Elasticsearch OR); the response echoes it in `effective`. Any query parameter not listed here is a 400. Cacheable and bookmarkable.
 // @Tags search
 // @Accept json
 // @Produce json
-// @Param q query string true "SearchStringQuery query text" example("climate change")
+// @Param q query string true "Query text" example("climate change")
 // @Param size query int false "Results per page (default: 100, max: 10000)" example(10)
 // @Param cursor query string false "Pagination cursor (base64-encoded from previous response)"
 // @Param lang query string false "ISO 639-3 language code; only eng today (default: eng)" example("eng")
 // @Param Prefer header string false "handling=lenient drops a parameter the engine cannot honour and lists it in ignored, instead of a 400"
-// @Success 200 {object} dto.SearchResponse "SearchStringQuery results with pagination metadata"
+// @Success 200 {object} dto.SearchResponse "Search results with pagination metadata"
 // @Failure 400 {object} map[string]string "Bad request - missing or invalid parameters"
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /v1/articles/search [get]
-// @Example Request:  GET /v1/articles/search?q=climate%20change&size=10&lang=eng
-// @Example Response: {"hits": [...], "next_cursor": "eyJ...", "has_more": true, "total_matches": 1523}
 func (r *SearchRouter) searchHandler(c echo.Context) error {
-	if err := dto.CheckSearchBoxParams(c.QueryParams()); err != nil {
+	if err := dto.CheckQueryParams(c.QueryParams(), "q", "query", "size", "cursor", "lang"); err != nil {
 		return err
 	}
 
-	// Support both 'q' (preferred) and 'query' (legacy) parameters
 	params := dto.StringQueryParams{
 		Query:    c.QueryParam("q"),
 		Language: c.QueryParam("lang"),
 	}
 	if params.Query == "" {
-		params.Query = c.QueryParam("query") // Backward compatibility
+		params.Query = c.QueryParam("query")
 	}
-
 	queryString, err := params.ToDomain()
 	if err != nil {
 		return err
 	}
 
-	sizeInt, err := dto.ParsePageSize(c.QueryParam("size"))
+	page, err := parsePage(c.QueryParam("size"), c.QueryParam("cursor"))
 	if err != nil {
 		return err
 	}
 
-	var cursor *dquery.Cursor
-	if cursorStr := c.QueryParam("cursor"); cursorStr != "" {
-		cursor, err = dquery.DecodeCursor(cursorStr)
-		if err != nil {
-			return apperr.NewValidation("invalid cursor parameter")
-		}
-	}
+	preferredHandling(c)
 
-	ignored, err := r.honour(c, nil)
+	searchResult, err := r.stringQuerySearcher.SearchStringQuery(c.Request().Context(), queryString, page)
 	if err != nil {
-		return err
-	}
-
-	searchResult, err := r.stringQuerySearcher.SearchStringQuery(c.Request().Context(), queryString, &dquery.BaseOptions{
-		Cursor: cursor,
-		Size:   sizeInt,
-	})
-	if err != nil {
-		slog.Error("Failed to execute full-text search", "error", err, "query", params.Query)
+		slog.ErrorContext(c.Request().Context(), "Failed to execute full-text search", "error", err, "query", params.Query)
 		return err
 	}
 
 	return r.buildResponse(c, searchResult, contractReport{
 		effective: queryString.Effective(r.defaultOperator()),
-		ignored:   ignored,
 	})
 }
 
-// structuredSearchHandler handles structured search requests (POST)
-//
-// This endpoint accepts complex, structured queries with explicit control over:
-// - Which fields to search
-// - Field-level weights/boosting
-// - Operator logic (AND/OR)
-// - Language-specific analysis
-// - Fuzziness/typo tolerance
-//
-// Supports multiple query types via the query wrapper pattern.
-// Query types: match, multi_match (more coming: bool, phrase, query_string)
-//
+// parsePage reads the size and cursor query parameters, each empty when unset.
+func parsePage(size, cursor string) (*dquery.BaseOptions, error) {
+	pageSize, err := dto.ParsePageSize(size)
+	if err != nil {
+		return nil, err
+	}
+	position, err := decodeCursor(cursor)
+	if err != nil {
+		return nil, err
+	}
+	return &dquery.BaseOptions{Cursor: position, Size: pageSize}, nil
+}
+
+func decodeCursor(cursor string) (*dquery.Cursor, error) {
+	position, err := dquery.DecodeCursor(cursor)
+	if err != nil {
+		return nil, apperr.NewValidation("invalid cursor parameter")
+	}
+	return position, nil
+}
+
+func encodeCursor(position *dquery.Cursor) (*string, error) {
+	if position == nil {
+		return nil, nil
+	}
+	encoded, err := dquery.EncodeCursor(position.Score, position.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode cursor: %w", err)
+	}
+	return &encoded, nil
+}
+
 // @Summary Structured search API
-// @Description Structured match, multi_match, phrase, boolean or hybrid search. A stated operator, field, fuzziness or language is honoured by the engine or the request is a 400 naming the parameter and the engine. An omitted operator takes the engine's default (PostgreSQL AND, Elasticsearch OR). Boosts are best effort. A key the query type does not define is a 400. With `Prefer: handling=lenient` an unsupported parameter is removed before the search runs and listed in `ignored`. Every response echoes `effective` and `ignored`.
+// @Description Structured match, multi_match, phrase, boolean or hybrid search. A stated operator, field, fuzziness or language is honoured by the engine or the request is a 400 naming the parameter and the engine. An omitted operator takes the engine's default (PostgreSQL AND, Elasticsearch OR). Boosts are best effort. A key the query type does not define is a 400, and so is a query type the backend does not serve. With `Prefer: handling=lenient` an unsupported parameter is removed before the search runs and listed in `ignored`. Every response echoes `effective` and `ignored`.
 // @Tags search
 // @Accept json
 // @Produce json
 // @Param request body dto.SearchRequest true "Structured search request with query wrapper"
 // @Param Prefer header string false "handling=lenient drops a parameter the engine cannot honour and lists it in ignored, instead of a 400"
-// @Success 200 {object} dto.SearchResponse "SearchStringQuery results with pagination metadata"
-// @Failure 400 {object} map[string]string "Bad request - invalid query structure or parameters"
+// @Success 200 {object} dto.SearchResponse "Search results with pagination metadata"
+// @Failure 400 {object} map[string]string "Bad request - invalid query structure or parameters, or a query type the backend does not serve"
 // @Failure 500 {object} map[string]string "Internal server error"
-// @Failure 501 {object} map[string]string "Query type not supported by searcher backend"
 // @Router /v1/articles/_search [post]
-// @Example Match Request:
-//
-//	{
-//	  "size": 10,
-//	  "query": {
-//	    "match": {
-//	      "field": "title",
-//	      "query": "climate change",
-//	      "operator": "and",
-//	      "fuzziness": "AUTO",
-//	      "language": "eng"
-//	    }
-//	  }
-//	}
-//
-// @Example MultiMatch Request:
-//
-//	{
-//	  "size": 10,
-//	  "query": {
-//	    "multi_match": {
-//	      "query": "renewable energy",
-//	      "fields": ["title^3", "description^2", "content"],
-//	      "operator": "or",
-//	      "language": "eng"
-//	    }
-//	  }
-//	}
 func (r *SearchRouter) structuredSearchHandler(c echo.Context) error {
 	if ctype := c.Request().Header.Get(echo.HeaderContentType); !strings.HasPrefix(ctype, echo.MIMEApplicationJSON) {
 		return echo.ErrUnsupportedMediaType
@@ -276,253 +222,127 @@ func (r *SearchRouter) structuredSearchHandler(c echo.Context) error {
 		return err
 	}
 
-	sizeInt, err := dto.PageSize(req.Size)
+	size, err := dto.PageSize(req.Size)
 	if err != nil {
 		return err
 	}
-
-	var cursor *dquery.Cursor
-	if req.Cursor != "" {
-		cursor, err = dquery.DecodeCursor(req.Cursor)
-		if err != nil {
-			return apperr.NewValidation("invalid cursor parameter")
-		}
+	cursor, err := decodeCursor(req.Cursor)
+	if err != nil {
+		return err
 	}
+	page := &dquery.BaseOptions{Cursor: cursor, Size: size}
 
-	opts := &dquery.BaseOptions{
-		Cursor: cursor,
-		Size:   sizeInt,
-	}
-
-	queryType := req.Query.GetQueryType()
-	switch queryType {
+	switch queryType := req.Query.GetQueryType(); queryType {
 	case dquery.MatchType:
-		return r.handleMatchQuery(c, req.Query.Match, opts)
+		if r.fieldSearcher == nil {
+			return notEnabled(queryType)
+		}
+		return runStructured(r, c, page, req.Query.Match, r.fieldSearcher.SearchField,
+			func(q *dquery.Match) dquery.Effective { return q.Effective(r.defaultOperator()) })
 	case dquery.MultiMatchType:
-		return r.handleMultiMatchQuery(c, req.Query.MultiMatch, opts)
+		if r.multiFieldSearcher == nil {
+			return notEnabled(queryType)
+		}
+		return runStructured(r, c, page, req.Query.MultiMatch, r.multiFieldSearcher.SearchFields,
+			func(q *dquery.MultiMatch) dquery.Effective { return q.Effective(r.defaultOperator()) })
 	case dquery.PhraseType:
-		return r.handlePhraseQuery(c, req.Query.Phrase, opts)
+		if r.phraseSearcher == nil {
+			return notEnabled(queryType)
+		}
+		return runStructured(r, c, page, req.Query.Phrase, r.phraseSearcher.SearchPhrase, (*dquery.Phrase).Effective)
 	case dquery.BooleanType:
-		return r.handleBooleanQuery(c, req.Query.Boolean, opts)
+		if r.booleanSearcher == nil {
+			return notEnabled(queryType)
+		}
+		return runStructured(r, c, page, req.Query.Boolean, r.booleanSearcher.SearchBoolean,
+			func(q *dquery.Boolean) dquery.Effective { return q.Effective(r.defaultOperator()) })
 	case dquery.HybridType:
-		return r.handleHybridQuery(c, req.Query.Hybrid, opts)
+		if r.hybridSearcher == nil {
+			return notEnabled(queryType)
+		}
+		return runStructured(r, c, page, req.Query.Hybrid, r.hybridSearcher.SearchHybrid,
+			func(q *dquery.Hybrid) dquery.Effective { return q.Effective(r.defaultOperator()) })
 	default:
 		return apperr.NewValidation("query must specify one of: match, multi_match, phrase, boolean, hybrid")
 	}
-}
-
-func (r *SearchRouter) handleHybridQuery(c echo.Context, params *dto.HybridParams, options *dquery.BaseOptions) error {
-	if r.hybridSearcher == nil {
-		return notEnabled(dquery.HybridType)
-	}
-
-	domainQuery, err := params.ToDomain()
-	if err != nil {
-		return err
-	}
-
-	ignored, err := r.honour(c, nil)
-	if err != nil {
-		return err
-	}
-
-	searchResult, err := r.hybridSearcher.SearchHybrid(c.Request().Context(), domainQuery, options)
-	if err != nil {
-		slog.Error("Failed to execute hybrid search", "error", err, "query", params.Query)
-		return err
-	}
-
-	return r.buildResponse(c, searchResult, contractReport{
-		effective: domainQuery.Effective(r.defaultOperator()),
-		ignored:   ignored,
-	})
 }
 
 func notEnabled(queryType dquery.Kind) error {
 	return apperr.NewValidation(fmt.Sprintf("%s search is not enabled on this server", queryType))
 }
 
-func (r *SearchRouter) handleMatchQuery(c echo.Context, params *dto.MatchParams, options *dquery.BaseOptions) error {
-	if r.fieldSearcher == nil {
-		return notEnabled(dquery.MatchType)
-	}
-
+// runStructured converts params to its domain query, checks the query against
+// the engine's capabilities when it states params the engine may not honour,
+// runs it and reports the contract it ran under.
+func runStructured[P interface{ ToDomain() (Q, error) }, Q any](
+	r *SearchRouter,
+	c echo.Context,
+	page *dquery.BaseOptions,
+	params P,
+	search func(context.Context, Q, *dquery.BaseOptions) (*storage.SearchResult, error),
+	effective func(Q) dquery.Effective,
+) error {
 	domainQuery, err := params.ToDomain()
 	if err != nil {
 		return err
 	}
 
-	ignored, err := r.honour(c, domainQuery)
-	if err != nil {
-		return err
+	handling := preferredHandling(c)
+	var ignored []dquery.Ignored
+	if stated, ok := any(domainQuery).(paramQuery); ok {
+		if ignored, err = r.honour(stated, handling); err != nil {
+			return err
+		}
 	}
 
-	searchResult, err := r.fieldSearcher.SearchField(c.Request().Context(), domainQuery, options)
+	searchResult, err := search(c.Request().Context(), domainQuery, page)
 	if err != nil {
-		slog.Error("Failed to execute match search", "error", err, "field", params.Field, "query", params.Query)
-		return err
-	}
-
-	return r.buildResponse(c, searchResult, contractReport{
-		effective: domainQuery.Effective(r.defaultOperator()),
-		ignored:   ignored,
-	})
-}
-
-func (r *SearchRouter) handleMultiMatchQuery(c echo.Context, params *dto.MultiMatchParams, options *dquery.BaseOptions) error {
-	if r.multiFieldSearcher == nil {
-		return notEnabled(dquery.MultiMatchType)
-	}
-
-	domainQuery, err := params.ToDomain()
-	if err != nil {
-		return err
-	}
-
-	ignored, err := r.honour(c, domainQuery)
-	if err != nil {
-		return err
-	}
-
-	searchResult, err := r.multiFieldSearcher.SearchFields(c.Request().Context(), domainQuery, options)
-	if err != nil {
-		slog.Error("Failed to execute multi_match search", "error", err, "fields", params.Fields, "query", params.Query)
+		slog.ErrorContext(c.Request().Context(), "Failed to execute structured search", "error", err, "params", params)
 		return err
 	}
 
 	return r.buildResponse(c, searchResult, contractReport{
-		effective: domainQuery.Effective(r.defaultOperator()),
+		effective: effective(domainQuery),
 		ignored:   ignored,
 	})
 }
 
-func (r *SearchRouter) handlePhraseQuery(c echo.Context, params *dto.PhraseParams, options *dquery.BaseOptions) error {
-	if r.phraseSearcher == nil {
-		return notEnabled(dquery.PhraseType)
-	}
-
-	domainQuery, err := params.ToDomain()
-	if err != nil {
-		return err
-	}
-
-	ignored, err := r.honour(c, domainQuery)
-	if err != nil {
-		return err
-	}
-
-	searchResult, err := r.phraseSearcher.SearchPhrase(c.Request().Context(), domainQuery, options)
-	if err != nil {
-		slog.Error("Failed to execute phrase search", "error", err, "fields", params.Fields, "query", params.Query, "slop", params.Slop)
-		return err
-	}
-
-	return r.buildResponse(c, searchResult, contractReport{
-		effective: domainQuery.Effective(),
-		ignored:   ignored,
-	})
-}
-
-func (r *SearchRouter) handleBooleanQuery(c echo.Context, params *dto.BooleanParams, options *dquery.BaseOptions) error {
-	if r.booleanSearcher == nil {
-		return notEnabled(dquery.BooleanType)
-	}
-
-	domainQuery, err := params.ToDomain()
-	if err != nil {
-		return err
-	}
-
-	ignored, err := r.honour(c, nil)
-	if err != nil {
-		return err
-	}
-
-	searchResult, err := r.booleanSearcher.SearchBoolean(c.Request().Context(), domainQuery, options)
-	if err != nil {
-		slog.Error("Failed to execute boolean search", "error", err, "expression", params.Expression)
-		return err
-	}
-
-	return r.buildResponse(c, searchResult, contractReport{
-		effective: domainQuery.Effective(r.defaultOperator()),
-		ignored:   ignored,
-	})
-}
-
-// handleSematicQuery handles semantic query search (GET)
-//
-// This endpoint provides a vector-based semantic search experience using the embedding model.
-// The application automatically determines optimal search strategy based on index configuration.
-// Results are cacheable and URLs are bookmarkable.
-//
 // @Summary Vector-based semantic search
-// @Description Perform vector-based semantic search using the embedding model. Supports pagination via cursor. Application determines optimal search strategy based on index configuration. Results are cacheable and bookmarkable.
+// @Description Vector similarity search over the article embeddings, with the query embedded by the model the corpus was loaded with. Any query parameter not listed here is a 400. Routed only when the backend serves semantic search.
 // @Tags search
-// @Accept json
 // @Produce json
-// @Param q query string true "SearchStringQuery query text" example("climate change")
+// @Param q query string true "Query text" example("climate change")
 // @Param size query int false "Results per page (default: 100, max: 10000)" example(10)
 // @Param cursor query string false "Pagination cursor (base64-encoded from previous response)"
-// @Success 200 {object} dto.SemanticSearchResponse "SearchStringQuery results with pagination metadata"
+// @Success 200 {object} dto.SemanticSearchResponse "Search results with pagination metadata"
 // @Failure 400 {object} map[string]string "Bad request - missing or invalid parameters"
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /v1/articles/semantic_search [get]
-// @Example Request:  GET /v1/articles/semantic_search?q=climate%20change&size=10
-// @Example Response: {"hits": [...], "next_cursor": "eyJ...", "has_more": true}
-func (r *SearchRouter) handleSematicQuery(c echo.Context) error {
-	query := c.QueryParam("q")
-	if query == "" {
-		return apperr.NewValidation("q parameter is required")
+func (r *SearchRouter) semanticSearchHandler(c echo.Context) error {
+	if err := dto.CheckQueryParams(c.QueryParams(), "q", "size", "cursor"); err != nil {
+		return err
 	}
 
-	sizeStr := c.QueryParam("size")
-	size, err := dto.ParsePageSize(sizeStr)
+	params := dto.SemanticParams{Query: c.QueryParam("q")}
+	domainQuery, err := params.ToDomain()
 	if err != nil {
 		return err
 	}
 
-	cursorStr := c.QueryParam("cursor")
-
-	req := dto.SemanticSearchRequest{
-		Query:  query,
-		Size:   size,
-		Cursor: cursorStr,
-	}
-
-	var cursor *dquery.Cursor
-	if req.Cursor != "" {
-		var err error
-		cursor, err = dquery.DecodeCursor(req.Cursor)
-		if err != nil {
-			return apperr.NewValidation("invalid cursor parameter")
-		}
-	}
-
-	options := &dquery.BaseOptions{
-		Cursor: cursor,
-		Size:   size,
-	}
-
-	domainQuery, err := req.ToDomain()
+	page, err := parsePage(c.QueryParam("size"), c.QueryParam("cursor"))
 	if err != nil {
 		return err
 	}
 
-	searchResult, err := r.semanticSearcher.SearchSemantic(c.Request().Context(), domainQuery, options)
+	searchResult, err := r.semanticSearcher.SearchSemantic(c.Request().Context(), domainQuery, page)
 	if err != nil {
-		slog.Error("Failed to execute semantic search", "error", err, "query", req.Query)
+		slog.ErrorContext(c.Request().Context(), "Failed to execute semantic search", "error", err, "query", params.Query)
 		return err
 	}
 
-	var nextCursorStr *string
-	if searchResult.NextCursor != nil {
-		encoded, err := dquery.EncodeCursor(searchResult.NextCursor.Score, searchResult.NextCursor.ID)
-		if err != nil {
-			slog.Error("Failed to encode cursor", "error", err)
-			return fmt.Errorf("failed to encode cursor: %w", err)
-		}
-		nextCursorStr = &encoded
+	nextCursor, err := encodeCursor(searchResult.NextCursor)
+	if err != nil {
+		return err
 	}
 
 	hits := searchResult.Hits
@@ -530,13 +350,11 @@ func (r *SearchRouter) handleSematicQuery(c echo.Context) error {
 		hits = []dto.Article{}
 	}
 
-	apiResponse := dto.SemanticSearchResponse{
+	return c.JSON(http.StatusOK, dto.SemanticSearchResponse{
 		Hits:       hits,
-		NextCursor: nextCursorStr,
+		NextCursor: nextCursor,
 		HasMore:    searchResult.HasMore,
-	}
-
-	return c.JSON(http.StatusOK, apiResponse)
+	})
 }
 
 func (r *SearchRouter) defaultOperator() operator.Operator {
@@ -550,14 +368,9 @@ type contractReport struct {
 }
 
 func (r *SearchRouter) buildResponse(c echo.Context, searchResult *storage.SearchResult, report contractReport) error {
-	var nextCursorStr *string
-	if searchResult.NextCursor != nil {
-		encoded, err := dquery.EncodeCursor(searchResult.NextCursor.Score, searchResult.NextCursor.ID)
-		if err != nil {
-			slog.Error("Failed to encode cursor", "error", err)
-			return fmt.Errorf("failed to encode cursor: %w", err)
-		}
-		nextCursorStr = &encoded
+	nextCursor, err := encodeCursor(searchResult.NextCursor)
+	if err != nil {
+		return err
 	}
 
 	hits := searchResult.Hits
@@ -570,16 +383,14 @@ func (r *SearchRouter) buildResponse(c echo.Context, searchResult *storage.Searc
 		ignored = []dquery.Ignored{}
 	}
 
-	apiResponse := dto.SearchResponse{
+	return c.JSON(http.StatusOK, dto.SearchResponse{
 		Hits:         hits,
-		NextCursor:   nextCursorStr,
+		NextCursor:   nextCursor,
 		HasMore:      searchResult.HasMore,
 		MaxScore:     searchResult.MaxScore,
 		PageMaxScore: searchResult.PageMaxScore,
 		TotalMatches: searchResult.TotalMatches,
 		Effective:    report.effective,
 		Ignored:      ignored,
-	}
-
-	return c.JSON(http.StatusOK, apiResponse)
+	})
 }

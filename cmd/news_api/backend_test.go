@@ -254,7 +254,7 @@ func TestServer_SearchPastRequestDeadlineReleasesItsConnection(t *testing.T) {
 		t.Fatalf("server.New: %v", err)
 	}
 	s.SetupMiddlewares().SetupErrorHandler().SetupHealthChecks("/health")
-	router.NewSearchRouter(s.Echo, backend.fts).Bind()
+	router.NewSearchRouter(s.Echo, router.Searchers{FullText: backend.fts}).Bind()
 
 	locker, err := pgx.Connect(ctx, container.ConnString)
 	if err != nil {

@@ -59,19 +59,12 @@ func main() {
 		return c.String(200, "Sengi API is running")
 	})
 
-	var routerOpts []router.SearchRouterOption
-	if backend.semantic != nil {
-		routerOpts = append(routerOpts, router.WithSemanticSearcher(backend.semantic))
-		slog.Info("Semantic search enabled")
-	} else {
-		slog.Info("Semantic search disabled")
-	}
-	if backend.hybrid != nil {
-		routerOpts = append(routerOpts, router.WithHybridSearcher(backend.hybrid))
-		slog.Info("Hybrid search enabled")
-	}
-
-	router.NewSearchRouter(s.Echo, backend.fts, routerOpts...).Bind()
+	slog.Info("Search paradigms beyond full text", "semantic", backend.semantic != nil, "hybrid", backend.hybrid != nil)
+	router.NewSearchRouter(s.Echo, router.Searchers{
+		FullText: backend.fts,
+		Semantic: backend.semantic,
+		Hybrid:   backend.hybrid,
+	}).Bind()
 
 	err = s.Start()
 	backend.close()

@@ -42,7 +42,7 @@ func TestToDomain_BoundsQueryLength(t *testing.T) {
 			return err
 		},
 		"semantic": func(text string) error {
-			_, err := (&SemanticSearchRequest{Query: text}).ToDomain()
+			_, err := (&SemanticParams{Query: text}).ToDomain()
 			return err
 		},
 		"query_string": func(text string) error {

@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/tadjov/sengi/internal/apperr"
 )
@@ -31,19 +32,17 @@ func DecodeSearchRequest(body io.Reader) (*SearchRequest, error) {
 	return &req, nil
 }
 
-var searchBoxParams = []string{"q", "query", "size", "cursor", "lang"}
-
-// CheckSearchBoxParams rejects a query parameter the search box does not take,
-// so a stated one is never silently dropped.
-func CheckSearchBoxParams(params url.Values) error {
+// CheckQueryParams rejects a query parameter outside allowed, so a stated one
+// is never silently dropped.
+func CheckQueryParams(params url.Values, allowed ...string) error {
 	names := make([]string, 0, len(params))
 	for name := range params {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		if !slices.Contains(searchBoxParams, name) {
-			return apperr.NewValidation(fmt.Sprintf("unsupported query parameter %q (the search box takes q, size, cursor and lang)", name))
+		if !slices.Contains(allowed, name) {
+			return apperr.NewValidation(fmt.Sprintf("unsupported query parameter %q (this endpoint takes %s)", name, strings.Join(allowed, ", ")))
 		}
 	}
 	return nil

@@ -56,7 +56,7 @@ func newPostgresSearchServer(t *testing.T) *server.Server {
 		t.Fatalf("server.New: %v", err)
 	}
 	s.SetupValidator().SetupErrorHandler()
-	router.NewSearchRouter(s.Echo, backend.fts).Bind()
+	router.NewSearchRouter(s.Echo, router.Searchers{FullText: backend.fts}).Bind()
 	return s
 }
 

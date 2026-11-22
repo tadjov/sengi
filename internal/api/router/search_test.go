@@ -297,3 +297,38 @@ func TestSearchHandlerValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestSemanticSearchHandlerValidation(t *testing.T) {
+	tests := []struct {
+		name      string
+		target    string
+		wantCode  int
+		wantError string
+	}{
+		{name: "query only", target: "/v1/articles/semantic_search?q=climate", wantCode: http.StatusOK},
+		{name: "query with size", target: "/v1/articles/semantic_search?q=climate&size=5", wantCode: http.StatusOK},
+		{name: "missing query", target: "/v1/articles/semantic_search", wantCode: http.StatusBadRequest},
+		{name: "language is not a semantic parameter", target: "/v1/articles/semantic_search?q=climate&lang=eng", wantCode: http.StatusBadRequest, wantError: `"lang"`},
+		{name: "unknown parameter", target: "/v1/articles/semantic_search?q=climate&threshold=0.5", wantCode: http.StatusBadRequest, wantError: `"threshold"`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := echo.New()
+			e.HTTPErrorHandler = apperr.GlobalErrorHandler()
+			NewSearchRouter(e, Searchers{FullText: stubFtsSearcher{caps: elasticsearchCaps}, Semantic: stubSemanticSearcher{}}).Bind()
+
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.target, nil))
+
+			if rec.Code != tt.wantCode {
+				t.Fatalf("status = %d, want %d (body: %s)", rec.Code, tt.wantCode, rec.Body.String())
+			}
+			var body map[string]string
+			_ = json.Unmarshal(rec.Body.Bytes(), &body)
+			if !strings.Contains(body["error"], tt.wantError) {
+				t.Errorf("error = %q, want it to name %s", body["error"], tt.wantError)
+			}
+		})
+	}
+}

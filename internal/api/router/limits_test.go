@@ -51,7 +51,7 @@ func TestSearchHandlers_RejectOutOfBoundsRequests(t *testing.T) {
 			e := echo.New()
 			(&apiserver.Server{Echo: e}).SetupValidator()
 			e.HTTPErrorHandler = apperr.GlobalErrorHandler()
-			NewSearchRouter(e, stubFtsSearcher{caps: elasticsearchCaps}, WithSemanticSearcher(stubSemanticSearcher{})).Bind()
+			NewSearchRouter(e, Searchers{FullText: stubFtsSearcher{caps: elasticsearchCaps}, Semantic: stubSemanticSearcher{}}).Bind()
 
 			rec := httptest.NewRecorder()
 			e.ServeHTTP(rec, tt.req)

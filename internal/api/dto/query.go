@@ -8,46 +8,13 @@ import (
 	"github.com/tadjov/sengi/internal/types/query"
 )
 
-// SearchRequest represents the base search request with unified structure
-// All search queries follow the pattern: {"size": N, "cursor": "...", "query": {"query_type": {...}}}
-//
-// Example Match:
-//
-//	{
-//	  "size": 10,
-//	  "cursor": "base64...",
-//	  "query": {
-//	    "match": {
-//	      "field": "title",
-//	      "query": "climate change",
-//	      "operator": "and",
-//	      "fuzziness": "AUTO",
-//	      "language": "eng"
-//	    }
-//	  }
-//	}
-//
-// Example MultiMatch:
-//
-//	{
-//	  "size": 10,
-//	  "query": {
-//	    "multi_match": {
-//	      "query": "climate change",
-//	      "fields": ["title^3", "description^2", "content"],
-//	      "operator": "or",
-//	      "language": "eng"
-//	    }
-//	  }
-//	}
+// SearchRequest wraps exactly one query type: {"size": N, "cursor": "...", "query": {"<type>": {...}}}.
 type SearchRequest struct {
 	Size   int          `json:"size,omitempty" validate:"omitempty,min=1"`
 	Cursor string       `json:"cursor,omitempty"`
 	Query  QueryWrapper `json:"query"`
 }
 
-// SearchResponse represents the API response for full-text search
-// This is a concrete type for Swagger documentation (swag doesn't support generics yet)
 type SearchResponse struct {
 	NextCursor   *string               `json:"next_cursor,omitempty"`
 	HasMore      bool                  `json:"has_more"`
@@ -79,8 +46,7 @@ type QueryTypes struct {
 	Hybrid      bool `json:"hybrid"`
 }
 
-// QueryWrapper wraps the actual query type
-// Only one query field should be non-nil
+// QueryWrapper holds exactly one query type; decoding rejects none or several.
 type QueryWrapper struct {
 	Match      *MatchParams      `json:"match,omitempty"`
 	MultiMatch *MultiMatchParams `json:"multi_match,omitempty"`
@@ -89,7 +55,6 @@ type QueryWrapper struct {
 	Hybrid     *HybridParams     `json:"hybrid,omitempty"`
 }
 
-// MatchParams represents match query parameters (maps directly to types)
 type MatchParams struct {
 	Query     string `json:"query" validate:"required,min=1"`
 	Field     string `json:"field" validate:"required"`
@@ -98,7 +63,6 @@ type MatchParams struct {
 	Language  string `json:"language,omitempty"`
 }
 
-// MultiMatchParams represents multi_match query parameters (maps directly to types)
 type MultiMatchParams struct {
 	Query string `json:"query" validate:"required,min=1"`
 	// Fields name the fields to match, each optionally boosted as "title^3".
@@ -107,15 +71,6 @@ type MultiMatchParams struct {
 	Language string   `json:"language,omitempty"`
 }
 
-// PhraseParams represents phrase query parameters (maps directly to types)
-// Example:
-//
-//	{
-//	  "query": "climate change",
-//	  "fields": ["title", "description"],
-//	  "slop": 2,
-//	  "language": "eng"
-//	}
 type PhraseParams struct {
 	Query    string   `json:"query" validate:"required,min=1"`
 	Fields   []string `json:"fields" validate:"required,min=1"`
@@ -154,9 +109,6 @@ func (p *HybridParams) ToDomain() (*query.Hybrid, error) {
 	if err := checkQueryLength("query", p.Query); err != nil {
 		return nil, err
 	}
-	if p.Query == "" {
-		return nil, apperr.NewValidation("query is required")
-	}
 
 	var opts []query.HybridOption
 
@@ -176,12 +128,6 @@ func (p *HybridParams) ToDomain() (*query.Hybrid, error) {
 func (p *MatchParams) ToDomain() (*query.Match, error) {
 	if err := checkQueryLength("query", p.Query); err != nil {
 		return nil, err
-	}
-	if p.Query == "" {
-		return nil, apperr.NewValidation("query is required")
-	}
-	if p.Field == "" {
-		return nil, apperr.NewValidation("field is required")
 	}
 	field, err := parseField(p.Field)
 	if err != nil {
@@ -254,9 +200,6 @@ func (p *BooleanParams) ToDomain() (*query.Boolean, error) {
 	if err := checkQueryLength("expression", p.Expression); err != nil {
 		return nil, err
 	}
-	if p.Expression == "" {
-		return nil, apperr.NewValidation("expression is required")
-	}
 
 	b := &query.Boolean{
 		Expression: p.Expression,
@@ -274,12 +217,6 @@ func (p *BooleanParams) ToDomain() (*query.Boolean, error) {
 func (p *PhraseParams) ToDomain() (*query.Phrase, error) {
 	if err := checkQueryLength("query", p.Query); err != nil {
 		return nil, err
-	}
-	if p.Query == "" {
-		return nil, apperr.NewValidation("query is required")
-	}
-	if len(p.Fields) == 0 {
-		return nil, apperr.NewValidation("fields are required (at least one field)")
 	}
 	fields, err := parseFields(p.Fields)
 	if err != nil {
@@ -306,7 +243,6 @@ func (p *PhraseParams) ToDomain() (*query.Phrase, error) {
 	return newQuery, nil
 }
 
-// GetQueryType returns the type of query in the wrapper
 func (q *QueryWrapper) GetQueryType() query.Kind {
 	if q.Match != nil {
 		return query.MatchType
@@ -326,10 +262,9 @@ func (q *QueryWrapper) GetQueryType() query.Kind {
 	return ""
 }
 
-type SemanticSearchRequest struct {
-	Query  string `json:"query"`
-	Size   int    `json:"size,omitempty"`
-	Cursor string `json:"cursor,omitempty"`
+// SemanticParams are the parameters of the GET semantic search.
+type SemanticParams struct {
+	Query string
 }
 
 type SemanticSearchResponse struct {
@@ -338,18 +273,17 @@ type SemanticSearchResponse struct {
 	Hits       []Article `json:"hits"`
 }
 
-func (p *SemanticSearchRequest) ToDomain() (*query.Semantic, error) {
-	if err := checkQueryLength("query", p.Query); err != nil {
+func (p *SemanticParams) ToDomain() (*query.Semantic, error) {
+	if err := checkQueryLength("q", p.Query); err != nil {
 		return nil, err
 	}
 	if p.Query == "" {
-		return nil, apperr.NewValidation("query is required")
+		return nil, apperr.NewValidation("q parameter is required")
 	}
 
 	return query.NewSemantic(p.Query), nil
 }
 
-// UnmarshalJSON implements custom JSON unmarshaling with validation
 func (q *QueryWrapper) UnmarshalJSON(data []byte) error {
 	type Alias QueryWrapper
 	aux := &struct {
@@ -365,7 +299,6 @@ func (q *QueryWrapper) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// Validate that exactly one query type is provided
 	count := 0
 	if q.Match != nil {
 		count++
