@@ -125,37 +125,24 @@ func (r *Runner) runQueries(ctx context.Context, jr *JobResult, req JobRequest) 
 		jr.Results[queries[i].ID] = make(map[string]QueryResult)
 	}
 
-	// querySem controls how many queries execute concurrently.
-	// QueryParallelismSerial (1) = one at a time → clean latency numbers.
-	// QueryParallelismUnlimited (0) → all queries in parallel → faster pool/validate.
-	qp := r.config.QueryParallelism
-	if qp <= 0 {
-		qp = len(queries)
+	// inFlight bounds the executions of every query together; nil measures.
+	var inFlight chan struct{}
+	if r.config.concurrent() {
+		inFlight = make(chan struct{}, r.config.Concurrency)
 	}
-	querySem := make(chan struct{}, qp)
-
-	// engineSem is shared across all query goroutines — it bounds total
-	// concurrent engine calls globally, not just per query.
-	ep := r.config.EngineParallelism
-	if ep <= 0 {
-		ep = len(jr.EngineNames)
-	}
-	engineSem := make(chan struct{}, ep)
-
 	counter := progress.Or(r.config.Progress)
 	runQuery := func(q *suite.Query) {
 		if ctx.Err() != nil {
 			return
 		}
 		cells := r.prepareCells(ctx, req, jr.EngineNames, q)
-		r.measureQuery(ctx, queryCells{query: q, cells: cells}, engineSem)
+		r.measureQuery(ctx, queryCells{query: q, cells: cells}, inFlight)
 		for _, c := range cells {
 			jr.Results[q.ID][c.engine] = r.queryResult(q, c)
 		}
 		counter.Add(1)
 	}
-	// Goroutines would take queries in scheduler order, not suite order.
-	if qp == QueryParallelismSerial {
+	if !r.config.concurrent() {
 		for i := range queries {
 			runQuery(&queries[i])
 		}
@@ -163,13 +150,7 @@ func (r *Runner) runQueries(ctx context.Context, jr *JobResult, req JobRequest) 
 	}
 	var wg sync.WaitGroup
 	for i := range queries {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			querySem <- struct{}{}
-			defer func() { <-querySem }()
-			runQuery(&queries[i])
-		}()
+		wg.Go(func() { runQuery(&queries[i]) })
 	}
 	wg.Wait()
 }

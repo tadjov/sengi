@@ -19,11 +19,16 @@ import (
 	"github.com/tadjov/sengi/internal/storage"
 )
 
+// defaultPoolConcurrency matches bench judge: pooling only collects rankings,
+// so it need not run one execution at a time.
+const defaultPoolConcurrency = 4
+
 type poolFlags struct {
 	specPath     string
 	output       string
 	depth        int
 	allowPartial bool
+	concurrency  int
 }
 
 func newPoolCmd() *cobra.Command {
@@ -53,6 +58,7 @@ meta.dropped_executions.`,
 	cmd.Flags().StringVar(&f.specPath, "spec", "", "Override spec.yaml path")
 	cmd.Flags().IntVar(&f.depth, "depth", 0, "Top-K per engine (0 = spec.defaults.pool_depth or 100)")
 	cmd.Flags().StringVar(&f.output, "output", "", "Override pool output path")
+	cmd.Flags().IntVar(&f.concurrency, "concurrency", defaultPoolConcurrency, "Executions in flight at once, across all queries and engines")
 	cmd.Flags().BoolVar(&f.allowPartial, "allow-partial", false,
 		"Write the pool even when some (query, engine) executions failed, recording them in meta.dropped_executions")
 	return cmd
@@ -68,6 +74,9 @@ func executePool(cmd *cobra.Command, f poolFlags, args []string) error {
 }
 
 func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
+	if f.concurrency < 1 {
+		return fmt.Errorf("--concurrency must be at least 1, got %d", f.concurrency)
+	}
 	bs, err := spec.LoadFromFile(tr.Spec)
 	if err != nil {
 		return fmt.Errorf("load spec: %w", err)
@@ -82,9 +91,9 @@ func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
 	}
 
 	runCfg := runner.Config{
-		KValues:          []int{depth},
-		Runs:             1,
-		QueryParallelism: runner.QueryParallelismUnlimited,
+		KValues:     []int{depth},
+		Runs:        1,
+		Concurrency: f.concurrency,
 	}
 
 	printSpecWarnings(cmd.OutOrStdout(), bs)

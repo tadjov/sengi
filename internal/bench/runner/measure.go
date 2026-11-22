@@ -74,10 +74,11 @@ func (r *Runner) prepareCells(ctx context.Context, req JobRequest, engines []str
 	return cells
 }
 
-// measureQuery interleaves engines that run one at a time and gives the rest a goroutine each.
-func (r *Runner) measureQuery(ctx context.Context, q queryCells, engineSem chan struct{}) {
-	if r.config.EngineParallelism == EngineParallelismSerial {
-		r.measureInterleaved(ctx, q, engineSem)
+// measureQuery measures the engines one at a time, or collects their
+// rankings with at most cap(inFlight) executions running across all queries.
+func (r *Runner) measureQuery(ctx context.Context, q queryCells, inFlight chan struct{}) {
+	if inFlight == nil {
+		r.measureInterleaved(ctx, q)
 		return
 	}
 	var wg sync.WaitGroup
@@ -85,19 +86,17 @@ func (r *Runner) measureQuery(ctx context.Context, q queryCells, engineSem chan 
 		if c.unsent != nil {
 			continue
 		}
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			engineSem <- struct{}{}
-			defer func() { <-engineSem }()
+		wg.Go(func() {
+			inFlight <- struct{}{}
+			defer func() { <-inFlight }()
 			c.measured = r.measure(ctx, c.measurement)
-		}()
+		})
 	}
 	wg.Wait()
 }
 
 // measureInterleaved runs each iteration across all engines in a seeded order, so host noise spreads over them.
-func (r *Runner) measureInterleaved(ctx context.Context, q queryCells, engineSem chan struct{}) {
+func (r *Runner) measureInterleaved(ctx context.Context, q queryCells) {
 	var sendable []*cell
 	for _, c := range q.cells {
 		if c.unsent == nil {
@@ -106,7 +105,7 @@ func (r *Runner) measureInterleaved(ctx context.Context, q queryCells, engineSem
 	}
 	for warmup := 1; warmup <= r.config.WarmupRuns; warmup++ {
 		for _, c := range engineOrder(sendable, orderStep{seed: r.config.Seed, queryID: q.query.ID, phase: warmupPhase, number: warmup}) {
-			if _, err := c.measurement.executeAlone(ctx, engineSem); err != nil {
+			if _, err := c.measurement.execute(ctx); err != nil {
 				slog.Warn("warmup failed", "query", q.query.ID, "engine", c.engine, "iteration", warmup, "error", err)
 			}
 		}
@@ -120,7 +119,7 @@ func (r *Runner) measureInterleaved(ctx context.Context, q queryCells, engineSem
 			if logs[c].err != nil {
 				continue
 			}
-			exec, err := c.measurement.executeAlone(ctx, engineSem)
+			exec, err := c.measurement.execute(ctx)
 			logs[c].record(iteration, exec, err)
 		}
 	}
@@ -283,13 +282,6 @@ func cutRanking(ranked []uuid.UUID, depth int) []uuid.UUID {
 		return ranked[:depth]
 	}
 	return ranked
-}
-
-// executeAlone holds the engine semaphore, so nothing else runs while it is measured.
-func (m measurement) executeAlone(ctx context.Context, engineSem chan struct{}) (*engine.Execution, error) {
-	engineSem <- struct{}{}
-	defer func() { <-engineSem }()
-	return m.execute(ctx)
 }
 
 // execute runs once under the query deadline, which the runner owns so that no

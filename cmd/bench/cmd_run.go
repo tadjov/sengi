@@ -106,7 +106,7 @@ func executeRun(cmd *cobra.Command, f runFlags, args []string) error {
 }
 
 // newRunConfig resolves the measurement knobs for a run: an explicit flag beats
-// the spec default, and both parallelism axes stay serial.
+// the spec default, and executions run one at a time.
 func newRunConfig(f runFlags, bs *spec.BenchSpec, ks []int, kFromFlag bool) runner.Config {
 	cfg := runner.Config{
 		KValues:            ks,
@@ -114,8 +114,7 @@ func newRunConfig(f runFlags, bs *spec.BenchSpec, ks []int, kFromFlag bool) runn
 		WarmupRuns:         firstNonZero(f.warmup, bs.Runs.Warmup),
 		Runs:               firstNonZero(f.iters, bs.Runs.Iterations),
 		Seed:               rand.Uint64(),
-		QueryParallelism:   runner.QueryParallelismSerial,
-		EngineParallelism:  runner.EngineParallelismSerial,
+		Concurrency:        1,
 	}
 	if len(bs.Metrics.KValues) > 0 && !kFromFlag {
 		cfg.KValues = bs.Metrics.KValues

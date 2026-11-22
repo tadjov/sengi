@@ -60,16 +60,16 @@ func twoJobTrack(t *testing.T, firstQueries, secondQueries int) *spec.BenchSpec 
 func TestRunAll_CountsEveryJobsQueriesAgainstTheirTotal(t *testing.T) {
 	tests := []struct {
 		name        string
-		parallelism int
+		concurrency int
 	}{
-		{"serial", QueryParallelismSerial},
-		{"all queries at once", QueryParallelismUnlimited},
+		{"one execution at a time", 1},
+		{"several at once", 8},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			counter := &progresstest.Recorder{}
 			cfg := DefaultConfig()
-			cfg.QueryParallelism = tt.parallelism
+			cfg.Concurrency = tt.concurrency
 			cfg.Progress = counter
 
 			_, err := New(cfg).RunAll(context.Background(), twoJobTrack(t, 2, 3), map[string]engine.Executor{

@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/sengi/internal/bench/runner"
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
 )
@@ -28,14 +27,11 @@ func TestLoadRunJudgments_NoneConfiguredNeedsLatencyOnly(t *testing.T) {
 	assert.Nil(t, judgments.Grades)
 }
 
-func TestNewRunConfig_MeasuresOneQueryAndOneEngineAtATime(t *testing.T) {
+func TestNewRunConfig_MeasuresOneExecutionAtATime(t *testing.T) {
 	cfg := newRunConfig(runFlags{}, &spec.BenchSpec{}, []int{10}, false)
 
-	assert.Equal(t, runner.QueryParallelismSerial, cfg.QueryParallelism,
-		"overlapping queries contend for the same engine")
-	assert.Equal(t, runner.EngineParallelismSerial, cfg.EngineParallelism,
-		"a zero here makes the runner fan out to every engine in the job, "+
-			"so one engine's warmup overlaps another's measured iterations")
+	assert.Equal(t, 1, cfg.Concurrency,
+		"overlapping executions contend for the host, so one engine's warmup lands in another's measured iterations")
 }
 
 func TestNewRunConfig_FlagBeatsSpecDefault(t *testing.T) {

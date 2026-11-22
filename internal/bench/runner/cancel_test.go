@@ -52,7 +52,6 @@ queries:
 	cfg := DefaultConfig()
 	cfg.WarmupRuns = 0
 	cfg.Runs = 1
-	cfg.QueryParallelism = QueryParallelismSerial
 	result, err := New(cfg).RunAll(ctx, bs, map[string]engine.Executor{"pg": pg})
 
 	require.ErrorIs(t, err, context.Canceled)

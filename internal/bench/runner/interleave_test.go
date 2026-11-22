@@ -80,7 +80,6 @@ func (e *loggingExecutor) Close() error { return nil }
 
 func benchRunConfig(seed uint64, warmup, iterations int) Config {
 	cfg := DefaultConfig()
-	cfg.EngineParallelism = EngineParallelismSerial
 	cfg.Seed = seed
 	cfg.WarmupRuns = warmup
 	cfg.Runs = iterations

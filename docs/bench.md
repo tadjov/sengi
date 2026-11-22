@@ -538,9 +538,9 @@ Dry-runs every query through every engine using the engine's native validation e
 
 For `semantic`/`hybrid` kinds it first requires an embedder (fails fast if `EMBEDDING_BASE_URL` is unset) and embeds each query for real, so dimension mismatches surface here. It also warns when the declared `kind` and the queries' use of `query_vector` disagree.
 
-### `bench pool [<name>] [--depth N]`
+### `bench pool [<name>] [--depth N] [--concurrency N]`
 
-Runs all queries in parallel, gathers the top-N results per engine, deduplicates by doc ID, and writes `trec/pool.yaml`. Default depth is from `spec.defaults.pool_depth`.
+Runs every query once per engine, `--concurrency` executions at a time (default 4), gathers the top-N results per engine, deduplicates by doc ID, and writes `trec/pool.yaml`. Default depth is from `spec.defaults.pool_depth`.
 
 Each pool entry records, under `request_digests`, a sha256 per engine of the request that engine was sent: the statement or body, its args, its params (the query vector included) and a stored template's source. The stored template's id is left out. Warmup, iterations, timeout and K are not part of a request, so changing them needs no re-pool.
 
@@ -629,7 +629,7 @@ runs:
   query_timeout: 30s
 ```
 
-`bench pool` runs a job's queries all at once, at most as many executions at a time as the job has engines, and they may all land on one postgres engine. Waiting for a pool connection counts against the deadline, so a postgres engine queues there only when the job has more engines than its `pool_max_conns` (pgx default: 4 or the CPU count, whichever is larger); otherwise a pool timeout means the query itself ran past `query_timeout`.
+`bench pool` keeps at most `--concurrency` executions in flight (default 4) across a job's queries and engines, and they may all land on one postgres engine. Waiting for a pool connection counts against the deadline, so a postgres engine queues there only when `--concurrency` exceeds its `pool_max_conns` (pgx default: 4 or the CPU count, whichever is larger); otherwise a pool timeout means the query itself ran past `query_timeout`.
 
 The clock covers sending the query and receiving the whole result. For postgres that means reading every row; for elasticsearch and the API it means reading the full response body. Decoding the result into document ids happens after the clock stops, on every engine.
 

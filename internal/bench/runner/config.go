@@ -13,15 +13,6 @@ const (
 	DefaultRelevanceThreshold = 1
 	DefaultWarmupRuns         = 1
 	DefaultRuns               = 3
-	DefaultEngineParallelism  = 4
-
-	// Serial keeps a measured run's latency free of contention from other
-	// queries or engines on the same host; unlimited is for pooling, where only
-	// the returned doc IDs matter.
-	QueryParallelismSerial     = 1
-	QueryParallelismUnlimited  = 0
-	EngineParallelismSerial    = 1
-	EngineParallelismUnlimited = 0
 )
 
 type Config struct {
@@ -33,10 +24,13 @@ type Config struct {
 	Seed uint64
 	// RankingDepth cuts every ranking before it is scored or stored, so scores
 	// count only docs a pool that deep could have judged. Zero keeps it whole.
-	RankingDepth     int
-	QueryParallelism int
-	// EngineParallelism bounds concurrent engine calls within one query.
-	EngineParallelism int
+	RankingDepth int
+	// Concurrency is how many executions are in flight at once. 1, the
+	// default, measures: queries run in suite order and each iteration visits
+	// the engines one at a time in a seeded order, so nothing else loads the
+	// host while a latency is taken. Above 1 only collects rankings, as pooling
+	// does.
+	Concurrency int
 	// Judgments[queryID][docID] is the grade; nil scores nothing.
 	Judgments map[string]map[string]int
 	// VectorStore supplies the vector of a query that takes one; nil for lexical tracks.
@@ -51,8 +45,7 @@ func DefaultConfig() Config {
 		RelevanceThreshold: DefaultRelevanceThreshold,
 		WarmupRuns:         DefaultWarmupRuns,
 		Runs:               DefaultRuns,
-		QueryParallelism:   QueryParallelismSerial,
-		EngineParallelism:  DefaultEngineParallelism,
+		Concurrency:        1,
 	}
 }
 
@@ -60,8 +53,15 @@ func (c Config) validate() error {
 	if c.Runs < 1 {
 		return fmt.Errorf("measured iterations must be at least 1, got %d", c.Runs)
 	}
+	if c.Concurrency < 0 {
+		return fmt.Errorf("concurrency must not be negative, got %d", c.Concurrency)
+	}
 	if c.WarmupRuns < 0 {
 		return fmt.Errorf("warmup iterations must not be negative, got %d", c.WarmupRuns)
 	}
 	return nil
+}
+
+func (c Config) concurrent() bool {
+	return c.Concurrency > 1
 }
