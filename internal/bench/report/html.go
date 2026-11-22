@@ -8,9 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 )
 
 //go:embed report.gohtml
@@ -34,7 +32,7 @@ func WriteHTML(r *Report, path string) error {
 // RenderHTML returns the fully rendered HTML bytes for a report.
 func RenderHTML(r *Report) ([]byte, error) {
 	vm := buildViewModel(r)
-	tmpl, err := template.New("report").Funcs(htmlFuncs()).Parse(htmlTemplate)
+	tmpl, err := template.New("report").Parse(htmlTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("parse html template: %w", err)
 	}
@@ -44,8 +42,6 @@ func RenderHTML(r *Report) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
-
-// ─── view model ─────────────────────────────────────────────────────────────
 
 type htmlReport struct {
 	NDCGGain       string
@@ -70,102 +66,30 @@ type htmlLegendItem struct {
 
 type htmlJob struct {
 	Name         string
-	Aggregated   []htmlAggRow
-	Latency      []htmlLatRow
-	ServerTime   []htmlServerTimeRow
-	Significance []htmlSigRow
-	PerQuery     []htmlQueryRow
+	Metrics      htmlTable
+	Latency      htmlTable
+	ServerTime   htmlTable
+	Significance htmlTable
+	PerQuery     htmlTable
 	NDCGChart    template.HTML
 	LatencyChart template.HTML
 	EngineLegend []htmlLegendItem
-	KValues      []int
-	CoverageK    int
-	FilterID     string // unique ID for per-query filter input
 }
 
-type htmlAggRow struct {
-	Engine     string
-	NDCG       []htmlCell
-	NDCGLinear []string
-	MAP        htmlCell
-	MRR        htmlCell
-	Bpref      htmlCell
-	Coverage   string
-	Judged     string
-	Errors     string
+type htmlTable struct {
+	// ID is set on the table the per-query filter input targets.
+	ID       string
+	Sortable bool
+	Columns  []string
+	Rows     [][]htmlCell
 }
 
+// htmlCell styles its text with Class on the cell or SpanClass on a span inside it.
 type htmlCell struct {
-	Val    string
-	Stddev string
-}
-
-type htmlLatRow struct {
-	Engine                                          string
-	Min, P50, P75, P90, P95, P99, Max, Mean, Stddev string
-	Samples                                         int
-	ExcludedQueries                                 int
-}
-
-type htmlServerTimeRow struct {
-	Engine              string
-	P50, P95, P99, Mean string
-	Samples             int
-}
-
-type htmlSigRow struct {
-	EngineA, EngineB, Metric string
-	MeanDifference           string
-	W, P, AdjustedP          string
-	Stars                    string
-	NS                       bool
-	Untestable               bool
-}
-
-type htmlQueryRow struct {
-	Query, Engine, NDCG, Precision, AP, RR, Bpref string
-	ReturnedCount                                 int
-	CorpusMatches                                 string
-	P50, P95                                      string
-	Status                                        string
-	IsErr                                         bool
-}
-
-// htmlQualityCells reads N/A for an engine with no judged query, which has no
-// scores to average.
-func htmlQualityCells(agg AggregatedEntry, kVals []int) htmlAggRow {
-	var row htmlAggRow
-	if agg.JudgedCount == 0 {
-		notApplicable := htmlCell{Val: "N/A"}
-		for range kVals {
-			row.NDCG = append(row.NDCG, notApplicable)
-			row.NDCGLinear = append(row.NDCGLinear, notApplicable.Val)
-		}
-		row.MAP, row.MRR, row.Bpref, row.Coverage = notApplicable, notApplicable, notApplicable, notApplicable.Val
-		return row
-	}
-	for _, k := range kVals {
-		c := htmlCell{Val: fmt.Sprintf("%.4f", agg.NDCG[k])}
-		if sd := agg.NDCGStddev[k]; sd > 0 {
-			c.Stddev = fmt.Sprintf("%.4f", sd)
-		}
-		row.NDCG = append(row.NDCG, c)
-	}
-	for _, k := range kVals {
-		row.NDCGLinear = append(row.NDCGLinear, fmt.Sprintf("%.4f", agg.NDCGLinear[k]))
-	}
-	row.MAP = htmlCell{Val: fmt.Sprintf("%.4f", agg.MAP)}
-	row.MRR = htmlCell{Val: fmt.Sprintf("%.4f", agg.MRR)}
-	row.Bpref = htmlCell{Val: fmt.Sprintf("%.4f", agg.MBpref)}
-	row.Coverage = fmtRecorded(agg.JudgedCoverage)
-	return row
-}
-
-func htmlCorpusMatches(v *int64) string {
-	if v == nil {
-		return "—"
-	}
-	return strconv.FormatInt(*v, 10)
+	Text      string
+	Class     string
+	SpanClass string
+	Spread    string
 }
 
 func buildViewModel(r *Report) htmlReport {
@@ -191,94 +115,82 @@ func buildViewModel(r *Report) htmlReport {
 		}
 	}
 
-	kVals := r.Config.KValues
-
-	for ji, jr := range r.Jobs {
+	for i, view := range jobViews(r) {
+		aggregated := r.Jobs[i].Aggregated
 		job := htmlJob{
-			Name:      jr.JobName,
-			KValues:   kVals,
-			CoverageK: largestK(kVals),
-			FilterID:  fmt.Sprintf("pq-filter-%d", ji),
+			Name:         view.Name,
+			Metrics:      htmlMetricsTable(view.Metrics),
+			Latency:      newHTMLTable(view.Latency),
+			ServerTime:   newHTMLTable(view.ServerTime),
+			Significance: newHTMLTable(view.Significance),
+			PerQuery:     newHTMLTable(view.PerQuery),
+			NDCGChart:    buildNDCGChart(aggregated, r.Config.KValues),
+			LatencyChart: buildLatencyChart(aggregated),
 		}
-
-		for i, agg := range jr.Aggregated {
-			color := engineColors[i%len(engineColors)]
-			job.EngineLegend = append(job.EngineLegend, htmlLegendItem{Name: agg.EngineName, Color: color})
-
-			row := htmlQualityCells(agg, kVals)
-			row.Engine = agg.EngineName
-			row.Judged = fmt.Sprintf("%d/%d", agg.JudgedCount, agg.QueryCount)
-			row.Errors = fmt.Sprintf("%d/%d", agg.ErrorCount, agg.QueryCount)
-			job.Aggregated = append(job.Aggregated, row)
+		job.Significance.Sortable = false
+		job.PerQuery.ID = fmt.Sprintf("pq-filter-%d", i)
+		for e, agg := range aggregated {
+			job.EngineLegend = append(job.EngineLegend, htmlLegendItem{Name: agg.EngineName, Color: engineColors[e%len(engineColors)]})
 		}
-
-		for _, agg := range jr.Aggregated {
-			s := agg.Latency
-			job.Latency = append(job.Latency, htmlLatRow{
-				Engine:          agg.EngineName,
-				Min:             FormatDuration(s.Min),
-				P50:             FormatDuration(s.P50()),
-				P75:             FormatDuration(s.P75()),
-				P90:             FormatDuration(s.P90()),
-				P95:             FormatDuration(s.P95()),
-				P99:             FormatDuration(s.P99()),
-				Max:             FormatDuration(s.Max),
-				Mean:            FormatDuration(s.Mean),
-				Stddev:          FormatDuration(s.Stddev),
-				Samples:         s.SampleCount,
-				ExcludedQueries: agg.LatencyExcludedQueries,
-			})
-		}
-
-		for _, agg := range serverTimed(jr.Aggregated) {
-			s := agg.ServerLatency
-			job.ServerTime = append(job.ServerTime, htmlServerTimeRow{
-				Engine:  agg.EngineName,
-				P50:     fmtServerTime(s.P50()),
-				P95:     fmtServerTime(s.P95()),
-				P99:     fmtServerTime(s.P99()),
-				Mean:    fmtServerTime(s.Mean),
-				Samples: s.SampleCount,
-			})
-		}
-
-		for _, sig := range jr.Significance {
-			w, p, adjusted := testCells(sig)
-			job.Significance = append(job.Significance, htmlSigRow{
-				EngineA: sig.EngineA, EngineB: sig.EngineB, Metric: sig.Metric,
-				MeanDifference: fmtMeanDifference(sig.MeanDifference),
-				W:              w, P: p, AdjustedP: adjusted,
-				Stars: sig.Stars, NS: sig.Stars == "" && !sig.Untestable, Untestable: sig.Untestable,
-			})
-		}
-
-		k := largestK(kVals)
-		for _, e := range jr.PerQuery {
-			status, isErr := "OK", false
-			if e.Error != "" {
-				status, isErr = "ERR", true
-			}
-			ap, rr, bp := "—", "—", "—"
-			if e.Judged {
-				ap = fmt.Sprintf("%.4f", e.AP)
-				rr = fmt.Sprintf("%.4f", e.RR)
-				bp = fmt.Sprintf("%.4f", e.Bpref)
-			}
-			job.PerQuery = append(job.PerQuery, htmlQueryRow{
-				Query: e.QueryID, Engine: e.EngineName,
-				NDCG: fmtScore(e.NDCG, k), Precision: fmtScore(e.Precision, k),
-				AP: ap, RR: rr, Bpref: bp,
-				ReturnedCount: e.ReturnedCount, CorpusMatches: htmlCorpusMatches(e.CorpusMatches),
-				P50: FormatDuration(e.Latency.P50()), P95: FormatDuration(e.Latency.P95()),
-				Status: status, IsErr: isErr,
-			})
-		}
-
-		job.NDCGChart = buildNDCGChart(jr.Aggregated, kVals)
-		job.LatencyChart = buildLatencyChart(jr.Aggregated)
 		vm.Jobs = append(vm.Jobs, job)
 	}
 	return vm
+}
+
+func newHTMLTable(view tableView) htmlTable {
+	t := htmlTable{Sortable: true}
+	for _, c := range view.Columns {
+		t.Columns = append(t.Columns, c.Title)
+	}
+	for _, cells := range view.Rows {
+		row := make([]htmlCell, len(cells))
+		for i, c := range cells {
+			row[i] = htmlCell{Text: c.Text, SpanClass: markClass(c.Mark)}
+		}
+		t.Rows = append(t.Rows, row)
+	}
+	return t
+}
+
+func markClass(m mark) string {
+	switch m {
+	case markSignificant, markWeaklySignificant:
+		return "sig-sig"
+	case markNotSignificant:
+		return "sig-ns"
+	case markSucceeded:
+		return "status-ok"
+	case markFailed:
+		return "status-err"
+	default:
+		return ""
+	}
+}
+
+// htmlMetricsTable leaves P@K out and shows each NDCG mean with its spread.
+func htmlMetricsTable(view tableView) htmlTable {
+	t := htmlTable{Sortable: true}
+	for _, c := range view.Columns {
+		if c.Group != precisionColumns {
+			t.Columns = append(t.Columns, c.Title)
+		}
+	}
+	for _, cells := range view.Rows {
+		var row []htmlCell
+		for i, c := range cells {
+			switch column := view.Columns[i]; {
+			case column.Group == precisionColumns:
+			case column.Group == ndcgColumns:
+				row = append(row, htmlCell{Text: c.Text, SpanClass: "val-main", Spread: c.Spread})
+			case column.Align == alignLeft:
+				row = append(row, htmlCell{Text: c.Text})
+			default:
+				row = append(row, htmlCell{Text: c.Text, Class: "val-main"})
+			}
+		}
+		t.Rows = append(t.Rows, row)
+	}
+	return t
 }
 
 // ─── SVG charts ──────────────────────────────────────────────────────────────
@@ -440,12 +352,4 @@ func buildLatencyChart(aggregated []AggregatedEntry) template.HTML {
 
 	sb.WriteString(`</svg>`)
 	return template.HTML(sb.String())
-}
-
-// ─── template helpers ────────────────────────────────────────────────────────
-
-func htmlFuncs() template.FuncMap {
-	return template.FuncMap{
-		"fmtTime": func(t time.Time) string { return t.Format("2006-01-02 15:04:05 UTC") },
-	}
 }
