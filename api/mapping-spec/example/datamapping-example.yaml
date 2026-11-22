@@ -7,9 +7,11 @@ metadata:
   description: "Field mapping for a raw news dataset"
 dataset: "example"
 dateFormat: "2006-01-02T15:04:05Z"
-idStrategy:
-  kind: uuidv5
-  source: "url"
+identity:
+  unique:
+    - name: same-page
+      fields: [PublisherDomain, Title, Content]
+  idKind: urlHash
 constants:
   Language: eng
 output:

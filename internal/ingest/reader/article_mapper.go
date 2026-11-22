@@ -32,7 +32,7 @@ func NewArticleMapper(cfg *datamapping.DataMapper) (*ArticleMapper, error) {
 	return &ArticleMapper{cfg: cfg, language: lang}, nil
 }
 
-// Map returns a *MappingDropError when a required value is missing or invalid.
+// Map returns the article without an id, or a *MappingDropError when a required value is missing or invalid.
 func (m *ArticleMapper) Map(record map[string]string) (document.Article, error) {
 	article := document.Article{Language: m.language}
 	val := reflect.ValueOf(&article).Elem()
@@ -72,7 +72,6 @@ func (m *ArticleMapper) Map(record map[string]string) (document.Article, error) 
 		}
 	}
 
-	article.ID = document.DeriveArticleID(URLIdentity(article.URL, m.cfg.Identity))
 	article.PublisherDomain = PublisherDomain(article.URL)
 	return article, nil
 }

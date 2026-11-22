@@ -173,7 +173,7 @@ func TestOpenRejectsADescriptorItCannotTrust(t *testing.T) {
 		"no resources":    `{"name": "p", "resources": []}`,
 		"not json":        `{"name": "p", "resources": [{` + valid + `}]`,
 		"duplicate name":  `{"name": "p", "resources": [{` + valid + `}, {` + valid + `}]}`,
-		"unknown id kind": `{"name": "p", "idStrategy": {"kind": "uuidv7-typo"}, "resources": [{` + valid + `}]}`,
+		"unknown id kind": `{"name": "p", "identity": {"idKind": "uuidv7-typo", "algorithm": "uuidv7"}, "resources": [{` + valid + `}]}`,
 	}
 	for name, descriptor := range tests {
 		t.Run(name, func(t *testing.T) {

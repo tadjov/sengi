@@ -143,14 +143,14 @@ func TestWriteStopsOnCancelWithoutADescriptor(t *testing.T) {
 	}
 }
 
-func TestWriteRejectsAnUnknownIDStrategyKind(t *testing.T) {
+func TestWriteRejectsAnUnknownIDKind(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, "hello.txt", "hello\n")
 	pkg := helloPackage()
-	pkg.IDStrategy = &datapackage.IDStrategy{Kind: "uuidv7-typo", Source: "url"}
+	pkg.Identity = &datapackage.Identity{IDKind: "uuidv7-typo", Algorithm: "uuidv7"}
 
 	if _, err := datapackage.Write(context.Background(), dir, pkg); err == nil {
-		t.Fatal("Write accepted id strategy kind uuidv7-typo")
+		t.Fatal("Write accepted id kind uuidv7-typo")
 	}
 	if _, err := os.Stat(filepath.Join(dir, datapackage.DescriptorName)); !errors.Is(err, fs.ErrNotExist) {
 		t.Error("a descriptor was written")

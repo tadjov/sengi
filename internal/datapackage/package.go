@@ -26,17 +26,15 @@ type Package struct {
 	Version       string        `json:"version,omitempty"`
 	ArticleSchema string        `json:"articleSchema,omitempty"`
 	Language      language.Code `json:"language,omitempty"`
-	IDStrategy    *IDStrategy   `json:"idStrategy,omitempty"`
-	// Identity is the mapping's url identity rule; nil means ids follow the url as written.
-	Identity   *datamapping.Identity `json:"identity,omitempty"`
-	ProducedBy *ProducedBy           `json:"producedBy,omitempty"`
-	Report     *Report               `json:"report,omitempty"`
-	Embedding  *Embedding            `json:"embedding,omitempty"`
-	Canonical  *Ref                  `json:"canonical,omitempty"`
-	Raw        *RawRef               `json:"raw,omitempty"`
-	Suite      *Suite                `json:"suite,omitempty"`
-	Sources    []Source              `json:"sources,omitempty"`
-	Resources  []Resource            `json:"resources" schema:"required,minItems=1"`
+	Identity      *Identity     `json:"identity,omitempty"`
+	ProducedBy    *ProducedBy   `json:"producedBy,omitempty"`
+	Report        *Report       `json:"report,omitempty"`
+	Embedding     *Embedding    `json:"embedding,omitempty"`
+	Canonical     *Ref          `json:"canonical,omitempty"`
+	Raw           *RawRef       `json:"raw,omitempty"`
+	Suite         *Suite        `json:"suite,omitempty"`
+	Sources       []Source      `json:"sources,omitempty"`
+	Resources     []Resource    `json:"resources" schema:"required,minItems=1"`
 }
 
 // Resource is one file of a package; Path is relative to the descriptor.
@@ -55,23 +53,26 @@ type Source struct {
 	Version string `json:"version,omitempty"`
 }
 
-// IDStrategy records how article ids were minted.
-type IDStrategy struct {
-	Kind      datamapping.IdStrategyKind `json:"kind"`
-	Source    string                     `json:"source,omitempty"`
-	Namespace string                     `json:"namespace,omitempty"`
+// Identity is the mapping's identity block, plus how its ids were minted;
+// Namespace is set only for urlHash ids.
+type Identity struct {
+	Unique    []datamapping.UniqueRule `json:"unique,omitempty"`
+	IDKind    datamapping.IDKind       `json:"idKind" schema:"enum=urlHash|random"`
+	Algorithm string                   `json:"algorithm" schema:"enum=uuidv5|uuidv7"`
+	Namespace string                   `json:"namespace,omitempty"`
 }
 
 type ProducedBy struct {
 	Tool string `json:"tool"`
 }
 
-// Report counts rows through the producing stage; Dropped is keyed by reason.
+// Report counts rows through the producing stage; Dropped is keyed by reason,
+// Deduped by the identity rule that matched.
 type Report struct {
 	Read    int64            `json:"read"`
 	Written int64            `json:"written"`
 	Dropped map[string]int64 `json:"dropped,omitempty"`
-	Deduped int64            `json:"deduped"`
+	Deduped map[string]int64 `json:"deduped,omitempty"`
 }
 
 // Embedding describes how vectors were made; Limit is set only on a --limit trial.

@@ -26,6 +26,8 @@ constants:
   Language: eng
 output:
   format: jsonl
+identity:
+  idKind: urlHash
 fieldMappings:
   - source: title
     target: Title
@@ -40,6 +42,10 @@ const repoRoot = "../../.."
 
 func loadMapping(doc string) (*datamapping.DataMapper, error) {
 	return reader.NewYAMLConfigLoader(strings.NewReader(doc)).Load(true)
+}
+
+func withIdentity(lines string) string {
+	return replaced(validMapping, "  idKind: urlHash\n", "  idKind: urlHash\n"+lines)
 }
 
 func withMappings(doc string, fieldMappings ...string) string {
@@ -85,18 +91,28 @@ var unknownKeyMappings = []struct {
 }{
 	{
 		name:    "top level",
-		doc:     validMapping + "idStrategey:\n  kind: uuidv5\n  source: link\n",
-		wantKey: "idStrategey",
+		doc:     validMapping + "identiy:\n  idKind: urlHash\n",
+		wantKey: "identiy",
 	},
 	{
-		name:    "inside idStrategy",
-		doc:     validMapping + "idStrategy:\n  kidn: uuidv5\n",
-		wantKey: "kidn",
+		name:    "the retired idStrategy",
+		doc:     validMapping + "idStrategy:\n  kind: uuidv5\n",
+		wantKey: "idStrategy",
 	},
 	{
-		name:    "inside identity.ignore",
-		doc:     validMapping + "identity:\n  ignore:\n    trailingslash: true\n",
-		wantKey: "trailingslash",
+		name:    "inside identity",
+		doc:     replaced(validMapping, "  idKind: urlHash\n", "  idkind: urlHash\n"),
+		wantKey: "idkind",
+	},
+	{
+		name:    "the retired url block",
+		doc:     replaced(validMapping, "  idKind: urlHash\n", "  idKind: urlHash\n  url:\n    ignore:\n      scheme: true\n"),
+		wantKey: "url",
+	},
+	{
+		name:    "inside a unique rule",
+		doc:     replaced(validMapping, "  idKind: urlHash\n", "  idKind: urlHash\n  unique:\n    - {name: same-page, field: [Title]}\n"),
+		wantKey: "field",
 	},
 	{
 		name:    "inside a field mapping",
@@ -139,8 +155,12 @@ var rejectedMappings = []struct {
 	{name: "an unknown output format", doc: replaced(validMapping, "format: jsonl", "format: csv"), wantInErr: `"csv"`},
 	{name: "no output", doc: replaced(validMapping, "output:\n  format: jsonl\n", ""), wantInErr: "format"},
 	{name: "the wrong kind", doc: replaced(validMapping, "kind: DataMapper", "kind: DataMapping"), wantInErr: "DataMapping"},
-	{name: "an unknown id strategy", doc: validMapping + "idStrategy:\n  kind: uuid5\n  source: link\n", wantInErr: "uuid5"},
-	{name: "a random id strategy", doc: validMapping + "idStrategy:\n  kind: random\n", wantInErr: `"random"`},
+	{name: "no identity", doc: replaced(validMapping, "identity:\n  idKind: urlHash\n", ""), wantInErr: "idKind"},
+	{name: "no id kind", doc: replaced(validMapping, "  idKind: urlHash\n", "  unique:\n    - {name: same-page, fields: [Title]}\n"), wantInErr: "idKind"},
+	{name: "an unknown id kind", doc: replaced(validMapping, "idKind: urlHash", "idKind: uuidv5"), wantInErr: `"uuidv5"`},
+	{name: "a unique rule without a name", doc: withIdentity("  unique:\n    - {fields: [Title]}\n"), wantInErr: "name"},
+	{name: "a unique rule name that is not kebab-case", doc: withIdentity("  unique:\n    - {name: Same Page, fields: [Title]}\n"), wantInErr: "Same Page"},
+	{name: "a unique rule without fields", doc: withIdentity("  unique:\n    - {name: same-page, fields: []}\n"), wantInErr: "fields"},
 	{
 		name:       "two sources on one target",
 		doc:        withMappings(validMapping, "  - {source: full_content, target: Content}\n", "  - {source: content, target: Content}\n"),
@@ -153,15 +173,18 @@ var rejectedMappings = []struct {
 		wantInErr:  "Metadata.Extra.k",
 		crossField: true,
 	},
-	{name: "an identity that ignores nothing", doc: validMapping + "identity:\n  ignore: {}\n", wantInErr: "ignore names no url part", crossField: true},
-	{name: "a query param pattern with an inner *", doc: validMapping + "identity:\n  ignore:\n    queryParams: [\"utm_*_id\"]\n", wantInErr: "utm_*_id", crossField: true},
-	{name: "a bare * query param pattern", doc: validMapping + "identity:\n  ignore:\n    queryParams: [\"*\"]\n", wantInErr: "query param", crossField: true},
+	{name: "a unique rule named url", doc: withIdentity("  unique:\n    - {name: url, fields: [Title]}\n"), wantInErr: `"url"`, crossField: true},
+	{name: "two unique rules with one name", doc: withIdentity("  unique:\n    - {name: same-page, fields: [Title]}\n    - {name: same-page, fields: [URL]}\n"), wantInErr: `"same-page"`, crossField: true},
+	{name: "a unique field that is no article field", doc: withIdentity("  unique:\n    - {name: same-page, fields: [Body]}\n"), wantInErr: `"Body"`, crossField: true},
+	{name: "a unique field that is not mapped", doc: withIdentity("  unique:\n    - {name: same-page, fields: [Title, Content]}\n"), wantInErr: `"Content"`, crossField: true},
+	{name: "a unique field holding a list", doc: withMappings(withIdentity("  unique:\n    - {name: same-byline, fields: [Metadata.Authors]}\n"), "  - {source: byline, target: Metadata.Authors, separator: ';'}\n"), wantInErr: "Metadata.Authors", crossField: true},
+	{name: "a unique rule on the url, which is unique already", doc: withIdentity("  unique:\n    - {name: same-url, fields: [URL]}\n"), wantInErr: `"URL"`, crossField: true},
+	{name: "a unique field named twice", doc: withIdentity("  unique:\n    - {name: same-page, fields: [Title, Title]}\n"), wantInErr: `"Title"`, crossField: true},
 	{name: "no url", doc: replaced(validMapping, "  - source: link\n    sourceType: url\n    target: URL\n    required: true\n", ""), wantInErr: "URL", crossField: true},
 	{name: "an optional title", doc: replaced(validMapping, "    target: Title\n    required: true\n", "    target: Title\n"), wantInErr: "Title", crossField: true},
 	{name: "a url read as a plain string", doc: replaced(validMapping, "sourceType: url\n    target: URL", "sourceType: string\n    target: URL"), wantInErr: "URL", crossField: true},
 	{name: "a date read into a text target", doc: withMappings(validMapping, "  - {source: body, sourceType: datetime, target: Content}\n"), wantInErr: "datetime", crossField: true},
 	{name: "a separator on a single-valued target", doc: withMappings(validMapping, "  - {source: body, target: Content, separator: ';'}\n"), wantInErr: "separator", crossField: true},
-	{name: "a uuidv5 id over a column other than the url", doc: validMapping + "idStrategy:\n  kind: uuidv5\n  source: title\n", wantInErr: `"title"`, crossField: true},
 	{name: "a mapped article id", doc: withMappings(validMapping, "  - {source: uid, target: ID}\n"), wantInErr: `"ID"`},
 	{name: "an external id read as a number", doc: withMappings(validMapping, "  - {source: uid, sourceType: int, target: Metadata.ExternalID}\n"), wantInErr: "int", crossField: true},
 	{name: "the retired targetType", doc: replaced(validMapping, "    target: Title\n", "    target: Title\n    targetType: string\n"), wantInErr: "targetType"},
@@ -215,7 +238,9 @@ func TestMappingSchema_AgreesWithTheLoader(t *testing.T) {
 		{name: "a 100-character Cyrillic name", doc: replaced(validMapping, "name: Test", "name: "+strings.Repeat("ж", 100))},
 		{name: "a 500-character Cyrillic description", doc: replaced(validMapping, "name: Test", "name: Test\n  description: "+strings.Repeat("ж", 500))},
 		{name: "a 100-character Cyrillic source", doc: replaced(validMapping, "source: title", "source: "+strings.Repeat("ж", 100))},
-		{name: "every identity rule", doc: validMapping + "identity:\n  ignore:\n    scheme: true\n    www: true\n    trailingSlash: true\n    fragment: true\n    queryParams: [\"utm_*\", \"ref\"]\n"},
+		{name: "every identity rule", doc: replaced(withIdentity(
+			"  unique:\n    - {name: same-page, fields: [PublisherDomain, Title]}\n    - {name: same-title, fields: [Title]}\n"),
+			"idKind: urlHash", "idKind: random")},
 	}
 	for _, tt := range accepted {
 		t.Run("accepts "+tt.name, func(t *testing.T) {

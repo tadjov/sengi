@@ -16,8 +16,8 @@ func (p Package) validate() error {
 			return fmt.Errorf("package %s: %w", p.Name, err)
 		}
 	}
-	if p.IDStrategy != nil {
-		if _, err := datamapping.ParseIdStrategyKind(string(p.IDStrategy.Kind)); err != nil {
+	if p.Identity != nil {
+		if _, err := datamapping.ParseIDKind(string(p.Identity.IDKind)); err != nil {
 			return fmt.Errorf("package %s: %w", p.Name, err)
 		}
 	}

@@ -58,19 +58,21 @@ func TestDataPackageSchemaAllowsOnlyListedProperties(t *testing.T) {
 	}
 	closed("", doc)
 
-	for _, object := range []string{"idStrategy", "producedBy", "report", "embedding", "canonical", "suite"} {
+	for _, object := range []string{"identity", "producedBy", "report", "embedding", "canonical", "suite"} {
 		if _, ok := objectAt(t, doc, "properties", object)["properties"]; !ok {
 			t.Errorf("%s is not described as an object with properties", object)
 		}
 	}
 }
 
-func TestDataPackageSchemaDescribesDroppedAsCountsByReason(t *testing.T) {
-	dropped := objectAt(t, generatedDataPackageSchema(t), "properties", "report", "properties", "dropped")
+func TestDataPackageSchemaDescribesDroppedAndDedupedAsCountsByReason(t *testing.T) {
+	for _, counts := range []string{"dropped", "deduped"} {
+		node := objectAt(t, generatedDataPackageSchema(t), "properties", "report", "properties", counts)
 
-	values, ok := dropped["additionalProperties"].(map[string]any)
-	if dropped["type"] != "object" || !ok || values["type"] != "integer" {
-		t.Errorf("report.dropped = %v, want an object of integers", dropped)
+		values, ok := node["additionalProperties"].(map[string]any)
+		if node["type"] != "object" || !ok || values["type"] != "integer" {
+			t.Errorf("report.%s = %v, want an object of integers", counts, node)
+		}
 	}
 }
 

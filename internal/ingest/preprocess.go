@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/ingest/reader"
 	"github.com/tadjov/sengi/internal/types/document"
@@ -41,14 +40,17 @@ func Preprocess(ctx context.Context, opts PreprocessOptions) (datapackage.Publis
 	if err != nil {
 		return datapackage.Published{}, err
 	}
+	identity, err := newArticleIdentity(opts.Mapping.Identity)
+	if err != nil {
+		return datapackage.Published{}, err
+	}
 
 	raw := opts.Raw.Package
 	pkg := datapackage.Package{
 		Name:          canonicalName(raw.Name),
 		ArticleSchema: datapackage.ArticleSchema,
 		Language:      lang,
-		IDStrategy:    idStrategyOf(opts.Mapping),
-		Identity:      opts.Mapping.Identity,
+		Identity:      describeIdentity(opts.Mapping.Identity, identity.idKind),
 		ProducedBy:    &opts.ProducedBy,
 		Raw:           &datapackage.RawRef{Name: raw.Name, Version: raw.Version},
 		Sources:       httpsSources(raw.Sources),
@@ -60,10 +62,10 @@ func Preprocess(ctx context.Context, opts PreprocessOptions) (datapackage.Publis
 	}
 
 	builder := &canonicalBuilder{
-		raw:    opts.Raw,
-		mapper: mapper,
-		seen:   map[uuid.UUID]struct{}{},
-		report: datapackage.Report{Dropped: map[string]int64{}},
+		raw:      opts.Raw,
+		mapper:   mapper,
+		identity: identity,
+		report:   datapackage.Report{Dropped: map[string]int64{}, Deduped: map[string]int64{}},
 	}
 	return builder.publish(ctx, opts.OutputRoot, opts.Version, pkg)
 }
@@ -100,20 +102,6 @@ func (b *canonicalBuilder) publish(ctx context.Context, outputRoot, version stri
 
 func canonicalName(rawName string) string {
 	return strings.TrimSuffix(rawName, "-raw") + "-canonical"
-}
-
-func idStrategyOf(mapping *datamapping.DataMapper) *datapackage.IDStrategy {
-	var urlSource string
-	for _, fm := range mapping.FieldMappings {
-		if fm.Target == datamapping.TargetURL {
-			urlSource = fm.Source
-		}
-	}
-	return &datapackage.IDStrategy{
-		Kind:      datamapping.IdStrategyUuidV5,
-		Source:    urlSource,
-		Namespace: document.ArticleIDNamespace.String(),
-	}
 }
 
 // Data Package v2 forbids relative paths that leave the package folder.
@@ -162,12 +150,11 @@ func newCanonicalWriter(w io.Writer, format datamapping.OutputFormat) CanonicalW
 	return NewParquetCanonicalWriter(w)
 }
 
-// canonicalBuilder keeps the first of the records that share an id.
 type canonicalBuilder struct {
-	raw    *datapackage.Opened
-	mapper reader.Mapper
-	seen   map[uuid.UUID]struct{}
-	report datapackage.Report
+	raw      *datapackage.Opened
+	mapper   reader.Mapper
+	identity *articleIdentity
+	report   datapackage.Report
 }
 
 const writeBatchSize = 1000
@@ -230,11 +217,14 @@ func (b *canonicalBuilder) eachArticle(ctx context.Context, resource datapackage
 		if err != nil {
 			return fmt.Errorf("map record from %s: %w", resource.Name, err)
 		}
-		if _, duplicate := b.seen[article.ID]; duplicate {
-			b.report.Deduped++
+		rule, kept, err := b.identity.admit(&article)
+		if err != nil {
+			return fmt.Errorf("identify %s: %w", article.URL, err)
+		}
+		if !kept {
+			b.report.Deduped[rule]++
 			continue
 		}
-		b.seen[article.ID] = struct{}{}
 		if err := emit(article); err != nil {
 			return fmt.Errorf("write articles: %w", err)
 		}

@@ -4,9 +4,8 @@ metadata:
   name: "CC-News (vblagoje/cc_news)"
   description: "Mapping for the CC-News dataset, 708,241 English articles from 8,759 domains, 2017-01..2019-08, full body text via news-please. The source columns image_url and domain have no Article target: the publisher domain is derived from the url."
 dataset: cc_news
-idStrategy:
-  kind: uuidv5
-  source: url
+identity:
+  idKind: urlHash
 dateFormat: "2006-01-02 15:04:05"
 constants:
   Language: eng

@@ -3,11 +3,13 @@ package datamapping
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 )
 
@@ -31,11 +33,8 @@ type DataMapper struct {
 	// DateFormat specifies the Go time format for parsing dates
 	DateFormat string `json:"dateFormat,omitempty" yaml:"dateFormat,omitempty" schema:"default=2006-01-02T15:04:05Z" description:"Go time format for parsing date/datetime fields"`
 
-	// IdStrategy decides how article ids are produced
-	IdStrategy IdStrategy `json:"idStrategy,omitempty" yaml:"idStrategy,omitempty" description:"How article ids are produced"`
-
-	// Identity decides which url differences still name the same article
-	Identity *Identity `json:"identity,omitempty" yaml:"identity,omitempty" description:"Which url differences still name the same article; left out, the id follows the url as written"`
+	// Identity decides which records are one article and how each article gets its id
+	Identity Identity `json:"identity" yaml:"identity" schema:"required" description:"Which records are one article, and how each article gets its id"`
 
 	// Constants are written on every article
 	Constants Constants `json:"constants" yaml:"constants" schema:"required" description:"Values written on every article"`
@@ -47,83 +46,105 @@ type DataMapper struct {
 	FieldMappings []FieldMapping `json:"fieldMappings" yaml:"fieldMappings" schema:"required,minItems=1" description:"Array of field mapping definitions"`
 }
 
-// IdStrategyKind names the ways an article id can be produced.
-type IdStrategyKind string
+// IDKind names how an article gets its id.
+type IDKind string
 
-// IdStrategyUuidV5 derives the id from the normalised url.
-const IdStrategyUuidV5 IdStrategyKind = "uuidv5"
+const (
+	// IDKindURLHash hashes the url, so an article keeps its id on every run.
+	IDKindURLHash IDKind = "urlHash"
+	// IDKindRandom mints a new id per article on every run.
+	IDKindRandom IDKind = "random"
+)
 
-func ParseIdStrategyKind(v string) (IdStrategyKind, error) {
-	if IdStrategyKind(v) == IdStrategyUuidV5 {
-		return IdStrategyUuidV5, nil
+func ParseIDKind(v string) (IDKind, error) {
+	switch kind := IDKind(v); kind {
+	case IDKindURLHash, IDKindRandom:
+		return kind, nil
+	default:
+		return "", fmt.Errorf("unknown id kind %q, want %q or %q", v, IDKindURLHash, IDKindRandom)
 	}
-	return "", fmt.Errorf("unknown id strategy kind %q, want %q: ids derive from the normalised url", v, IdStrategyUuidV5)
 }
 
-type IdStrategy struct {
-	// Kind is the id generation strategy
-	Kind string `json:"kind,omitempty" yaml:"kind,omitempty" schema:"enum=uuidv5,default=uuidv5" description:"Id generation strategy"`
+// URLRule names the drops of records that repeat a kept article's url.
+const URLRule = "url"
 
-	// Source must be the column mapped to URL
-	Source string `json:"source,omitempty" yaml:"source,omitempty" description:"Source column mapped to URL, hashed by uuidv5; defaults to that column"`
+// Identity decides which records are one article and how each gets its id;
+// records with the same url, as normalised, are always one article.
+type Identity struct {
+	Unique []UniqueRule `json:"unique,omitempty" yaml:"unique,omitempty" description:"Field sets no two articles share; a record that repeats one is dropped and the first kept"`
+	IDKind string       `json:"idKind" yaml:"idKind" schema:"required,enum=urlHash|random" description:"urlHash hashes the url, the same id on every run; random mints a new id per article on every run"`
 }
 
-// ResolvedKind defaults to uuidv5.
-func (s IdStrategy) ResolvedKind() (IdStrategyKind, error) {
-	if s.Kind == "" {
-		return IdStrategyUuidV5, nil
+func (i Identity) ResolvedIDKind() (IDKind, error) {
+	if i.IDKind == "" {
+		return "", errors.New("idKind is required")
 	}
-	return ParseIdStrategyKind(s.Kind)
+	return ParseIDKind(i.IDKind)
 }
 
-func (s IdStrategy) validate(urlSource string) error {
-	kind, err := s.ResolvedKind()
-	if err != nil {
+func (i Identity) validate(mapped map[string]FieldMapping) error {
+	if _, err := i.ResolvedIDKind(); err != nil {
 		return err
 	}
-	if s.Source != "" && s.Source != urlSource {
-		return fmt.Errorf("id strategy %q hashes the url, so its source must be %q, the column mapped to URL, not %q", kind, urlSource, s.Source)
+	names := make(map[string]bool, len(i.Unique))
+	for n, rule := range i.Unique {
+		if err := rule.validate(mapped); err != nil {
+			return fmt.Errorf("unique[%d]: %w", n, err)
+		}
+		if names[rule.Name] {
+			return fmt.Errorf("unique[%d]: rule name %q is already taken", n, rule.Name)
+		}
+		names[rule.Name] = true
 	}
 	return nil
 }
 
-// Identity decides which urls name one article: the id hashes the url with these parts ignored.
-type Identity struct {
-	Ignore IdentityIgnore `json:"ignore" yaml:"ignore" schema:"required" description:"Url parts that do not change which article a url names"`
+type UniqueRule struct {
+	Name   string   `json:"name" yaml:"name" schema:"required,pattern=^[a-z0-9]+(-[a-z0-9]+)*$" description:"Name the preprocess report counts this rule's drops under"`
+	Fields []string `json:"fields" yaml:"fields" schema:"required,minItems=1" description:"Article fields whose values together no two articles share; a record with any of them empty never matches"`
 }
 
-type IdentityIgnore struct {
-	Scheme        bool     `json:"scheme,omitempty" yaml:"scheme,omitempty" description:"http and https name one page"`
-	WWW           bool     `json:"www,omitempty" yaml:"www,omitempty" description:"www.example.com and example.com name one page"`
-	TrailingSlash bool     `json:"trailingSlash,omitempty" yaml:"trailingSlash,omitempty" description:"/story and /story/ name one page"`
-	Fragment      bool     `json:"fragment,omitempty" yaml:"fragment,omitempty" description:"/story#comments and /story name one page"`
-	QueryParams   []string `json:"queryParams,omitempty" yaml:"queryParams,omitempty" description:"Query parameters that do not change the page, by name; a trailing * matches a prefix, as in utm_*"`
+// uniqueFields reads the article fields a unique rule can compare, all single text values.
+var uniqueFields = map[string]func(document.Article) string{
+	TargetTitle:              func(a document.Article) string { return a.Title },
+	"Description":            func(a document.Article) string { return a.Description },
+	"Content":                func(a document.Article) string { return a.Content },
+	TargetPublisherDomain:    func(a document.Article) string { return a.PublisherDomain },
+	"Metadata.ExternalID":    func(a document.Article) string { return a.Metadata.ExternalID },
+	"Metadata.PublisherName": func(a document.Article) string { return a.Metadata.PublisherName },
+	"Metadata.Section":       func(a document.Article) string { return a.Metadata.Section },
 }
 
-// IgnoresQueryParam matches key case-insensitively.
-func (i IdentityIgnore) IgnoresQueryParam(key string) bool {
-	key = strings.ToLower(key)
-	for _, pattern := range i.QueryParams {
-		pattern = strings.ToLower(pattern)
-		if prefix, ok := strings.CutSuffix(pattern, "*"); ok {
-			if strings.HasPrefix(key, prefix) {
-				return true
-			}
-		} else if key == pattern {
-			return true
+// Values returns the rule's fields of article in order; the rule must have passed Validate.
+func (r UniqueRule) Values(article document.Article) []string {
+	values := make([]string, len(r.Fields))
+	for i, field := range r.Fields {
+		values[i] = uniqueFields[field](article)
+	}
+	return values
+}
+
+func (r UniqueRule) validate(mapped map[string]FieldMapping) error {
+	if !uniqueRuleNamePattern.MatchString(r.Name) {
+		return fmt.Errorf("rule name %q must be lowercase kebab-case", r.Name)
+	}
+	if r.Name == URLRule {
+		return fmt.Errorf("rule name %q is reserved for records that repeat a kept article's url", r.Name)
+	}
+	if len(r.Fields) == 0 {
+		return fmt.Errorf("rule %q lists no fields", r.Name)
+	}
+	seen := make(map[string]bool, len(r.Fields))
+	for _, field := range r.Fields {
+		if seen[field] {
+			return fmt.Errorf("rule %q names field %q twice", r.Name, field)
 		}
-	}
-	return false
-}
-
-func (i Identity) validate() error {
-	ignore := i.Ignore
-	if !ignore.Scheme && !ignore.WWW && !ignore.TrailingSlash && !ignore.Fragment && len(ignore.QueryParams) == 0 {
-		return errors.New("ignore names no url part; leave identity out to keep the url as written")
-	}
-	for _, pattern := range ignore.QueryParams {
-		if name := strings.TrimSuffix(pattern, "*"); name == "" || strings.Contains(name, "*") {
-			return fmt.Errorf("query param %q: want a name, or a prefix followed by one trailing *", pattern)
+		seen[field] = true
+		if _, ok := uniqueFields[field]; !ok {
+			return fmt.Errorf("rule %q: field %q is not one of %q", r.Name, field, slices.Sorted(maps.Keys(uniqueFields)))
+		}
+		if _, ok := mapped[field]; !ok && field != TargetPublisherDomain {
+			return fmt.Errorf("rule %q: field %q is not mapped, so every record would leave it empty", r.Name, field)
 		}
 	}
 	return nil
@@ -282,13 +303,8 @@ func (dm *DataMapper) Validate() error {
 			return fmt.Errorf("target %q must set required: true, since a record without it is dropped", target)
 		}
 	}
-	if err := dm.IdStrategy.validate(byTarget[TargetURL].Source); err != nil {
-		return fmt.Errorf("idStrategy: %w", err)
-	}
-	if dm.Identity != nil {
-		if err := dm.Identity.validate(); err != nil {
-			return fmt.Errorf("identity: %w", err)
-		}
+	if err := dm.Identity.validate(byTarget); err != nil {
+		return fmt.Errorf("identity: %w", err)
 	}
 	return nil
 }
@@ -318,6 +334,8 @@ const (
 	TargetURL = "URL"
 	// TargetTitle is required so every article has lead-v1 embedding text.
 	TargetTitle = "Title"
+	// TargetPublisherDomain is derived from the url, so no field mapping sets it.
+	TargetPublisherDomain = "PublisherDomain"
 )
 
 // ExtraTargetPrefix marks a target that lands in Metadata.Extra rather than a
@@ -327,8 +345,9 @@ const ExtraTargetPrefix = "Metadata.Extra."
 var requiredTargets = []string{TargetURL, TargetTitle}
 
 var (
-	datasetPattern  = regexp.MustCompile(`^[a-z0-9-_]+$`)
-	extraKeyPattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
+	datasetPattern        = regexp.MustCompile(`^[a-z0-9-_]+$`)
+	extraKeyPattern       = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
+	uniqueRuleNamePattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 )
 
 // targetSpec with nil sourceTypes accepts any source type.

@@ -4,9 +4,9 @@
   "version": "v1",
   "articleSchema": "article/v2",
   "language": "eng",
-  "idStrategy": {
-    "kind": "uuidv5",
-    "source": "url",
+  "identity": {
+    "idKind": "urlHash",
+    "algorithm": "uuidv5",
     "namespace": "697bf49f-ca14-4303-83eb-f9d05f7c7c42"
   },
   "producedBy": {
@@ -17,8 +17,7 @@
     "written": 707910,
     "dropped": {
       "empty_required_value/Title": 331
-    },
-    "deduped": 0
+    }
   },
   "raw": {
     "name": "cc-news-raw",

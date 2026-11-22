@@ -90,59 +90,55 @@
       },
       "additionalProperties": false
     },
-    "idStrategy": {
+    "identity": {
       "type": "object",
       "required": [
-        "kind"
+        "idKind",
+        "algorithm"
       ],
       "properties": {
-        "kind": {
-          "type": "string"
+        "algorithm": {
+          "type": "string",
+          "enum": [
+            "uuidv5",
+            "uuidv7"
+          ]
+        },
+        "idKind": {
+          "type": "string",
+          "enum": [
+            "urlHash",
+            "random"
+          ]
         },
         "namespace": {
           "type": "string"
         },
-        "source": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "identity": {
-      "type": "object",
-      "required": [
-        "ignore"
-      ],
-      "properties": {
-        "ignore": {
-          "description": "Url parts that do not change which article a url names",
-          "type": "object",
-          "properties": {
-            "fragment": {
-              "description": "/story#comments and /story name one page",
-              "type": "boolean"
-            },
-            "queryParams": {
-              "description": "Query parameters that do not change the page, by name; a trailing * matches a prefix, as in utm_*",
-              "type": "array",
-              "items": {
-                "type": "string"
+        "unique": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "fields"
+            ],
+            "properties": {
+              "fields": {
+                "description": "Article fields whose values together no two articles share; a record with any of them empty never matches",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "name": {
+                "description": "Name the preprocess report counts this rule's drops under",
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
               }
             },
-            "scheme": {
-              "description": "http and https name one page",
-              "type": "boolean"
-            },
-            "trailingSlash": {
-              "description": "/story and /story/ name one page",
-              "type": "boolean"
-            },
-            "www": {
-              "description": "www.example.com and example.com name one page",
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false
@@ -184,12 +180,14 @@
       "type": "object",
       "required": [
         "read",
-        "written",
-        "deduped"
+        "written"
       ],
       "properties": {
         "deduped": {
-          "type": "integer"
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
         },
         "dropped": {
           "type": "object",
