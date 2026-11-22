@@ -12,7 +12,7 @@ meta:
         max_output_tokens: 16000
         invocation: claude --version 2.1.325 (Claude Code); CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1 CLAUDE_CODE_MAX_OUTPUT_TOKENS=<max-output-tokens> claude -p --safe-mode --setting-sources "" --strict-mcp-config --tools "" --disable-slash-commands --no-session-persistence --output-format json --model claude-opus-5-5 --effort low --system-prompt <system-prompt>
         gate_version: v1
-    pool_ref: /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fuzzy/trec/cross-judge/pool-sample.yaml
+    pool_ref: trec/cross-judge/pool-sample.yaml
     pool_run_id: 2026-11-15T01-01-06-pool-466575-xjudge-sample
     graded_count: 463
     unjudged_count: 0

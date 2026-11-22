@@ -6,10 +6,10 @@
     "generated_at": "2026-07-26T23:29:36.075976Z",
     "spec_id": "news_semantic",
     "sources": {
-      "spec": "/Users/djordjevuckovic/projects/news-hunter/tracks/news_semantic/spec.yaml",
-      "suite": "/Users/djordjevuckovic/projects/news-hunter/tracks/news_semantic/suite.yaml",
-      "pool": "/Users/djordjevuckovic/projects/news-hunter/tracks/news_semantic/trec/pool.yaml",
-      "judgments": "/Users/djordjevuckovic/projects/news-hunter/tracks/news_semantic/trec/annotations.claude-cli.yaml"
+      "spec": "spec.yaml",
+      "suite": "suite.yaml",
+      "pool": "trec/pool.yaml",
+      "judgments": "trec/annotations.claude-cli.yaml"
     }
   },
   "environment": {

@@ -6,7 +6,7 @@ meta:
     strategy: claude-cli
     judge_model: claude
     judge_prompt_version: v1
-    pool_ref: /Users/djordjevuckovic/projects/news-hunter/tracks/fts_quality/trec/pool.yaml
+    pool_ref: trec/pool.yaml
     graded_count: 2480
     relevance_scale:
         - 0

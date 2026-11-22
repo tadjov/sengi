@@ -5,7 +5,7 @@ description: "Concept-level queries that require semantic understanding beyond k
 version: "1.0.0"
 
 corpus:
-  name: news_hunter_articles
+  name: sengi_articles
   source: "postgres://localhost:54320/news_db (articles)"
 
 # Query embeddings (the query_vector arg) use Qwen3-Embedding-0.6B (1024-dim),

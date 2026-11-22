@@ -1,6 +1,6 @@
 {
-  "id": "djordjevuckovic/tusker-embed-queries",
-  "title": "tusker-embed-queries",
+  "id": "djordjevuckovic/sengi-embed-queries",
+  "title": "sengi-embed-queries",
   "code_file": "../../embed_queries.py",
   "language": "python",
   "kernel_type": "script",
@@ -8,7 +8,7 @@
   "enable_gpu": true,
   "enable_internet": true,
   "dataset_sources": [
-    "djordjevuckovic/tusker-queries"
+    "djordjevuckovic/sengi-queries"
   ],
   "competition_sources": [],
   "kernel_sources": [],

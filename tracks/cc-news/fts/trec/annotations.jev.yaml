@@ -9,7 +9,7 @@ meta:
         invocation: POST https://api.typesafe.ai/v1/systemone, model jev-1.14.0
         gate_version: v1
         rubric_version: v1
-    pool_ref: /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/pool.yaml
+    pool_ref: trec/pool.yaml
     pool_run_id: 2026-11-14T20-05-34-pool-a6c70f
     graded_count: 3716
     unjudged_count: 0

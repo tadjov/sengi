@@ -8,12 +8,12 @@
       "judgments": [
         {
           "label": "run1",
-          "path": "/private/tmp/claude-501/-Users-djordjevuckovic-projects-news-hunter/9a5d76ca-d2fa-4db2-b792-6a4f87830e9a/scratchpad/sonnet-run1.yaml",
+          "path": "9cf1794:tracks/cc-news/fts/trec/annotations.claude-cli.yaml",
           "run_id": "2026-11-14T19-15-44-judge-bb7768"
         },
         {
           "label": "run2",
-          "path": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/annotations.claude-cli.yaml",
+          "path": "tracks/cc-news/fts/trec/annotations.claude-cli.yaml",
           "run_id": "2026-11-14T20-06-00-judge-c27330"
         }
       ]

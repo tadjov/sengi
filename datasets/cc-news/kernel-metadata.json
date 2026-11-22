@@ -1,6 +1,6 @@
 {
-  "id": "djordjevuckovic/tusker-embed",
-  "title": "tusker-embed",
+  "id": "djordjevuckovic/sengi-embed",
+  "title": "sengi-embed",
   "code_file": "../../scripts/embed_corpus.py",
   "language": "python",
   "kernel_type": "script",
@@ -8,7 +8,7 @@
   "enable_gpu": true,
   "enable_internet": true,
   "dataset_sources": [
-    "djordjevuckovic/tusker-cc-news"
+    "djordjevuckovic/sengi-cc-news"
   ],
   "competition_sources": [],
   "kernel_sources": [],

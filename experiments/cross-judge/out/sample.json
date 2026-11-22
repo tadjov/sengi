@@ -8,22 +8,22 @@
       "judgments": [
         {
           "label": "sonnet",
-          "path": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/annotations.claude-cli.yaml",
+          "path": "tracks/cc-news/fts/trec/annotations.claude-cli.yaml",
           "run_id": "2026-11-14T20-06-00-judge-c27330"
         },
         {
           "label": "opus",
-          "path": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/cross-judge/annotations.opus.yaml",
+          "path": "tracks/cc-news/fts/trec/cross-judge/annotations.opus.yaml",
           "run_id": "2026-11-14T20-50-30-judge-505d38"
         },
         {
           "label": "jev",
-          "path": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/cross-judge/annotations.jev.yaml",
+          "path": "tracks/cc-news/fts/trec/cross-judge/annotations.jev.yaml",
           "run_id": "2026-11-14T22-17-11-judge-08a9b8"
         },
         {
           "label": "haiku",
-          "path": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/cross-judge/annotations.haiku.yaml",
+          "path": "tracks/cc-news/fts/trec/cross-judge/annotations.haiku.yaml",
           "run_id": "2026-11-14T23-18-27-judge-d4c5cf"
         }
       ]

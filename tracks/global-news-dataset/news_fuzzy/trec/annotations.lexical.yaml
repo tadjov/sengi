@@ -5,7 +5,7 @@ meta:
     generated_at: 2026-06-09T22:40:16.146267Z
     strategy: lexical
     judge_prompt_version: v1
-    pool_ref: /Users/djordjevuckovic/projects/news-hunter/tracks/news_fuzzy/trec/pool.yaml
+    pool_ref: trec/pool.yaml
     graded_count: 811
     relevance_scale:
         - 0

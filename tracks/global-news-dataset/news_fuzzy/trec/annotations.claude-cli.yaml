@@ -8,7 +8,7 @@ meta:
         provider: claude-cli
         model: claude-sonnet-5
         prompt_version: v1
-    pool_ref: /Users/djordjevuckovic/projects/news-hunter/tracks/news_fuzzy/trec/pool.yaml
+    pool_ref: trec/pool.yaml
     relevance_scale:
         - 0
         - 1

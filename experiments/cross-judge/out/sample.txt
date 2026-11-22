@@ -3,10 +3,10 @@ Judgment sets
 
 Label   Judge                             Graded  Run ID                            Path
 ---     ---                               ---     ---                               ---
-sonnet  llm/claude-cli claude-sonnet-5-5  3716    2026-11-14T20-06-00-judge-c27330  /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/annotations.claude-cli.yaml
-opus    llm/claude-cli claude-opus-5-5    436     2026-11-14T20-50-30-judge-505d38  /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/cross-judge/annotations.opus.yaml
-jev     jev jev-1.14.0                    436     2026-11-14T22-17-11-judge-08a9b8  /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/cross-judge/annotations.jev.yaml
-haiku   llm/claude-cli claude-haiku-5-5   436     2026-11-14T23-18-27-judge-d4c5cf  /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/cross-judge/annotations.haiku.yaml
+sonnet  llm/claude-cli claude-sonnet-5-5  3716    2026-11-14T20-06-00-judge-c27330  tracks/cc-news/fts/trec/annotations.claude-cli.yaml
+opus    llm/claude-cli claude-opus-5-5    436     2026-11-14T20-50-30-judge-505d38  tracks/cc-news/fts/trec/cross-judge/annotations.opus.yaml
+jev     jev jev-1.14.0                    436     2026-11-14T22-17-11-judge-08a9b8  tracks/cc-news/fts/trec/cross-judge/annotations.jev.yaml
+haiku   llm/claude-cli claude-haiku-5-5   436     2026-11-14T23-18-27-judge-d4c5cf  tracks/cc-news/fts/trec/cross-judge/annotations.haiku.yaml
 
 436 (query, doc) pairs graded 0 to 3 by every set; relevant means a grade of 2 or more (metrics.relevance_threshold)
 ⚠ without --pg, gated zeros are included: every gated judge grades a doc the phrase, boolean or filter gate refuses 0 without a model seeing it, which inflates agreement
@@ -93,4 +93,4 @@ single-field  4        sonnet vs haiku  58   0.5690  1.0000    0.8448    0.8131 
 single-field  4        opus vs jev      58   0.6034  0.8793    0.8103    0.6429 [0.2292, 0.8651]  0.5764 [0.3000, 0.8507]
 single-field  4        opus vs haiku    58   0.7241  0.9828    0.8966    0.8543 [0.7605, 0.9362]  0.7655 [0.5930, 0.8677]
 single-field  4        jev vs haiku     58   0.5172  0.8793    0.7759    0.6541 [0.4191, 0.8003]  0.5098 [0.1988, 0.7669]
-✓ Wrote /Users/djordjevuckovic/projects/news-hunter/experiments/cross-judge/out/sample.json
+✓ Wrote experiments/cross-judge/out/sample.json

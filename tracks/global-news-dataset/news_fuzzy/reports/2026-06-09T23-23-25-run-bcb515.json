@@ -6,10 +6,10 @@
     "generated_at": "2026-06-09T23:23:25.852981Z",
     "spec_id": "news_fuzzy",
     "sources": {
-      "spec": "/Users/djordjevuckovic/projects/news-hunter/tracks/news_fuzzy/spec.yaml",
-      "suite": "/Users/djordjevuckovic/projects/news-hunter/tracks/news_fuzzy/suite.yaml",
-      "pool": "/Users/djordjevuckovic/projects/news-hunter/tracks/news_fuzzy/trec/pool.yaml",
-      "judgments": "/Users/djordjevuckovic/projects/news-hunter/tracks/news_fuzzy/trec/annotations.lexical.yaml"
+      "spec": "spec.yaml",
+      "suite": "suite.yaml",
+      "pool": "trec/pool.yaml",
+      "judgments": "trec/annotations.lexical.yaml"
     }
   },
   "environment": {

@@ -3,8 +3,8 @@ Judgment sets
 
 Label  Judge                             Graded  Run ID                            Path
 ---    ---                               ---     ---                               ---
-run1   llm/claude-cli claude-sonnet-5-5  3945    2026-11-14T19-15-44-judge-bb7768  /private/tmp/claude-501/-Users-djordjevuckovic-projects-news-hunter/9a5d76ca-d2fa-4db2-b792-6a4f87830e9a/scratchpad/sonnet-run1.yaml
-run2   llm/claude-cli claude-sonnet-5-5  3716    2026-11-14T20-06-00-judge-c27330  /Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/annotations.claude-cli.yaml
+run1   llm/claude-cli claude-sonnet-5-5  3945    2026-11-14T19-15-44-judge-bb7768  9cf1794:tracks/cc-news/fts/trec/annotations.claude-cli.yaml
+run2   llm/claude-cli claude-sonnet-5-5  3716    2026-11-14T20-06-00-judge-c27330  tracks/cc-news/fts/trec/annotations.claude-cli.yaml
 
 3681 (query, doc) pairs graded 0 to 3 by every set; relevant means a grade of 2 or more (metrics.relevance_threshold)
 ⚠ without --pg, gated zeros are included: every gated judge grades a doc the phrase, boolean or filter gate refuses 0 without a model seeing it, which inflates agreement
@@ -19,4 +19,4 @@ run2  159      410      773      2339
 Pair          n     Exact   Within 1  Relevant  Quadratic κ [95% CI]     Binary κ [95% CI]
 ---           ---   ---     ---       ---       ---                      ---
 run1 vs run2  3681  0.9870  1.0000    0.9957    0.9911 [0.9862, 0.9941]  0.9835 [0.9745, 0.9899]
-✓ Wrote /Users/djordjevuckovic/projects/news-hunter/experiments/cross-judge/out/self-agreement.json
+✓ Wrote experiments/cross-judge/out/self-agreement.json

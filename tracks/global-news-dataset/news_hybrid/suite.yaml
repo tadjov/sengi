@@ -5,13 +5,13 @@ description: "Hybrid BM25 + vector queries testing RRF fusion approaches"
 version: "1.0.0"
 
 corpus:
-  name: news_hunter_articles
+  name: sengi_articles
   source: "postgres://localhost:54320/news_db (articles)"
 
 # NOTE: Hybrid queries combine keyword (BM25) and vector (embedding) signals.
 # The query_vector arg carries the query's embedding, filled in by the run.
 # Document vectors live in the article_embeddings table (VECTOR(1024)), keyed by
-# article_id — the same schema the tusker API uses for semantic search.
+# article_id — the same schema the sengi API uses for semantic search.
 #
 # RRF formula: score(d) = Σ 1/(k + rank_i(d))  where k=60 (standard constant)
 #
