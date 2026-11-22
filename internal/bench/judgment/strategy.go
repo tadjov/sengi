@@ -9,8 +9,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/pool"
 	"github.com/tadjov/sengi/internal/bench/suite"
 	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/document"
 )
 
 // GradingQuery is the query a judge grades against.
@@ -29,6 +31,26 @@ type GradingDoc struct {
 	Content         string
 	PublishedAt     time.Time
 	PublisherDomain string
+}
+
+func NewGradingQuery(entry pool.PoolEntry) GradingQuery {
+	return GradingQuery{
+		ID:       entry.QueryID,
+		Text:     entry.QueryText,
+		Category: entry.Category,
+		Filters:  entry.Filters,
+	}
+}
+
+func NewGradingDoc(a document.Article) GradingDoc {
+	return GradingDoc{
+		ID:              a.ID,
+		Title:           a.Title,
+		Description:     a.Description,
+		Content:         a.Content,
+		PublishedAt:     a.PublishedAt,
+		PublisherDomain: a.PublisherDomain,
+	}
 }
 
 // Strategy grades through DocStrategy or PoolStrategy.

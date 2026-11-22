@@ -167,13 +167,7 @@ func (r *Runner) gradeQuery(ctx context.Context, entry pool.PoolEntry, prior map
 	}
 	r.progress.Add(int64(len(todo) - len(docs)))
 
-	q := GradingQuery{
-		ID:       entry.QueryID,
-		Text:     entry.QueryText,
-		Category: entry.Category,
-		Filters:  entry.Filters,
-	}
-	grades, err := r.grade(ctx, q, docs)
+	grades, err := r.grade(ctx, NewGradingQuery(entry), docs)
 	if err != nil && !FailsWholeQuery(err) {
 		return ge, prog, err
 	}
@@ -215,7 +209,7 @@ func (r *Runner) readableDocs(ctx context.Context, queryID string, pooled []pool
 				"query", queryID, "doc_id", id)
 			continue
 		}
-		docs = append(docs, toGradingDoc(a))
+		docs = append(docs, NewGradingDoc(a))
 	}
 	return docs, nil
 }
@@ -297,17 +291,6 @@ func (r *Runner) gradeDocs(ctx context.Context, s DocStrategy, q GradingQuery, d
 		return nil, err
 	}
 	return grades, nil
-}
-
-func toGradingDoc(a document.Article) GradingDoc {
-	return GradingDoc{
-		ID:              a.ID,
-		Title:           a.Title,
-		Description:     a.Description,
-		Content:         a.Content,
-		PublishedAt:     a.PublishedAt,
-		PublisherDomain: a.PublisherDomain,
-	}
 }
 
 func indexExisting(jf *File) map[string]map[uuid.UUID]int {

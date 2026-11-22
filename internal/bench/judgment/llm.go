@@ -47,11 +47,11 @@ func (s *LLMStrategy) Describe() meta.Judge {
 // Grade gives 0 without a request to a doc the query's filters or category
 // gate refuse; the model grades only how well the rest answer the query.
 func (s *LLMStrategy) Grade(ctx context.Context, q GradingQuery, doc GradingDoc) (int, error) {
-	tq, err := readTermQuery(q)
+	admitted, err := GateAdmits(q, doc)
 	if err != nil {
 		return GradeUnjudged, err
 	}
-	if !tq.admits(analyzeDoc(doc)) {
+	if !admitted {
 		return GradeNotRelev, nil
 	}
 	text, err := s.provider.Complete(ctx, CompletionRequest{

@@ -92,11 +92,11 @@ func (s *JevStrategy) Describe() meta.Judge {
 
 // Grade gives a gated doc 0 without asking Jev.
 func (s *JevStrategy) Grade(ctx context.Context, q GradingQuery, doc GradingDoc) (int, error) {
-	tq, err := readTermQuery(q)
+	admitted, err := GateAdmits(q, doc)
 	if err != nil {
 		return GradeUnjudged, err
 	}
-	if !tq.admits(analyzeDoc(doc)) {
+	if !admitted {
 		return GradeNotRelev, nil
 	}
 	payload, err := json.Marshal(s.request(q, doc))
