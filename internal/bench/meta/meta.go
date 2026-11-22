@@ -39,11 +39,6 @@ type Meta struct {
 	// CarriedOver is set when grades were reused from older judgments.
 	CarriedOver *CarriedOver `yaml:"carried_over,omitempty" json:"carried_over,omitempty"`
 
-	// Legacy flat judgment fields, read but never written; Normalize folds them into Judge.
-	LegacyStrategy      string `yaml:"strategy,omitempty" json:"strategy,omitempty"`
-	LegacyJudgeModel    string `yaml:"judge_model,omitempty" json:"judge_model,omitempty"`
-	LegacyPromptVersion string `yaml:"judge_prompt_version,omitempty" json:"judge_prompt_version,omitempty"`
-
 	// Report-only fields.
 	JudgmentsRunID string   `yaml:"judgments_run_id,omitempty" json:"judgments_run_id,omitempty"`
 	Sources        *Sources `yaml:"sources,omitempty" json:"sources,omitempty"`
@@ -122,21 +117,6 @@ func (j Judge) String() string {
 		s += " " + j.Model
 	}
 	return s
-}
-
-// Normalize folds the legacy flat fields into Judge; calling it twice is safe.
-func (m *Meta) Normalize() {
-	if m.Judge != nil {
-		return
-	}
-	if m.LegacyStrategy == "" && m.LegacyJudgeModel == "" {
-		return
-	}
-	m.Judge = &Judge{
-		Strategy:      m.LegacyStrategy,
-		Model:         m.LegacyJudgeModel,
-		PromptVersion: m.LegacyPromptVersion,
-	}
 }
 
 // Sources names the artifacts a report's metrics were computed from.

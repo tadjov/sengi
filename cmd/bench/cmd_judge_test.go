@@ -48,15 +48,6 @@ func fileWith(j meta.Judge) *judgment.File {
 	return &judgment.File{Meta: meta.Meta{Judge: &j}}
 }
 
-func TestCheckResumeCompat_FileWithoutJudgeResumes(t *testing.T) {
-	// A file carrying no judge block at all has nothing to contradict.
-	prior := &judgment.File{}
-	now := llmJudge("claude-cli", "claude-haiku-5-5")
-
-	err := checkResumeCompat(prior, now)
-	assert.NoError(t, err, "file with no judge block should be resumable")
-}
-
 func TestCheckResumeCompat_IdenticalJudgeMatches(t *testing.T) {
 	j := llmJudge("claude-cli", "claude-haiku-5-5")
 
@@ -128,20 +119,6 @@ func TestCheckResumeCompat_EffortMismatch(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `effort: was "low", now "high"`)
 	assert.NotContains(t, err.Error(), "model:", "only the fields that differ")
-}
-
-// Legacy grades came from an unrecorded model, so they must not be extended.
-func TestCheckResumeCompat_LegacyFileRefusesResume(t *testing.T) {
-	prior := &judgment.File{Meta: meta.Meta{
-		LegacyStrategy:   "claude-cli",
-		LegacyJudgeModel: "claude",
-	}}
-	prior.Meta.Normalize()
-	now := llmJudge("claude-cli", "claude-haiku-5-5")
-
-	err := checkResumeCompat(prior, now)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "judge mismatch")
 }
 
 func judgmentsWithGrades(grades ...int) *judgment.File {

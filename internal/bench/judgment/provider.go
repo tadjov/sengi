@@ -106,24 +106,6 @@ func JudgmentSetName(kind StrategyKind, provider Provider) string {
 	return string(provider)
 }
 
-// ParseSelector is the inverse of JudgmentSetName.
-func ParseSelector(name string) (StrategyKind, Provider, error) {
-	switch kind := StrategyKind(name); kind {
-	case StrategyKeyword, StrategyBM25, StrategyVector, StrategyHybrid, StrategyJev, StrategyManual:
-		return kind, "", nil
-	case StrategyLLM:
-		return "", "", fmt.Errorf(
-			"%q does not name a judgment set — use a provider (known: %s)",
-			name, strings.Join(KnownProviders(), ", "))
-	}
-
-	if _, ok := providers[Provider(name)]; ok {
-		return StrategyLLM, Provider(name), nil
-	}
-
-	return "", "", fmt.Errorf("unknown judgment set %q (known: %s)", name, strings.Join(KnownStrategies(), ", "))
-}
-
 // KnownJudgeStrategies lists what --strategy accepts, unlike the set names in KnownStrategies.
 func KnownJudgeStrategies() []string {
 	return []string{

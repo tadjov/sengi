@@ -39,9 +39,6 @@ func ReadFile(path string) (*File, error) {
 	if err := version.CheckSchema(jf.SchemaVersion, "annotations"); err != nil {
 		return nil, err
 	}
-	// Fold pre-judge-block artifacts into the current shape so callers only
-	// ever read Meta.Judge.
-	jf.Meta.Normalize()
 	return &jf, nil
 }
 

@@ -364,23 +364,13 @@ func resolveJudge(f judgeFlags) (judgment.StrategyKind, judgment.Provider, error
 		}
 		return kind, "", nil
 	}
-
-	// A provider in --strategy is the old spelling; point to the explicit form.
-	if _, p, err := judgment.ParseSelector(f.strategy); err == nil {
-		return "", "", fmt.Errorf("%q names a provider, not a strategy — use --strategy llm --provider %s",
-			f.strategy, p)
-	}
 	return "", "", fmt.Errorf("unknown strategy %q (known: %s)",
 		f.strategy, strings.Join(judgment.KnownJudgeStrategies(), ", "))
 }
 
 // checkResumeCompat refuses to resume a file another judge graded.
 func checkResumeCompat(prior *judgment.File, now meta.Judge) error {
-	was := prior.Judge()
-	if (was == meta.Judge{}) {
-		return nil
-	}
-	differences := was.Differences(now)
+	differences := prior.Judge().Differences(now)
 	if len(differences) == 0 {
 		return nil
 	}

@@ -49,19 +49,11 @@ strategy talks to, `--model` names the model. Everything else — `--judgments`,
 name**: the strategy for heuristic judges, the provider for LLM ones. A single
 `llm` name would collide the moment two providers grade the same track.
 
-`JudgmentSetName` and `ParseSelector` are exact inverses (enforced by a
-round-trip test), so a set written by `bench judge` is always findable by
-`bench run`.
-
 **One LLM strategy, many endpoints.** `LLMStrategy` owns the rubric and
 response parsing; an `LLMProvider` owns only "send this prompt, return the
 text". Registering a provider in `provider.go` is
 all it takes to add Codex or ChatGPT — the grading behaviour is unchanged, so
 qrels stay comparable across vendors.
-
-Passing a provider name to `--strategy` is redirected rather than accepted
-(`"claude-cli" names a provider, not a strategy — use --strategy llm --provider
-claude-cli`), so there is exactly one way to write a judge.
 
 ## Models
 
@@ -99,11 +91,8 @@ Heuristic judges carry the same block with fewer fields (`strategy: lexical`).
 prompt version — and refuses to append when any of them differs, since mixing
 graders in one qrel set corrupts it.
 
-Annotations written before the judge block existed carry flat `strategy:` /
-`judge_model:` keys; those are folded into a judge block on read
-(`meta.Meta.Normalize`) so callers only deal with one shape. Because their model
-was never recorded (`judge_model: claude` names the binary, not a model), they
-will not match a current run and cannot be resumed onto — re-grade instead.
+Annotations without a judge block name no grader, so `--resume` and
+`--carry-over` refuse them — re-grade instead.
 
 ---
 
