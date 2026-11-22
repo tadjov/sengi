@@ -23,9 +23,9 @@ func NormalizeURL(raw string) (string, bool) {
 	return u.String(), true
 }
 
-// URLIdentity is the name an article id hashes: normalizedURL itself without
-// identity rules, or with the parts they ignore taken out.
-func URLIdentity(normalizedURL string, identity *datamapping.Identity) string {
+// PageURL names the page normalizedURL points at: the url itself, or with the
+// parts identity ignores taken out.
+func PageURL(normalizedURL string, identity *datamapping.URLIdentity) string {
 	if identity == nil {
 		return normalizedURL
 	}
@@ -55,7 +55,7 @@ func URLIdentity(normalizedURL string, identity *datamapping.Identity) string {
 }
 
 // withoutIgnoredParams edits the raw query, since url.Values would re-sort and re-encode it.
-func withoutIgnoredParams(rawQuery string, ignore datamapping.IdentityIgnore) string {
+func withoutIgnoredParams(rawQuery string, ignore datamapping.IgnoredURLParts) string {
 	var kept []string
 	for _, param := range strings.Split(rawQuery, "&") {
 		key, _, _ := strings.Cut(param, "=")

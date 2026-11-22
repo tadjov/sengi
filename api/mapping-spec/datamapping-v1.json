@@ -8,6 +8,7 @@
     "version",
     "metadata",
     "dataset",
+    "identity",
     "constants",
     "output",
     "fieldMappings"
@@ -91,58 +92,84 @@
       },
       "minItems": 1
     },
-    "idStrategy": {
-      "description": "How article ids are produced",
-      "type": "object",
-      "properties": {
-        "kind": {
-          "description": "Id generation strategy",
-          "type": "string",
-          "enum": [
-            "uuidv5"
-          ],
-          "default": "uuidv5"
-        },
-        "source": {
-          "description": "Source column mapped to URL, hashed by uuidv5; defaults to that column",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
     "identity": {
-      "description": "Which url differences still name the same article; left out, the id follows the url as written",
+      "description": "Which records are one article, and how each article gets its id",
       "type": "object",
       "required": [
-        "ignore"
+        "idKind"
       ],
       "properties": {
-        "ignore": {
-          "description": "Url parts that do not change which article a url names",
-          "type": "object",
-          "properties": {
-            "fragment": {
-              "description": "/story#comments and /story name one page",
-              "type": "boolean"
-            },
-            "queryParams": {
-              "description": "Query parameters that do not change the page, by name; a trailing * matches a prefix, as in utm_*",
-              "type": "array",
-              "items": {
-                "type": "string"
+        "idKind": {
+          "description": "urlHash hashes the page url, the same id on every run; random mints a new id per article on every run",
+          "type": "string",
+          "enum": [
+            "urlHash",
+            "random"
+          ]
+        },
+        "unique": {
+          "description": "Field sets no two articles share; a record that repeats one is dropped and the first kept",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "fields"
+            ],
+            "properties": {
+              "fields": {
+                "description": "Article fields whose values together no two articles share; a record with any of them empty never matches",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "name": {
+                "description": "Name the preprocess report counts this rule's drops under",
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
               }
             },
-            "scheme": {
-              "description": "http and https name one page",
-              "type": "boolean"
-            },
-            "trailingSlash": {
-              "description": "/story and /story/ name one page",
-              "type": "boolean"
-            },
-            "www": {
-              "description": "www.example.com and example.com name one page",
-              "type": "boolean"
+            "additionalProperties": false
+          }
+        },
+        "url": {
+          "description": "Which url spellings name one page; records with one page url are one article",
+          "type": "object",
+          "required": [
+            "ignore"
+          ],
+          "properties": {
+            "ignore": {
+              "description": "Url parts that do not change which page a url names",
+              "type": "object",
+              "properties": {
+                "fragment": {
+                  "description": "/story#comments and /story name one page",
+                  "type": "boolean"
+                },
+                "queryParams": {
+                  "description": "Query parameters that do not change the page, by name; a trailing * matches a prefix, as in utm_*",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "scheme": {
+                  "description": "http and https name one page",
+                  "type": "boolean"
+                },
+                "trailingSlash": {
+                  "description": "/story and /story/ name one page",
+                  "type": "boolean"
+                },
+                "www": {
+                  "description": "www.example.com and example.com name one page",
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

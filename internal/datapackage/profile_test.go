@@ -12,6 +12,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/pkg/apis/datamapping"
 )
 
 // The profile's path patterns use lookaheads, which Go's RE2 cannot compile.
@@ -86,11 +87,18 @@ func fullPackage() datapackage.Package {
 		Version:       "v1",
 		ArticleSchema: datapackage.ArticleSchema,
 		Language:      "eng",
-		IDStrategy:    &datapackage.IDStrategy{Kind: "uuidv5", Source: "url", Namespace: "6ba7b811-9dad-11d1-80b4-00c04fd430c8"},
-		ProducedBy:    &datapackage.ProducedBy{Tool: "datapipe preprocess"},
+		Identity: &datapackage.Identity{
+			URL:       &datamapping.URLIdentity{Ignore: datamapping.IgnoredURLParts{Scheme: true, QueryParams: []string{"utm_*"}}},
+			Unique:    []datamapping.UniqueRule{{Name: "same-page", Fields: []string{"PublisherDomain", "Title", "Content"}}},
+			IDKind:    datamapping.IDKindURLHash,
+			Algorithm: "uuidv5",
+			Namespace: "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
+		},
+		ProducedBy: &datapackage.ProducedBy{Tool: "datapipe preprocess"},
 		Report: &datapackage.Report{
-			Read: 10, Written: 7, Deduped: 1,
+			Read: 10, Written: 7,
 			Dropped: map[string]int64{"invalid_url": 2},
+			Deduped: map[string]int64{"url": 1},
 		},
 		Embedding: &datapackage.Embedding{
 			Model: "qwen3-embedding:0.6b", HuggingFaceModel: "Qwen/Qwen3-Embedding-0.6B", Revision: "abc123",
@@ -124,12 +132,13 @@ func TestWrittenDescriptorUsesContractPropertyNames(t *testing.T) {
 		"version":                    "v1",
 		"articleSchema":              "article/v2",
 		"language":                   "eng",
-		"idStrategy/kind":            "uuidv5",
+		"identity/idKind":            "urlHash",
+		"identity/algorithm":         "uuidv5",
 		"producedBy/tool":            "datapipe preprocess",
 		"report/read":                10.0,
 		"report/written":             7.0,
 		"report/dropped/invalid_url": 2.0,
-		"report/deduped":             1.0,
+		"report/deduped/url":         1.0,
 		"embedding/model":            "qwen3-embedding:0.6b",
 		"embedding/hfModel":          "Qwen/Qwen3-Embedding-0.6B",
 		"embedding/revision":         "abc123",

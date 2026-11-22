@@ -46,7 +46,7 @@ type Metadata struct {
 }
 
 // ArticleIDNamespace seeds every derived article id. Changing it changes the id
-// of every article in every corpus built with a derived strategy.
+// of every article in every corpus built with urlHash ids.
 var ArticleIDNamespace = uuid.MustParse("697bf49f-ca14-4303-83eb-f9d05f7c7c42")
 
 // DeriveArticleID returns the UUIDv5 of name, so the same name always yields the

@@ -34,7 +34,7 @@ The project follows a layered architecture pattern:
 
 - **cmd/**: Entry points for different operations
     - `datapipe/`: Unified data-pipeline CLI. The core path is **preprocess → embed → load**; every stage after the first reads the canonical package, which is what keeps article IDs identical across engines.
-        - `datapipe preprocess`: Maps a raw data package (`.csv`, `.jsonl`, `.parquet` resources) through `datasets/<ds>/mapping.yaml` into a canonical data package at `datasets/<ds>/canonical/<version>/` (`--version`, default `v1`), deduplicated by id; a rerun that yields the same articles is a no-op, and one that yields different articles under an existing version is refused
+        - `datapipe preprocess`: Maps a raw data package (`.csv`, `.jsonl`, `.parquet` resources) through `datasets/<ds>/mapping.yaml` into a canonical data package at `datasets/<ds>/canonical/<version>/` (`--version`, default `v1`), deduplicated by the mapping's `identity` rules; a rerun that yields the same articles is a no-op, and one that yields different articles under an existing version is refused
         - `datapipe embed --canonical <descriptor> [--version v1] [--batch-size 64] [--max-tokens 512] [--limit N]`: Embeds each article's `lead-v1` text through Ollama (`EMBEDDING_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIM`) into an embeddings package at `datasets/<ds>/embeddings/<tag-dir>/<version>/`, the format `embed_corpus.py` writes on a GPU; `producedBy` tells the two apart, and an existing version is refused before anything is embedded
         - `datapipe load --engine <native|paradedb|tiger|es> --canonical <descriptor> [--embeddings <descriptor>]`: Verifies the canonical package and the embeddings package built from it, loads both into an empty engine, builds the indexes afterwards as timed stages, and writes the load record to the engine and to `datasets/<ds>/loads/<engine>/` — see [docs/embeddings.md](docs/embeddings.md)
     - `news_api/`: HTTP API server for search functionality
@@ -88,24 +88,27 @@ The type system is organized into bounded contexts, each with its own package:
 ### Data Mapping System
 The project uses YAML configuration files to map source data fields to internal Article structure. Configuration files follow the DataMapping schema (`api/mapping-spec/datamapping-v1.json`) with fieldMappings that specify source/target fields and their source types, a `constants:` block (`Language: eng`) and `output.format` (`parquet` or `jsonl`). An unknown key, two sources on one target, or a target outside the list fails the load. `Title` and `URL` are required on every mapping, and `PublisherDomain` is always derived from the url.
 
-Article ids are `uuidv5` of the normalised url, the only `idStrategy` kind, and the default when `idStrategy` is left out; its `source`, if given, must be the column mapped to `URL`. The same input always yields the same ids, so preprocess can be re-run without orphaning pools, qrels, or embeddings. No mapping sets the id directly: a dataset's own id, or any column unique per record, maps to `Metadata.ExternalID` so a canonical row can be traced back to its raw record.
+Every mapping has an `identity` block that decides which records are one article and how each article gets its id. Preprocess reads records in input order and keeps the first of those that are one article:
 
-```yaml
-idStrategy:
-  kind: uuidv5
-  source: url
-```
+- `url` (optional) lists the url parts that do not change which page a url names: `scheme`, `www`, `trailingSlash`, `fragment`, and `queryParams` by name or by a `prefix*`. Records with the same page url are always one article; without `url`, urls are compared as normalised. The stored url stays as written.
+- `unique` (optional) lists rules, each a `name` and the `fields` no two articles share, compared with whitespace collapsed. A record that repeats a kept article's fields is dropped, as an insert would be under SQL `UNIQUE`, and one with any of those fields empty never matches. The fields are `Title`, `Description`, `Content`, `URL`, `PublisherDomain`, `Metadata.ExternalID`, `Metadata.PublisherName` and `Metadata.Section`.
+- `idKind` (required) is `urlHash`, the uuidv5 of the page url, so the same input always yields the same ids and preprocess can be re-run without orphaning pools, qrels, or embeddings. `random` mints a new uuidv7 per article on every run, so a rerun never reproduces a published version.
 
-An optional `identity.ignore` block lists the url parts that do not change which article a url names: `scheme`, `www`, `trailingSlash`, `fragment`, and `queryParams` by name or by a `prefix*`. The id then hashes the url with those parts left out, so preprocess keeps one article per page; the stored url stays as written. Left out, ids follow the url as written, and the canonical descriptor records the block when it is set.
+The report counts each drop under `deduped`, keyed by the rule that matched (`url` for a repeated page url), and the canonical descriptor records the block with the id algorithm. No mapping sets the id directly: a dataset's own id, or any column unique per record, maps to `Metadata.ExternalID` so a canonical row can be traced back to its raw record.
 
 ```yaml
 identity:
-  ignore:
-    scheme: true
-    www: true
-    trailingSlash: true
-    fragment: true
-    queryParams: ["utm_*"]
+  url:
+    ignore:
+      scheme: true
+      www: true
+      trailingSlash: true
+      fragment: true
+      queryParams: ["utm_*"]
+  unique:
+    - name: same-page
+      fields: [PublisherDomain, Title, Content]
+  idKind: urlHash
 ```
 
 ### Storage Layer

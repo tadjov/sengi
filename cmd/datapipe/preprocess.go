@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"slices"
 	"strconv"
@@ -129,22 +130,22 @@ func loadPreprocessMapping(path string) (*datamapping.DataMapper, error) {
 
 func renderSummary(w io.Writer, result datapackage.Published, elapsed time.Duration) {
 	report := result.Package.Report
-	var dropped int64
-	for _, n := range report.Dropped {
-		dropped += n
-	}
+	dropped, deduped := total(report.Dropped), total(report.Deduped)
 	cli.Summary(w, "Preprocess complete",
 		cli.Field{Label: "read", Value: strconv.FormatInt(report.Read, 10)},
 		cli.Field{Label: "written", Value: strconv.FormatInt(report.Written, 10)},
 		cli.Field{Label: "dropped", Value: strconv.FormatInt(dropped, 10)},
-		cli.Field{Label: "deduped", Value: strconv.FormatInt(report.Deduped, 10)},
+		cli.Field{Label: "deduped", Value: strconv.FormatInt(deduped, 10)},
 		cli.Field{Label: "version", Value: result.Package.Version},
 		cli.Field{Label: "hash", Value: result.Package.Resources[0].Hash},
 		cli.Field{Label: "package", Value: result.Dir},
 		cli.Field{Label: "duration", Value: fmt.Sprintf("%.2fs", elapsed.Seconds())},
 	)
 	if dropped > 0 {
-		cli.Warn(w, fmt.Sprintf("%d dropped: %s", dropped, dropBreakdown(report.Dropped)))
+		cli.Warn(w, fmt.Sprintf("%d dropped: %s", dropped, breakdown(report.Dropped)))
+	}
+	if deduped > 0 {
+		cli.Done(w, fmt.Sprintf("%d deduped: %s", deduped, breakdown(report.Deduped)))
 	}
 	if result.Restored {
 		cli.Done(w, "version "+result.Package.Version+" was published without its resource; restored it from this run")
@@ -153,16 +154,19 @@ func renderSummary(w io.Writer, result datapackage.Published, elapsed time.Durat
 	}
 }
 
-func dropBreakdown(drops map[string]int64) string {
-	reasons := make([]string, 0, len(drops))
-	for reason := range drops {
-		reasons = append(reasons, reason)
+func total(counts map[string]int64) int64 {
+	var sum int64
+	for _, n := range counts {
+		sum += n
 	}
-	slices.Sort(reasons)
+	return sum
+}
 
+func breakdown(counts map[string]int64) string {
+	reasons := slices.Sorted(maps.Keys(counts))
 	parts := make([]string, 0, len(reasons))
 	for _, reason := range reasons {
-		parts = append(parts, fmt.Sprintf("%d %s", drops[reason], reason))
+		parts = append(parts, fmt.Sprintf("%d %s", counts[reason], reason))
 	}
 	return strings.Join(parts, ", ")
 }

@@ -37,7 +37,7 @@ func TestNormalizeURL_RejectsWhatIsNotAnAbsoluteHTTPURL(t *testing.T) {
 	}
 }
 
-func TestURLIdentity_WithoutRulesIsTheURLAsNormalized(t *testing.T) {
+func TestPageURL_WithoutRulesIsTheURLAsNormalized(t *testing.T) {
 	for _, raw := range []string{
 		"https://example.com/a%20b",
 		"http://www.example.com/story/?utm_source=feed#top",
@@ -45,45 +45,45 @@ func TestURLIdentity_WithoutRulesIsTheURLAsNormalized(t *testing.T) {
 	} {
 		normalized, ok := NormalizeURL(raw)
 		require.True(t, ok)
-		assert.Equal(t, normalized, URLIdentity(normalized, nil), raw)
+		assert.Equal(t, normalized, PageURL(normalized, nil), raw)
 	}
 }
 
-func TestURLIdentity_EachRuleMergesOnlyItsOwnVariant(t *testing.T) {
+func TestPageURL_EachRuleMergesOnlyItsOwnVariant(t *testing.T) {
 	rules := map[string]struct {
-		ignore datamapping.IdentityIgnore
+		ignore datamapping.IgnoredURLParts
 		a, b   string
 	}{
-		"scheme":        {datamapping.IdentityIgnore{Scheme: true}, "https://example.com/story", "http://example.com/story"},
-		"www":           {datamapping.IdentityIgnore{WWW: true}, "https://example.com/story", "https://www.example.com/story"},
-		"trailingSlash": {datamapping.IdentityIgnore{TrailingSlash: true}, "https://example.com/story", "https://example.com/story/"},
-		"fragment":      {datamapping.IdentityIgnore{Fragment: true}, "https://example.com/story", "https://example.com/story#comments"},
-		"queryParams":   {datamapping.IdentityIgnore{QueryParams: []string{"utm_*"}}, "https://example.com/story", "https://example.com/story?utm_source=feed"},
+		"scheme":        {datamapping.IgnoredURLParts{Scheme: true}, "https://example.com/story", "http://example.com/story"},
+		"www":           {datamapping.IgnoredURLParts{WWW: true}, "https://example.com/story", "https://www.example.com/story"},
+		"trailingSlash": {datamapping.IgnoredURLParts{TrailingSlash: true}, "https://example.com/story", "https://example.com/story/"},
+		"fragment":      {datamapping.IgnoredURLParts{Fragment: true}, "https://example.com/story", "https://example.com/story#comments"},
+		"queryParams":   {datamapping.IgnoredURLParts{QueryParams: []string{"utm_*"}}, "https://example.com/story", "https://example.com/story?utm_source=feed"},
 	}
 	for name, rule := range rules {
-		identity := &datamapping.Identity{Ignore: rule.ignore}
+		identity := &datamapping.URLIdentity{Ignore: rule.ignore}
 		for pairName, pair := range rules {
 			t.Run(name+" on the "+pairName+" pair", func(t *testing.T) {
-				same := identityOf(t, pair.a, identity) == identityOf(t, pair.b, identity)
+				same := pageOf(t, pair.a, identity) == pageOf(t, pair.b, identity)
 				assert.Equal(t, name == pairName, same)
 			})
 		}
 	}
 }
 
-func TestURLIdentity_IgnoresQueryParamsByNameOrPrefix(t *testing.T) {
-	identity := &datamapping.Identity{Ignore: datamapping.IdentityIgnore{QueryParams: []string{"utm_*", "ref"}}}
+func TestPageURL_IgnoresQueryParamsByNameOrPrefix(t *testing.T) {
+	identity := &datamapping.URLIdentity{Ignore: datamapping.IgnoredURLParts{QueryParams: []string{"utm_*", "ref"}}}
 
 	assert.Equal(t,
-		identityOf(t, "https://example.com/view?id=7&page=2", identity),
-		identityOf(t, "https://example.com/view?UTM_Source=x&id=7&ref=home&page=2&utm_medium=rss", identity))
+		pageOf(t, "https://example.com/view?id=7&page=2", identity),
+		pageOf(t, "https://example.com/view?UTM_Source=x&id=7&ref=home&page=2&utm_medium=rss", identity))
 	assert.NotEqual(t,
-		identityOf(t, "https://example.com/view?id=7", identity),
-		identityOf(t, "https://example.com/view?id=7&referrer=home", identity))
+		pageOf(t, "https://example.com/view?id=7", identity),
+		pageOf(t, "https://example.com/view?id=7&referrer=home", identity))
 }
 
-func TestURLIdentity_KeepsDifferentPagesApart(t *testing.T) {
-	every := &datamapping.Identity{Ignore: datamapping.IdentityIgnore{
+func TestPageURL_KeepsDifferentPagesApart(t *testing.T) {
+	every := &datamapping.URLIdentity{Ignore: datamapping.IgnoredURLParts{
 		Scheme: true, WWW: true, TrailingSlash: true, Fragment: true, QueryParams: []string{"utm_*"},
 	}}
 	pairs := [][2]string{
@@ -93,13 +93,13 @@ func TestURLIdentity_KeepsDifferentPagesApart(t *testing.T) {
 		{"https://example.com/Story", "https://example.com/story"},
 	}
 	for _, pair := range pairs {
-		assert.NotEqual(t, identityOf(t, pair[0], every), identityOf(t, pair[1], every), "%s and %s", pair[0], pair[1])
+		assert.NotEqual(t, pageOf(t, pair[0], every), pageOf(t, pair[1], every), "%s and %s", pair[0], pair[1])
 	}
 }
 
-func identityOf(t *testing.T, raw string, identity *datamapping.Identity) string {
+func pageOf(t *testing.T, raw string, identity *datamapping.URLIdentity) string {
 	t.Helper()
 	normalized, ok := NormalizeURL(raw)
 	require.True(t, ok, raw)
-	return URLIdentity(normalized, identity)
+	return PageURL(normalized, identity)
 }

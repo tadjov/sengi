@@ -34,9 +34,8 @@ version: v1
 metadata:
   name: Test news
 dataset: test_news
-idStrategy:
-  kind: uuidv5
-  source: url
+identity:
+  idKind: urlHash
 dateFormat: "2006-01-02 15:04:05"
 constants:
   Language: eng
@@ -57,6 +56,13 @@ func mappingWith(t *testing.T, old, replacement string) string {
 	require.Contains(t, ccNewsLikeMapping, old)
 	return strings.Replace(ccNewsLikeMapping, old, replacement, 1)
 }
+
+func mappingWithIdentity(t *testing.T, idKind, lines string) string {
+	t.Helper()
+	return mappingWith(t, "identity:\n  idKind: urlHash\n", "identity:\n  idKind: "+idKind+"\n"+lines)
+}
+
+const samePageRule = "  unique:\n    - {name: same-page, fields: [PublisherDomain, Title, Content]}\n"
 
 // rawShardRow is a raw shard as the Hugging Face mirror lands it.
 type rawShardRow struct {
@@ -349,19 +355,22 @@ func validateAgainstDescriptorSchema(t *testing.T, descriptorPath string) error 
 }
 
 func TestPreprocess_WritesADescriptorTheCommittedSchemaAccepts(t *testing.T) {
+	everyIdentityRule := mappingWithIdentity(t, "random",
+		"  url:\n    ignore:\n      scheme: true\n      queryParams: [\"utm_*\"]\n"+samePageRule)
 	tests := []struct {
 		name       string
-		format     string
+		mapping    string
 		rawVersion string
 	}{
-		{name: "parquet", format: "parquet", rawVersion: rawVersion},
-		{name: "jsonl", format: "jsonl", rawVersion: rawVersion},
-		{name: "raw package without a version", format: "parquet"},
+		{name: "parquet", mapping: ccNewsLikeMapping, rawVersion: rawVersion},
+		{name: "jsonl", mapping: mappingWith(t, "format: parquet", "format: jsonl"), rawVersion: rawVersion},
+		{name: "raw package without a version", mapping: ccNewsLikeMapping},
+		{name: "every identity rule", mapping: everyIdentityRule, rawVersion: rawVersion},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			part := csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n")
-			run := newPreprocessRun(t, mappingWith(t, "format: parquet", "format: "+tt.format), part)
+			part := csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\nOne,Body,https://example.com/2\n")
+			run := newPreprocessRun(t, tt.mapping, part)
 			require.NoError(t, os.RemoveAll(run.rawDir))
 			writeRawPackage(t, run.rawDir, tt.rawVersion, part)
 
@@ -411,14 +420,14 @@ func TestPreprocess_WritesJSONLArticlesWhenTheMappingAsksForIt(t *testing.T) {
 	assert.Equal(t, []string{"A", "B"}, rows.byURL["https://example.com/1"].Metadata.Authors)
 }
 
-func TestPreprocess_RefusesAMistypedIdStrategyKey(t *testing.T) {
-	run := newPreprocessRun(t, mappingWith(t, "idStrategy:", "idStrategey:"),
+func TestPreprocess_RefusesAMistypedIdentityKey(t *testing.T) {
+	run := newPreprocessRun(t, mappingWith(t, "  idKind:", "  idkind:"),
 		csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"),
 	)
 
 	err := run.execute(t.Context())
 
-	require.ErrorContains(t, err, "idStrategey")
+	require.ErrorContains(t, err, "idkind")
 	assert.NoDirExists(t, run.outputRoot)
 }
 
@@ -431,10 +440,10 @@ func TestPreprocess_DerivesEachIDFromTheNormalisedURL(t *testing.T) {
 
 	pkg, rows := readArticles(t, run.packageDir(t))
 	require.Equal(t, []string{"https://example.com/a%20b"}, rows.urls)
-	require.NotNil(t, pkg.IDStrategy)
-	assert.Equal(t, "uuidv5", string(pkg.IDStrategy.Kind))
-	assert.Equal(t, "url", pkg.IDStrategy.Source)
-	namespace, err := uuid.Parse(pkg.IDStrategy.Namespace)
+	require.NotNil(t, pkg.Identity)
+	assert.Equal(t, datamapping.IDKindURLHash, pkg.Identity.IDKind)
+	assert.Equal(t, "uuidv5", pkg.Identity.Algorithm)
+	namespace, err := uuid.Parse(pkg.Identity.Namespace)
 	require.NoError(t, err)
 	assert.Equal(t, uuid.NewSHA1(namespace, []byte("https://example.com/a%20b")), rows.byURL["https://example.com/a%20b"].ID)
 }
@@ -451,10 +460,10 @@ func TestPreprocess_KeepsTheFirstOfRecordsSharingAURL(t *testing.T) {
 	assert.Equal(t, []string{"https://example.com/story", "https://example.com/other"}, rows.urls)
 	assert.Equal(t, "First", rows.byURL["https://example.com/story"].Title)
 	assert.Equal(t, "Other", rows.byURL["https://example.com/other"].Title)
-	assert.Equal(t, &datapackage.Report{Read: 4, Written: 2, Deduped: 2}, pkg.Report)
+	assert.Equal(t, &datapackage.Report{Read: 4, Written: 2, Deduped: map[string]int64{"url": 2}}, pkg.Report)
 }
 
-func TestPreprocess_KeepsURLVariantsApartWithoutIdentityRules(t *testing.T) {
+func TestPreprocess_KeepsURLVariantsApartWithoutURLRules(t *testing.T) {
 	run := newPreprocessRun(t, ccNewsLikeMapping,
 		csvFile("part.csv", "title,text,url\nFirst,Body,https://example.com/story\nVariant,Body,http://www.example.com/story/?utm_source=feed#top\n"),
 	)
@@ -464,12 +473,12 @@ func TestPreprocess_KeepsURLVariantsApartWithoutIdentityRules(t *testing.T) {
 	pkg, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/story", "http://www.example.com/story/?utm_source=feed#top"}, rows.urls)
 	assert.Equal(t, &datapackage.Report{Read: 2, Written: 2}, pkg.Report)
-	assert.Nil(t, pkg.Identity)
+	assert.Nil(t, pkg.Identity.URL)
 }
 
 func TestPreprocess_MergesTheURLVariantsItsIdentityIgnores(t *testing.T) {
-	identity := "identity:\n  ignore:\n    scheme: true\n    www: true\n    trailingSlash: true\n    fragment: true\n    queryParams: [\"utm_*\"]\n"
-	run := newPreprocessRun(t, mappingWith(t, "dateFormat:", identity+"dateFormat:"),
+	urlRules := "  url:\n    ignore:\n      scheme: true\n      www: true\n      trailingSlash: true\n      fragment: true\n      queryParams: [\"utm_*\"]\n"
+	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", urlRules),
 		csvFile("part.csv", "title,text,url\nFirst,Body,https://example.com/story\nVariant,Body,http://www.example.com/story/?utm_source=feed#top\nOther,Body,https://example.com/story?page=2\n"),
 	)
 
@@ -478,12 +487,108 @@ func TestPreprocess_MergesTheURLVariantsItsIdentityIgnores(t *testing.T) {
 	pkg, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/story", "https://example.com/story?page=2"}, rows.urls)
 	assert.Equal(t, "First", rows.byURL["https://example.com/story"].Title)
-	assert.Equal(t, &datapackage.Report{Read: 3, Written: 2, Deduped: 1}, pkg.Report)
-	require.NotNil(t, pkg.Identity)
-	assert.Equal(t, datamapping.IdentityIgnore{Scheme: true, WWW: true, TrailingSlash: true, Fragment: true, QueryParams: []string{"utm_*"}}, pkg.Identity.Ignore)
-	namespace, err := uuid.Parse(pkg.IDStrategy.Namespace)
+	assert.Equal(t, &datapackage.Report{Read: 3, Written: 2, Deduped: map[string]int64{"url": 1}}, pkg.Report)
+	require.NotNil(t, pkg.Identity.URL)
+	assert.Equal(t, datamapping.IgnoredURLParts{Scheme: true, WWW: true, TrailingSlash: true, Fragment: true, QueryParams: []string{"utm_*"}}, pkg.Identity.URL.Ignore)
+	namespace, err := uuid.Parse(pkg.Identity.Namespace)
 	require.NoError(t, err)
 	assert.Equal(t, uuid.NewSHA1(namespace, []byte("example.com/story")), rows.byURL["https://example.com/story"].ID)
+}
+
+func TestPreprocess_KeepsTheFirstOfArticlesAUniqueRuleMatches(t *testing.T) {
+	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", samePageRule),
+		csvFile("part.csv", "title,text,url\n"+
+			"Storm hits coast,Wire body,https://example.com/a\n"+
+			"Storm hits coast,Wire body,https://example.com/b\n"+
+			"Storm hits coast,Wire body,https://other.org/a\n"+
+			"Storm hits coast,Other body,https://example.com/c\n"),
+	)
+
+	require.NoError(t, run.execute(t.Context()))
+
+	pkg, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, []string{"https://example.com/a", "https://other.org/a", "https://example.com/c"}, rows.urls)
+	assert.Equal(t, &datapackage.Report{Read: 4, Written: 3, Deduped: map[string]int64{"same-page": 1}}, pkg.Report)
+	assert.Equal(t, []datamapping.UniqueRule{{Name: "same-page", Fields: []string{"PublisherDomain", "Title", "Content"}}}, pkg.Identity.Unique)
+}
+
+func TestPreprocess_ComparesUniqueFieldsWithWhitespaceCollapsed(t *testing.T) {
+	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", samePageRule),
+		csvFile("part.csv", "title,text,url\n"+
+			"Storm hits coast,Wire body,https://example.com/a\n"+
+			"\"  Storm  hits\ncoast \",\"Wire\t body\",https://example.com/b\n"),
+	)
+
+	require.NoError(t, run.execute(t.Context()))
+
+	pkg, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, []string{"https://example.com/a"}, rows.urls)
+	assert.Equal(t, map[string]int64{"same-page": 1}, pkg.Report.Deduped)
+}
+
+func TestPreprocess_NeverMatchesAUniqueRuleOnAnEmptyField(t *testing.T) {
+	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", samePageRule),
+		csvFile("part.csv", "title,text,url\nWeather,,https://example.com/1\nWeather,,https://example.com/2\n"),
+	)
+
+	require.NoError(t, run.execute(t.Context()))
+
+	pkg, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, []string{"https://example.com/1", "https://example.com/2"}, rows.urls)
+	assert.Equal(t, &datapackage.Report{Read: 2, Written: 2}, pkg.Report)
+}
+
+func TestPreprocess_ADroppedRecordNeverKnocksOutALaterOne(t *testing.T) {
+	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", samePageRule),
+		csvFile("part.csv", "title,text,url\n"+
+			"Kept,Body X,https://example.com/story\n"+
+			"Copy,Body Y,https://example.com/story\n"+
+			"Copy,Body Y,https://example.com/other\n"),
+	)
+
+	require.NoError(t, run.execute(t.Context()))
+
+	pkg, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, []string{"https://example.com/story", "https://example.com/other"}, rows.urls)
+	assert.Equal(t, map[string]int64{"url": 1}, pkg.Report.Deduped)
+}
+
+func TestPreprocess_CountsEachDropUnderTheFirstRuleThatMatches(t *testing.T) {
+	rules := "  unique:\n    - {name: same-title, fields: [Title]}\n    - {name: same-body, fields: [Content]}\n"
+	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", rules),
+		csvFile("part.csv", "title,text,url\n"+
+			"One,Body A,https://example.com/1\n"+
+			"One,Body A,https://example.com/1\n"+
+			"One,Body A,https://example.com/2\n"+
+			"Two,Body A,https://example.com/3\n"),
+	)
+
+	require.NoError(t, run.execute(t.Context()))
+
+	pkg, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, []string{"https://example.com/1"}, rows.urls)
+	assert.Equal(t, map[string]int64{"url": 1, "same-title": 1, "same-body": 1}, pkg.Report.Deduped)
+}
+
+func TestPreprocess_MintsRandomIDsThatDifferOnEveryRun(t *testing.T) {
+	run := newPreprocessRun(t, mappingWithIdentity(t, "random", ""),
+		csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\nTwo,Body,https://example.com/2\nAgain,Body,https://example.com/1\n"),
+	)
+	second := run
+	second.outputRoot = filepath.Join(t.TempDir(), "canonical")
+
+	require.NoError(t, run.execute(t.Context()))
+	require.NoError(t, second.execute(t.Context()))
+
+	pkg, rows := readArticles(t, run.packageDir(t))
+	_, rerun := readArticles(t, second.packageDir(t))
+	assert.Equal(t, []string{"https://example.com/1", "https://example.com/2"}, rows.urls)
+	assert.Equal(t, map[string]int64{"url": 1}, pkg.Report.Deduped)
+	one, two := rows.byURL["https://example.com/1"].ID, rows.byURL["https://example.com/2"].ID
+	assert.NotEqual(t, one, two)
+	assert.NotEqual(t, one, rerun.byURL["https://example.com/1"].ID)
+	assert.Equal(t, uuid.Version(7), one.Version())
+	assert.Equal(t, &datapackage.Identity{IDKind: datamapping.IDKindRandom, Algorithm: "uuidv7"}, pkg.Identity)
 }
 
 func TestPreprocess_DerivesThePublisherDomainFromTheURL(t *testing.T) {
@@ -632,9 +737,7 @@ func TestPreprocess_CancelledRunLeavesNoPackage(t *testing.T) {
 }
 
 func TestPreprocess_KeepsADatasetsOwnIDAsTheExternalID(t *testing.T) {
-	mapping := strings.Replace(
-		mappingWith(t, "idStrategy:\n  kind: uuidv5\n  source: url\n", ""),
-		"fieldMappings:\n", "fieldMappings:\n  - {source: uid, target: Metadata.ExternalID}\n", 1)
+	mapping := mappingWith(t, "fieldMappings:\n", "fieldMappings:\n  - {source: uid, target: Metadata.ExternalID}\n")
 	run := newPreprocessRun(t, mapping, csvFile("part.csv", "uid,title,text,url\n"+
 		"89541,One,Body,https://example.com/1\n"+
 		",Two,Body,https://example.com/2\n"))
@@ -642,29 +745,12 @@ func TestPreprocess_KeepsADatasetsOwnIDAsTheExternalID(t *testing.T) {
 	require.NoError(t, run.execute(t.Context()))
 
 	pkg, rows := readArticles(t, run.packageDir(t))
-	require.NotNil(t, pkg.IDStrategy)
-	namespace, err := uuid.Parse(pkg.IDStrategy.Namespace)
+	namespace, err := uuid.Parse(pkg.Identity.Namespace)
 	require.NoError(t, err)
 	one := rows.byURL["https://example.com/1"]
 	assert.Equal(t, uuid.NewSHA1(namespace, []byte("https://example.com/1")), one.ID)
 	assert.Equal(t, "89541", one.Metadata.ExternalID)
 	assert.Empty(t, rows.byURL["https://example.com/2"].Metadata.ExternalID)
-}
-
-func TestPreprocess_DerivesIDsFromTheURLWhenTheMappingNamesNoStrategy(t *testing.T) {
-	run := newPreprocessRun(t, mappingWith(t, "idStrategy:\n  kind: uuidv5\n  source: url\n", ""),
-		csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"),
-	)
-
-	require.NoError(t, run.execute(t.Context()))
-
-	pkg, rows := readArticles(t, run.packageDir(t))
-	require.NotNil(t, pkg.IDStrategy)
-	assert.Equal(t, "uuidv5", string(pkg.IDStrategy.Kind))
-	assert.Equal(t, "url", pkg.IDStrategy.Source)
-	namespace, err := uuid.Parse(pkg.IDStrategy.Namespace)
-	require.NoError(t, err)
-	assert.Equal(t, uuid.NewSHA1(namespace, []byte("https://example.com/1")), rows.byURL["https://example.com/1"].ID)
 }
 
 func TestPreprocess_OmitsTheRawVersionWhenTheRawPackageHasNone(t *testing.T) {

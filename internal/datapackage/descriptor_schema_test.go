@@ -14,6 +14,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 
 	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/pkg/apis/datamapping"
 )
 
 var descriptorSchemaPath = filepath.Join("..", "..", "api", "datapackage-spec", "datapackage-v1.json")
@@ -61,9 +62,9 @@ func representativePackages() map[string]datapackage.Package {
 			Version:       "v1",
 			ArticleSchema: datapackage.ArticleSchema,
 			Language:      "eng",
-			IDStrategy:    &datapackage.IDStrategy{Kind: "uuidv5", Source: "url", Namespace: "6ba7b811-9dad-11d1-80b4-00c04fd430c8"},
+			Identity:      &datapackage.Identity{IDKind: datamapping.IDKindURLHash, Algorithm: "uuidv5", Namespace: "6ba7b811-9dad-11d1-80b4-00c04fd430c8"},
 			ProducedBy:    &datapackage.ProducedBy{Tool: "datapipe preprocess"},
-			Report:        &datapackage.Report{Read: 10, Written: 7, Deduped: 1, Dropped: map[string]int64{"invalid_url": 2}},
+			Report:        &datapackage.Report{Read: 10, Written: 7, Deduped: map[string]int64{"url": 1}, Dropped: map[string]int64{"invalid_url": 2}},
 			Sources:       []datapackage.Source{{Title: "Hugging Face vblagoje/cc_news", Path: "https://huggingface.co/datasets/vblagoje/cc_news", Version: "81eb2ce"}},
 			Resources:     []datapackage.Resource{{Name: datapackage.ArticlesResource, Path: "articles.parquet", Format: "parquet"}},
 		},
@@ -106,6 +107,39 @@ func TestEveryWrittenDescriptorShapeConformsToTheDescriptorSchema(t *testing.T) 
 		t.Run(name, func(t *testing.T) {
 			if err := validateDescriptor(t, schema, writeDescriptor(t, pkg)); err != nil {
 				t.Errorf("descriptor violates %s: %v", descriptorSchemaPath, err)
+			}
+		})
+	}
+}
+
+func TestCommittedDescriptorsOpenAndConformToTheDescriptorSchema(t *testing.T) {
+	schema := compileDescriptorSchema(t)
+	var paths []string
+	for _, pattern := range []string{
+		"datasets/*/canonical/*/datapackage.json",
+		"datasets/*/embeddings/*/*/datapackage.json",
+		"tracks/*/*/trec/query-vectors/datapackage.json",
+	} {
+		matches, err := filepath.Glob(filepath.Join("..", "..", pattern))
+		if err != nil {
+			t.Fatal(err)
+		}
+		paths = append(paths, matches...)
+	}
+	if len(paths) == 0 {
+		t.Fatal("no committed descriptors found")
+	}
+	for _, path := range paths {
+		t.Run(path, func(t *testing.T) {
+			descriptor, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := validateDescriptor(t, schema, descriptor); err != nil {
+				t.Errorf("descriptor violates %s: %v", descriptorSchemaPath, err)
+			}
+			if _, err := datapackage.Open(context.Background(), filepath.Dir(path)); err != nil {
+				t.Errorf("Open: %v", err)
 			}
 		})
 	}
