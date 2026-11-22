@@ -27,7 +27,7 @@ import (
 	dquery "github.com/tadjov/sengi/internal/types/query"
 )
 
-const loadTestModelTag = "qwen3-embedding:0.6b@1024"
+var loadTestModelTag = embedding.Tag(embedding.DefaultModel, embedding.DefaultDim)
 
 func TestCorpusLoader_LoadCorpus(t *testing.T) {
 	ctx := context.Background()
@@ -77,7 +77,7 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 			"embedding_model":  `{"type":"keyword"}`,
 			"published_at":     `{"type":"date"}`,
 			"metadata":         `{"type":"object","enabled":false}`,
-			"embedding":        `{"type":"dense_vector","dims":1024,"index":true,"similarity":"cosine","index_options":{"type":"hnsw","m":16,"ef_construction":64}}`,
+			"embedding":        fmt.Sprintf(`{"type":"dense_vector","dims":%d,"index":true,"similarity":"cosine","index_options":{"type":"hnsw","m":16,"ef_construction":64}}`, embedding.DefaultDim),
 		}
 		for field, mapping := range want {
 			assertJSONEqual(t, field, properties[field], mapping)
@@ -673,7 +673,7 @@ func testArticles(n int) []document.Article {
 
 // vectorFor is unique per article, so a vector on the wrong document shows.
 func vectorFor(i int) []float32 {
-	v := make([]float32, EmbeddingDims)
+	v := make([]float32, embedding.DefaultDim)
 	for j := range v {
 		v[j] = float32(i+1) / float32(j+1)
 	}
@@ -697,7 +697,7 @@ func corpusOf(articles []document.Article, vecs []embedding.Vec) storage.Corpus 
 	if vecs != nil {
 		c.Vectors = seqOf(vecs)
 		c.ModelTag = loadTestModelTag
-		c.Embeddings = &storage.PackageRef{Name: "cc-news-embeddings", Version: "lead-v1-1024-0000test", ResourceHash: "sha256:" + fmt.Sprintf("%064d", 1)}
+		c.Embeddings = &storage.PackageRef{Name: "cc-news-embeddings", Version: "lead-v1-0000test", ResourceHash: "sha256:" + fmt.Sprintf("%064d", 1)}
 	}
 	return c
 }

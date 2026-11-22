@@ -10,14 +10,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pgvector/pgvector-go"
+	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage/pg"
 	"github.com/tadjov/sengi/internal/storage/queryvectors"
 	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
-// The fixture holds two queries at width 1024; q2 is the unit vector e0.
-const fixtureTag = "qwen3-embedding:0.6b@1024"
+// The fixture holds two queries at width 512; q2 is the unit vector e0.
+const fixtureTag = "qwen3-embedding:0.6b@512"
 
 func copyFixture(t *testing.T) string {
 	t.Helper()
@@ -62,8 +63,8 @@ func TestQueryVector_ServesTheStoredVectorForAKnownText(t *testing.T) {
 		t.Fatalf("QueryVector: %v", err)
 	}
 
-	if len(got) != 1024 || got[0] != 1 {
-		t.Fatalf("vector = %d wide starting %v, want the 1024-wide unit vector e0", len(got), got[:min(len(got), 2)])
+	if len(got) != 512 || got[0] != 1 {
+		t.Fatalf("vector = %d wide starting %v, want the 512-wide unit vector e0", len(got), got[:min(len(got), 2)])
 	}
 	for i, v := range got[1:] {
 		if v != 0 {
@@ -181,7 +182,7 @@ func TestOpen_RefusesAPackageTaggedOtherThanTheSpecDeclares(t *testing.T) {
 		declared string
 	}{
 		{name: "the tag without its width", declared: "qwen3-embedding:0.6b"},
-		{name: "another width", declared: "qwen3-embedding:0.6b@512"},
+		{name: "another width", declared: "qwen3-embedding:0.6b@1024"},
 		{name: "nothing declared", declared: ""},
 	}
 	for _, tt := range tests {
@@ -202,7 +203,7 @@ func TestOpen_RefusesAnEmbeddingBlockTheVectorsDoNotMatch(t *testing.T) {
 		to   string
 	}{
 		{name: "document recipe", from: `"recipe": "query-instruct-v1"`, to: `"recipe": "lead-v1"`},
-		{name: "rows wider than the declared dim", from: `"dim": 1024`, to: `"dim": 512`},
+		{name: "rows wider than the declared dim", from: `"dim": 512`, to: `"dim": 256`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -258,9 +259,9 @@ func TestDocVectors_ServesThePackageTagsVectorsFromPostgres(t *testing.T) {
 	t.Cleanup(pool.Close)
 
 	tagged, untagged := uuid.New(), uuid.New()
-	taggedVector := make([]float32, 1024)
+	taggedVector := make([]float32, embedding.DefaultDim)
 	taggedVector[3] = 1
-	untaggedVector := make([]float32, 1024)
+	untaggedVector := make([]float32, embedding.DefaultDim)
 	untaggedVector[5] = 1
 	for id, stored := range map[uuid.UUID]struct {
 		model  string
@@ -293,7 +294,7 @@ func TestDocVectors_ServesThePackageTagsVectorsFromPostgres(t *testing.T) {
 	if _, ok := got[untagged]; ok {
 		t.Errorf("DocVectors served %s, stored under the plain model name", untagged)
 	}
-	if v, ok := got[tagged]; !ok || len(v) != 1024 || v[3] != 1 {
+	if v, ok := got[tagged]; !ok || len(v) != embedding.DefaultDim || v[3] != 1 {
 		t.Errorf("DocVectors[%s] = %v (present %v), want its stored e3 vector", tagged, v[:min(len(v), 4)], ok)
 	}
 }

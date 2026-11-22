@@ -266,7 +266,7 @@ engines:
     type: postgres
     connection: "postgresql://…"
     params:
-      embedding_model: "qwen3-embedding:0.6b@1024"
+      embedding_model: "qwen3-embedding:0.6b@512"
 ```
 
 The value is the tag stored vectors carry: the model with its width. `article_embeddings` is
@@ -288,7 +288,7 @@ documents. `scripts/embed_queries.py` writes the package. The bench refuses it w
 
 A query whose text the package doesn't hold fails with the text in the error. Without a
 package, queries are embedded through Ollama (`EMBEDDING_BASE_URL`, and `EMBEDDING_MODEL`
-defaulting to `qwen3-embedding:0.6b`) at width `EMBEDDING_DIM`, default 1024, tagged `qwen3-embedding:0.6b@1024`.
+defaulting to `qwen3-embedding:0.6b`) at width `EMBEDDING_DIM`, default 512, tagged `qwen3-embedding:0.6b@512`.
 
 The Elasticsearch arm needs no such filter — its vector is a `dense_vector` field on the
 article document, so re-embedding overwrites rather than accumulates — but it declares
@@ -637,7 +637,7 @@ One failed measured iteration fails the query with that iteration's error, so a 
 
 Elasticsearch also reports the time it spent on each search, `took`, in whole milliseconds, without the transport or the client decoding the response. The runner keeps it for every measured iteration beside the client latency, and the report gives its p50, p95, p99 and mean as the server time (`ServerLatency`) of every engine that reports one, over the same queries as the client latency. A search under a millisecond reads 0. Postgres and the API report none, so they have no server time rather than an invented one.
 
-Every engine ships the same payload: document ids only. Postgres templates `SELECT id`, so elasticsearch templates set `"_source": false`. Without it each hit carries the full article and its 1024-dim embedding, and a `size: 100` search times shipping a hundred articles against postgres shipping a hundred ids. The executor reads the id from `hit._id`, which the indexer sets to the article id, and falls back to `_source.id` only when `_id` is not a UUID.
+Every engine ships the same payload: document ids only. Postgres templates `SELECT id`, so elasticsearch templates set `"_source": false`. Without it each hit carries the full article and its 512-dim embedding, and a `size: 100` search times shipping a hundred articles against postgres shipping a hundred ids. The executor reads the id from `hit._id`, which the indexer sets to the article id, and falls back to `_source.id` only when `_id` is not a UUID.
 
 ```json
 {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "_source": false, "track_total_hits": false}

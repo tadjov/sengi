@@ -17,10 +17,6 @@ import (
 	"github.com/tadjov/sengi/internal/storage"
 )
 
-// EmbeddingDims is the vector width produced by the embedding model and declared
-// on the article index mapping. Must match the loaded embeddings file.
-const EmbeddingDims = 1024
-
 // Embedder is the Elasticsearch implementation of storage.EmbedIndexer. Unlike
 // Postgres (a separate article_embeddings table), it stores the vector as a
 // dense_vector field on the existing article document, keyed by _id == article

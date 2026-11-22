@@ -8,6 +8,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v9"
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types/enums/densevectorsimilarity"
+	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/testcontainer"
 )
@@ -74,7 +75,7 @@ func TestEmbedder_RejectsAnIndexBuiltAtOtherBuildParams(t *testing.T) {
 func createIndexWithDefaultedVectorField(t *testing.T, client *elasticsearch.TypedClient, index string) {
 	t.Helper()
 
-	dims := EmbeddingDims
+	dims := embedding.DefaultDim
 	indexed := true
 	sim := densevectorsimilarity.Cosine
 	vector := types.NewDenseVectorProperty()

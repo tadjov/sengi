@@ -52,10 +52,10 @@ func loadedPool(t *testing.T, c pgtest.Corpus) *pg.ConnectionPool {
 
 func TestSemanticSearcher_SearchSemantic_OnlySeesTheQueryModel(t *testing.T) {
 	ctx := context.Background()
-	const storedTag = "qwen3-embedding:0.6b@1024"
+	storedTag := embedding.Tag(embedding.DefaultModel, embedding.DefaultDim)
 
-	queryVec := vec(1024, 0.9)
-	nearQuery := vec(1024, 0.9)
+	queryVec := vec(embedding.DefaultDim, 0.9)
+	nearQuery := vec(embedding.DefaultDim, 0.9)
 	for i := len(nearQuery) / 2; i < len(nearQuery); i++ {
 		nearQuery[i] = 0.5
 	}

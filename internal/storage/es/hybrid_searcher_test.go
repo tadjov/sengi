@@ -26,12 +26,12 @@ func TestHybridSearcher_SearchHybrid_RanksBothSignalsFirst(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	near := vec(EmbeddingDims, 0.9)
-	far := vec(EmbeddingDims, -0.9)
+	near := vec(embedding.DefaultDim, 0.9)
+	far := vec(embedding.DefaultDim, -0.9)
 	// Not a scaled copy of near: cosine ignores magnitude, so the two would tie
 	// and the kNN leg would order them arbitrarily. RRF margins here are ~1e-5.
-	midway := vec(EmbeddingDims, 0.9)
-	for i := range midway[:EmbeddingDims/4] {
+	midway := vec(embedding.DefaultDim, 0.9)
+	for i := range midway[:embedding.DefaultDim/4] {
 		midway[i] = -0.9
 	}
 
@@ -81,7 +81,7 @@ func TestHybridSearcher_SearchHybrid_OnlySeesTheQueryModel(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	queryVec := vec(EmbeddingDims, 0.9)
+	queryVec := vec(embedding.DefaultDim, 0.9)
 	cfg, searcher := newHybridTestEnv(t, queryVec)
 
 	// Titles share no term with the query, so only the kNN leg can return them.

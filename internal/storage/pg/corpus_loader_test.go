@@ -23,10 +23,9 @@ import (
 	"github.com/tadjov/sengi/internal/types/language"
 )
 
-const (
-	corpusSize = 2_000
-	modelTag   = "qwen3-embedding:0.6b@1024"
-)
+const corpusSize = 2_000
+
+var modelTag = embedding.Tag(embedding.DefaultModel, embedding.DefaultDim)
 
 var databases atomic.Int64
 
@@ -587,9 +586,9 @@ func fixture(n int) ([]document.Article, []embedding.Vec) {
 				Extra:         map[string]any{"rank": fmt.Sprint(i)},
 			},
 		}
-		values := make([]float32, 1024)
-		values[i%1024] = 1
-		values[(i+1)%1024] = float32(i) / float32(n)
+		values := make([]float32, embedding.DefaultDim)
+		values[i%embedding.DefaultDim] = 1
+		values[(i+1)%embedding.DefaultDim] = float32(i) / float32(n)
 		vectors[i] = embedding.Vec{ID: id, Model: modelTag, Embedding: values}
 	}
 	return articles, vectors
@@ -604,7 +603,7 @@ func corpusOf(articles []document.Article, vectors []embedding.Vec) storage.Corp
 	if vectors != nil {
 		c.Vectors = seq(vectors)
 		c.ModelTag = modelTag
-		c.Embeddings = &storage.PackageRef{Name: "fixture-embeddings", Version: "lead-v1-1024-00000000", ResourceHash: "sha256:" + zeros(64)}
+		c.Embeddings = &storage.PackageRef{Name: "fixture-embeddings", Version: "lead-v1-00000000", ResourceHash: "sha256:" + zeros(64)}
 	}
 	return c
 }

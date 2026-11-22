@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/google/uuid"
@@ -17,13 +18,15 @@ import (
 	pgxvec "github.com/pgvector/pgvector-go/pgx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
+var fixtureTagDir = tagDirName(embedding.Tag(embedding.DefaultModel, embedding.DefaultDim))
+
 const (
-	fixtureTagDir     = "qwen3-embedding-0.6b@1024"
 	qwenOllamaDigest  = "a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72"
 	gemmaOllamaDigest = "85462619ee721b466c5927b9f8b2a1d2b4c5d6e7f8091a2b3c4d5e6f708192a3"
 )
@@ -85,12 +88,12 @@ func fakeEmbeddingAPI(t *testing.T, vectorOf func(lead string) ([]float32, bool)
 	t.Cleanup(server.Close)
 	t.Setenv("EMBEDDING_BASE_URL", server.URL)
 	t.Setenv("EMBEDDING_MODEL", "qwen3-embedding:0.6b")
-	t.Setenv("EMBEDDING_DIM", "1024")
+	t.Setenv("EMBEDDING_DIM", strconv.Itoa(embedding.DefaultDim))
 	return &calls
 }
 
 func unitVector(position int) []float32 {
-	v := make([]float32, 1024)
+	v := make([]float32, embedding.DefaultDim)
 	v[position] = 1
 	return v
 }
@@ -99,7 +102,7 @@ func unitVector(position int) []float32 {
 func fixtureLeadVectors(n, offset int) func(lead string) ([]float32, bool) {
 	byLead := make(map[string][]float32, n)
 	for i := range n {
-		byLead[fmt.Sprintf("Storm number %d hits the coast Thousands without power", i)] = unitVector((i + offset) % 1024)
+		byLead[fmt.Sprintf("Storm number %d hits the coast Thousands without power", i)] = unitVector((i + offset) % embedding.DefaultDim)
 	}
 	return func(lead string) ([]float32, bool) {
 		v, ok := byLead[lead]
@@ -149,7 +152,7 @@ func TestEmbed_PublishesEachCanonicalRowsVectorInCanonicalOrder(t *testing.T) {
 	assert.Equal(t, &datapackage.ProducedBy{Tool: "datapipe embed"}, pkg.ProducedBy)
 	assert.Equal(t, &datapackage.Embedding{
 		Model: "qwen3-embedding:0.6b", HuggingFaceModel: "Qwen/Qwen3-Embedding-0.6B", Revision: qwenOllamaDigest,
-		Tag: "qwen3-embedding:0.6b@1024", Dim: 1024, Recipe: "lead-v1", Pooling: "last_token", Normalized: true,
+		Tag: embedding.Tag(embedding.DefaultModel, embedding.DefaultDim), Dim: embedding.DefaultDim, Recipe: "lead-v1", Pooling: "last_token", Normalized: true,
 		MaxTokens: 512, BatchSize: 64, DType: "q8_0",
 	}, pkg.Embedding)
 	assert.NoError(t, validateAgainstDescriptorSchema(t, filepath.Join(dir, datapackage.DescriptorName)))
@@ -248,10 +251,10 @@ func TestEmbed_RecordsTheSourceRepoGivenForAnotherModel(t *testing.T) {
 
 	require.NoError(t, execDatapipe(t, "", "embed", canonical.location, "--version", "go-test", "--hf-model", "google/embeddinggemma-300m"))
 
-	pkg := openEmbeddings(t, filepath.Join(root, "datasets", "fixture", "embeddings", "embeddinggemma-300m@1024", "go-test"))
+	pkg := openEmbeddings(t, filepath.Join(root, "datasets", "fixture", "embeddings", tagDirName(embedding.Tag("embeddinggemma:300m", embedding.DefaultDim)), "go-test"))
 	assert.Equal(t, "embeddinggemma:300m", pkg.Embedding.Model)
 	assert.Equal(t, "google/embeddinggemma-300m", pkg.Embedding.HuggingFaceModel)
-	assert.Equal(t, "embeddinggemma:300m@1024", pkg.Embedding.Tag)
+	assert.Equal(t, embedding.Tag("embeddinggemma:300m", embedding.DefaultDim), pkg.Embedding.Tag)
 	assert.Equal(t, gemmaOllamaDigest, pkg.Embedding.Revision)
 	assert.Equal(t, "bf16", pkg.Embedding.DType)
 }
@@ -406,6 +409,6 @@ func TestEmbed_LoadStoresTheVectorTheAPIReturnedForEachArticlesLead(t *testing.T
 	for i, article := range articles {
 		returned, ok := vectorOf(fmt.Sprintf("Storm number %d hits the coast Thousands without power", i))
 		require.True(t, ok)
-		assert.Equal(t, storedEmbedding{Model: "qwen3-embedding:0.6b@1024", Embedding: returned}, stored[article.ID], "article %d", i)
+		assert.Equal(t, storedEmbedding{Model: embedding.Tag(embedding.DefaultModel, embedding.DefaultDim), Embedding: returned}, stored[article.ID], "article %d", i)
 	}
 }

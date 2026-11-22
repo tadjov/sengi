@@ -11,6 +11,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/dialect"
 	"github.com/tadjov/sengi/internal/bench/engine"
 	"github.com/tadjov/sengi/internal/bench/suite"
+	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage/pg"
 	"github.com/tadjov/sengi/internal/testcontainer"
 )
@@ -140,7 +141,7 @@ func insertArticle(ctx context.Context, t *testing.T, pool *pg.ConnectionPool, t
 // unitVector points each article in a different direction, so cosine distance
 // orders them without ties.
 func unitVector(angle float64) []float32 {
-	v := make([]float32, 1024)
+	v := make([]float32, embedding.DefaultDim)
 	v[0] = float32(math.Cos(angle))
 	v[1] = float32(math.Sin(angle))
 	return v

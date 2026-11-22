@@ -15,6 +15,7 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/pg"
@@ -24,7 +25,7 @@ import (
 	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
-const loadFixtureModelTag = "qwen3-embedding:0.6b@1024"
+var loadFixtureModelTag = embedding.Tag(embedding.DefaultModel, embedding.DefaultDim)
 
 var loadFixtureNamespace = uuid.MustParse("5a0c2f3e-8d41-4b6a-9e2f-1c7b3d9a6e54")
 
@@ -63,7 +64,7 @@ func TestLoad(t *testing.T) {
 				fromDatabase := corpusLoadRecord(t, db, written[0].FinishedAt)
 				assert.Equal(t, fromDatabase, written[0])
 				assert.Equal(t, storage.PackageRef{Name: "fixture-canonical", Version: "article-v2-test", ResourceHash: canonical.resourceHash}, written[0].Canonical)
-				assert.Equal(t, &storage.PackageRef{Name: "fixture-embeddings", Version: "lead-v1-1024-test", ResourceHash: embeddings.resourceHash}, written[0].Embeddings)
+				assert.Equal(t, &storage.PackageRef{Name: "fixture-embeddings", Version: "lead-v1-test", ResourceHash: embeddings.resourceHash}, written[0].Embeddings)
 				assert.Equal(t, loadFixtureModelTag, written[0].ModelTag)
 				assert.Equal(t, int64(2_000), written[0].Vectors)
 				assert.Equal(t, 2, written[0].Concurrency)
@@ -283,8 +284,8 @@ func writeEmbeddingsPackage(t *testing.T, root string, canonical fixturePackage,
 	t.Helper()
 	rows := make([]producerRow, len(articles))
 	for i, a := range articles {
-		values := make([]float32, 1024)
-		values[i%1024] = 1
+		values := make([]float32, embedding.DefaultDim)
+		values[i%embedding.DefaultDim] = 1
 		rows[i] = producerRow{ID: a.ID.String(), Embedding: values}
 	}
 	return writeEmbeddingRows(t, root, canonical, rows, limit)
@@ -292,11 +293,13 @@ func writeEmbeddingsPackage(t *testing.T, root string, canonical fixturePackage,
 
 func writeEmbeddingRows(t *testing.T, root string, canonical fixturePackage, rows []producerRow, limit *int) fixturePackage {
 	t.Helper()
-	version := "lead-v1-1024-test"
+	dim := len(rows[0].Embedding)
+	tag := embedding.Tag(embedding.DefaultModel, dim)
+	version := "lead-v1-test"
 	if limit != nil {
 		version += fmt.Sprintf("-limit-%d", *limit)
 	}
-	dir := filepath.Join(root, "datasets", "fixture", "embeddings", "qwen3-embedding-0.6b@1024", version)
+	dir := filepath.Join(root, "datasets", "fixture", "embeddings", tagDirName(tag), version)
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	path := filepath.Join(dir, "embeddings.parquet")
 	f, err := os.Create(path)
@@ -312,7 +315,7 @@ func writeEmbeddingRows(t *testing.T, root string, canonical fixturePackage, row
 		Version: version,
 		Embedding: &datapackage.Embedding{
 			Model: "qwen3-embedding:0.6b", HuggingFaceModel: "Qwen/Qwen3-Embedding-0.6B", Revision: "abc123",
-			Tag: loadFixtureModelTag, Dim: 1024, Recipe: "lead-v1", Pooling: "last_token", Normalized: true,
+			Tag: tag, Dim: dim, Recipe: "lead-v1", Pooling: "last_token", Normalized: true,
 			MaxTokens: 512, BatchSize: 32, DType: "float16", Limit: limit,
 		},
 		Canonical: &datapackage.Ref{Name: "fixture-canonical", Version: "article-v2-test", ResourceHash: canonical.resourceHash},

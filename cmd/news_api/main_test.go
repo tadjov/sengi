@@ -32,17 +32,17 @@ func TestNewQueryEmbedder_AsksForThePlainModelAndTagsTheWidth(t *testing.T) {
 	}{
 		{
 			name:        "configured model and width",
-			cfg:         embedding.Config{Model: "bge-m3", Dim: 512},
+			cfg:         embedding.Config{Model: "bge-m3", Dim: 256},
 			wantRequest: "bge-m3",
-			wantTag:     "bge-m3@512",
-			wantWidth:   512,
+			wantTag:     "bge-m3@256",
+			wantWidth:   256,
 		},
 		{
 			name:        "nothing configured",
 			cfg:         embedding.Config{},
 			wantRequest: "qwen3-embedding:0.6b",
-			wantTag:     "qwen3-embedding:0.6b@1024",
-			wantWidth:   1024,
+			wantTag:     embedding.Tag(embedding.DefaultModel, embedding.DefaultDim),
+			wantWidth:   embedding.DefaultDim,
 		},
 	}
 

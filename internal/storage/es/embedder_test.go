@@ -68,8 +68,8 @@ func TestEmbedder_SaveBulk_UpdatesDocAndSkipsOrphans(t *testing.T) {
 	const model = "qwen3-embedding:0.6b"
 	orphan := uuid.New()
 	batch := []*embedding.Vec{
-		{ID: a1, Model: model, Embedding: vec(EmbeddingDims, 0.1)},
-		{ID: orphan, Model: model, Embedding: vec(EmbeddingDims, 0.2)},
+		{ID: a1, Model: model, Embedding: vec(embedding.DefaultDim, 0.1)},
+		{ID: orphan, Model: model, Embedding: vec(embedding.DefaultDim, 0.2)},
 	}
 
 	res, err := embedder.SaveBulk(ctx, batch)
@@ -86,8 +86,8 @@ func TestEmbedder_SaveBulk_UpdatesDocAndSkipsOrphans(t *testing.T) {
 	if !found {
 		t.Fatal("article doc disappeared")
 	}
-	if len(emb) != EmbeddingDims {
-		t.Fatalf("embedding dim = %d, want %d", len(emb), EmbeddingDims)
+	if len(emb) != embedding.DefaultDim {
+		t.Fatalf("embedding dim = %d, want %d", len(emb), embedding.DefaultDim)
 	}
 
 	if _, found := docEmbedding(t, embedder, orphan); found {
@@ -95,14 +95,14 @@ func TestEmbedder_SaveBulk_UpdatesDocAndSkipsOrphans(t *testing.T) {
 	}
 
 	// Idempotent re-run with a changed vector → no error, value updated.
-	batch[0].Embedding = vec(EmbeddingDims, 0.9)
+	batch[0].Embedding = vec(embedding.DefaultDim, 0.9)
 	if _, err := embedder.SaveBulk(ctx, batch); err != nil {
 		t.Fatalf("SaveBulk re-run: %v", err)
 	}
 	refresh(t, embedder)
 
 	emb, _ = docEmbedding(t, embedder, a1)
-	if !sameVector(emb, vec(EmbeddingDims, 0.9)) {
+	if !sameVector(emb, vec(embedding.DefaultDim, 0.9)) {
 		t.Errorf("expected the upserted embedding of 0.9s, got %v", emb[:min(len(emb), 1)])
 	}
 }
@@ -123,7 +123,7 @@ func TestIndexer_CountEmbedded(t *testing.T) {
 	}
 
 	if _, err := embedder.SaveBulk(ctx, []*embedding.Vec{
-		{ID: id, Model: "qwen3-embedding:0.6b", Embedding: vec(EmbeddingDims, 0.1)},
+		{ID: id, Model: "qwen3-embedding:0.6b", Embedding: vec(embedding.DefaultDim, 0.1)},
 	}); err != nil {
 		t.Fatalf("save embedding: %v", err)
 	}
