@@ -105,7 +105,10 @@ func fullPackage() datapackage.Package {
 			Normalized: true, MaxTokens: 512, BatchSize: 64, DType: "float16",
 		},
 		Canonical: &datapackage.Ref{Name: "cc-news-canonical", Version: "v1", ResourceHash: "sha256:" + zeros64},
-		Sources:   []datapackage.Source{{Title: "huggingface vblagoje/cc_news", Path: "https://huggingface.co/datasets/vblagoje/cc_news", Version: "81eb2ce0d2a9dad6ad16b68ef750ec290880fa36"}},
+		DerivedFrom: &datapackage.DerivedFrom{
+			Name: "cc-news-embeddings", Version: "v1", Tag: "qwen3-embedding:0.6b@2048", ResourceHash: "sha256:" + zeros64,
+		},
+		Sources: []datapackage.Source{{Title: "huggingface vblagoje/cc_news", Path: "https://huggingface.co/datasets/vblagoje/cc_news", Version: "81eb2ce0d2a9dad6ad16b68ef750ec290880fa36"}},
 		Resources: []datapackage.Resource{
 			{Name: datapackage.ArticlesResource, Path: "articles.parquet", Format: "parquet"},
 			{Name: datapackage.EmbeddingsResource, Path: "embeddings.parquet", Format: "parquet"},
@@ -152,6 +155,10 @@ func TestWrittenDescriptorUsesContractPropertyNames(t *testing.T) {
 		"canonical/name":             "cc-news-canonical",
 		"canonical/version":          "v1",
 		"canonical/resourceHash":     "sha256:" + zeros64,
+		"derivedFrom/name":           "cc-news-embeddings",
+		"derivedFrom/version":        "v1",
+		"derivedFrom/tag":            "qwen3-embedding:0.6b@2048",
+		"derivedFrom/resourceHash":   "sha256:" + zeros64,
 	}
 	for pointer, value := range want {
 		if got := lookup(doc, pointer); got != value {
