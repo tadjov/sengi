@@ -3,6 +3,8 @@ package judgment
 import (
 	"bytes"
 	"fmt"
+
+	"github.com/tadjov/sengi/internal/bench/artifact"
 )
 
 // WriteQrels writes the graded pairs as TREC qrels (query_id 0 doc_id grade),
@@ -17,5 +19,5 @@ func WriteQrels(jf *File, path string) error {
 			fmt.Fprintf(&qrels, "%s\t0\t%s\t%d\n", entry.QueryID, doc.DocID, doc.Grade)
 		}
 	}
-	return writeAtomic(path, qrels.Bytes())
+	return artifact.WriteAtomic(path, qrels.Bytes())
 }
