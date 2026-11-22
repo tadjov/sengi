@@ -21,9 +21,7 @@ type Report struct {
 	Settings      RunSettings    `json:"settings"`
 }
 
-// RunEnvironment captures the runtime context of a bench run — engines tested,
-// corpus shape, and host platform. Distinct from Provenance (identity/sources)
-// and from Jobs (the measured outcomes).
+// RunEnvironment is what a run ran against: engines, corpus and host.
 type RunEnvironment struct {
 	Engines  map[string]EngineInfo `json:"engines"`
 	Corpus   CorpusInfo            `json:"corpus,omitempty"`

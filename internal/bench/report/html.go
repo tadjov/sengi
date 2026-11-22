@@ -14,10 +14,7 @@ import (
 //go:embed report.gohtml
 var htmlTemplate string
 
-// WriteHTML renders r as a self-contained HTML file at path, creating parent
-// directories as needed. The file contains inline CSS, inline SVG charts, and
-// ~60 lines of vanilla JS for sortable tables and per-query filtering — no
-// external dependencies, opens offline.
+// WriteHTML writes r as one self-contained HTML file that opens offline.
 func WriteHTML(r *Report, path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return fmt.Errorf("create report dir: %w", err)
@@ -29,7 +26,6 @@ func WriteHTML(r *Report, path string) error {
 	return os.WriteFile(path, buf, 0644)
 }
 
-// RenderHTML returns the fully rendered HTML bytes for a report.
 func RenderHTML(r *Report) ([]byte, error) {
 	vm := buildViewModel(r)
 	tmpl, err := template.New("report").Parse(htmlTemplate)
@@ -193,15 +189,11 @@ func htmlMetricsTable(view tableView) htmlTable {
 	return t
 }
 
-// ─── SVG charts ──────────────────────────────────────────────────────────────
-
 var engineColors = []string{
 	"#4C8EDA", "#E05C5C", "#52C878", "#F5A623", "#9B59B6", "#1ABC9C",
 }
 
-// buildNDCGChart renders a grouped bar chart of NDCG@K scores per engine.
-// The engine legend is NOT included in the SVG; it is rendered in HTML below
-// the chart using job.EngineLegend — this avoids text overflow for long names.
+// buildNDCGChart leaves the engine legend to the page, where long names cannot overflow.
 func buildNDCGChart(aggregated []AggregatedEntry, kVals []int) template.HTML {
 	if len(aggregated) == 0 || len(kVals) == 0 {
 		return ""
@@ -212,7 +204,7 @@ func buildNDCGChart(aggregated []AggregatedEntry, kVals []int) template.HTML {
 		padLeft   = 46
 		padRight  = 16
 		padTop    = 20
-		padBottom = 30 // only K-value labels, no legend
+		padBottom = 30
 	)
 	plotW := svgW - padLeft - padRight
 	plotH := svgH - padTop - padBottom
@@ -223,12 +215,10 @@ func buildNDCGChart(aggregated []AggregatedEntry, kVals []int) template.HTML {
 	barW := groupW / float64(nEngines+1)
 
 	var sb strings.Builder
-	// viewBox makes the chart responsive; width=100% fills the container.
 	sb.WriteString(fmt.Sprintf(
 		`<svg viewBox="0 0 %d %d" width="100%%" xmlns="http://www.w3.org/2000/svg">`,
 		svgW, svgH))
 
-	// Gridlines + Y-axis labels.
 	for _, tick := range []float64{0, 0.25, 0.5, 0.75, 1.0} {
 		y := padTop + plotH - int(tick*float64(plotH))
 		sb.WriteString(fmt.Sprintf(
@@ -239,7 +229,6 @@ func buildNDCGChart(aggregated []AggregatedEntry, kVals []int) template.HTML {
 			padLeft-4, y+4, tick))
 	}
 
-	// Bars + value labels.
 	for gi, k := range kVals {
 		groupX := padLeft + int(float64(gi)*groupW)
 		for ei, agg := range aggregated {
@@ -257,7 +246,6 @@ func buildNDCGChart(aggregated []AggregatedEntry, kVals []int) template.HTML {
 					x+max(int(barW*0.75), 1)/2, y+12, val))
 			}
 		}
-		// K-value label below group.
 		labelX := groupX + int(groupW/2)
 		sb.WriteString(fmt.Sprintf(
 			`<text x="%d" y="%d" text-anchor="middle" font-size="12" fill="#374151">@%d</text>`,
@@ -268,8 +256,7 @@ func buildNDCGChart(aggregated []AggregatedEntry, kVals []int) template.HTML {
 	return template.HTML(sb.String())
 }
 
-// buildLatencyChart renders a horizontal bar chart of p50 latency per engine
-// on a logarithmic scale, making order-of-magnitude differences visible.
+// buildLatencyChart scales p50 logarithmically so order-of-magnitude gaps stay visible.
 func buildLatencyChart(aggregated []AggregatedEntry) template.HTML {
 	if len(aggregated) == 0 {
 		return ""
@@ -307,7 +294,6 @@ func buildLatencyChart(aggregated []AggregatedEntry) template.HTML {
 	n := len(entries)
 	svgH := padV*2 + n*(barH+barGap) - barGap
 
-	// Log-scale range.
 	minLog := math.Log10(entries[0].us)
 	maxLog := minLog
 	for _, e := range entries {
@@ -336,15 +322,12 @@ func buildLatencyChart(aggregated []AggregatedEntry) template.HTML {
 		frac := (math.Log10(e.us) - minLog) / logRange
 		bw := int(frac*float64(plotW)) + 6 // +6 minimum so fastest engine is visible
 
-		// Engine name.
 		sb.WriteString(fmt.Sprintf(
 			`<text x="%d" y="%d" text-anchor="end" font-size="12" fill="#374151" dominant-baseline="middle">%s</text>`,
 			padL-8, cy, template.HTMLEscapeString(e.name)))
-		// Bar.
 		sb.WriteString(fmt.Sprintf(
 			`<rect x="%d" y="%d" width="%d" height="%d" fill="%s" rx="3" opacity="0.85"/>`,
 			padL, y, bw, barH, e.color))
-		// Value label.
 		sb.WriteString(fmt.Sprintf(
 			`<text x="%d" y="%d" font-size="11" fill="#374151" dominant-baseline="middle">%s</text>`,
 			padL+bw+6, cy, e.valStr))
