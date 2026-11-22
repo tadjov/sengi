@@ -238,7 +238,6 @@ Commands expect environment variables (typically in `.env` files):
 
 **Data Import (`cmd/data_import/.env`)**:
 - `STORAGE_TYPE`: Storage backend (`pg`, `es`, `in_mem`)
-- `MAPPING_CONFIG_PATH`: Path to YAML mapping configuration
 - `PG_CONNECTION_STRING`: PostgreSQL connection string
 - `ES_ADDRESSES`: Elasticsearch cluster addresses (comma-separated)
 - `ES_INDEX_NAME`: Elasticsearch index name

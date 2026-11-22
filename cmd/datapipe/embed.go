@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/fs"
 	"iter"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -23,7 +22,6 @@ import (
 	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
-	"github.com/tadjov/sengi/pkg/config/env"
 )
 
 const (
@@ -59,9 +57,6 @@ datasets/<ds>/embeddings/<tag-dir>/<version>/, one row per canonical row in orde
 Ollama comes from the environment: EMBEDDING_BASE_URL, EMBEDDING_MODEL and
 EMBEDDING_DIM, as the search API reads them.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := env.LoadDotEnv(os.Getenv("ENV")); err != nil {
-				slog.Info("Skipping .env environment variables", "error", err)
-			}
 			return runEmbed(cmd.Context(), cmd.OutOrStdout(), opts)
 		},
 	}

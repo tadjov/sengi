@@ -31,6 +31,11 @@ func IntField(label string, value int) Field {
 	return Field{Label: label, Value: strconv.Itoa(value)}
 }
 
+// CountField groups thousands, as the progress line does.
+func CountField(label string, n int64) Field {
+	return Field{Label: label, Value: groupThousands(n)}
+}
+
 func Done(w io.Writer, msg string) {
 	fmt.Fprintf(w, "%s %s\n", Success.Sprint("✓"), msg)
 }

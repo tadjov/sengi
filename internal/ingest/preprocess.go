@@ -181,11 +181,7 @@ func (b *canonicalBuilder) flush(w CanonicalWriter, batch []document.Article) er
 	if err := w.Write(batch); err != nil {
 		return err
 	}
-	var deduped int64
-	for _, n := range b.report.Deduped {
-		deduped += n
-	}
-	b.counter.Detail("written", b.report.Written, "deduped", deduped)
+	b.counter.Detail("written", b.report.Written, "deduped", b.report.DedupedTotal())
 	return nil
 }
 

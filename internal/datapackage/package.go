@@ -84,6 +84,18 @@ type Report struct {
 	Deduped map[string]int64 `json:"deduped,omitempty"`
 }
 
+func (r Report) DroppedTotal() int64 { return sum(r.Dropped) }
+
+func (r Report) DedupedTotal() int64 { return sum(r.Deduped) }
+
+func sum(counts map[string]int64) int64 {
+	var total int64
+	for _, n := range counts {
+		total += n
+	}
+	return total
+}
+
 // Embedding describes how vectors were made; Limit is set only on a --limit trial.
 type Embedding struct {
 	Model            string `json:"model"`

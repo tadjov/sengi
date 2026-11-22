@@ -51,3 +51,8 @@ func TestWarn_IsDistinctFromDone(t *testing.T) {
 		"a warning must be distinguishable from success on the same text")
 	assert.Contains(t, warn.String(), msg)
 }
+
+func TestCountField_GroupsThousands(t *testing.T) {
+	assert.Equal(t, Field{Label: "written", Value: "707,910"}, CountField("written", 707_910))
+	assert.Equal(t, Field{Label: "dropped", Value: "0"}, CountField("dropped", 0))
+}

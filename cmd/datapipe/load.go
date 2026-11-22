@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -14,7 +13,6 @@ import (
 	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/factory"
-	"github.com/tadjov/sengi/pkg/config/env"
 )
 
 const (
@@ -45,9 +43,6 @@ The load record goes to the engine and to datasets/<ds>/loads/<engine>/.
 The connection comes from the environment: PG_CONNECTION_STRING for native,
 paradedb and tiger, ES_ADDRESSES and ES_INDEX_NAME for es.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := env.LoadDotEnv(os.Getenv("ENV")); err != nil {
-				slog.Info("Skipping .env environment variables", "error", err)
-			}
 			return runLoad(cmd.Context(), cmd.OutOrStdout(), opts)
 		},
 	}
@@ -107,8 +102,8 @@ func runLoad(ctx context.Context, out io.Writer, opts loadOptions) error {
 		}
 
 		fields := []cli.Field{
-			{Label: "articles", Value: fmt.Sprint(record.Articles)},
-			{Label: "vectors", Value: fmt.Sprint(record.Vectors)},
+			cli.CountField("articles", record.Articles),
+			cli.CountField("vectors", record.Vectors),
 		}
 		for _, stage := range record.Stages {
 			fields = append(fields, cli.Field{Label: stage.Name, Value: fmt.Sprintf("%.1fs", stage.Seconds)})

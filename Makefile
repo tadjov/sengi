@@ -126,14 +126,15 @@ run-schemagen: build-schemagen
 	@echo "Running schema generator..."
 	@./$(BIN_DIR)/schemagen -output=api/mapping-spec
 
-# The preprocess env selects the raw dataset, e.g.
-#   make run-datapipe-preprocess PREPROCESS_ENV=cmd/datapipe/preprocess-cc-news.env
-PREPROCESS_ENV ?= cmd/datapipe/preprocess.env
+# Preprocess a raw data package into a canonical package:
+#   make run-datapipe-preprocess DATASET=cc-news
+DATASET ?=
+PREPROCESS_FLAGS ?=
 
-# Preprocess a raw dataset (.csv/.jsonl/.parquet) into canonical JSONL
 run-datapipe-preprocess: build-datapipe
-	@echo "Running datapipe preprocess ($(PREPROCESS_ENV))..."
-	@ENV_PATHS="$(PREPROCESS_ENV)" ./$(BIN_DIR)/datapipe preprocess
+	@echo "Running datapipe preprocess ($(DATASET))..."
+	@./$(BIN_DIR)/datapipe preprocess --input "datasets/$(DATASET)/raw" \
+		--output "datasets/$(DATASET)/canonical" --mapping "datasets/$(DATASET)/mapping.yaml" $(PREPROCESS_FLAGS)
 
 # Load a canonical package, and optionally its embeddings, into one engine:
 #   make run-datapipe-load-native CANONICAL=datasets/cc-news/canonical/<version>/datapackage.json \
