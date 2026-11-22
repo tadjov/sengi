@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"math"
 	"slices"
 	"strings"
 
@@ -78,24 +77,18 @@ func WithDocumentOptions(options map[string]any) EmbedderOption {
 
 // Model returns the model@dim tag, e.g. qwen3-embedding:0.6b@1024.
 func (e *Embedder) Model() string {
-	return fmt.Sprintf("%s@%d", e.model, e.dim)
+	return Tag(e.model, e.dim)
+}
+
+// Tag names a model's vectors at a width, e.g. qwen3-embedding:0.6b@1024.
+func Tag(model string, dim int) string {
+	return fmt.Sprintf("%s@%d", model, dim)
 }
 
 func (e *Embedder) fit(raw []float32) ([]float32, error) {
-	if len(raw) < e.dim {
-		return nil, fmt.Errorf("model %s returned %d dimensions, want at least %d", e.model, len(raw), e.dim)
-	}
-	var sumSquares float64
-	for _, v := range raw[:e.dim] {
-		sumSquares += float64(v) * float64(v)
-	}
-	norm := math.Sqrt(sumSquares)
-	if norm == 0 || math.IsNaN(norm) || math.IsInf(norm, 0) {
-		return nil, fmt.Errorf("model %s returned a vector with norm %v, which cannot be normalised", e.model, norm)
-	}
-	fitted := make([]float32, e.dim)
-	for i, v := range raw[:e.dim] {
-		fitted[i] = float32(float64(v) / norm)
+	fitted, err := Truncate(raw, e.dim)
+	if err != nil {
+		return nil, fmt.Errorf("model %s: %w", e.model, err)
 	}
 	return fitted, nil
 }
