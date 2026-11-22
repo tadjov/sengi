@@ -16,6 +16,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/suite"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
@@ -170,7 +171,7 @@ func requireEmbedder(bs *spec.BenchSpec, store storage.VectorStore) error {
 // printSpecWarnings emits load-time advisories (e.g. kind omitted) once.
 func printSpecWarnings(w io.Writer, bs *spec.BenchSpec) {
 	for _, msg := range bs.Warnings {
-		printWarn(w, msg)
+		cli.Warn(w, msg)
 	}
 }
 
@@ -253,12 +254,12 @@ func forEachTrack(ctx context.Context, w io.Writer, in trackctx.Inputs, fn func(
 
 	var failed []string
 	for _, tr := range tracks {
-		fmt.Fprintf(w, "\n%s %s\n", cBold.Sprint("━━"), cBold.Sprint(tr.Name()))
+		fmt.Fprintf(w, "\n%s %s\n", cli.Strong.Sprint("━━"), cli.Strong.Sprint(tr.Name()))
 		if err := fn(tr); err != nil {
 			if ctx.Err() != nil {
 				return err
 			}
-			printWarn(w, fmt.Sprintf("%s failed: %v", tr.Name(), err))
+			cli.Warn(w, fmt.Sprintf("%s failed: %v", tr.Name(), err))
 			failed = append(failed, tr.Name())
 		}
 	}

@@ -16,6 +16,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/suite"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/storage"
 )
 
@@ -116,13 +117,16 @@ func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
 		return err
 	}
 	if canonical == nil {
-		printWarn(cmd.OutOrStdout(), "no engine records a corpus load, so the pool names no canonical package and carry-over can't check it")
+		cli.Warn(cmd.OutOrStdout(), "no engine records a corpus load, so the pool names no canonical package and carry-over can't check it")
 	}
 
-	r := runner.New(runCfg)
-	sp := startSpinner("Pooling " + tr.Name() + "…")
-	result, err := r.RunAll(cmd.Context(), bs, executors)
-	sp.Stop()
+	var result *runner.BenchmarkResult
+	err = cli.Command{Label: "pool " + tr.Name(), Unit: "queries"}.Run(cmd.OutOrStdout(), func(p *cli.Progress) (cli.Summary, error) {
+		runCfg.Progress = p
+		var runErr error
+		result, runErr = runner.New(runCfg).RunAll(cmd.Context(), bs, executors)
+		return cli.Summary{}, runErr
+	})
 	if err != nil {
 		return fmt.Errorf("pool run: %w", err)
 	}
@@ -144,7 +148,7 @@ func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
 		outPath = tr.Pool
 	}
 	for _, se := range pool.ShallowEngines(pf, depth) {
-		printWarn(cmd.OutOrStdout(), fmt.Sprintf(
+		cli.Warn(cmd.OutOrStdout(), fmt.Sprintf(
 			"engine %s contributed at most %d documents to any query; its pool is %d deep, not the %d stamped on meta.pool_depth",
 			se.Name, se.MaxReturned, se.MaxReturned, depth))
 	}
@@ -152,7 +156,7 @@ func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
 	if err := pool.WritePoolFile(pf, outPath); err != nil {
 		return fmt.Errorf("write pool: %w", err)
 	}
-	printDone(cmd.OutOrStdout(), fmt.Sprintf("Pool written: %s  (queries=%d  run_id=%s)", outPath, len(pf.Queries), pf.Meta.RunID))
+	cli.Done(cmd.OutOrStdout(), fmt.Sprintf("Pool written: %s  (queries=%d  run_id=%s)", outPath, len(pf.Queries), pf.Meta.RunID))
 	return nil
 }
 
@@ -166,7 +170,7 @@ func loadedCanonical(ctx context.Context, w io.Writer, executors map[string]engi
 		}
 		description, err := describeIndex(ctx, describer)
 		if err != nil {
-			printWarn(w, fmt.Sprintf("canonical package of %q not recorded: %v", name, err))
+			cli.Warn(w, fmt.Sprintf("canonical package of %q not recorded: %v", name, err))
 			continue
 		}
 		if load := description.Load(); load != nil {

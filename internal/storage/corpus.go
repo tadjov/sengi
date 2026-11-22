@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 )
@@ -35,6 +36,8 @@ type LoadOptions struct {
 	BatchSize   int
 	Concurrency int
 	SkipIndex   bool
+	// Progress counts rows as each batch is written, one stage at a time; nil counts nothing.
+	Progress progress.Counter
 }
 
 type StageTiming struct {

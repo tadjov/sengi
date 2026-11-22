@@ -13,6 +13,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/pool"
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/factory"
@@ -194,7 +195,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 		if err != nil {
 			return err
 		}
-		printDone(cmd.OutOrStdout(), fmt.Sprintf("Manual template written: %s  (queries=%d)", outPath, len(jf.Queries)))
+		cli.Done(cmd.OutOrStdout(), fmt.Sprintf("Manual template written: %s  (queries=%d)", outPath, len(jf.Queries)))
 		return nil
 	}
 
@@ -267,7 +268,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 		if !carry.CorpusChecked {
 			msg += "; corpus not checked, a pool names no canonical package"
 		}
-		printWarn(cmd.OutOrStdout(), msg)
+		cli.Warn(cmd.OutOrStdout(), msg)
 	}
 	var existing *judgment.File
 	if f.resume {
@@ -285,41 +286,43 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 			if runMeta.CarriedOver == nil {
 				runMeta.CarriedOver = existing.Meta.CarriedOver
 			}
-			printWarn(cmd.OutOrStdout(), fmt.Sprintf("Resume: loaded %d prior queries from %s", len(existing.Queries), outPath))
+			cli.Warn(cmd.OutOrStdout(), fmt.Sprintf("Resume: loaded %d prior queries from %s", len(existing.Queries), outPath))
 		}
 	}
 	cfg.Existing = judgment.MergeGrades(carried, existing)
 	writer := judgment.NewIncrementalWriter(outPath, runMeta)
 	writer.Seed(cfg.Existing, pf)
 	cfg.Sink = writer.Append
-	cfg.OnQueryStart = func(qid string, total, skipped int) {
-		if skipped > 0 {
-			fmt.Fprintf(cmd.OutOrStdout(), "%s grading %d docs %s\n",
-				cCyan.Sprintf("[%s]", qid), total-skipped,
-				cDim.Sprintf("(%d already done)", skipped))
-		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "%s grading %d docs\n",
-				cCyan.Sprintf("[%s]", qid), total)
+	var final *judgment.File
+	var runErr error
+	err = cli.Command{Label: "judge " + tr.Name(), Unit: "docs"}.Run(cmd.OutOrStdout(), func(p *cli.Progress) (cli.Summary, error) {
+		out := p.Above(cmd.OutOrStdout())
+		cfg.OnQueryStart = func(qid string, total, skipped int) {
+			if skipped > 0 {
+				fmt.Fprintf(out, "%s grading %d docs %s\n",
+					cli.Accent.Sprintf("[%s]", qid), total-skipped,
+					cli.Muted.Sprintf("(%d already done)", skipped))
+			} else {
+				fmt.Fprintf(out, "%s grading %d docs\n",
+					cli.Accent.Sprintf("[%s]", qid), total)
+			}
 		}
-	}
-	cfg.OnBatch = func(bp judgment.BatchProgress) {
-		fmt.Fprintf(cmd.OutOrStdout(), "  %s batch %d/%d: graded=%d missing=%d %s\n",
-			cDim.Sprint("└"),
-			bp.BatchIdx, bp.BatchN, bp.Graded, bp.Missing,
-			cDim.Sprint(formatHistogram(bp.Histogram)))
-	}
-	cfg.OnQueryDone = func(qp judgment.QueryProgress) {
-		fmt.Fprintf(cmd.OutOrStdout(), "%s %s graded=%d skipped=%d unjudged=%d %s\n",
-			cCyan.Sprintf("[%s]", qp.QueryID),
-			cOK.Sprint("done:"),
-			qp.Graded, qp.Skipped, qp.Unjudged,
-			cDim.Sprint(formatHistogram(qp.Histogram)))
-	}
-	jrunner := judgment.NewRunner(cfg)
-
-	final, runErr := jrunner.Run(cmd.Context(), pf)
-	if runErr != nil && !judgment.FailsWholeQuery(runErr) {
-		return fmt.Errorf("judge run: %w", runErr)
+		cfg.OnQueryDone = func(qp judgment.QueryProgress) {
+			fmt.Fprintf(out, "%s %s graded=%d skipped=%d unjudged=%d %s\n",
+				cli.Accent.Sprintf("[%s]", qp.QueryID),
+				cli.Success.Sprint("done:"),
+				qp.Graded, qp.Skipped, qp.Unjudged,
+				cli.Muted.Sprint(formatHistogram(qp.Histogram)))
+		}
+		cfg.Progress = p
+		final, runErr = judgment.NewRunner(cfg).Run(cmd.Context(), pf)
+		if runErr != nil && !judgment.FailsWholeQuery(runErr) {
+			return cli.Summary{}, fmt.Errorf("judge run: %w", runErr)
+		}
+		return cli.Summary{}, nil
+	})
+	if err != nil {
+		return err
 	}
 
 	// Run keeps only the queries still in the pool.
@@ -328,7 +331,7 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 		return fmt.Errorf("finalise judgments: %w", err)
 	}
 
-	printDone(cmd.OutOrStdout(), fmt.Sprintf("Judgments written: %s  (judge=%s  queries=%d  run_id=%s)",
+	cli.Done(cmd.OutOrStdout(), fmt.Sprintf("Judgments written: %s  (judge=%s  queries=%d  run_id=%s)",
 		outPath, judge, len(final.Queries), final.Meta.RunID))
 	if runErr != nil {
 		return fmt.Errorf("judge run: %w", runErr)

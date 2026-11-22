@@ -18,6 +18,7 @@ import (
 	"github.com/pgvector/pgvector-go"
 	"github.com/tadjov/sengi/db/migrations"
 	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
@@ -64,6 +65,8 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		Settings:    map[string]string{},
 	}
 
+	stages := loadStages{record: &record, counter: progress.Or(opts.Progress)}
+
 	// One session, so index settings read back from it and never reach the pool.
 	pooled, err := l.pool.conn.Acquire(ctx)
 	if err != nil {
@@ -75,7 +78,7 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	if err := lockLoad(ctx, conn); err != nil {
 		return storage.LoadRecord{}, err
 	}
-	if err := timed(&record, "schema", func() error { return l.schema.Up(ctx, conn) }); err != nil {
+	if err := stages.timed("schema", func() error { return l.schema.Up(ctx, conn) }); err != nil {
 		return storage.LoadRecord{}, err
 	}
 	if err := l.refuseLoaded(ctx, conn); err != nil {
@@ -89,10 +92,10 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		return storage.LoadRecord{}, err
 	}
 	defer copyPool.Close()
-	copier := &corpusCopier{pool: copyPool, concurrency: opts.Concurrency, batchSize: opts.BatchSize}
+	copier := &corpusCopier{pool: copyPool, concurrency: opts.Concurrency, batchSize: opts.BatchSize, counter: stages.counter}
 
 	var ids []uuid.UUID
-	err = timed(&record, "copy_articles", func() error {
+	err = stages.timed("copy_articles", func() error {
 		ids, err = copier.copyArticles(ctx, c)
 		return err
 	})
@@ -105,7 +108,7 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	record.Articles = int64(len(ids))
 
 	if c.Vectors != nil {
-		err = timed(&record, "copy_embeddings", func() error {
+		err = stages.timed("copy_embeddings", func() error {
 			record.Vectors, err = copier.copyVectors(ctx, c, ids)
 			return err
 		})
@@ -116,12 +119,11 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	copyPool.Close()
 
 	if !opts.SkipIndex {
-		if err := l.buildIndexes(ctx, conn, &record); err != nil {
+		if err := l.buildIndexes(ctx, conn, stages); err != nil {
 			return storage.LoadRecord{}, err
 		}
 	}
-	err = timed(&record, "vacuum_analyze", func() error {
-		defer storage.WatchStage(ctx, []any{"engine", record.Engine, "stage", "vacuum_analyze"}, nil)()
+	err = stages.timed("vacuum_analyze", func() error {
 		_, err := conn.Exec(ctx, "VACUUM (ANALYZE) articles, article_embeddings")
 		return err
 	})
@@ -232,7 +234,7 @@ var serverSettings = []string{
 }
 
 // buildIndexes times each search index and each derived-table fill as its own stage; a SET or ANALYZE runs untimed.
-func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record *storage.LoadRecord) error {
+func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, stages loadStages) error {
 	for _, s := range l.indexes {
 		run := func() error {
 			if _, err := conn.Exec(ctx, s.SQL); err != nil {
@@ -250,8 +252,8 @@ func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record 
 			}
 			continue
 		}
-		err := timed(record, s.Stage, func() error {
-			defer storage.WatchStage(ctx, []any{"engine", record.Engine, "stage", s.Stage}, l.indexBuildProgress(conn.PgConn().PID()))()
+		err := stages.timed(s.Stage, func() error {
+			defer l.watchIndexBuild(ctx, stages.counter, conn.PgConn().PID())()
 			return run()
 		})
 		if err != nil {
@@ -263,30 +265,55 @@ func (l *CorpusLoader) buildIndexes(ctx context.Context, conn *pgx.Conn, record 
 		if err := conn.QueryRow(ctx, "SELECT current_setting($1)", name).Scan(&value); err != nil {
 			return fmt.Errorf("read setting %s: %w", name, err)
 		}
-		record.Settings[name] = value
+		stages.record.Settings[name] = value
 	}
 	return nil
 }
 
-// indexBuildProgress reads how far the session's CREATE INDEX has got, or nothing when the index type reports none.
-func (l *CorpusLoader) indexBuildProgress(pid uint32) func(context.Context) []any {
-	return func(ctx context.Context) []any {
-		var phase string
-		var blocksDone, blocksTotal, tuplesDone, tuplesTotal int64
-		err := l.pool.conn.QueryRow(ctx, `SELECT phase, blocks_done, blocks_total, tuples_done, tuples_total
-			FROM pg_stat_progress_create_index WHERE pid = $1`, pid).Scan(&phase, &blocksDone, &blocksTotal, &tuplesDone, &tuplesTotal)
-		if err != nil {
-			return nil
+const indexProgressInterval = 10 * time.Second
+
+// watchIndexBuild reports how far the session's CREATE INDEX has got, every indexProgressInterval until stop is called.
+func (l *CorpusLoader) watchIndexBuild(ctx context.Context, counter progress.Counter, pid uint32) (stop func()) {
+	ctx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(indexProgressInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if attrs := l.indexBuildProgress(ctx, pid); attrs != nil {
+					counter.Detail(attrs...)
+				}
+			}
 		}
-		attrs := []any{"phase", phase}
-		if blocksTotal > 0 {
-			attrs = append(attrs, "blocks", fmt.Sprintf("%d/%d", blocksDone, blocksTotal))
-		}
-		if tuplesTotal > 0 {
-			attrs = append(attrs, "tuples", fmt.Sprintf("%d/%d", tuplesDone, tuplesTotal))
-		}
-		return attrs
+	}()
+	return func() {
+		cancel()
+		<-done
 	}
+}
+
+// indexBuildProgress returns nothing when the index type reports no progress.
+func (l *CorpusLoader) indexBuildProgress(ctx context.Context, pid uint32) []any {
+	var phase string
+	var blocksDone, blocksTotal, tuplesDone, tuplesTotal int64
+	err := l.pool.conn.QueryRow(ctx, `SELECT phase, blocks_done, blocks_total, tuples_done, tuples_total
+		FROM pg_stat_progress_create_index WHERE pid = $1`, pid).Scan(&phase, &blocksDone, &blocksTotal, &tuplesDone, &tuplesTotal)
+	if err != nil {
+		return nil
+	}
+	attrs := []any{"phase", phase}
+	if blocksTotal > 0 {
+		attrs = append(attrs, "blocks", fmt.Sprintf("%d/%d", blocksDone, blocksTotal))
+	}
+	if tuplesTotal > 0 {
+		attrs = append(attrs, "tuples", fmt.Sprintf("%d/%d", tuplesDone, tuplesTotal))
+	}
+	return attrs
 }
 
 // now truncates to timestamptz's microseconds, so records round-trip through corpus_load.
@@ -294,15 +321,22 @@ func now() time.Time {
 	return time.Now().UTC().Truncate(time.Microsecond)
 }
 
-func timed(record *storage.LoadRecord, stage string, run func() error) error {
-	slog.Info("corpus load stage started", "engine", record.Engine, "stage", stage)
+// loadStages times each stage into the record and names it on the progress counter.
+type loadStages struct {
+	record  *storage.LoadRecord
+	counter progress.Counter
+}
+
+func (s loadStages) timed(stage string, run func() error) error {
+	s.counter.Stage(stage)
+	slog.Info("corpus load stage started", "engine", s.record.Engine, "stage", stage)
 	start := time.Now()
 	if err := run(); err != nil {
 		return err
 	}
 	seconds := time.Since(start).Seconds()
-	record.Stages = append(record.Stages, storage.StageTiming{Name: stage, Seconds: seconds})
-	slog.Info("corpus load stage finished", "engine", record.Engine, "stage", stage, "seconds", seconds)
+	s.record.Stages = append(s.record.Stages, storage.StageTiming{Name: stage, Seconds: seconds})
+	slog.Info("corpus load stage finished", "engine", s.record.Engine, "stage", stage, "seconds", seconds)
 	return nil
 }
 
@@ -346,6 +380,7 @@ type corpusCopier struct {
 	concurrency int
 	batchSize   int
 	committed   atomic.Int64
+	counter     progress.Counter
 }
 
 func (cp *corpusCopier) failed(err error) error {
@@ -417,7 +452,6 @@ func copyConcurrently[T any](ctx context.Context, cp *corpusCopier, plan copyPla
 		defer close(batches)
 		return batchRows(ctx, plan, batches)
 	})
-	var copied atomic.Int64
 	for range cp.concurrency {
 		group.Go(func() error {
 			for batch := range batches {
@@ -425,10 +459,7 @@ func copyConcurrently[T any](ctx context.Context, cp *corpusCopier, plan copyPla
 					return err
 				}
 				cp.committed.Add(int64(len(batch)))
-				rows := copied.Add(int64(len(batch)))
-				if rows/storage.ProgressRows > (rows-int64(len(batch)))/storage.ProgressRows {
-					slog.Info("corpus load progress", "table", plan.Table, "rows", rows)
-				}
+				cp.counter.Add(int64(len(batch)))
 			}
 			return nil
 		})

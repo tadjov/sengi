@@ -24,6 +24,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/internal/ingest"
+	"github.com/tadjov/sengi/internal/progress/progresstest"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 	"github.com/tadjov/sengi/pkg/apis/datamapping"
@@ -779,4 +781,56 @@ func TestPreprocess_OmitsTheRawVersionWhenTheRawPackageHasNone(t *testing.T) {
 	require.NoError(t, json.Unmarshal(descriptor, &doc))
 	assert.Contains(t, doc.Raw, "name")
 	assert.NotContains(t, doc.Raw, "version")
+}
+
+func TestPreprocess_CountsEveryRecordRead(t *testing.T) {
+	shard := func(name string, urls ...string) rawFile {
+		rows := make([]rawShardRow, len(urls))
+		for i, url := range urls {
+			rows[i] = rawShardRow{Title: "Title " + url, Text: "Body", URL: url}
+		}
+		return parquetFile(t, name, rows...)
+	}
+	tests := []struct {
+		name      string
+		files     []rawFile
+		wantTotal int64
+	}{
+		{
+			name: "parquet footers give the total up front",
+			files: []rawFile{
+				shard("a.parquet", "https://example.com/1", "https://example.com/2", "https://example.com/1"),
+				shard("b.parquet", "https://example.com/3", "https://example.com/4"),
+			},
+			wantTotal: 5,
+		},
+		{
+			name: "a csv resource leaves the total unknown",
+			files: []rawFile{
+				shard("a.parquet", "https://example.com/1"),
+				csvFile("b.csv", "title,text,url\nTwo,Body,https://example.com/2\nTwo again,Body,https://example.com/2\n"),
+			},
+			wantTotal: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			run := newPreprocessRun(t, ccNewsLikeMapping, tt.files...)
+			raw, err := datapackage.Open(t.Context(), run.rawDir)
+			require.NoError(t, err)
+			mapping, err := loadPreprocessMapping(run.mappingPath)
+			require.NoError(t, err)
+			counter := &progresstest.Recorder{}
+
+			published, err := ingest.Preprocess(t.Context(), ingest.PreprocessOptions{
+				Raw: raw, Mapping: mapping, OutputRoot: run.outputRoot, Progress: counter,
+			})
+
+			require.NoError(t, err)
+			report := published.Package.Report
+			assert.Equal(t, tt.wantTotal, counter.Total())
+			assert.Equal(t, report.Read, counter.Count())
+			assert.Equal(t, []any{"written", report.Written, "deduped", int64(1)}, counter.LastDetail())
+		})
+	}
 }

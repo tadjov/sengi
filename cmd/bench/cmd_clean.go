@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tadjov/sengi/internal/bench/report"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/cli"
 )
 
 type cleanFlags struct {
@@ -91,27 +92,27 @@ func executeClean(cmd *cobra.Command, f cleanFlags, args []string) error {
 
 	if len(toDelete) == 0 {
 		fmt.Fprintf(cmd.OutOrStdout(), "%s Nothing to clean in %s\n",
-			cDim.Sprint("✓"), reportsDir)
+			cli.Muted.Sprint("✓"), reportsDir)
 		return nil
 	}
 
 	w := cmd.OutOrStdout()
 	for _, path := range toDelete {
 		if f.dryRun {
-			fmt.Fprintf(w, "%s %s\n", cDim.Sprint("would delete"), filepath.Base(path))
+			fmt.Fprintf(w, "%s %s\n", cli.Muted.Sprint("would delete"), filepath.Base(path))
 			continue
 		}
 		if err := os.RemoveAll(path); err != nil {
-			fmt.Fprintf(w, "%s %s: %v\n", cFail.Sprint("ERR"), filepath.Base(path), err)
+			fmt.Fprintf(w, "%s %s: %v\n", cli.Failure.Sprint("ERR"), filepath.Base(path), err)
 			continue
 		}
-		fmt.Fprintf(w, "%s %s\n", cOK.Sprint("deleted"), filepath.Base(path))
+		fmt.Fprintf(w, "%s %s\n", cli.Success.Sprint("deleted"), filepath.Base(path))
 	}
 
 	if f.dryRun {
-		fmt.Fprintf(w, "\n%s Pass without --dry-run to delete.\n", cDim.Sprint("Dry run:"))
+		fmt.Fprintf(w, "\n%s Pass without --dry-run to delete.\n", cli.Muted.Sprint("Dry run:"))
 	} else {
-		printDone(w, fmt.Sprintf("Cleaned %d file(s) from %s", len(toDelete), reportsDir))
+		cli.Done(w, fmt.Sprintf("Cleaned %d file(s) from %s", len(toDelete), reportsDir))
 	}
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/judgment"
 	"github.com/tadjov/sengi/internal/bench/report"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/cli"
 )
 
 type exportFlags struct {
@@ -103,7 +104,7 @@ func exportTSV(cmd *cobra.Command, f exportFlags, args []string) error {
 	if err := writeQrelsAtomic(jf, outPath); err != nil {
 		return fmt.Errorf("write qrels %s: %w", outPath, err)
 	}
-	printDone(cmd.OutOrStdout(), "Qrels written: "+outPath)
+	cli.Done(cmd.OutOrStdout(), "Qrels written: "+outPath)
 	return nil
 }
 
@@ -181,7 +182,7 @@ func exportMarkdown(cmd *cobra.Command, f exportFlags, args []string) error {
 	defer f2.Close()
 
 	report.WriteMarkdown(rpt, f2)
-	printDone(cmd.OutOrStdout(), "Markdown report written: "+outPath)
+	cli.Done(cmd.OutOrStdout(), "Markdown report written: "+outPath)
 	return nil
 }
 
@@ -209,7 +210,7 @@ func exportHTML(cmd *cobra.Command, f exportFlags, args []string) error {
 	if err := report.WriteHTML(rpt, outPath); err != nil {
 		return fmt.Errorf("write HTML report: %w", err)
 	}
-	printDone(cmd.OutOrStdout(), "HTML report written: "+outPath)
+	cli.Done(cmd.OutOrStdout(), "HTML report written: "+outPath)
 	return nil
 }
 
@@ -240,7 +241,7 @@ func exportRun(cmd *cobra.Command, f exportFlags, args []string) error {
 		return fmt.Errorf("write TREC runs: %w", err)
 	}
 	for _, path := range paths {
-		printDone(cmd.OutOrStdout(), "TREC run written: "+path)
+		cli.Done(cmd.OutOrStdout(), "TREC run written: "+path)
 	}
 	return nil
 }

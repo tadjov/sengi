@@ -102,31 +102,40 @@ func runLoad(ctx context.Context, out io.Writer, opts loadOptions) error {
 	}
 	defer release()
 
-	cli.Header(out, "sengi load", inputs.fields(engine, opts)...)
-	record, err := loader.LoadCorpus(ctx, inputs.corpus(ctx), storage.LoadOptions{BatchSize: opts.BatchSize, Concurrency: opts.Concurrency, SkipIndex: opts.SkipIndex})
-	if err != nil {
-		return fmt.Errorf("load %s: %w", engine, err)
-	}
+	command := cli.Command{Title: "sengi load", Fields: inputs.fields(engine, opts), Label: "load", Unit: "rows"}
+	return command.Run(out, func(p *cli.Progress) (cli.Summary, error) {
+		record, err := loader.LoadCorpus(ctx, inputs.corpus(ctx), storage.LoadOptions{
+			BatchSize:   opts.BatchSize,
+			Concurrency: opts.Concurrency,
+			SkipIndex:   opts.SkipIndex,
+			Progress:    p,
+		})
+		if err != nil {
+			return cli.Summary{}, fmt.Errorf("load %s: %w", engine, err)
+		}
 
-	fields := []cli.Field{
-		{Label: "articles", Value: fmt.Sprint(record.Articles)},
-		{Label: "vectors", Value: fmt.Sprint(record.Vectors)},
-	}
-	for _, stage := range record.Stages {
-		fields = append(fields, cli.Field{Label: stage.Name, Value: fmt.Sprintf("%.1fs", stage.Seconds)})
-	}
-	fields = append(fields, cli.Field{Label: "total", Value: fmt.Sprintf("%.1fs", record.TotalSeconds)})
-	if opts.SkipIndex {
-		cli.Summary(out, "Corpus loaded without indexes", fields...)
-		cli.Warn(out, "no load record written, so this corpus is not benchmarkable; drop it and reload without --skip-index")
-		return nil
-	}
-	path, err := writeLoadRecord(recordsDir, record)
-	if err != nil {
-		return err
-	}
-	cli.Summary(out, "Corpus loaded", append(fields, cli.Field{Label: "record", Value: path})...)
-	return nil
+		fields := []cli.Field{
+			{Label: "articles", Value: fmt.Sprint(record.Articles)},
+			{Label: "vectors", Value: fmt.Sprint(record.Vectors)},
+		}
+		for _, stage := range record.Stages {
+			fields = append(fields, cli.Field{Label: stage.Name, Value: fmt.Sprintf("%.1fs", stage.Seconds)})
+		}
+		fields = append(fields, cli.Field{Label: "total", Value: fmt.Sprintf("%.1fs", record.TotalSeconds)})
+		if opts.SkipIndex {
+			return cli.Summary{
+				Message: "Corpus loaded without indexes",
+				Fields:  fields,
+				Notes:   []cli.Note{{Text: "no load record written, so this corpus is not benchmarkable; drop it and reload without --skip-index", Warning: true}},
+				Timed:   true,
+			}, nil
+		}
+		path, err := writeLoadRecord(recordsDir, record)
+		if err != nil {
+			return cli.Summary{}, err
+		}
+		return cli.Summary{Message: "Corpus loaded", Fields: append(fields, cli.Field{Label: "record", Value: path}), Timed: true}, nil
+	})
 }
 
 // derivedRecordsDir maps datasets/<ds>/canonical/<version>/ to datasets/<ds>/loads/<engine>/.

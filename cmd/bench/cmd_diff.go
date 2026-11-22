@@ -26,6 +26,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/suite"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/cli"
 )
 
 func newDiffCmd() *cobra.Command { return newDiffCmdWithReader(openArticleReader) }
@@ -222,9 +223,9 @@ func fullyScored(r *report.Report) bool {
 }
 
 func printDiff(w io.Writer, a, b *report.Report) {
-	fmt.Fprintf(w, "\n%s\n", cBold.Sprint("Comparing:"))
-	fmt.Fprintf(w, "  %s %s\n", cDim.Sprint("A (before):"), a.Provenance.RunID)
-	fmt.Fprintf(w, "  %s %s\n\n", cDim.Sprint("B (after): "), cBold.Sprint(b.Provenance.RunID))
+	fmt.Fprintf(w, "\n%s\n", cli.Strong.Sprint("Comparing:"))
+	fmt.Fprintf(w, "  %s %s\n", cli.Muted.Sprint("A (before):"), a.Provenance.RunID)
+	fmt.Fprintf(w, "  %s %s\n\n", cli.Muted.Sprint("B (after): "), cli.Strong.Sprint(b.Provenance.RunID))
 
 	printProvenanceDiff(w, report.DiffProvenance(a, b))
 	printScoringWarnings(w, a, b)
@@ -238,7 +239,7 @@ func printDiff(w io.Writer, a, b *report.Report) {
 
 	ndcgK, haveSharedK := largestSharedK(a.Config.KValues, b.Config.KValues)
 	if !haveSharedK {
-		fmt.Fprintf(w, "%s\n\n", cDim.Sprint("No K value in both runs: NDCG deltas skipped."))
+		fmt.Fprintf(w, "%s\n\n", cli.Muted.Sprint("No K value in both runs: NDCG deltas skipped."))
 	}
 
 	for _, name := range names {
@@ -249,11 +250,11 @@ func printDiff(w io.Writer, a, b *report.Report) {
 			if !okA {
 				missing = "A"
 			}
-			fmt.Fprintf(w, "%s\n", cDim.Sprintf("--- Job: %s (only in %s, skipped) ---", name, missing))
+			fmt.Fprintf(w, "%s\n", cli.Muted.Sprintf("--- Job: %s (only in %s, skipped) ---", name, missing))
 			continue
 		}
 
-		fmt.Fprintf(w, "%s\n\n", cBold.Sprintf("--- Job: %s ---", name))
+		fmt.Fprintf(w, "%s\n\n", cli.Strong.Sprintf("--- Job: %s ---", name))
 		printAggregateDiff(w, jA, jB, ndcgK)
 		if haveSharedK {
 			printQueryDiff(w, jA, jB, ndcgK)
@@ -264,10 +265,10 @@ func printDiff(w io.Writer, a, b *report.Report) {
 
 func printProvenanceDiff(w io.Writer, changes []report.ProvenanceChange) {
 	if len(changes) == 0 {
-		fmt.Fprintf(w, "%s\n\n", cDim.Sprint("Index provenance: unchanged"))
+		fmt.Fprintf(w, "%s\n\n", cli.Muted.Sprint("Index provenance: unchanged"))
 		return
 	}
-	fmt.Fprintf(w, "%s\n\n", cBold.Sprint("Index provenance changes:"))
+	fmt.Fprintf(w, "%s\n\n", cli.Strong.Sprint("Index provenance changes:"))
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "Engine\tField\tA\tB")
 	fmt.Fprintln(tw, "---\t---\t---\t---")
@@ -364,7 +365,7 @@ func printQueryDiff(w io.Writer, jA, jB *report.JobReport, k int) {
 		return cmp.Or(cmp.Compare(a.diff, b.diff), cmp.Compare(a.query, b.query), cmp.Compare(a.engine, b.engine))
 	})
 
-	fmt.Fprintf(w, "%s\n\n", cBold.Sprintf("Per-Query NDCG@%d (gain %s) Deltas (largest regression first):", k, report.NDCGGain))
+	fmt.Fprintf(w, "%s\n\n", cli.Strong.Sprintf("Per-Query NDCG@%d (gain %s) Deltas (largest regression first):", k, report.NDCGGain))
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "Query\tEngine\tA\tB\tΔ")
 	fmt.Fprintln(tw, "---\t---\t---\t---\t---")
@@ -372,9 +373,9 @@ func printQueryDiff(w io.Writer, jA, jB *report.JobReport, k int) {
 		// Δ is the last column — safe to color.
 		var delta string
 		if d.diff > 0 {
-			delta = cOK.Sprintf("↑%+.4f", d.diff)
+			delta = cli.Success.Sprintf("↑%+.4f", d.diff)
 		} else {
-			delta = cFail.Sprintf("↓%+.4f", d.diff)
+			delta = cli.Failure.Sprintf("↓%+.4f", d.diff)
 		}
 		fmt.Fprintf(tw, "%s\t%s\t%.4f\t%.4f\t%s\n",
 			d.query, d.engine, d.a, d.b, delta)
@@ -457,7 +458,7 @@ func fmtDurationDelta(a, b time.Duration) string {
 	}
 	d := b - a
 	if d == 0 {
-		return cDim.Sprint(durStr(a) + " (=)")
+		return cli.Muted.Sprint(durStr(a) + " (=)")
 	}
 	// For latency: lower is better, so improvement = d < 0.
 	improved := d < 0
@@ -467,9 +468,9 @@ func fmtDurationDelta(a, b time.Duration) string {
 	}
 	s := fmt.Sprintf("%s→%s %s%s", durStr(a), durStr(b), arrow, fmtRelativeChange(float64(d), float64(a)))
 	if improved {
-		return cOK.Sprint(s)
+		return cli.Success.Sprint(s)
 	}
-	return cFail.Sprint(s)
+	return cli.Failure.Sprint(s)
 }
 
 // largestSharedK is the largest cutoff both runs computed.
@@ -499,7 +500,7 @@ func printScoringWarnings(w io.Writer, a, b *report.Report) {
 	if len(differences) == 0 {
 		return
 	}
-	fmt.Fprintf(w, "%s the runs were scored differently, so metric deltas are not engine changes alone:\n", cWarn.Sprint("WARNING:"))
+	fmt.Fprintf(w, "%s the runs were scored differently, so metric deltas are not engine changes alone:\n", cli.Caution.Sprint("WARNING:"))
 	for _, d := range differences {
 		fmt.Fprintf(w, "  %s\n", d)
 	}
@@ -729,7 +730,7 @@ func (c judgmentComparison) print(w io.Writer) {
 	fmt.Fprintf(w, "%d (query, doc) pairs graded 0 to 3 by every set; relevant means a grade of %d or more (metrics.relevance_threshold)\n",
 		r.AllPairs.Pairs, r.RelevanceThreshold)
 	if r.Gate == nil {
-		printWarn(w, "without --pg, gated zeros are included: every gated judge grades a doc the phrase, boolean or filter gate refuses 0 without a model seeing it, which inflates agreement")
+		cli.Warn(w, "without --pg, gated zeros are included: every gated judge grades a doc the phrase, boolean or filter gate refuses 0 without a model seeing it, which inflates agreement")
 		printAgreementSummary(w, fmt.Sprintf("Agreement over all %d common pairs", r.AllPairs.Pairs), r.AllPairs)
 	} else {
 		printAgreementSummary(w, fmt.Sprintf("Agreement over all %d common pairs, gated zeros included", r.AllPairs.Pairs), r.AllPairs)
@@ -770,7 +771,7 @@ func readRescoredReport(tr *trackctx.Track, value string) (*report.Report, error
 }
 
 func printJudgmentSets(w io.Writer, sets []agreement.Set) {
-	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprint("Judgment sets"))
+	fmt.Fprintf(w, "\n%s\n\n", cli.Strong.Sprint("Judgment sets"))
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "Label\tJudge\tGraded\tRun ID\tPath")
 	fmt.Fprintln(tw, "---\t---\t---\t---\t---")
@@ -783,7 +784,7 @@ func printJudgmentSets(w io.Writer, sets []agreement.Set) {
 }
 
 func printAgreementSummary(w io.Writer, title string, s agreement.Summary) {
-	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprint(title))
+	fmt.Fprintf(w, "\n%s\n\n", cli.Strong.Sprint(title))
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "Set\tGrade 0\tGrade 1\tGrade 2\tGrade 3")
 	fmt.Fprintln(tw, "---\t---\t---\t---\t---")
@@ -827,7 +828,7 @@ func formatStatistic(s agreement.Statistic) string {
 
 func printReference(w io.Writer, ref *agreement.Reference) {
 	for _, c := range ref.Against {
-		fmt.Fprintf(w, "\n%s\n", cBold.Sprintf("%s against %s (rows are %s's grades)", c.Label, ref.Label, ref.Label))
+		fmt.Fprintf(w, "\n%s\n", cli.Strong.Sprintf("%s against %s (rows are %s's grades)", c.Label, ref.Label, ref.Label))
 		fmt.Fprintf(w, "%s graded %d of %s's %d irrelevant pairs relevant and %d of its %d relevant pairs irrelevant\n\n",
 			c.Label, c.GradedRelevant, ref.Label, c.ReferenceIrrelevant, c.GradedIrrelevant, c.ReferenceRelevant)
 		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
@@ -839,7 +840,7 @@ func printReference(w io.Writer, ref *agreement.Reference) {
 		tw.Flush()
 	}
 
-	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprint("Agreement by query category"))
+	fmt.Fprintf(w, "\n%s\n\n", cli.Strong.Sprint("Agreement by query category"))
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "Category\tQueries\tPair\tn\tExact\tWithin 1\tRelevant\tQuadratic κ [95% CI]\tBinary κ [95% CI]")
 	fmt.Fprintln(tw, "---\t---\t---\t---\t---\t---\t---\t---\t---")
@@ -857,7 +858,7 @@ func (c judgmentComparison) printGate(w io.Writer) {
 	fmt.Fprintf(w, "\nThe gate refused %d of %d common pairs on their phrase, boolean or filter: every gated judge graded those 0 without a model seeing them.\n",
 		gate.Refused, c.result.AllPairs.Pairs)
 	if gate.Admitted == nil {
-		printWarn(w, "the gate refused every common pair, so there is no agreement without its zeros")
+		cli.Warn(w, "the gate refused every common pair, so there is no agreement without its zeros")
 		return
 	}
 	printAgreementSummary(w, fmt.Sprintf("Agreement over the %d pairs the gate admits", gate.Admitted.Pairs), *gate.Admitted)
@@ -865,7 +866,7 @@ func (c judgmentComparison) printGate(w io.Writer) {
 
 func (c judgmentComparison) printDisagreements(w io.Writer) {
 	rows, withTitles := c.result.Disagreements, c.result.Gate != nil
-	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprintf("%d pairs whose grades span %d or more", len(rows), c.flags.minGap))
+	fmt.Fprintf(w, "\n%s\n\n", cli.Strong.Sprintf("%d pairs whose grades span %d or more", len(rows), c.flags.minGap))
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	header := append([]string{"Query", "Doc", "Span"}, setLabels(c.sets)...)
 	if withTitles {
@@ -888,7 +889,7 @@ func (c judgmentComparison) printDisagreements(w io.Writer) {
 
 func (c judgmentComparison) printRescoring(w io.Writer) {
 	r, reference := c.result.Rescoring, cmp.Or(c.flags.reference, c.sets[0].Label)
-	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprintf("Report %s rescored under each set", r.ReportRunID))
+	fmt.Fprintf(w, "\n%s\n\n", cli.Strong.Sprintf("Report %s rescored under each set", r.ReportRunID))
 	fmt.Fprintf(w, "Rescoring under %s, the set the report was scored with, gives back every stored value of: %s\n",
 		r.ReportSet, orNone(strings.Join(r.Metrics, ", ")))
 	if len(r.LeftOut) > 0 {
@@ -904,7 +905,7 @@ func (c judgmentComparison) printRescoring(w io.Writer) {
 		}
 	}
 	if r.Reference == "" {
-		printWarn(w, fmt.Sprintf("τ-b needs the reference set rescored, and %s was refused", reference))
+		cli.Warn(w, fmt.Sprintf("τ-b needs the reference set rescored, and %s was refused", reference))
 	} else {
 		fmt.Fprintf(w, "τ-b compares each set's engine means with %s's.\n", r.Reference)
 	}
@@ -916,7 +917,7 @@ func (c judgmentComparison) printRescoring(w io.Writer) {
 func orNone(s string) string { return cmp.Or(s, "none") }
 
 func (c judgmentComparison) printJobRescoring(w io.Writer, job agreement.JobRescoring) {
-	fmt.Fprintf(w, "\n%s\n\n", cBold.Sprintf("--- Job: %s (%d engines, %d judged queries) ---", job.Job, len(job.Engines), job.Queries))
+	fmt.Fprintf(w, "\n%s\n\n", cli.Strong.Sprintf("--- Job: %s (%d engines, %d judged queries) ---", job.Job, len(job.Engines), job.Queries))
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintf(tw, "Metric\tSet\t%s\tOrder\tτ-b\n", strings.Join(job.Engines, "\t"))
 	fmt.Fprintln(tw, strings.TrimSuffix(strings.Repeat("---\t", len(job.Engines)+4), "\t"))
@@ -967,6 +968,6 @@ func (c judgmentComparison) writeArtifact(w io.Writer) error {
 	if err := os.WriteFile(path, append(data, '\n'), 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", path, err)
 	}
-	printDone(w, "Wrote "+path)
+	cli.Done(w, "Wrote "+path)
 	return nil
 }
