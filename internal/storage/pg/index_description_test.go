@@ -20,7 +20,7 @@ func TestDescribeIndexes_ReadsTheMigratedServer(t *testing.T) {
 		"work_mem":        "8MB",
 	}
 	pool, err := NewConnectionPool(testCtx, PoolConfig{
-		ConnStr:            testPool.GetConn().Config().ConnString(),
+		ConnStr:            testPool.Pool().Config().ConnString(),
 		ConnectionSettings: specSettings,
 	})
 	if err != nil {

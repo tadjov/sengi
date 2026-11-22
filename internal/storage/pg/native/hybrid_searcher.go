@@ -1,4 +1,4 @@
-package pg
+package native
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/types/operator"
 	dquery "github.com/tadjov/sengi/internal/types/query"
 	"github.com/tadjov/sengi/internal/utils"
 )
@@ -22,10 +24,10 @@ type HybridSearcher struct {
 	db       *pgxpool.Pool
 }
 
-func NewHybridSearcher(embedder *embedding.Embedder, pool *ConnectionPool) *HybridSearcher {
+func NewHybridSearcher(embedder *embedding.Embedder, pool *pg.ConnectionPool) *HybridSearcher {
 	return &HybridSearcher{
 		embedder: embedder,
-		db:       pool.GetConn(),
+		db:       pool.Pool(),
 	}
 }
 
@@ -50,19 +52,16 @@ func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid,
 	vecEncoded := pgvector.NewVector(vec.Embedding)
 
 	// Each leg must contribute at least size candidates so large pages can fill.
-	legDepth := hybridCandidateDepth
-	if size > legDepth {
-		legDepth = size
-	}
+	legDepth := max(hybridCandidateDepth, size)
 
 	cmd := fmt.Sprintf(`
 		WITH lexical AS (
 			SELECT a.id AS article_id,
 				   ROW_NUMBER() OVER (
-					   ORDER BY ts_rank(a.search_vector, plainto_tsquery('%[1]s'::regconfig, $1)) DESC, a.id DESC
+					   ORDER BY ts_rank(a.search_vector, %[1]s) DESC, a.id DESC
 				   ) AS lex_rank
 			FROM articles a
-			WHERE a.search_vector @@ plainto_tsquery('%[1]s'::regconfig, $1)
+			WHERE a.search_vector @@ %[1]s
 			ORDER BY lex_rank
 			LIMIT $5
 		),
@@ -87,7 +86,7 @@ func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid,
 		INNER JOIN articles a ON a.id = f.article_id
 		ORDER BY f.rrf_score DESC, a.id DESC
 		LIMIT $6
-	`, lang.Analysis().PostgresConfig, ArticleColumnList("a"))
+	`, buildTsQuery(operator.And, lang, 1), pg.ArticleColumnList("a"))
 
 	rows, err := s.db.Query(
 		ctx,
@@ -111,13 +110,13 @@ func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid,
 	for rows.Next() {
 		var rawScore float64
 
-		article, err := ScanArticle(rows, &rawScore, &totalMatches)
+		article, err := pg.ScanArticle(rows, &rawScore, &totalMatches)
 		if err != nil {
 			return nil, err
 		}
 
 		articles = append(articles, dto.ArticleSearchResult{
-			Article: *article,
+			Article: dto.NewArticle(article),
 			Score:   utils.RoundFloat64(rawScore, dquery.ScoreDecimalPlaces),
 		})
 		rawScores = append(rawScores, rawScore)
@@ -143,8 +142,6 @@ func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid,
 
 	return &storage.SearchResult{
 		Hits:         articles,
-		NextCursor:   nil,
-		HasMore:      false,
 		MaxScore:     utils.RoundFloat64(maxScore, dquery.ScoreDecimalPlaces),
 		PageMaxScore: utils.RoundFloat64(maxScore, dquery.ScoreDecimalPlaces),
 		TotalMatches: totalMatches,

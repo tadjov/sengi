@@ -33,28 +33,8 @@ func newLoadRecordTestPool(t *testing.T) *ConnectionPool {
 	return pool
 }
 
-func TestDescribeIndexes_ServerWithoutALoadRecordHasNoLoad(t *testing.T) {
-	description, err := DescribeIndexes(testCtx, newLoadRecordTestPool(t))
-	if err != nil {
-		t.Fatalf("DescribeIndexes: %v", err)
-	}
-
-	if description.Load != nil {
-		t.Errorf("load = %+v, want none on a server nothing was loaded into", description.Load)
-	}
-}
-
-func createCorpusLoad(t *testing.T, pool *ConnectionPool) {
-	t.Helper()
-	if _, err := pool.GetConn().Exec(testCtx,
-		`CREATE TABLE IF NOT EXISTS corpus_load (finished_at timestamptz PRIMARY KEY, record jsonb NOT NULL)`); err != nil {
-		t.Fatalf("create corpus_load: %v", err)
-	}
-}
-
 func TestDescribeIndexes_EmptyCorpusLoadHasNoLoad(t *testing.T) {
 	pool := newLoadRecordTestPool(t)
-	createCorpusLoad(t, pool)
 
 	description, err := DescribeIndexes(testCtx, pool)
 	if err != nil {
@@ -68,12 +48,11 @@ func TestDescribeIndexes_EmptyCorpusLoadHasNoLoad(t *testing.T) {
 
 func TestDescribeIndexes_ReadsTheLatestLoadRecord(t *testing.T) {
 	pool := newLoadRecordTestPool(t)
-	createCorpusLoad(t, pool)
 	for _, record := range []struct{ finishedAt, json string }{
 		{finishedAt: "2026-10-01T10:30:00Z", json: latestLoadRecord},
 		{finishedAt: "2026-09-01T10:30:00Z", json: olderLoadRecord},
 	} {
-		if _, err := pool.GetConn().Exec(testCtx,
+		if _, err := pool.Pool().Exec(testCtx,
 			`INSERT INTO corpus_load (finished_at, record) VALUES ($1, $2)`, record.finishedAt, record.json); err != nil {
 			t.Fatalf("insert load record: %v", err)
 		}

@@ -1,4 +1,4 @@
-package es_test
+package engine_test
 
 import (
 	"bytes"

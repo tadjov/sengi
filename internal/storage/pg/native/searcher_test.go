@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/storage/pg/pgtest"
 	"github.com/tadjov/sengi/internal/storage/storagetest"
 	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
@@ -23,8 +24,9 @@ import (
 )
 
 var (
-	testCtx  context.Context
-	testPool *pg.ConnectionPool
+	testCtx    context.Context
+	testPool   *pg.ConnectionPool
+	testServer string
 )
 
 func TestMain(m *testing.M) {
@@ -52,6 +54,7 @@ func runWithContainer(m *testing.M) int {
 		panic(err)
 	}
 	defer testPool.Close()
+	testServer = container.ConnString
 
 	return m.Run()
 }
@@ -61,14 +64,25 @@ func newSearcher(t *testing.T) *Searcher {
 	if testPool == nil {
 		t.Skip("requires Docker (testcontainers Postgres)")
 	}
-	if _, err := testPool.GetConn().Exec(testCtx, "TRUNCATE TABLE articles CASCADE"); err != nil {
+	if _, err := testPool.Pool().Exec(testCtx, "TRUNCATE TABLE articles CASCADE"); err != nil {
 		t.Fatalf("truncate articles: %v", err)
 	}
-	searcher, err := NewReader(testPool)
-	if err != nil {
-		t.Fatalf("NewReader: %v", err)
+	return NewSearcher(testPool)
+}
+
+// loadedSearcher searches a database of its own, loaded the way datapipe load does.
+func loadedSearcher(t *testing.T, articles []document.Article) *Searcher {
+	t.Helper()
+	if testPool == nil {
+		t.Skip("requires Docker (testcontainers Postgres)")
 	}
-	return searcher
+	connString := pgtest.Load(t, testServer, pgtest.Corpus{Articles: articles})
+	pool, err := pg.NewConnectionPool(testCtx, pg.PoolConfig{ConnStr: connString})
+	if err != nil {
+		t.Fatalf("NewConnectionPool: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	return NewSearcher(pool)
 }
 
 func hitIDs(t *testing.T, s *Searcher, query *dquery.String) []uuid.UUID {
@@ -88,34 +102,20 @@ func hitIDs(t *testing.T, s *Searcher, query *dquery.String) []uuid.UUID {
 }
 
 func TestSearcher_Parity(t *testing.T) {
-	s := newSearcher(t)
-	indexer, err := pg.NewIndexer(testPool)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
-	if err := indexer.SaveBulk(testCtx, storagetest.ParityCorpus()); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
+	s := loadedSearcher(t, storagetest.ParityCorpus())
 
 	storagetest.RunParity(t, storagetest.Postgres, s)
 	storagetest.RunFieldIsolation(t, s)
 }
 
 func TestSearcher_StringQueryRanksWithPostgresDefaultWeights(t *testing.T) {
-	s := newSearcher(t)
-	indexer, err := pg.NewIndexer(testPool)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
 	titleOnly := uuid.New()
 	descriptionOnly := uuid.New()
 	articles := []document.Article{
 		{ID: titleOnly, Title: "budget", URL: "https://example.com/1", Language: language.English},
 		{ID: descriptionOnly, Title: "harbor", Description: "budget", URL: "https://example.com/2", Language: language.English},
 	}
-	if err := indexer.SaveBulk(testCtx, articles); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
+	s := loadedSearcher(t, articles)
 
 	res, err := s.SearchStringQuery(testCtx, dquery.NewQueryString("budget"), &dquery.BaseOptions{Size: 10})
 	if err != nil {
@@ -138,11 +138,6 @@ func TestSearcher_StringQueryRanksWithPostgresDefaultWeights(t *testing.T) {
 }
 
 func TestSearcher_SmallRelativeBoostStillRanks(t *testing.T) {
-	s := newSearcher(t)
-	indexer, err := pg.NewIndexer(testPool)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
 	// The ids order the two the wrong way round, so a tie on score shows.
 	moreOften := uuid.MustParse("00000000-0000-0000-0000-0000000000a0")
 	once := uuid.MustParse("00000000-0000-0000-0000-0000000000a1")
@@ -150,9 +145,7 @@ func TestSearcher_SmallRelativeBoostStillRanks(t *testing.T) {
 		{ID: moreOften, Title: "harbor", Content: "budget budget budget", URL: "https://example.com/1", Language: language.English},
 		{ID: once, Title: "harbor", Content: "budget", URL: "https://example.com/2", Language: language.English},
 	}
-	if err := indexer.SaveBulk(testCtx, articles); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
+	s := loadedSearcher(t, articles)
 
 	q, err := dquery.NewMultiMatchQuery("budget", []string{"title^100000", "content"})
 	if err != nil {
@@ -172,11 +165,6 @@ func TestSearcher_SmallRelativeBoostStillRanks(t *testing.T) {
 }
 
 func TestSearcher_OrMatchKeepsAnAmpersandInsideALexeme(t *testing.T) {
-	s := newSearcher(t)
-	indexer, err := pg.NewIndexer(testPool)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
 	// Postgres parses a URL into the whole URL, its host and its path; the
 	// path lexeme here, /path?a=1&b=2, is the only one the two URLs share.
 	samePath := uuid.New()
@@ -184,9 +172,7 @@ func TestSearcher_OrMatchKeepsAnAmpersandInsideALexeme(t *testing.T) {
 		{ID: samePath, Title: "harbor", Content: "see other.org/path?a=1&b=2", URL: "https://example.com/1", Language: language.English},
 		{ID: uuid.New(), Title: "harbor", Content: "budget", URL: "https://example.com/2", Language: language.English},
 	}
-	if err := indexer.SaveBulk(testCtx, articles); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
+	s := loadedSearcher(t, articles)
 
 	match, err := dquery.NewMatch(dquery.FieldContent, "example.com/path?a=1&b=2", dquery.WithMatchOperator(operator.Or))
 	if err != nil {
@@ -206,15 +192,8 @@ func TestSearcher_OrMatchKeepsAnAmpersandInsideALexeme(t *testing.T) {
 }
 
 func TestSearcher_StringQueryOfOnlyStopwordsReturnsNoHits(t *testing.T) {
-	s := newSearcher(t)
 	articles := storagetest.ParityCorpus()
-	indexer, err := pg.NewIndexer(testPool)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
-	if err := indexer.SaveBulk(testCtx, articles); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
+	s := loadedSearcher(t, articles)
 
 	if got := hitIDs(t, s, dquery.NewQueryString("the")); len(got) != 0 {
 		t.Errorf("hits = %v, want none", got)
@@ -222,14 +201,7 @@ func TestSearcher_StringQueryOfOnlyStopwordsReturnsNoHits(t *testing.T) {
 }
 
 func TestSearcher_ScoreNormalizedIsAShareOfTheBestMatch(t *testing.T) {
-	s := newSearcher(t)
-	indexer, err := pg.NewIndexer(testPool)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
-	if err := indexer.SaveBulk(testCtx, storagetest.ParityCorpus()); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
+	s := loadedSearcher(t, storagetest.ParityCorpus())
 
 	match, err := dquery.NewMatch(dquery.FieldTitle, "budget")
 	if err != nil {
@@ -255,18 +227,11 @@ func TestSearcher_ScoreNormalizedIsAShareOfTheBestMatch(t *testing.T) {
 }
 
 func TestSearcher_CursorPastEveryMatchReturnsEmptyPage(t *testing.T) {
-	s := newSearcher(t)
-	indexer, err := pg.NewIndexer(testPool)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
 	articles := []document.Article{
 		{ID: uuid.New(), Title: "climate change policy", URL: "https://example.com/1", Language: language.English},
 		{ID: uuid.New(), Title: "climate change", URL: "https://example.com/2", Language: language.English},
 	}
-	if err := indexer.SaveBulk(testCtx, articles); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
+	s := loadedSearcher(t, articles)
 
 	// Every match ranks above 0, so no row sorts after this cursor while the
 	// match count stays positive.
@@ -330,14 +295,7 @@ func TestSearcher_CursorPastEveryMatchReturnsEmptyPage(t *testing.T) {
 }
 
 func TestSearcher_PageQueryErrorNamesTheMethod(t *testing.T) {
-	s := newSearcher(t)
-	indexer, err := pg.NewIndexer(testPool)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
-	if err := indexer.SaveBulk(testCtx, []document.Article{{ID: uuid.New(), Title: "climate change", URL: "https://example.com/1", Language: language.English}}); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
+	s := loadedSearcher(t, []document.Article{{ID: uuid.New(), Title: "climate change", URL: "https://example.com/1", Language: language.English}})
 
 	// The match count succeeds; the page query's LIMIT size+1 is negative.
 	opts := &dquery.BaseOptions{Size: -2}
@@ -388,21 +346,16 @@ func TestSearcher_PageQueryErrorNamesTheMethod(t *testing.T) {
 }
 
 func TestSearcher_PagesThroughEveryHit(t *testing.T) {
-	s := newSearcher(t)
-	indexer, err := pg.NewIndexer(testPool)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
+	var articles []document.Article
 	var matching []uuid.UUID
 	for i, title := range []string{"climate", "climate change", "climate change policy", "climate change policy debate review", "unrelated cooking recipe"} {
 		id := uuid.New()
-		if err := indexer.SaveBulk(testCtx, []document.Article{{ID: id, Title: title, URL: fmt.Sprintf("https://example.com/%d", i), Language: language.English}}); err != nil {
-			t.Fatalf("SaveBulk: %v", err)
-		}
+		articles = append(articles, document.Article{ID: id, Title: title, URL: fmt.Sprintf("https://example.com/%d", i), Language: language.English})
 		if strings.Contains(title, "climate") {
 			matching = append(matching, id)
 		}
 	}
+	s := loadedSearcher(t, articles)
 
 	methods := []struct {
 		name   string
@@ -505,15 +458,15 @@ func TestNormalizedScore(t *testing.T) {
 
 func TestBooleanMatchWithNegationCanUseTheSearchVectorIndex(t *testing.T) {
 	newSearcher(t)
-	tsquery, err := NewBooleanParser().Parse("trump AND NOT biden")
+	tsquery, err := booleanTsQuery("trump AND NOT biden")
 	if err != nil {
-		t.Fatalf("Parse: %v", err)
+		t.Fatalf("booleanTsQuery: %v", err)
 	}
 	match := buildBooleanMatch(tsquery, language.English)
 
 	// With sequential scans priced out, the planner still picks one when the
 	// predicate cannot be answered from the GIN index.
-	tx, err := testPool.GetConn().Begin(testCtx)
+	tx, err := testPool.Pool().Begin(testCtx)
 	if err != nil {
 		t.Fatalf("begin: %v", err)
 	}

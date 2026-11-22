@@ -5,8 +5,12 @@ import (
 	"math"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/storagetest"
 	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
@@ -65,39 +69,12 @@ var searchMethods = []searchMethod{
 	},
 }
 
-func newSearcherTestEnv(t *testing.T) (*Indexer, *Searcher) {
+func newSearcherTestEnv(t *testing.T) (ClientConfig, *Searcher) {
 	t.Helper()
 
 	container := pkgtesting.NewESContainer(context.Background(), t)
 	cfg := ClientConfig{Addresses: []string{container.Address}, IndexName: "articles_searcher_test"}
-
-	indexer, err := NewIndexer(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
-	return indexer, NewSearcher(newTestClient(t, cfg))
-}
-
-func indexArticles(t *testing.T, indexer *Indexer, titles ...string) []uuid.UUID {
-	t.Helper()
-
-	ids := make([]uuid.UUID, 0, len(titles))
-	for _, title := range titles {
-		id, err := indexer.Save(context.Background(), document.Article{ID: uuid.New(), Title: title, Language: language.English})
-		if err != nil {
-			t.Fatalf("index %q: %v", title, err)
-		}
-		ids = append(ids, id)
-	}
-	refreshIndex(t, indexer)
-	return ids
-}
-
-func refreshIndex(t *testing.T, indexer *Indexer) {
-	t.Helper()
-	if _, err := indexer.client.Indices.Refresh().Index(indexer.indexName).Do(context.Background()); err != nil {
-		t.Fatalf("refresh: %v", err)
-	}
+	return cfg, NewSearcher(newTestClient(t, cfg))
 }
 
 func TestSearcher_NoMatchReturnsEmptyPage(t *testing.T) {
@@ -105,8 +82,8 @@ func TestSearcher_NoMatchReturnsEmptyPage(t *testing.T) {
 		t.Skip("requires Docker (testcontainers ES)")
 	}
 	ctx := context.Background()
-	indexer, searcher := newSearcherTestEnv(t)
-	indexArticles(t, indexer, "climate change policy", "unrelated cooking recipe")
+	cfg, searcher := newSearcherTestEnv(t)
+	seedIndex(t, cfg, titledArticles("climate change policy", "unrelated cooking recipe"), nil)
 
 	for _, method := range searchMethods {
 		t.Run(method.name, func(t *testing.T) {
@@ -135,16 +112,21 @@ func TestSearcher_MatchPagesThroughEveryHit(t *testing.T) {
 		t.Skip("requires Docker (testcontainers ES)")
 	}
 	ctx := context.Background()
-	indexer, searcher := newSearcherTestEnv(t)
+	cfg, searcher := newSearcherTestEnv(t)
 	// Different title lengths give distinct BM25 scores, so a page's first and
 	// last hit differ and the cursor and PageMaxScore can be told apart.
-	matching := indexArticles(t, indexer,
+	articles := titledArticles(
 		"climate",
 		"climate change",
 		"climate change policy",
 		"climate change policy debate review",
+		"unrelated cooking recipe",
 	)
-	indexArticles(t, indexer, "unrelated cooking recipe")
+	seedIndex(t, cfg, articles, nil)
+	var matching []uuid.UUID
+	for _, article := range articles[:4] {
+		matching = append(matching, article.ID)
+	}
 
 	const pageSize = 2
 	for _, method := range searchMethods {
@@ -208,13 +190,14 @@ func TestSearcher_NonUUIDDocumentIDReturnsError(t *testing.T) {
 		t.Skip("requires Docker (testcontainers ES)")
 	}
 	ctx := context.Background()
-	indexer, searcher := newSearcherTestEnv(t)
+	cfg, searcher := newSearcherTestEnv(t)
+	createEmptyIndex(t, cfg)
 
 	doc := map[string]any{"id": "not-a-uuid", "title": "climate change policy", "language": "eng"}
-	if _, err := indexer.client.Index(indexer.indexName).Id("not-a-uuid").Document(doc).Do(ctx); err != nil {
+	if _, err := newTestClient(t, cfg).typed.Index(cfg.IndexName).Id("not-a-uuid").Document(doc).Do(ctx); err != nil {
 		t.Fatalf("index raw document: %v", err)
 	}
-	refreshIndex(t, indexer)
+	refreshIndex(t, cfg)
 
 	res, err := searcher.SearchStringQuery(ctx, &dquery.String{Query: "climate"}, &dquery.BaseOptions{Size: 10})
 	if err == nil {
@@ -229,11 +212,8 @@ func TestSearcher_Parity(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires Docker (testcontainers ES)")
 	}
-	indexer, searcher := newSearcherTestEnv(t)
-	if err := indexer.SaveBulk(context.Background(), storagetest.ParityCorpus()); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
-	refreshIndex(t, indexer)
+	cfg, searcher := newSearcherTestEnv(t)
+	seedIndex(t, cfg, storagetest.ParityCorpus(), nil)
 
 	storagetest.RunParity(t, storagetest.Elasticsearch, searcher)
 	storagetest.RunFieldIsolation(t, searcher)
@@ -244,7 +224,7 @@ func TestSearcher_TotalMatchesIsExactPastTenThousand(t *testing.T) {
 		t.Skip("requires Docker (testcontainers ES)")
 	}
 	ctx := context.Background()
-	indexer, searcher := newSearcherTestEnv(t)
+	cfg, searcher := newSearcherTestEnv(t)
 
 	// Elasticsearch stops counting at 10,000 unless asked to track every hit.
 	const matching = 10_050
@@ -252,10 +232,7 @@ func TestSearcher_TotalMatchesIsExactPastTenThousand(t *testing.T) {
 	for i := range articles {
 		articles[i] = document.Article{ID: uuid.New(), Title: "climate", Language: language.English}
 	}
-	if err := indexer.SaveBulk(ctx, articles); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
-	refreshIndex(t, indexer)
+	seedIndex(t, cfg, articles, nil)
 
 	for _, method := range searchMethods {
 		t.Run(method.name, func(t *testing.T) {
@@ -268,4 +245,57 @@ func TestSearcher_TotalMatchesIsExactPastTenThousand(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSearcher_ReturnsEveryArticleField(t *testing.T) {
+	ctx := context.Background()
+	cfg, searcher := newSearcherTestEnv(t)
+
+	published := time.Date(2019, 3, 4, 5, 6, 7, 0, time.UTC)
+	modified := time.Date(2019, 3, 5, 0, 0, 0, 0, time.UTC)
+	full := document.Article{
+		ID:              uuid.MustParse("6f1c0d53-1b0e-5a51-9a2b-7d0f6c3e8a01"),
+		URL:             "https://uk.reuters.com/world/storm",
+		Title:           "Storm hits the coast",
+		Description:     "Thousands without power",
+		Content:         "The storm made landfall overnight.",
+		PublishedAt:     published,
+		Language:        language.English,
+		PublisherDomain: "reuters.com",
+		Metadata: document.Metadata{
+			ExternalID:    "reuters-0412",
+			PublisherName: "Reuters",
+			Authors:       []string{"Jane Doe", "John Roe"},
+			Section:       "World",
+			Keywords:      []string{"storm", "coast"},
+			Image:         "https://uk.reuters.com/storm.jpg",
+			DateModified:  modified,
+			Extra:         map[string]any{"wordCount": "412"},
+		},
+	}
+	seedIndex(t, cfg, []document.Article{full}, nil)
+
+	res, err := searcher.SearchStringQuery(ctx, &dquery.String{Query: "storm"}, &dquery.BaseOptions{Size: 10})
+	require.NoError(t, err)
+	require.Len(t, res.Hits, 1)
+	assert.Equal(t, dto.Article{
+		ID:              full.ID,
+		URL:             full.URL,
+		Title:           full.Title,
+		Description:     full.Description,
+		Content:         full.Content,
+		PublishedAt:     &published,
+		Language:        "eng",
+		PublisherDomain: "reuters.com",
+		Metadata: dto.Metadata{
+			ExternalID:    "reuters-0412",
+			PublisherName: "Reuters",
+			Authors:       []string{"Jane Doe", "John Roe"},
+			Section:       "World",
+			Keywords:      []string{"storm", "coast"},
+			Image:         "https://uk.reuters.com/storm.jpg",
+			DateModified:  &modified,
+			Extra:         map[string]any{"wordCount": "412"},
+		},
+	}, res.Hits[0].Article)
 }

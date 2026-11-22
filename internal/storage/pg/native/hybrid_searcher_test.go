@@ -1,33 +1,55 @@
-package pg
+package native
 
 import (
+	"context"
 	"slices"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/storage/pg/pgtest"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
-	"github.com/tadjov/sengi/internal/types/query"
+	dquery "github.com/tadjov/sengi/internal/types/query"
 )
 
+type staticEmbedder struct {
+	vec []float32
+}
+
+func (s staticEmbedder) Generate(_ context.Context, _ embedding.Request) (*embedding.Response, error) {
+	return &embedding.Response{Embedding: s.vec}, nil
+}
+
+func (s staticEmbedder) GenerateBatch(_ context.Context, _ embedding.BatchRequest) (*embedding.BatchResponse, error) {
+	return &embedding.BatchResponse{Embeddings: [][]float32{s.vec}}, nil
+}
+
 func TestHybridSearcher_LexicalLegReadsTheQueryAsFreeText(t *testing.T) {
-	pool := newEmbedTestPool(t)
-	indexer, err := NewIndexer(pool)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
+	if testPool == nil {
+		t.Skip("requires Docker (testcontainers Postgres)")
 	}
 	bothTerms, budgetOnly := uuid.New(), uuid.New()
 	articles := []document.Article{
 		{ID: bothTerms, Title: "budget tariff", URL: "https://example.com/1", Language: language.English},
 		{ID: budgetOnly, Title: "budget", URL: "https://example.com/2", Language: language.English},
 	}
-	if err := indexer.SaveBulk(testCtx, articles); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
+	pool, err := pg.NewConnectionPool(testCtx, pg.PoolConfig{
+		ConnStr:          pgtest.Load(t, testServer, pgtest.Corpus{Articles: articles}),
+		RegisterVecTypes: true,
+	})
+	if err != nil {
+		t.Fatalf("NewConnectionPool: %v", err)
 	}
+	t.Cleanup(pool.Close)
 	// No article has an embedding, so the vector leg is empty and the hits are
 	// exactly the lexical leg.
-	searcher := NewHybridSearcher(embedding.NewEmbedder(staticEmbedder{vec: vec(1024, 0.9)}), pool)
+	queryVector := make([]float32, 1024)
+	for i := range queryVector {
+		queryVector[i] = 0.9
+	}
+	searcher := NewHybridSearcher(embedding.NewEmbedder(staticEmbedder{vec: queryVector}), pool)
 
 	tests := []struct {
 		name string
@@ -38,7 +60,7 @@ func TestHybridSearcher_LexicalLegReadsTheQueryAsFreeText(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := searcher.SearchHybrid(testCtx, query.NewHybrid(tt.text), &query.BaseOptions{Size: 10})
+			res, err := searcher.SearchHybrid(testCtx, dquery.NewHybrid(tt.text), &dquery.BaseOptions{Size: 10})
 			if err != nil {
 				t.Fatalf("SearchHybrid: %v", err)
 			}

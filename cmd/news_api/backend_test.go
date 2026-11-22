@@ -85,6 +85,7 @@ func TestOpenSearchBackend_PostgresSearchersShareOnePool(t *testing.T) {
 
 func TestOpenSearchBackend_HealthFollowsPostgres(t *testing.T) {
 	ctx := context.Background()
+	// The test stops its server.
 	container := pkgtesting.NewPGContainerWithConfig(ctx, t, pkgtesting.PGConfig{Isolated: true})
 
 	running, err := openSearchBackend(ctx, pgSearchConfig(container.ConnString))

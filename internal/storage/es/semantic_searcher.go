@@ -43,10 +43,7 @@ func (s *SemanticSearcher) SearchSemantic(ctx context.Context, query *dquery.Sem
 
 	size := baseOpts.Size
 	k := size
-	numCandidates := k * 10
-	if numCandidates < minNumCandidates {
-		numCandidates = minNumCandidates
-	}
+	numCandidates := max(k*10, minNumCandidates)
 
 	threshold := query.Threshold
 	if threshold == 0 {
@@ -81,7 +78,6 @@ func (s *SemanticSearcher) SearchSemantic(ctx context.Context, query *dquery.Sem
 		Size(size).
 		Do(ctx)
 	if err != nil {
-		slog.Error("Elasticsearch kNN query failed", "error", err, "query", query.Query)
 		return nil, fmt.Errorf("failed to execute semantic search: %w", err)
 	}
 
@@ -94,12 +90,8 @@ func (s *SemanticSearcher) SearchSemantic(ctx context.Context, query *dquery.Sem
 		"total_matches", res.Hits.Total.Value,
 		"returned_count", len(hits))
 
-	// kNN returns a single page (parity with PG): no cursor follow-up.
-	return &storage.VectorSearchResult{
-		Hits:       hits,
-		NextCursor: nil,
-		HasMore:    false,
-	}, nil
+	// kNN returns a single page, as the Postgres searcher does.
+	return &storage.VectorSearchResult{Hits: hits}, nil
 }
 
 func (s *SemanticSearcher) mapToArticles(hits []types.Hit) ([]dto.Article, error) {

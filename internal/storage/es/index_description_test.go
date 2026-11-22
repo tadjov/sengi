@@ -17,9 +17,7 @@ func TestDescribeIndex_ReadsTheLiveIndex(t *testing.T) {
 	ctx := context.Background()
 	container := pkgtesting.NewESContainer(ctx, t)
 	cfg := ClientConfig{Addresses: []string{container.Address}, IndexName: "articles_described_test"}
-	if _, err := NewIndexer(ctx, cfg); err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
+	createEmptyIndex(t, cfg)
 
 	const alias = "news_described_test"
 	client, err := newTypedClient(cfg)

@@ -30,9 +30,8 @@ type BooleanExpr struct {
 // case, parentheses, quoted phrases, and AND between adjacent operands. NOT
 // binds tighter than AND, and AND tighter than OR.
 func ParseBoolean(text string) (BooleanExpr, error) {
-	tokenizer := token.NewBoolTokenizer()
-	tokens := tokenizer.Tokenize(text)
-	if err := tokenizer.Validate(tokens); err != nil {
+	tokens := token.Tokenize(text)
+	if err := token.Validate(tokens); err != nil {
 		return BooleanExpr{}, fmt.Errorf("boolean text %q: %w", text, err)
 	}
 	p := &booleanParser{tokens: tokens}

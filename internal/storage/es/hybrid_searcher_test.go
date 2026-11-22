@@ -7,28 +7,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/embedding"
 	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
-	"github.com/tadjov/sengi/internal/types/document"
-	"github.com/tadjov/sengi/internal/types/language"
 	dquery "github.com/tadjov/sengi/internal/types/query"
 )
 
-func newHybridTestEnv(t *testing.T, queryVec []float32) (*Indexer, *Embedder, *HybridSearcher) {
+func newHybridTestEnv(t *testing.T, queryVec []float32) (ClientConfig, *HybridSearcher) {
 	t.Helper()
 
 	container := pkgtesting.NewESContainer(context.Background(), t)
 	cfg := ClientConfig{Addresses: []string{container.Address}, IndexName: "articles_hybrid_test"}
 
-	indexer, err := NewIndexer(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
-	embIndexer, err := NewEmbedder(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("NewEmbedder: %v", err)
-	}
-
 	qEmbedder := embedding.NewEmbedder(staticEmbedder{vec: queryVec})
-	return indexer, embIndexer, NewHybridSearcher(newTestClient(t, cfg), qEmbedder, qEmbedder.Model())
+	return cfg, NewHybridSearcher(newTestClient(t, cfg), qEmbedder, qEmbedder.Model())
 }
 
 func TestHybridSearcher_SearchHybrid_RanksBothSignalsFirst(t *testing.T) {
@@ -46,35 +35,18 @@ func TestHybridSearcher_SearchHybrid_RanksBothSignalsFirst(t *testing.T) {
 		midway[i] = -0.9
 	}
 
-	indexer, embIndexer, searcher := newHybridTestEnv(t, near)
+	cfg, searcher := newHybridTestEnv(t, near)
 
 	// bothID: strong lexical match AND near query vector.
 	// lexicalOnlyID: lexical match but far vector.
 	// vectorOnlyID: near vector but no lexical match.
-	bothID := uuid.New()
-	lexicalOnlyID := uuid.New()
-	vectorOnlyID := uuid.New()
-
-	if _, err := indexer.Save(ctx, document.Article{ID: bothID, Title: "climate change policy", Language: language.English}); err != nil {
-		t.Fatalf("index both article: %v", err)
-	}
-	if _, err := indexer.Save(ctx, document.Article{ID: lexicalOnlyID, Title: "climate change report", Language: language.English}); err != nil {
-		t.Fatalf("index lexical article: %v", err)
-	}
-	if _, err := indexer.Save(ctx, document.Article{ID: vectorOnlyID, Title: "unrelated cooking recipe", Language: language.English}); err != nil {
-		t.Fatalf("index vector article: %v", err)
-	}
-	refresh(t, embIndexer)
-
-	batch := []*embedding.Vec{
+	articles := titledArticles("climate change policy", "climate change report", "unrelated cooking recipe")
+	bothID, lexicalOnlyID, vectorOnlyID := articles[0].ID, articles[1].ID, articles[2].ID
+	seedIndex(t, cfg, articles, []embedding.Vec{
 		{ID: bothID, Model: storedTag, Embedding: near},
 		{ID: lexicalOnlyID, Model: storedTag, Embedding: far},
 		{ID: vectorOnlyID, Model: storedTag, Embedding: midway},
-	}
-	if _, err := embIndexer.SaveBulk(ctx, batch); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
-	refresh(t, embIndexer)
+	})
 
 	res, err := searcher.SearchHybrid(ctx,
 		dquery.NewHybrid("climate change"),
@@ -110,26 +82,16 @@ func TestHybridSearcher_SearchHybrid_OnlySeesTheQueryModel(t *testing.T) {
 	ctx := context.Background()
 
 	queryVec := vec(EmbeddingDims, 0.9)
-	indexer, embIndexer, searcher := newHybridTestEnv(t, queryVec)
+	cfg, searcher := newHybridTestEnv(t, queryVec)
 
 	// Titles share no term with the query, so only the kNN leg can return them.
-	sameModel := uuid.New()
-	otherModel := uuid.New()
-	for _, id := range []uuid.UUID{sameModel, otherModel} {
-		if _, err := indexer.Save(ctx, document.Article{ID: id, Title: id.String(), Language: language.English}); err != nil {
-			t.Fatalf("index article: %v", err)
-		}
-	}
-	refresh(t, embIndexer)
-
-	batch := []*embedding.Vec{
+	articles := titledArticles("same model", "other model")
+	sameModel, otherModel := articles[0].ID, articles[1].ID
+	seedIndex(t, cfg, articles, []embedding.Vec{
 		{ID: sameModel, Model: storedTag, Embedding: queryVec},
-		{ID: otherModel, Model: embedding.DefaultModel, Embedding: queryVec},
-	}
-	if _, err := embIndexer.SaveBulk(ctx, batch); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
-	refresh(t, embIndexer)
+		{ID: otherModel, Model: storedTag, Embedding: queryVec},
+	})
+	retagEmbedding(t, cfg, otherModel, embedding.DefaultModel)
 
 	res, err := searcher.SearchHybrid(ctx, dquery.NewHybrid("climate change"), &dquery.BaseOptions{Size: 10})
 	if err != nil {

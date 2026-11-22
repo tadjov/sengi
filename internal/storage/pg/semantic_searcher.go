@@ -23,7 +23,7 @@ type SemanticSearcher struct {
 func NewSemanticSearcher(embedder *embedding.Embedder, pool *ConnectionPool) *SemanticSearcher {
 	return &SemanticSearcher{
 		embedder: embedder,
-		db:       pool.GetConn(),
+		db:       pool.Pool(),
 	}
 }
 
@@ -70,17 +70,17 @@ func (s *SemanticSearcher) SearchSemantic(ctx context.Context, query *query.Sema
 
 	var hits []dto.Article
 	for rows.Next() {
-		article, dist, err := MapToArticle(rows)
+		var distance float32
+		article, err := ScanArticle(rows, &distance)
 		if err != nil {
 			return nil, err
 		}
-		slog.Debug("Semantic search hit", "article_id", article.ID, "distance", dist)
-		hits = append(hits, *article)
+		slog.Debug("Semantic search hit", "article_id", article.ID, "distance", distance)
+		hits = append(hits, dto.NewArticle(article))
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read semantic search rows: %w", err)
 	}
 
-	return &storage.VectorSearchResult{
-		Hits:       hits,
-		NextCursor: nil,
-		HasMore:    false,
-	}, nil
+	return &storage.VectorSearchResult{Hits: hits}, nil
 }

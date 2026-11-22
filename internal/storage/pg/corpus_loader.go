@@ -31,7 +31,7 @@ var _ storage.CorpusLoader = (*CorpusLoader)(nil)
 type CorpusLoader struct {
 	pool    *ConnectionPool
 	engine  storage.Engine
-	schema  migrations.Set
+	schema  string
 	indexes []migrations.IndexStatement
 }
 
@@ -65,8 +65,6 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		Settings:    map[string]string{},
 	}
 
-	stages := loadStages{record: &record, counter: progress.Or(opts.Progress)}
-
 	// One session, so index settings read back from it and never reach the pool.
 	pooled, err := l.pool.conn.Acquire(ctx)
 	if err != nil {
@@ -75,82 +73,119 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	conn := pooled.Hijack()
 	defer conn.Close(context.WithoutCancel(ctx))
 
-	if err := lockLoad(ctx, conn); err != nil {
-		return storage.LoadRecord{}, err
+	load := corpusLoad{
+		loader: l,
+		conn:   conn,
+		corpus: c,
+		opts:   opts,
+		stages: loadStages{record: &record, counter: progress.Or(opts.Progress)},
 	}
-	if err := stages.timed("schema", func() error { return l.schema.Up(ctx, conn) }); err != nil {
-		return storage.LoadRecord{}, err
+	for _, step := range []func(context.Context) error{
+		load.prepareDatabase,
+		load.copyCorpus,
+		load.indexAndVacuum,
+		load.describeEngine,
+		load.finish,
+	} {
+		if err := step(ctx); err != nil {
+			return storage.LoadRecord{}, err
+		}
 	}
-	if err := l.refuseLoaded(ctx, conn); err != nil {
-		return storage.LoadRecord{}, err
+	return record, nil
+}
+
+// corpusLoad is one LoadCorpus call: its session, its corpus and the record it fills.
+type corpusLoad struct {
+	loader *CorpusLoader
+	conn   *pgx.Conn
+	corpus storage.Corpus
+	opts   storage.LoadOptions
+	stages loadStages
+}
+
+func (cl corpusLoad) prepareDatabase(ctx context.Context) error {
+	if err := lockLoad(ctx, cl.conn); err != nil {
+		return err
 	}
-	if err := pauseAutovacuum(ctx, conn); err != nil {
-		return storage.LoadRecord{}, err
+	if err := cl.stages.timed("schema", func() error { return migrations.Up(ctx, cl.conn, cl.loader.schema) }); err != nil {
+		return err
 	}
-	copyPool, err := l.openCopyPool(ctx, opts.Concurrency)
+	if err := cl.loader.refuseLoaded(ctx, cl.conn); err != nil {
+		return err
+	}
+	return pauseAutovacuum(ctx, cl.conn)
+}
+
+func (cl corpusLoad) copyCorpus(ctx context.Context) error {
+	record := cl.stages.record
+	copyPool, err := cl.loader.openCopyPool(ctx, cl.opts.Concurrency)
 	if err != nil {
-		return storage.LoadRecord{}, err
+		return err
 	}
 	defer copyPool.Close()
-	copier := &corpusCopier{pool: copyPool, concurrency: opts.Concurrency, batchSize: opts.BatchSize, counter: stages.counter}
+	copier := &corpusCopier{pool: copyPool, concurrency: cl.opts.Concurrency, batchSize: cl.opts.BatchSize, counter: cl.stages.counter}
 
 	var ids []uuid.UUID
-	err = stages.timed("copy_articles", func() error {
-		ids, err = copier.copyArticles(ctx, c)
+	err = cl.stages.timed("copy_articles", func() error {
+		ids, err = copier.copyArticles(ctx, cl.corpus)
 		return err
 	})
 	if err != nil {
-		return storage.LoadRecord{}, err
+		return err
 	}
 	if len(ids) == 0 {
-		return storage.LoadRecord{}, errors.New("corpus has no articles")
+		return errors.New("corpus has no articles")
 	}
 	record.Articles = int64(len(ids))
 
-	if c.Vectors != nil {
-		err = stages.timed("copy_embeddings", func() error {
-			record.Vectors, err = copier.copyVectors(ctx, c, ids)
-			return err
-		})
-		if err != nil {
-			return storage.LoadRecord{}, err
-		}
+	if cl.corpus.Vectors == nil {
+		return nil
 	}
-	copyPool.Close()
+	return cl.stages.timed("copy_embeddings", func() error {
+		record.Vectors, err = copier.copyVectors(ctx, cl.corpus, ids)
+		return err
+	})
+}
 
-	if !opts.SkipIndex {
-		if err := l.buildIndexes(ctx, conn, stages); err != nil {
-			return storage.LoadRecord{}, err
+func (cl corpusLoad) indexAndVacuum(ctx context.Context) error {
+	if !cl.opts.SkipIndex {
+		if err := cl.loader.buildIndexes(ctx, cl.conn, cl.stages); err != nil {
+			return err
 		}
 	}
-	err = stages.timed("vacuum_analyze", func() error {
-		_, err := conn.Exec(ctx, "VACUUM (ANALYZE) articles, article_embeddings")
+	err := cl.stages.timed("vacuum_analyze", func() error {
+		_, err := cl.conn.Exec(ctx, "VACUUM (ANALYZE) articles, article_embeddings")
 		return err
 	})
 	if err != nil {
-		return storage.LoadRecord{}, fmt.Errorf("vacuum analyze: %w", err)
+		return fmt.Errorf("vacuum analyze: %w", err)
 	}
-	if err := resumeAutovacuum(ctx, conn); err != nil {
-		return storage.LoadRecord{}, err
-	}
-	if inspect := engineKnobs[l.engine].inspect; inspect != nil && !opts.SkipIndex {
-		if err := inspect(ctx, conn, record.Settings); err != nil {
-			return storage.LoadRecord{}, err
+	return resumeAutovacuum(ctx, cl.conn)
+}
+
+func (cl corpusLoad) describeEngine(ctx context.Context) error {
+	record := cl.stages.record
+	if inspect := engineKnobs[cl.loader.engine].inspect; inspect != nil && !cl.opts.SkipIndex {
+		if err := inspect(ctx, cl.conn, record.Settings); err != nil {
+			return err
 		}
 	}
-	if record.EngineVersion, err = engineVersion(ctx, conn); err != nil {
-		return storage.LoadRecord{}, err
-	}
+	var err error
+	record.EngineVersion, err = engineVersion(ctx, cl.conn)
+	return err
+}
 
+// finish leaves an unindexed corpus out of corpus_load: it is not what a bench run measures.
+func (cl corpusLoad) finish(ctx context.Context) error {
+	record := cl.stages.record
 	record.Finish(now())
-	// An unindexed corpus is not what a bench run measures, so corpus_load skips it.
-	if opts.SkipIndex {
-		return record, nil
+	if cl.opts.SkipIndex {
+		return nil
 	}
-	if _, err := conn.Exec(ctx, "INSERT INTO corpus_load (finished_at, record) VALUES ($1, $2)", record.FinishedAt, record); err != nil {
-		return storage.LoadRecord{}, fmt.Errorf("record the load in corpus_load: %w", err)
+	if _, err := cl.conn.Exec(ctx, "INSERT INTO corpus_load (finished_at, record) VALUES ($1, $2)", record.FinishedAt, record); err != nil {
+		return fmt.Errorf("record the load in corpus_load: %w", err)
 	}
-	return record, nil
+	return nil
 }
 
 func engineVersion(ctx context.Context, conn *pgx.Conn) (string, error) {
@@ -401,7 +436,7 @@ func (cp *corpusCopier) copyArticles(ctx context.Context, c storage.Corpus) ([]u
 			return nil, fmt.Errorf("article %s is in %q, the corpus in %q", a.ID, a.Language, c.Language)
 		}
 		ids = append(ids, a.ID)
-		return insertRow(a)
+		return articleRow(a)
 	}
 	plan := copyPlan[document.Article]{Table: "articles", Columns: ArticleColumns, Items: c.Articles, ToRow: toRow, BatchSize: cp.batchSize}
 	if err := copyConcurrently(ctx, cp, plan); err != nil {

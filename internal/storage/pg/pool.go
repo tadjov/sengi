@@ -3,7 +3,8 @@ package pg
 import (
 	"context"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -83,27 +84,13 @@ func quoteLiteral(v string) string {
 }
 
 func sortedKeys(m map[string]string) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
+	return slices.Sorted(maps.Keys(m))
 }
 
-func (p *ConnectionPool) GetConn() *pgxpool.Pool {
+func (p *ConnectionPool) Pool() *pgxpool.Pool {
 	return p.conn
 }
 
 func (p *ConnectionPool) Close() {
 	p.conn.Close()
-}
-
-func (p *ConnectionPool) Ping(ctx context.Context) error {
-	c, err := p.conn.Acquire(ctx)
-	if err != nil {
-		return err
-	}
-	defer c.Release()
-	return c.Ping(ctx)
 }

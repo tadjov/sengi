@@ -12,7 +12,7 @@ go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@lat
 make migrate-schema-native     # or -paradedb, -tiger, -all
 make migrate-down-native       # drops the schema and every index with it
 ```
-- A failed or cancelled schema migration leaves its version dirty, and both `datapipe load` and `migrate` refuse the database until `migrate -path db/migrations/<engine>/schema -database "<db>" force <version>` records the version you repaired it to.
+- A failed or cancelled `migrate` run leaves its version dirty. `migrate` then refuses the database, and `datapipe load` applies the schema again, which fails on the objects already there. Drop the schema (`make migrate-down-<engine>`) or repair it and record the version with `migrate -path db/migrations/<engine>/schema -database "<db>" force <version>`.
 ### OpenAPI Schema gen
 - Install swag CLI
 ```bash

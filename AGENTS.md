@@ -53,9 +53,9 @@ The project follows a layered architecture pattern:
     - `api/`: API layer for HTTP server (`router/` routes, `dto/` request and response shapes, `server/` Echo setup and config)
     - `schema/`: JSON schema generation from Go struct tags, used by `cmd/schemagen`
     - `env/`: `.env` loading (`ENV_PATHS`) and duration settings
-    - `testcontainer/`: Postgres and Elasticsearch containers for integration tests
+    - `testcontainer/`: Postgres and Elasticsearch for integration tests: one server per engine shared by a test run, a database per test; `PGConfig{Isolated: true}` for a test that stops or reconfigures its server
     - `storage/`: Storage abstractions and implementations
-        - `factory/`: Storage factory for creating storage instances
+        - `factory/`: Storage config from the environment, and the corpus loader, article reader and vector store built from it
         - `pg/`: PostgreSQL storage implementation with full-text search
         - `es/`: Elasticsearch storage implementation
     - `progress/`: The counter long-running domain code reports to (records read, rows copied, queries run); `internal/cli` draws it as one status line on stderr
@@ -108,19 +108,15 @@ identity:
 Follows idiomatic Go patterns with sub-package organization:
 - **Interfaces**: Storage contracts define clear responsibilities
     - `FullTextBackend` plus one searcher per full-text paradigm: `StringQuerySearcher`, `FieldSearcher`, `MultiFieldSearcher`, `PhraseSearcher`, `BooleanSearcher`
-    - `Indexer`: Document indexing operations
+    - `CorpusLoader`: Loads a canonical package, and its embeddings, into an empty engine; the only write path
     - `Reader`: Document retrieval operations
-- **Factory Pattern**: `storage/factory` package provides centralized creation logic
-- **PostgreSQL**: `storage/pg` - Full-text search with tsvector, ranking, and pagination
-- **Elasticsearch**: `storage/es` - Multilingual search with advanced indexing
-- **In-memory**: Built-in implementation for development/testing
+- **PostgreSQL**: `storage/pg` holds what every Postgres engine shares (pool, corpus loader, reader, index description); `storage/pg/native` holds the searchers the API serves from the native schema
+- **Elasticsearch**: `storage/es` - corpus loader and searchers
 
 **Key Features**:
 - SearchResult with pagination metadata (total, hasMore, page info)
 - PostgreSQL uses native tsvector with ts_rank for relevance scoring
-- Factory pattern avoids import cycles while maintaining clean separation
-- Separate interfaces for search and indexing operations
-- Clean file naming without redundant prefixes
+- Separate interfaces for search and loading
 
 ### Bench CLI (`cmd/bench/`)
 
@@ -131,14 +127,16 @@ TREC-style IR evaluation pipeline. Full docs: [docs/bench.md](docs/bench.md).
 - `spec/` — `BenchSpec` YAML: engines, jobs, metrics config, `defaults.judgments`
 - `suite/` — `TestSuite` YAML: queries, per-engine templates
 - `dialect/` — the syntax each engine type reads suite params in (postgres positional, elasticsearch Mustache, api literal): load-time block checks and the request each executor receives
-- `pool/` — TREC-style candidate pooling
+- `pool/` — TREC-style candidate pooling, and the pool file assembled from a pooling run
 - `judgment/` — strategy taxonomy (keyword / claude-cli / claude-api / manual); incremental writer
 - `runner/` — orchestration: warmup + measured iterations, per-query metrics
-- `report/` — aggregation, JSON output, `bench show report`
+- `rungate/` — decides whether a finished run can stand as its track's result (every cell answered, ranked stably, scored against judgments graded on the current pool)
+- `report/` — aggregation, JSON output, and one table view rendered to the terminal, Markdown and HTML
 - `metrics/` — NDCG, MAP, MRR, Bpref, P/R/F1
 - `agreement/` — how alike judgment sets grade the same pairs and rank a run's engines (`bench diff judgments`)
 - `meta/` — provenance block embedded in every artifact (run_id, tool, generated_at, sources)
 - `version/` — schema version constant + checker
+- `artifact/` — YAML reading with the schema check, and atomic writes, for pool and judgment files
 
 **Track convention**: a track is any folder holding `spec.yaml` + `suite.yaml` + `trec/` (+ `reports/`) — the layout above it is not enforced; this repo groups them as `tracks/<dataset>/<paradigm>/`. Track args are ordinary paths: absolute, relative to the track root (`--track-root` / `BENCH_TRACK_ROOT`, default cwd), a glob, or omitted to walk up from CWD.
 
@@ -223,7 +221,7 @@ Commands expect environment variables (typically in `.env` files):
 Every command loads the files named in `ENV_PATHS` (comma-separated) and then its own default file if it exists; a variable that is already set wins.
 
 **Storage (`cmd/datapipe/*.env`, `cmd/news_api/pg.env`, `cmd/news_api/es.env`)**:
-- `STORAGE_TYPE`: Storage backend (`pg`, `es`, `in_mem`)
+- `STORAGE_TYPE`: Storage backend (`pg`, `es`)
 - `PG_CONNECTION_STRING`: PostgreSQL connection string
 - `ES_ADDRESSES`: Elasticsearch cluster addresses (comma-separated)
 - `ES_INDEX_NAME`: Elasticsearch index name
@@ -248,6 +246,8 @@ Every command loads the files named in `ENV_PATHS` (comma-separated) and then it
 Tests are located alongside source files with `_test.go` suffix. Use standard Go testing patterns:
 - `go test ./...` - Run all tests
 - `go test -v ./internal/ingest/reader` - Run specific package tests with verbose output
+- `go test -short ./...` - Skip every test that needs Docker
+- Container-backed tests go through `internal/testcontainer` and share one server per engine; run them with `-p 1` so one package's containers are up at a time
 
 **Type System Purity**:
 - Type definitions should represent search concepts, not implementation details
