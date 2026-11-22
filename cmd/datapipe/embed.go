@@ -19,6 +19,7 @@ import (
 	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
@@ -79,12 +80,12 @@ func runEmbed(ctx context.Context, out io.Writer, opts embedOptions) error {
 	if err != nil {
 		return err
 	}
-	inputs, err := openLoadInputs(ctx, loadOptions{Canonical: opts.Canonical})
+	packaged, err := ingest.OpenCorpus(ctx, ingest.CorpusOptions{Canonical: opts.Canonical})
 	if err != nil {
 		return err
 	}
-	defer inputs.Close()
-	run.corpus = inputs.corpus(ctx)
+	defer packaged.Close()
+	run.corpus = packaged.Corpus(ctx)
 
 	command := cli.Command{
 		Title: "sengi embed",
@@ -99,9 +100,9 @@ func runEmbed(ctx context.Context, out io.Writer, opts embedOptions) error {
 		Unit:  "articles",
 	}
 	return command.Run(out, func(p *cli.Progress) (cli.Summary, error) {
-		articles, err := countArticles(ctx, inputs.articles, inputs.articlesFormat)
+		articles, err := packaged.ArticleCount(ctx)
 		if err != nil {
-			return cli.Summary{}, fmt.Errorf("count articles of canonical package %s: %w", run.corpus.Canonical.Name, err)
+			return cli.Summary{}, err
 		}
 		if opts.Limit > 0 {
 			articles = min(articles, int64(opts.Limit))
@@ -301,13 +302,13 @@ func writeEmbeddings(ctx context.Context, path string, run embeddingsRun) error 
 		return fmt.Errorf("create %s: %w", path, err)
 	}
 	defer f.Close()
-	writer := parquet.NewGenericWriter[embeddingRow](f)
+	writer := parquet.NewGenericWriter[ingest.EmbeddingRow](f)
 	counter := progress.Or(run.progress)
 	for chunk, err := range articleChunks(run.corpus.Articles, run.opts.BatchSize*batchesPerChunk, run.opts.Limit) {
 		if err != nil {
 			return err
 		}
-		rows := make([]embeddingRow, 0, len(chunk))
+		rows := make([]ingest.EmbeddingRow, 0, len(chunk))
 		// One request per batch, so the count moves as each one returns rather than once per chunk.
 		for batch := range slices.Chunk(chunk, run.opts.BatchSize) {
 			vecs, err := run.embedder.EmbedDocuments(ctx, batch)
@@ -315,7 +316,7 @@ func writeEmbeddings(ctx context.Context, path string, run embeddingsRun) error 
 				return err
 			}
 			for _, vec := range vecs {
-				rows = append(rows, embeddingRow{ID: vec.ID.String(), Embedding: vec.Embedding})
+				rows = append(rows, ingest.EmbeddingRow{ID: vec.ID.String(), Embedding: vec.Embedding})
 			}
 			counter.Add(int64(len(batch)))
 		}
