@@ -1,4 +1,7 @@
 DROP TABLE IF EXISTS corpus_load;
+DROP FUNCTION IF EXISTS fuzzy_words(text);
+DROP FUNCTION IF EXISTS fuzzy_expansions(text);
+DROP FUNCTION IF EXISTS fuzzy_edit_budget(text);
 DROP TABLE IF EXISTS corpus_words;
 DROP TABLE IF EXISTS article_embeddings;
 DROP TABLE IF EXISTS articles;

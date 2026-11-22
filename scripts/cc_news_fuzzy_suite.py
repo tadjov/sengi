@@ -45,10 +45,10 @@ KEYWORD = [
 
 # The edit budget is Elasticsearch's fuzziness AUTO for every engine: no edit for a
 # word of 1 to 2 letters, one for 3 to 5, two above. pg-fuzzy and tiger-fuzzy expand
-# each query word to at most 50 corpus words within its budget, as Elasticsearch's
-# max_expansions does, and OR them. pg-fuzzy then ANDs the words, Postgres's default;
-# tiger-fuzzy ranks every expansion as one any-word BM25 query, since its @@ filter
-# caps at 64 terms and scores each match on its own.
+# each query word to at most 50 corpus words within its budget through the schema's
+# fuzzy functions, as Elasticsearch's max_expansions does. pg-fuzzy ANDs the words,
+# Postgres's default; tiger-fuzzy ranks every expansion as one any-word BM25 query,
+# since its @@ filter caps at 64 terms and scores each match on its own.
 TEMPLATES = """templates:
   - id: pg_multi_field
     args: [terms, rank_norm, limit]
@@ -105,52 +105,16 @@ TEMPLATES = """templates:
   - id: pg_fuzzy
     args: [terms, rank_norm, limit]
     query: |
-      WITH query_words AS (
-        SELECT typed, ord,
-               CASE WHEN length(typed) <= 2 THEN 0 WHEN length(typed) <= 5 THEN 1 ELSE 2 END AS edits
-        FROM regexp_split_to_table(lower($1), '[^a-z]+') WITH ORDINALITY AS t(typed, ord)
-        WHERE typed <> ''
-      ),
-      expansions AS (
-        SELECT q.ord, string_agg(near.word, ' | ') AS alternatives
-        FROM query_words q
-        CROSS JOIN LATERAL (
-          SELECT w.word FROM corpus_words w
-          WHERE w.word % q.typed AND levenshtein_less_equal(w.word, q.typed, q.edits) <= q.edits
-          ORDER BY levenshtein(w.word, q.typed), w.ndoc DESC, w.word
-          LIMIT 50
-        ) near
-        GROUP BY q.ord
-      ),
-      fuzzy AS (
-        SELECT to_tsquery('english', string_agg('(' || alternatives || ')', ' & ' ORDER BY ord)) AS q
-        FROM expansions
-      )
-      SELECT a.id FROM articles a, fuzzy
-      WHERE a.search_vector @@ fuzzy.q
-      ORDER BY ts_rank(a.search_vector, fuzzy.q, $2::int) DESC, a.id
+      SELECT a.id FROM articles a, fuzzy_tsquery($1) AS q
+      WHERE a.search_vector @@ q
+      ORDER BY ts_rank(a.search_vector, q, $2::int) DESC, a.id
       LIMIT $3::int
 
   - id: tiger_fuzzy
     args: [terms, limit]
     query: |
       SELECT id FROM articles
-      ORDER BY search_text <@> to_bm25query((
-        WITH query_words AS (
-          SELECT typed, ord,
-                 CASE WHEN length(typed) <= 2 THEN 0 WHEN length(typed) <= 5 THEN 1 ELSE 2 END AS edits
-          FROM regexp_split_to_table(lower($1), '[^a-z]+') WITH ORDINALITY AS t(typed, ord)
-          WHERE typed <> ''
-        )
-        SELECT string_agg(near.word, ' ')
-        FROM query_words q
-        CROSS JOIN LATERAL (
-          SELECT w.word FROM corpus_words w
-          WHERE w.word % q.typed AND levenshtein_less_equal(w.word, q.typed, q.edits) <= q.edits
-          ORDER BY levenshtein(w.word, q.typed), w.ndoc DESC, w.word
-          LIMIT 50
-        ) near
-      ), 'idx_articles_bm25'), id
+      ORDER BY search_text <@> to_bm25query(fuzzy_words($1), 'idx_articles_bm25'), id
       LIMIT $2::int
 """
 
