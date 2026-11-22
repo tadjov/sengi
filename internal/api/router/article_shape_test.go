@@ -12,7 +12,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/sengi/internal/api/dto"
 	apiserver "github.com/tadjov/sengi/internal/api/server"
 	"github.com/tadjov/sengi/internal/apperr"
 	"github.com/tadjov/sengi/internal/storage"
@@ -28,7 +27,7 @@ type oneArticleSearcher struct {
 
 func (s oneArticleSearcher) SearchStringQuery(context.Context, *dquery.String, *dquery.BaseOptions) (*storage.SearchResult, error) {
 	return &storage.SearchResult{
-		Hits: []dto.ArticleSearchResult{{Article: dto.NewArticle(s.article), Score: 1}},
+		Hits: []storage.Hit{{Article: s.article, Score: 1}},
 	}, nil
 }
 

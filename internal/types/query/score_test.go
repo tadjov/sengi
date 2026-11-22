@@ -1,11 +1,11 @@
-package utils
+package query
 
 import (
 	"math"
 	"testing"
 )
 
-func TestRoundFloat64(t *testing.T) {
+func TestRoundScore(t *testing.T) {
 	tests := []struct {
 		name  string
 		value float64
@@ -21,15 +21,15 @@ func TestRoundFloat64(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := RoundFloat64(tt.value, 4); got != tt.want {
-				t.Errorf("RoundFloat64(%v, 4) = %v, want %v", tt.value, got, tt.want)
+			if got := RoundScore(tt.value); got != tt.want {
+				t.Errorf("RoundScore(%v) = %v, want %v", tt.value, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestRoundFloat64KeepsNaN(t *testing.T) {
-	if got := RoundFloat64(math.NaN(), 4); !math.IsNaN(got) {
-		t.Errorf("RoundFloat64(NaN, 4) = %v, want NaN", got)
+func TestRoundScoreKeepsNaN(t *testing.T) {
+	if got := RoundScore(math.NaN()); !math.IsNaN(got) {
+		t.Errorf("RoundScore(NaN) = %v, want NaN", got)
 	}
 }

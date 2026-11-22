@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/storagetest"
 	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
@@ -199,7 +198,7 @@ func TestSearcher_NonUUIDDocumentIDReturnsError(t *testing.T) {
 	}
 	refreshIndex(t, cfg)
 
-	res, err := searcher.SearchStringQuery(ctx, &dquery.String{Query: "climate"}, &dquery.BaseOptions{Size: 10})
+	res, err := searcher.SearchStringQuery(ctx, dquery.NewString("climate", dquery.StringOptions{}), &dquery.BaseOptions{Size: 10})
 	if err == nil {
 		t.Fatalf("search returned %+v, want an error for the non-UUID id", res)
 	}
@@ -275,26 +274,26 @@ func TestSearcher_ReturnsEveryArticleField(t *testing.T) {
 	}
 	seedIndex(t, cfg, []document.Article{full}, nil)
 
-	res, err := searcher.SearchStringQuery(ctx, &dquery.String{Query: "storm"}, &dquery.BaseOptions{Size: 10})
+	res, err := searcher.SearchStringQuery(ctx, dquery.NewString("storm", dquery.StringOptions{}), &dquery.BaseOptions{Size: 10})
 	require.NoError(t, err)
 	require.Len(t, res.Hits, 1)
-	assert.Equal(t, dto.Article{
+	assert.Equal(t, document.Article{
 		ID:              full.ID,
 		URL:             full.URL,
 		Title:           full.Title,
 		Description:     full.Description,
 		Content:         full.Content,
-		PublishedAt:     &published,
+		PublishedAt:     published,
 		Language:        "eng",
 		PublisherDomain: "reuters.com",
-		Metadata: dto.Metadata{
+		Metadata: document.Metadata{
 			ExternalID:    "reuters-0412",
 			PublisherName: "Reuters",
 			Authors:       []string{"Jane Doe", "John Roe"},
 			Section:       "World",
 			Keywords:      []string{"storm", "coast"},
 			Image:         "https://uk.reuters.com/storm.jpg",
-			DateModified:  &modified,
+			DateModified:  modified,
 			Extra:         map[string]any{"wordCount": "412"},
 		},
 	}, res.Hits[0].Article)

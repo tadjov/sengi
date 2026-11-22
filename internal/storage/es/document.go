@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types/enums/densevectorsimilarity"
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types/enums/snowballlanguage"
 	"github.com/google/uuid"
-	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
@@ -59,16 +58,16 @@ func (d ArticleDocument) toArticle() (document.Article, error) {
 	return article, nil
 }
 
-func decodeArticle(source json.RawMessage) (dto.Article, error) {
+func decodeArticle(source json.RawMessage) (document.Article, error) {
 	var doc ArticleDocument
 	if err := json.Unmarshal(source, &doc); err != nil {
-		return dto.Article{}, fmt.Errorf("unmarshal article document: %w", err)
+		return document.Article{}, fmt.Errorf("unmarshal article document: %w", err)
 	}
 	article, err := doc.toArticle()
 	if err != nil {
-		return dto.Article{}, err
+		return document.Article{}, err
 	}
-	return dto.NewArticle(article), nil
+	return article, nil
 }
 
 // EmbeddingDims must match the loaded embeddings package.

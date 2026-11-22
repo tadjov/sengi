@@ -7,9 +7,9 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v9"
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
-	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/document"
 	dquery "github.com/tadjov/sengi/internal/types/query"
 )
 
@@ -94,8 +94,8 @@ func (s *SemanticSearcher) SearchSemantic(ctx context.Context, query *dquery.Sem
 	return &storage.VectorSearchResult{Hits: hits}, nil
 }
 
-func (s *SemanticSearcher) mapToArticles(hits []types.Hit) ([]dto.Article, error) {
-	articles := make([]dto.Article, 0, len(hits))
+func (s *SemanticSearcher) mapToArticles(hits []types.Hit) ([]document.Article, error) {
+	articles := make([]document.Article, 0, len(hits))
 	for _, hit := range hits {
 		article, err := decodeArticle(hit.Source_)
 		if err != nil {

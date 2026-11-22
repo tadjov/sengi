@@ -11,12 +11,10 @@ import (
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types/enums/operator"
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types/enums/sortorder"
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types/enums/textquerytype"
-	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/token"
 	queryoperator "github.com/tadjov/sengi/internal/types/operator"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	"github.com/tadjov/sengi/internal/utils"
 )
 
 type Searcher struct {
@@ -253,10 +251,10 @@ func searchResultPage(hits types.HitsMetadata, size int) (*storage.SearchResult,
 		page.TotalMatches = hits.Total.Value
 	}
 	if hits.MaxScore != nil {
-		page.MaxScore = utils.RoundFloat64(float64(*hits.MaxScore), dquery.ScoreDecimalPlaces)
+		page.MaxScore = dquery.RoundScore(float64(*hits.MaxScore))
 	}
 	if len(articles) > 0 {
-		page.PageMaxScore = utils.RoundFloat64(rawScores[0], dquery.ScoreDecimalPlaces)
+		page.PageMaxScore = dquery.RoundScore(rawScores[0])
 	}
 	if hasMore && len(articles) > 0 {
 		page.NextCursor = &dquery.Cursor{
@@ -267,8 +265,8 @@ func searchResultPage(hits types.HitsMetadata, size int) (*storage.SearchResult,
 	return page, nil
 }
 
-func mapToResult(hits []types.Hit, maxScore float64) ([]dto.ArticleSearchResult, []float64, error) {
-	articles := make([]dto.ArticleSearchResult, 0, len(hits))
+func mapToResult(hits []types.Hit, maxScore float64) ([]storage.Hit, []float64, error) {
+	articles := make([]storage.Hit, 0, len(hits))
 	rawScores := make([]float64, 0, len(hits))
 
 	for _, hit := range hits {
@@ -281,7 +279,7 @@ func mapToResult(hits []types.Hit, maxScore float64) ([]dto.ArticleSearchResult,
 		}
 
 		rawScore := float64(*hit.Score_)
-		articles = append(articles, dto.ArticleSearchResult{
+		articles = append(articles, storage.Hit{
 			Article:         article,
 			ScoreNormalized: rawScore / maxScore,
 			Score:           rawScore,

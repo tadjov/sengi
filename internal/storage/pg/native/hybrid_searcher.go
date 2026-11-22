@@ -7,13 +7,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
-	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/pg"
 	"github.com/tadjov/sengi/internal/types/operator"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	"github.com/tadjov/sengi/internal/utils"
 )
 
 // hybridCandidateDepth bounds how many candidates each leg contributes to the fusion.
@@ -103,7 +101,7 @@ func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid,
 	}
 	defer rows.Close()
 
-	var articles []dto.ArticleSearchResult
+	var articles []storage.Hit
 	var rawScores []float64
 	var totalMatches int64
 
@@ -115,9 +113,9 @@ func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid,
 			return nil, err
 		}
 
-		articles = append(articles, dto.ArticleSearchResult{
-			Article: dto.NewArticle(article),
-			Score:   utils.RoundFloat64(rawScore, dquery.ScoreDecimalPlaces),
+		articles = append(articles, storage.Hit{
+			Article: article,
+			Score:   dquery.RoundScore(rawScore),
 		})
 		rawScores = append(rawScores, rawScore)
 	}
@@ -132,7 +130,7 @@ func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid,
 
 	maxScore := rawScores[0]
 	for i := range articles {
-		articles[i].ScoreNormalized = utils.RoundFloat64(rawScores[i]/maxScore, dquery.ScoreDecimalPlaces)
+		articles[i].ScoreNormalized = dquery.RoundScore(rawScores[i] / maxScore)
 	}
 
 	slog.Info("PG hybrid search results fetched",
@@ -142,8 +140,8 @@ func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid,
 
 	return &storage.SearchResult{
 		Hits:         articles,
-		MaxScore:     utils.RoundFloat64(maxScore, dquery.ScoreDecimalPlaces),
-		PageMaxScore: utils.RoundFloat64(maxScore, dquery.ScoreDecimalPlaces),
+		MaxScore:     dquery.RoundScore(maxScore),
+		PageMaxScore: dquery.RoundScore(maxScore),
 		TotalMatches: totalMatches,
 	}, nil
 }

@@ -7,9 +7,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
-	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/query"
 )
 
@@ -68,7 +68,7 @@ func (s *SemanticSearcher) SearchSemantic(ctx context.Context, query *query.Sema
 	}
 	defer rows.Close()
 
-	var hits []dto.Article
+	var hits []document.Article
 	for rows.Next() {
 		var distance float32
 		article, err := ScanArticle(rows, &distance)
@@ -76,7 +76,7 @@ func (s *SemanticSearcher) SearchSemantic(ctx context.Context, query *query.Sema
 			return nil, err
 		}
 		slog.Debug("Semantic search hit", "article_id", article.ID, "distance", distance)
-		hits = append(hits, dto.NewArticle(article))
+		hits = append(hits, article)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("failed to read semantic search rows: %w", err)

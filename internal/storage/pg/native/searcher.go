@@ -6,12 +6,10 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/pg"
 	"github.com/tadjov/sengi/internal/types/operator"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	"github.com/tadjov/sengi/internal/utils"
 )
 
 type Searcher struct {
@@ -245,7 +243,7 @@ func (r *Searcher) fetchPage(ctx context.Context, q pageQuery) (*storage.SearchR
 	}
 	defer rows.Close()
 
-	var hits []dto.ArticleSearchResult
+	var hits []storage.Hit
 	var rawScores []float64
 	for rows.Next() {
 		var rawScore float64
@@ -253,9 +251,9 @@ func (r *Searcher) fetchPage(ctx context.Context, q pageQuery) (*storage.SearchR
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", q.method, err)
 		}
-		hits = append(hits, dto.ArticleSearchResult{
-			Article:         dto.NewArticle(article),
-			Score:           utils.RoundFloat64(rawScore, dquery.ScoreDecimalPlaces),
+		hits = append(hits, storage.Hit{
+			Article:         article,
+			Score:           dquery.RoundScore(rawScore),
 			ScoreNormalized: normalizedScore(rawScore, q.maxScore),
 		})
 		rawScores = append(rawScores, rawScore)
@@ -265,7 +263,7 @@ func (r *Searcher) fetchPage(ctx context.Context, q pageQuery) (*storage.SearchR
 	}
 
 	page := &storage.SearchResult{
-		MaxScore:     utils.RoundFloat64(q.maxScore, dquery.ScoreDecimalPlaces),
+		MaxScore:     dquery.RoundScore(q.maxScore),
 		TotalMatches: q.totalMatches,
 	}
 	if len(hits) == 0 {
@@ -281,7 +279,7 @@ func (r *Searcher) fetchPage(ctx context.Context, q pageQuery) (*storage.SearchR
 		}
 	}
 	page.Hits = hits
-	page.PageMaxScore = utils.RoundFloat64(rawScores[0], dquery.ScoreDecimalPlaces)
+	page.PageMaxScore = dquery.RoundScore(rawScores[0])
 
 	slog.Info("PG search page fetched", "page_hits", len(hits), "total_matches", q.totalMatches)
 	return page, nil
@@ -293,7 +291,7 @@ func normalizedScore(rawScore, maxScore float64) float64 {
 	if !(maxScore > 0) {
 		return 0
 	}
-	return utils.RoundFloat64(rawScore/maxScore, dquery.ScoreDecimalPlaces)
+	return dquery.RoundScore(rawScore / maxScore)
 }
 
 var (

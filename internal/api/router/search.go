@@ -342,9 +342,9 @@ func (r *SearchRouter) semanticSearchHandler(c echo.Context) error {
 		return err
 	}
 
-	hits := searchResult.Hits
-	if hits == nil {
-		hits = []dto.Article{}
+	hits := make([]dto.Article, len(searchResult.Hits))
+	for i, article := range searchResult.Hits {
+		hits[i] = dto.NewArticle(article)
 	}
 
 	return c.JSON(http.StatusOK, dto.SemanticSearchResponse{
@@ -370,9 +370,13 @@ func (r *SearchRouter) buildResponse(c echo.Context, searchResult *storage.Searc
 		return err
 	}
 
-	hits := searchResult.Hits
-	if hits == nil {
-		hits = []dto.ArticleSearchResult{}
+	hits := make([]dto.ArticleSearchResult, len(searchResult.Hits))
+	for i, hit := range searchResult.Hits {
+		hits[i] = dto.ArticleSearchResult{
+			Article:         dto.NewArticle(hit.Article),
+			Score:           hit.Score,
+			ScoreNormalized: hit.ScoreNormalized,
+		}
 	}
 
 	ignored := report.ignored
