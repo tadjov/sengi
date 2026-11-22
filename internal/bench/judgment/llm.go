@@ -12,10 +12,8 @@ import (
 // without streaming.
 const llmMaxOutputTokens = 16000
 
-// LLMStrategy is the LLM-as-judge strategy. It owns the rubric and response
-// parsing; reaching a vendor is delegated to an LLMProvider, so the
-// same grading behaviour runs over a local CLI subprocess or a vendor HTTP API
-// and stays comparable across both.
+// LLMStrategy owns the rubric and the reply parsing, so grades are comparable
+// whichever LLMProvider reaches the model.
 type LLMStrategy struct {
 	provider LLMProvider
 }
@@ -28,9 +26,7 @@ func NewLLMStrategy(opts StrategyOptions) (*LLMStrategy, error) {
 	return &LLMStrategy{provider: p}, nil
 }
 
-// Describe reports the grader for the artifact's judge block. The model is the
-// provider's resolved id — aliases are expanded at construction — so the qrels
-// name a concrete model and the resume guard can catch a grader swap.
+// Describe names the provider's resolved model id, never an alias.
 func (s *LLMStrategy) Describe() meta.Judge {
 	return meta.Judge{
 		Strategy:        string(StrategyLLM),

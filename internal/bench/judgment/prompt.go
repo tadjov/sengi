@@ -38,7 +38,6 @@ Rules:
 
 Output ONLY the JSON the request asks for. Never wrap it in markdown, never add prose.`
 
-// buildGradingPrompt is the user payload for grading one doc.
 func buildGradingPrompt(q GradingQuery, doc GradingDoc) string {
 	var sb strings.Builder
 	writeQuery(&sb, q)
@@ -56,8 +55,6 @@ func writeQuery(sb *strings.Builder, q GradingQuery) {
 	fmt.Fprintf(sb, "Query: %s\n\n", q.Text)
 }
 
-// writeArticle shows the title and description in full and the content up to
-// contentCutRunes.
 func writeArticle(sb *strings.Builder, doc GradingDoc) {
 	fmt.Fprintf(sb, "Title: %s\n", doc.Title)
 	if doc.Description != "" {
@@ -88,9 +85,7 @@ type gradeResponse struct {
 	Grade *int   `json:"grade"`
 }
 
-// parseGradeJSON extracts the {"doc_id","grade"} object from a raw LLM
-// response. Tolerates surrounding prose/code fences by isolating the first
-// balanced {...} block.
+// parseGradeJSON tolerates prose or code fences around the reply's JSON object.
 func parseGradeJSON(raw string, expectedDocID string) (int, error) {
 	body := isolateJSON(raw)
 
@@ -127,9 +122,6 @@ func truncateRunes(s string, max int) string {
 	return string(runes[:max]) + "..."
 }
 
-// PromptVersion identifies the grading rubric. Bump this manually whenever the
-// system prompt, the prompt builders or the grading scale change in a way that
-// could shift grades. bench judge embeds this in the annotations meta block so
-// you can tell which prompt version produced a given judgment file and catch
-// rubric drift on resume.
+// PromptVersion names the rubric in the judge block: bump it whenever the
+// system prompt, the prompt builder or the grading scale could shift a grade.
 const PromptVersion = "v3"

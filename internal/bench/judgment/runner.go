@@ -32,7 +32,6 @@ type QueryProgress struct {
 	Histogram map[int]int
 }
 
-// RunnerConfig configures judge orchestration.
 type RunnerConfig struct {
 	Strategy    Strategy
 	Reader      storage.Reader

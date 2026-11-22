@@ -13,16 +13,9 @@ const (
 	bm25RubricVersion = "v2"
 )
 
-// BM25Strategy grades candidates with Okapi BM25 computed over the per-query
-// candidate pool as a local corpus: idf from pool document frequencies, avgdl
-// from pool documents. A doc's score is divided by the bound no score reaches,
-// Σ (k1+1)·idf over the query's terms, so its grade depends on the query and
-// the pool's term statistics, never on how well another doc scores.
-//
-// It is a heuristic, no-network judge — stronger than the keyword judge's token overlap
-// because it rewards rarer terms and saturates term frequency, but still purely
-// keyword-based with no semantic understanding. Use it as a reproducible
-// baseline alongside the LLM judges.
+// BM25Strategy grades with Okapi BM25 over the query's pool as the corpus. A
+// doc's score is divided by the bound no score reaches, so its grade never
+// depends on how well another doc scores.
 type BM25Strategy struct{}
 
 func NewBM25Strategy() *BM25Strategy { return &BM25Strategy{} }

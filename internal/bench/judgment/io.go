@@ -45,9 +45,8 @@ type IncrementalWriter struct {
 	current File
 }
 
-// NewIncrementalWriter writes stamp as the meta block of every flush, so a run
-// interrupted mid-grade still leaves an artifact that names its grader and
-// whatever else the caller set, which is what the resume guard reads back.
+// NewIncrementalWriter writes stamp as the meta block of every flush, so an
+// interrupted run's file names its grader for the resume guard.
 func NewIncrementalWriter(path string, stamp meta.Meta) *IncrementalWriter {
 	return &IncrementalWriter{
 		Path:    path,
@@ -74,7 +73,7 @@ func (w *IncrementalWriter) Seed(prior *File, pf *pool.PoolFile) {
 	}
 }
 
-// Append adds (or updates) a query's judgments and flushes to disk atomically.
+// Append adds or replaces a query's entry and rewrites the file.
 func (w *IncrementalWriter) Append(entry Entry) error {
 	for i, qe := range w.current.Queries {
 		if qe.QueryID == entry.QueryID {
