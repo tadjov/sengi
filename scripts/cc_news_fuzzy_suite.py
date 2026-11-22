@@ -46,7 +46,9 @@ KEYWORD = [
 # The edit budget is Elasticsearch's fuzziness AUTO for every engine: no edit for a
 # word of 1 to 2 letters, one for 3 to 5, two above. pg-fuzzy and tiger-fuzzy expand
 # each query word to at most 50 corpus words within its budget, as Elasticsearch's
-# max_expansions does, and OR them; the words are then ANDed, Postgres's default.
+# max_expansions does, and OR them. pg-fuzzy then ANDs the words, Postgres's default;
+# tiger-fuzzy ranks every expansion as one any-word BM25 query, since its @@ filter
+# caps at 64 terms and scores each match on its own.
 TEMPLATES = """templates:
   - id: pg_multi_field
     args: [terms, rank_norm, limit]
@@ -132,14 +134,15 @@ TEMPLATES = """templates:
   - id: tiger_fuzzy
     args: [terms, limit]
     query: |
-      WITH query_words AS (
-        SELECT typed, ord,
-               CASE WHEN length(typed) <= 2 THEN 0 WHEN length(typed) <= 5 THEN 1 ELSE 2 END AS edits
-        FROM regexp_split_to_table(lower($1), '[^a-z]+') WITH ORDINALITY AS t(typed, ord)
-        WHERE typed <> ''
-      ),
-      expansions AS (
-        SELECT q.ord, string_agg(near.word, ' | ') AS alternatives
+      SELECT id FROM articles
+      ORDER BY search_text <@> to_bm25query((
+        WITH query_words AS (
+          SELECT typed, ord,
+                 CASE WHEN length(typed) <= 2 THEN 0 WHEN length(typed) <= 5 THEN 1 ELSE 2 END AS edits
+          FROM regexp_split_to_table(lower($1), '[^a-z]+') WITH ORDINALITY AS t(typed, ord)
+          WHERE typed <> ''
+        )
+        SELECT string_agg(near.word, ' ')
         FROM query_words q
         CROSS JOIN LATERAL (
           SELECT w.word FROM corpus_words w
@@ -147,18 +150,7 @@ TEMPLATES = """templates:
           ORDER BY levenshtein(w.word, q.typed), w.ndoc DESC, w.word
           LIMIT 50
         ) near
-        GROUP BY q.ord
-      ),
-      fuzzy AS (
-        SELECT to_tsquery('english', string_agg('(' || alternatives || ')', ' & ' ORDER BY ord)) AS q,
-               string_agg(replace(alternatives, ' | ', ' '), ' ' ORDER BY ord) AS words
-        FROM expansions
-      ),
-      matched AS MATERIALIZED (
-        SELECT a.id, a.search_text FROM articles a, fuzzy WHERE a.search_text @@ fuzzy.q
-      )
-      SELECT m.id FROM matched m, fuzzy
-      ORDER BY m.search_text <@> to_bm25query(fuzzy.words, 'idx_articles_bm25'), m.id
+      ), 'idx_articles_bm25'), id
       LIMIT $2::int
 """
 
@@ -166,7 +158,7 @@ HEADER = """schema_version: 1
 id: cc_news_fuzzy_v1
 name: "cc-news fuzzy v1"
 description: "Typo-tolerant search over cc-news: 30 queries, 10 with one misspelt word, 10 harder, 10 spelled correctly"
-version: "1.1.0"
+version: "1.2.0"
 
 corpus:
   name: cc-news-canonical@v1

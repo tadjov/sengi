@@ -17,10 +17,8 @@ engines:
       plan_cache_mode: force_custom_plan
     params:
       rank_norm: "0"
-  # In no job: pg_textsearch 1.5.1 serves a query from its bm25 index only up to
-  # 64 terms ("BM25 Boolean queries support at most 64 exact term operands"),
-  # which two expanded words can already exceed, and ranking the large match sets
-  # of expanded words runs past the 30s timeout.
+  # Any word over every expansion: the @@ filter caps at 64 terms ("BM25 Boolean
+  # queries support at most 64 exact term operands") and scores each match on its own.
   tiger-fuzzy:
     type: postgres
     connection: "postgresql://news_user:news_password@localhost:54322/news_db"
@@ -85,7 +83,7 @@ runs:
 jobs:
   - name: "fuzzy-engines"
     suite: suite.yaml
-    engines: [pg-fuzzy, paradedb-fuzzy, es-fuzzy, pg-trgm, pg-gin-spelled]
+    engines: [pg-fuzzy, tiger-fuzzy, paradedb-fuzzy, es-fuzzy, pg-trgm, pg-gin-spelled]
 
   - name: "exact-engines"
     suite: suite.yaml
