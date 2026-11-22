@@ -36,6 +36,7 @@ The project follows a layered architecture pattern:
     - `datapipe/`: Unified data-pipeline CLI. The core path is **preprocess → embed → load**; every stage after the first reads the canonical package, which is what keeps article IDs identical across engines.
         - `datapipe preprocess`: Maps a raw data package (`.csv`, `.jsonl`, `.parquet` resources) through `datasets/<ds>/mapping.yaml` into a canonical data package at `datasets/<ds>/canonical/<version>/` (`--version`, default `v1`), deduplicated by the mapping's `identity` rules; a rerun that yields the same articles is a no-op, and one that yields different articles under an existing version is refused
         - `datapipe embed <canonical-descriptor> [--version v1] [--batch-size 64] [--max-tokens 512] [--limit N]`: Embeds each article's `lead-v1` text through Ollama (`EMBEDDING_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIM`) into an embeddings package at `datasets/<ds>/embeddings/<tag-dir>/<version>/`, the format `embed_corpus.py` writes on a GPU; `producedBy` tells the two apart, and an existing version is refused before anything is embedded
+        - `datapipe embed --embeddings <descriptor> --truncate-to N [--version v1] [--out <dir>]`: Cuts an existing embeddings package's vectors to their first N dimensions, L2-renormalised, with no model run, into `datasets/<ds>/embeddings/<model>@N/<version>/`, or a track's query vectors into `--out`; the descriptor records the source under `derivedFrom`
         - `datapipe load <canonical-descriptor> --engine <native|paradedb|tiger|es> [--embeddings <descriptor>]`: Verifies the canonical package and the embeddings package built from it, loads both into an empty engine, builds the indexes afterwards as timed stages, and writes the load record to the engine and to `datasets/<ds>/loads/<engine>/` — see [docs/embeddings.md](docs/embeddings.md)
     - `news_api/`: HTTP API server for search functionality
     - `schemagen/`: Schema generation utilities
@@ -50,7 +51,7 @@ The project follows a layered architecture pattern:
     - `ingest/`: Data ingestion pipeline
         - `reader/`: CSV/JSONL/Parquet/YAML data reading and parsing
         - `datamapping/`: Data mapping type definitions
-    - `api/`: API layer for HTTP server (`router/` routes, `dto/` request and response shapes, `server/` Echo setup and config)
+    - `api/`: API layer for HTTP server (`router/` routes, `dto/` request and response shapes, `middleware/` request logging, `server/` Echo setup and config)
     - `schema/`: JSON schema generation from Go struct tags, used by `cmd/schemagen`
     - `env/`: `.env` loading (`ENV_PATHS`) and duration settings
     - `testcontainer/`: Postgres and Elasticsearch for integration tests: one server per engine shared by a test run, a database per test; `PGConfig{Isolated: true}` for a test that stops or reconfigures its server
@@ -67,7 +68,7 @@ The project follows a layered architecture pattern:
 
 - **tracks/**: Benchmark tracks — each a self-contained folder with `spec.yaml`, `suite.yaml`, `trec/` (pool + judgments), and `reports/`
 - **db/**: Database-related files
-    - `migrations/`: SQL migrations per Postgres engine, `<engine>/schema/` (golang-migrate) and `<engine>/indexes.sql` (the search indexes, and on native and tiger the `corpus_words` table fuzzy search expands query words against, built after the load as timed stages), embedded by the `migrations` Go package
+    - `migrations/`: SQL migrations per Postgres engine, `<engine>/schema/` (golang-migrate) and `<engine>/indexes.sql` (the search indexes, and on native and tiger the `corpus_words` table fuzzy search expands query words against, built after the load as timed stages), embedded by the `migrations` Go package. On native and tiger, `schema/002_fuzzy_functions` holds the `fuzzy_*` functions the fuzzy templates call: `fuzzy_expansions` (each word's corpus words within Elasticsearch's AUTO budget, at most 50), `fuzzy_tsquery` on native and `fuzzy_words` on tiger
     - `query/`: SQL query files for database operations
 - **datasets/**: Per-dataset mappings, canonical packages, embeddings and load records
 - **scripts/**: Utility scripts for setup and maintenance
@@ -108,10 +109,12 @@ identity:
 Follows idiomatic Go patterns with sub-package organization:
 - **Interfaces**: Storage contracts define clear responsibilities
     - `FullTextBackend` plus one searcher per full-text paradigm: `StringQuerySearcher`, `FieldSearcher`, `MultiFieldSearcher`, `PhraseSearcher`, `BooleanSearcher`
-    - `CorpusLoader`: Loads a canonical package, and its embeddings, into an empty engine; the only write path
+    - `CorpusLoader`: Loads a canonical package, and its embeddings, into an empty engine; what `datapipe load` uses
+    - `Indexer`, `EmbedIndexer`: Write one article, or one article's vector, at a time; nothing in the CLIs calls them today
     - `Reader`: Document retrieval operations
 - **PostgreSQL**: `storage/pg` holds what every Postgres engine shares (pool, corpus loader, reader, index description); `storage/pg/native` holds the searchers the API serves from the native schema
-- **Elasticsearch**: `storage/es` - corpus loader and searchers
+- **Elasticsearch**: `storage/es` - corpus loader, per-document indexer and searchers
+- **In-memory**: `storage/in_mem` - a placeholder backend for development
 
 **Key Features**:
 - SearchResult with pagination metadata (total, hasMore, page info)
@@ -221,7 +224,7 @@ Commands expect environment variables (typically in `.env` files):
 Every command loads the files named in `ENV_PATHS` (comma-separated) and then its own default file if it exists; a variable that is already set wins.
 
 **Storage (`cmd/datapipe/*.env`, `cmd/news_api/pg.env`, `cmd/news_api/es.env`)**:
-- `STORAGE_TYPE`: Storage backend (`pg`, `es`)
+- `STORAGE_TYPE`: Storage backend the commands accept (`pg`, `es`)
 - `PG_CONNECTION_STRING`: PostgreSQL connection string
 - `ES_ADDRESSES`: Elasticsearch cluster addresses (comma-separated)
 - `ES_INDEX_NAME`: Elasticsearch index name

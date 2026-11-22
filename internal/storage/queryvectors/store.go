@@ -62,7 +62,8 @@ func (e *StaleQueryError) Error() string {
 		e.Package, e.QueryID, *e.Stored, e.Text)
 }
 
-type row struct {
+// Row is one query's vector in a query-vectors package.
+type Row struct {
 	QueryID string `parquet:"query_id"`
 	Text    string `parquet:"text"`
 	// `,list` matches the 3-level LIST encoding pyarrow writes.
@@ -153,14 +154,14 @@ func readRows(ctx context.Context, opened *datapackage.Opened) (packageRows, err
 	if err != nil {
 		return packageRows{}, fmt.Errorf("parse query vectors of %s: %w", opened.Location, err)
 	}
-	reader := parquet.NewGenericReader[row](file)
+	reader := parquet.NewGenericReader[Row](file)
 	defer reader.Close()
 
 	dim := opened.Package.Embedding.Dim
 
 	rows := packageRows{vectorByText: make(map[string][]float32), textByQueryID: make(map[string]string)}
 	for {
-		batch := make([]row, 64)
+		batch := make([]Row, 64)
 		n, err := reader.Read(batch)
 		for _, r := range batch[:n] {
 			if len(r.Embedding) != dim {

@@ -60,25 +60,6 @@ func ScanArticle(rows pgx.Rows, trailing ...any) (document.Article, error) {
 	return article, nil
 }
 
-func articleRow(a document.Article) ([]any, error) {
-	metadataJSON, err := json.Marshal(a.Metadata)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal metadata of article %s: %w", a.ID, err)
-	}
-
-	return []any{
-		a.ID,
-		a.URL,
-		a.Title,
-		a.Description,
-		a.Content,
-		nullableTime(a.PublishedAt),
-		string(a.Language),
-		a.PublisherDomain,
-		metadataJSON,
-	}, nil
-}
-
 // nullableTime maps the zero time to SQL NULL, so an article with no
 // publication date sorts as unknown rather than as year 1.
 func nullableTime(t time.Time) any {

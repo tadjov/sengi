@@ -31,6 +31,7 @@ type Package struct {
 	Report        *Report       `json:"report,omitempty"`
 	Embedding     *Embedding    `json:"embedding,omitempty"`
 	Canonical     *Ref          `json:"canonical,omitempty"`
+	DerivedFrom   *DerivedFrom  `json:"derivedFrom,omitempty"`
 	Raw           *RawRef       `json:"raw,omitempty"`
 	Suite         *Suite        `json:"suite,omitempty"`
 	Sources       []Source      `json:"sources,omitempty"`
@@ -116,6 +117,14 @@ type Embedding struct {
 type Ref struct {
 	Name         string `json:"name"`
 	Version      string `json:"version"`
+	ResourceHash string `json:"resourceHash"`
+}
+
+// DerivedFrom names the package a derived package was cut from.
+type DerivedFrom struct {
+	Name         string `json:"name"`
+	Version      string `json:"version,omitempty"`
+	Tag          string `json:"tag"`
 	ResourceHash string `json:"resourceHash"`
 }
 

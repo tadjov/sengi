@@ -51,6 +51,11 @@ Remaining ideas here: CI integration, automated ranking-drift alerts, historical
 Query routing by characteristics, per-engine index tuning, cache warming, A/B testing of
 ranking changes, runtime quality monitoring.
 
+### 6. DiskANN on tiger — NOT BUILT
+pgvectorscale ships in the tiger image (0.9.1) but is not installed; the cc-news runs use pgvector
+HNSW on every Postgres engine. A DiskANN arm on tiger would be compared at matched recall, on the
+measurement host.
+
 ---
 
 ## Technical Debt

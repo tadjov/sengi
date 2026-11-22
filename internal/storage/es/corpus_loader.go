@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"log/slog"
 	"math/rand/v2"
 	"net/http"
 	"strconv"
@@ -91,28 +90,14 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		return storage.LoadRecord{}, fmt.Errorf("load corpus into %s: %w", index, err)
 	}
 
-	startedAt := time.Now().UTC()
+	opts.Progress = progress.Or(opts.Progress)
+	load := storage.StartLoad(opts.Progress, "index", index)
 	info, err := l.client.typed.Info().Do(ctx)
 	if err != nil {
 		return storage.LoadRecord{}, fmt.Errorf("read elasticsearch version: %w", err)
 	}
 
-	opts.Progress = progress.Or(opts.Progress)
-	var stages []storage.StageTiming
-	timed := func(name string, stage func() error) error {
-		opts.Progress.Stage(name)
-		slog.Info("corpus load stage started", "index", index, "stage", name)
-		began := time.Now()
-		if err := stage(); err != nil {
-			return err
-		}
-		seconds := time.Since(began).Seconds()
-		stages = append(stages, storage.StageTiming{Name: name, Seconds: seconds})
-		slog.Info("corpus load stage finished", "index", index, "stage", name, "seconds", seconds)
-		return nil
-	}
-
-	if err := timed("create_index", func() error { return l.createIndex(ctx, c.Language) }); err != nil {
+	if err := load.Stage("create_index", func() error { return l.createIndex(ctx, c.Language) }); err != nil {
 		return storage.LoadRecord{}, err
 	}
 	defer func() {
@@ -122,18 +107,18 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	}()
 
 	var written writeCounts
-	if err := timed("bulk", func() (err error) {
+	if err := load.Stage("bulk", func() (err error) {
 		written, err = l.writeDocuments(ctx, c, opts)
 		return err
 	}); err != nil {
 		return storage.LoadRecord{}, err
 	}
-	if err := timed("refresh", func() error {
+	if err := load.Stage("refresh", func() error {
 		return l.refresh(ctx, written.articles)
 	}); err != nil {
 		return storage.LoadRecord{}, err
 	}
-	if err := timed("force_merge", func() error {
+	if err := load.Stage("force_merge", func() error {
 		return l.forceMerge(ctx)
 	}); err != nil {
 		return storage.LoadRecord{}, err
@@ -146,7 +131,6 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	record = storage.LoadRecord{
 		Engine:        string(storage.ES),
 		EngineVersion: info.Version.Int,
-		StartedAt:     startedAt,
 		Canonical:     c.Canonical,
 		Embeddings:    c.Embeddings,
 		ModelTag:      c.ModelTag,
@@ -154,10 +138,9 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 		Vectors:       written.vectors,
 		BatchSize:     opts.BatchSize,
 		Concurrency:   opts.Concurrency,
-		Stages:        stages,
 		Settings:      settings,
 	}
-	record.Finish(time.Now().UTC())
+	load.Finish(&record)
 	if err := l.writeLoadRecord(ctx, record); err != nil {
 		return storage.LoadRecord{}, err
 	}
@@ -188,9 +171,10 @@ func checkCorpus(c storage.Corpus, opts storage.LoadOptions) error {
 
 func (l *CorpusLoader) createIndex(ctx context.Context, lang language.Code) error {
 	index := l.client.indexName
-	settings := buildSettings()
+	builder := NewIndexBuilder()
+	settings := builder.buildSettings()
 	settings.RefreshInterval = "-1"
-	mappings := buildMapping(lang.Analysis().ElasticsearchAnalyzer)
+	mappings := builder.buildMapping(lang.Analysis().ElasticsearchAnalyzer)
 	if _, err := l.client.typed.Indices.Create(index).Settings(&settings).Mappings(&mappings).Do(ctx); err != nil {
 		var esErr *types.ElasticsearchError
 		if errors.As(err, &esErr) && esErr.ErrorCause.Type == "resource_already_exists_exception" {
@@ -301,37 +285,36 @@ func (l *CorpusLoader) searchSegments(ctx context.Context) (int, error) {
 	return segments, nil
 }
 
-// declaredSettings reads every setting back from the cluster, not from the request.
-func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string, error) {
-	settings := make(map[string]string)
-	for _, read := range []func(context.Context, map[string]string) error{
-		l.readIndexSettings,
-		l.readFieldMappings,
-		l.readSegmentCount,
-		l.readNodeSizing,
-	} {
-		if err := read(ctx, settings); err != nil {
-			return nil, err
-		}
-	}
-	return settings, nil
-}
-
-func (l *CorpusLoader) readIndexSettings(ctx context.Context, settings map[string]string) error {
+// indexSettings reads the index's flat settings back from Elasticsearch, not from the request.
+func (l *CorpusLoader) indexSettings(ctx context.Context) (map[string]any, error) {
 	index := l.client.indexName
 	res, err := l.client.typed.Indices.GetSettings().Index(index).FlatSettings(true).Perform(ctx)
 	if err != nil {
-		return fmt.Errorf("read settings of %s: %w", index, err)
+		return nil, fmt.Errorf("read settings of %s: %w", index, err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("read settings of %s: status %d", index, res.StatusCode)
 	}
 	var byIndex map[string]struct {
 		Settings map[string]any `json:"settings"`
 	}
-	if err := decodeBody(res, &byIndex); err != nil {
-		return fmt.Errorf("read settings of %s: %w", index, err)
+	if err := json.NewDecoder(res.Body).Decode(&byIndex); err != nil {
+		return nil, fmt.Errorf("parse settings of %s: %w", index, err)
 	}
-	declared := byIndex[index].Settings
+	return byIndex[index].Settings, nil
+}
 
-	similarityPrefix := "index.similarity." + textSimilarity + "."
+// declaredSettings reads the settings back from the index, not from the request.
+func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string, error) {
+	index := l.client.indexName
+	declared, err := l.indexSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	settings := make(map[string]string)
+	similarityPrefix := "index.similarity." + defaultSimilarity + "."
 	for key, recorded := range map[string]string{
 		"index.number_of_shards":   "index.number_of_shards",
 		"index.number_of_replicas": "index.number_of_replicas",
@@ -342,43 +325,38 @@ func (l *CorpusLoader) readIndexSettings(ctx context.Context, settings map[strin
 	} {
 		value, ok := declared[key].(string)
 		if !ok {
-			return fmt.Errorf("settings of %s do not declare %s", index, key)
+			return nil, fmt.Errorf("settings of %s do not declare %s", index, key)
 		}
 		settings[recorded] = value
 	}
-	return nil
-}
 
-func (l *CorpusLoader) readFieldMappings(ctx context.Context, settings map[string]string) error {
-	index := l.client.indexName
 	mappings, err := l.client.typed.Indices.GetMapping().Index(index).Do(ctx)
 	if err != nil {
-		return fmt.Errorf("read mapping of %s: %w", index, err)
+		return nil, fmt.Errorf("read mapping of %s: %w", index, err)
 	}
 	fields := searchFieldMappings(mappings[index].Mappings.Properties)
 	for _, name := range []string{"title", "description", "content"} {
 		settings[name+".analyzer"] = fields[name].Analyzer
-		settings[name+".similarity"] = fields[name].Similarity
 	}
 	vector := fields["embedding"]
 	if vector.VectorIndex == nil {
-		return fmt.Errorf("mapping of %s declares no vector index options", index)
+		return nil, fmt.Errorf("mapping of %s declares no vector index options", index)
 	}
 	settings["embedding.dims"] = strconv.Itoa(vector.Dims)
 	settings["embedding.similarity"] = vector.Similarity
 	settings["embedding.index_options.type"] = vector.VectorIndex.Type
 	settings["embedding.index_options.m"] = strconv.Itoa(vector.VectorIndex.M)
 	settings["embedding.index_options.ef_construction"] = strconv.Itoa(vector.VectorIndex.EfConstruction)
-	return nil
-}
 
-func (l *CorpusLoader) readSegmentCount(ctx context.Context, settings map[string]string) error {
 	segments, err := l.searchSegments(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	settings["segments"] = strconv.Itoa(segments)
-	return nil
+	if err := l.readNodeSizing(ctx, settings); err != nil {
+		return nil, err
+	}
+	return settings, nil
 }
 
 // readNodeSizing records the heap and processors the node sized itself to from its container's limits.

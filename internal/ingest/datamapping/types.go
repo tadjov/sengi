@@ -113,13 +113,9 @@ var uniqueFields = map[string]func(document.Article) string{
 	"Metadata.Section":       func(a document.Article) string { return a.Metadata.Section },
 }
 
-// Values returns the rule's fields of article in order; the rule must have passed Validate.
-func (r UniqueRule) Values(article document.Article) []string {
-	values := make([]string, len(r.Fields))
-	for i, field := range r.Fields {
-		values[i] = uniqueFields[field](article)
-	}
-	return values
+// UniqueFieldValue reads field of article; field must be one a validated unique rule names.
+func UniqueFieldValue(article document.Article, field string) string {
+	return uniqueFields[field](article)
 }
 
 func (r UniqueRule) validate(mapped map[string]FieldMapping) error {

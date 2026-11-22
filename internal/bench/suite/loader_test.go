@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/apperr"
@@ -431,4 +432,40 @@ func TestParse_RejectsADottedFormInAGatedQuerysText(t *testing.T) {
 			assert.Contains(t, err.Error(), tt.wantAdvice)
 		})
 	}
+}
+
+func TestParse_WithJudgments(t *testing.T) {
+	docID := uuid.New()
+
+	yaml := validHeader + `name: judged suite
+queries:
+  - id: q1
+    description: query with judgments
+    engines:
+      pg-native: "SELECT id FROM articles"
+    judgments:
+      - doc_id: ` + docID.String() + `
+        relevance: 3
+`
+	loaded, err := Parse([]byte(yaml))
+	require.NoError(t, err)
+	require.NotEmpty(t, loaded.Suite.Queries[0].Judgments)
+	assert.Equal(t, docID, loaded.Suite.Queries[0].Judgments[0].DocID)
+	assert.Equal(t, 3, loaded.Suite.Queries[0].Judgments[0].Relevance)
+}
+
+func TestQuery_JudgmentMap(t *testing.T) {
+	id1 := uuid.New()
+	id2 := uuid.New()
+
+	q := Query{
+		Judgments: []RelevanceJudgment{
+			{DocID: id1, Relevance: 3},
+			{DocID: id2, Relevance: 1},
+		},
+	}
+
+	m := q.JudgmentMap()
+	assert.Equal(t, 3, m[id1])
+	assert.Equal(t, 1, m[id2])
 }

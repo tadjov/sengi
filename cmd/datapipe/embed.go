@@ -25,18 +25,20 @@ import (
 )
 
 const (
-	embeddingsFile        = "embeddings.parquet"
-	parquetMediaType      = "application/vnd.apache.parquet"
-	batchesPerChunk       = 64
-	embedProducingTool    = "datapipe embed"
-	leadRecipe            = "lead-v1"
-	lastTokenPooling      = "last_token"
-	defaultMaxTokens      = 512
-	defaultEmbedBatchSize = 64
+	embeddingsFile     = "embeddings.parquet"
+	parquetMediaType   = "application/vnd.apache.parquet"
+	batchesPerChunk    = 64
+	embedProducingTool = "datapipe embed"
+	leadRecipe         = "lead-v1"
+	lastTokenPooling   = "last_token"
+	defaultMaxTokens   = 512
 )
 
 type embedOptions struct {
 	Canonical        string
+	Embeddings       string
+	TruncateTo       int
+	Out              string
 	Version          string
 	BatchSize        int
 	MaxTokens        int
@@ -48,31 +50,49 @@ type embedOptions struct {
 func newEmbedCmd() *cobra.Command {
 	var opts embedOptions
 	cmd := &cobra.Command{
-		Use:   "embed <canonical-descriptor>",
-		Short: "Embed a canonical package's articles through an embedding API into an embeddings package",
+		Use:   "embed [canonical-descriptor]",
+		Short: "Embed a canonical package's articles through an embedding API, or cut an embeddings package to fewer dimensions",
 		Long: `embed verifies a local canonical package (its descriptor under
 datasets/<ds>/canonical/<version>/), embeds each article's lead-v1 text through
 Ollama and publishes the vectors as an embeddings package under
 datasets/<ds>/embeddings/<tag-dir>/<version>/, one row per canonical row in order.
 
 Ollama comes from the environment: EMBEDDING_BASE_URL, EMBEDDING_MODEL and
-EMBEDDING_DIM, as the search API reads them.`,
-		Args: cobra.ExactArgs(1),
+EMBEDDING_DIM, as the search API reads them.
+
+With --embeddings and --truncate-to N it embeds nothing: it verifies an embeddings
+package and keeps each vector's first N dimensions, L2-renormalised, which is a
+Matryoshka-trained model's N-dim embedding. A corpus package lands under
+datasets/<ds>/embeddings/<model>@N/<version>/, a track's query vectors in --out.`,
+		Args: cobra.MaximumNArgs(1),
+		Example: "  datapipe embed datasets/cc-news/canonical/v1/datapackage.json\n" +
+			"  datapipe embed --embeddings datasets/cc-news/embeddings/qwen3-embedding-0.6b@1024/v1/datapackage.json --truncate-to 512",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Canonical = args[0]
+			if len(args) == 1 {
+				opts.Canonical = args[0]
+			}
 			return runEmbed(cmd.Context(), cmd.OutOrStdout(), opts)
 		},
 	}
 	flags := cmd.Flags()
+	flags.StringVar(&opts.Embeddings, "embeddings", "", "Embeddings package descriptor to cut with --truncate-to, instead of embedding a canonical package")
+	flags.IntVar(&opts.TruncateTo, "truncate-to", 0, "Cut each --embeddings vector to its first N dimensions, L2-renormalised; N must be below the package's dim")
+	flags.StringVar(&opts.Out, "out", "", "Folder for query vectors cut from a track's trec/query-vectors/; it must not exist yet")
 	flags.StringVar(&opts.Version, "version", datapackage.DefaultVersion, "Embeddings package version, a folder under embeddings/<tag-dir>/ that must not exist yet")
-	flags.IntVar(&opts.BatchSize, "batch-size", defaultEmbedBatchSize, "Articles per embedding request")
-	flags.IntVar(&opts.MaxTokens, "max-tokens", defaultMaxTokens, "Input tokens per article, sent to Ollama as num_ctx; a longer lead is cut")
+	flags.IntVar(&opts.BatchSize, "batch-size", embedding.DefaultBatchSize, "Articles per embedding request; canonical packages only")
+	flags.IntVar(&opts.MaxTokens, "max-tokens", defaultMaxTokens, "Input tokens per article, sent to Ollama as num_ctx; a longer lead is cut; canonical packages only")
 	flags.StringVar(&opts.HuggingFaceModel, "hf-model", "", "Hugging Face repo the model is built from; required unless EMBEDDING_MODEL is "+embedding.DefaultModel)
 	flags.IntVar(&opts.Limit, "limit", 0, "Embed only the first N rows, as a trial with its own --version; 0 embeds every row")
 	return cmd
 }
 
 func runEmbed(ctx context.Context, out io.Writer, opts embedOptions) error {
+	if err := opts.validate(); err != nil {
+		return err
+	}
+	if opts.Embeddings != "" {
+		return runTruncate(ctx, out, opts)
+	}
 	run, err := prepareEmbeddings(ctx, opts)
 	if err != nil {
 		return err
@@ -133,9 +153,6 @@ type embeddingsRun struct {
 
 // prepareEmbeddings describes the run, and refuses it before any article is read or embedded.
 func prepareEmbeddings(ctx context.Context, opts embedOptions) (embeddingsRun, error) {
-	if err := opts.validate(); err != nil {
-		return embeddingsRun{}, err
-	}
 	embeddingsDir, err := derivedEmbeddingsDir(opts.Canonical)
 	if err != nil {
 		return embeddingsRun{}, err
@@ -151,13 +168,14 @@ func prepareEmbeddings(ctx context.Context, opts embedOptions) (embeddingsRun, e
 	embedder := embedding.NewEmbedder(api.client,
 		embedding.WithModel(api.model),
 		embedding.WithDim(api.dim),
+		embedding.WithBatchSize(opts.BatchSize),
 		embedding.WithDocumentOptions(map[string]any{"num_ctx": opts.MaxTokens}),
 	)
-	tagDir := filepath.Join(embeddingsDir, strings.ReplaceAll(embedder.Model(), ":", "-"))
+	tagDir := filepath.Join(embeddingsDir, tagDirName(embedder.Model()))
 	if err := refuseExistingVersion(filepath.Join(tagDir, opts.Version)); err != nil {
 		return embeddingsRun{}, err
 	}
-	model, err := api.client.DescribeModel(ctx, api.model)
+	model, err := api.describer.DescribeModel(ctx, api.model)
 	if err != nil {
 		return embeddingsRun{}, err
 	}
@@ -183,6 +201,18 @@ func prepareEmbeddings(ctx context.Context, opts embedOptions) (embeddingsRun, e
 }
 
 func (o embedOptions) validate() error {
+	if (o.Canonical == "") == (o.Embeddings == "") {
+		return errors.New("pass exactly one of a canonical descriptor, to embed its articles, and --embeddings, to cut its vectors")
+	}
+	if o.Embeddings != "" {
+		return o.validateTruncation()
+	}
+	if o.TruncateTo != 0 {
+		return errors.New("--truncate-to cuts an embeddings package; pass it with --embeddings, not a canonical descriptor")
+	}
+	if o.Out != "" {
+		return errors.New("--out takes cut query vectors; pass it with --embeddings, not a canonical descriptor")
+	}
 	if o.BatchSize < 1 {
 		return fmt.Errorf("--batch-size must be at least 1, got %d", o.BatchSize)
 	}
@@ -195,10 +225,23 @@ func (o embedOptions) validate() error {
 	return nil
 }
 
+func (o embedOptions) validateTruncation() error {
+	switch {
+	case o.TruncateTo < 1:
+		return fmt.Errorf("--embeddings needs --truncate-to N with N at least 1, got %d", o.TruncateTo)
+	case o.Limit != 0:
+		return errors.New("--limit trials an embedding run; --embeddings embeds nothing")
+	case o.HuggingFaceModel != "":
+		return errors.New("--hf-model names the model a canonical package is embedded with; --embeddings keeps its source's")
+	}
+	return nil
+}
+
 type embeddingAPI struct {
-	client *embedding.OllamaClient
-	model  string
-	dim    int
+	client    embedding.Client
+	describer embedding.ModelDescriber
+	model     string
+	dim       int
 }
 
 func embeddingAPIFromEnv() (embeddingAPI, error) {
@@ -213,7 +256,7 @@ func embeddingAPIFromEnv() (embeddingAPI, error) {
 	if err != nil {
 		return embeddingAPI{}, fmt.Errorf("embedding client for %s: %w", cfg.BaseURL, err)
 	}
-	return embeddingAPI{client: client, model: cmp.Or(cfg.Model, embedding.DefaultModel), dim: cfg.Dim}, nil
+	return embeddingAPI{client: client, describer: client, model: cmp.Or(cfg.Model, embedding.DefaultModel), dim: cfg.Dim}, nil
 }
 
 func huggingFaceModelOf(model, flagValue string) (string, error) {
@@ -224,6 +267,11 @@ func huggingFaceModelOf(model, flagValue string) (string, error) {
 		return embedding.DefaultHuggingFaceModel, nil
 	}
 	return "", fmt.Errorf("--hf-model is required with EMBEDDING_MODEL %s; only %s has a known source repo", model, embedding.DefaultModel)
+}
+
+// tagDirName is the folder a tag's packages live in; ':' is not portable in a path.
+func tagDirName(tag string) string {
+	return strings.ReplaceAll(tag, ":", "-")
 }
 
 // refuseExistingVersion fails before embedding; Publish would refuse the version only after it.
@@ -249,26 +297,73 @@ func derivedEmbeddingsDir(canonical string) (string, error) {
 
 func publishEmbeddings(ctx context.Context, run embeddingsRun) (datapackage.Published, error) {
 	canonical := run.corpus.Canonical
-	pkg := datapackage.Package{
-		Name:       canonical.Name + "-embeddings",
-		Language:   run.corpus.Language,
-		ProducedBy: &datapackage.ProducedBy{Tool: embedProducingTool},
-		Embedding:  &run.embedding,
-		Canonical:  &datapackage.Ref{Name: canonical.Name, Version: canonical.Version, ResourceHash: canonical.ResourceHash},
-		Resources: []datapackage.Resource{{
-			Name:      datapackage.EmbeddingsResource,
-			Path:      embeddingsFile,
-			Format:    "parquet",
-			MediaType: parquetMediaType,
-		}},
-	}
-	return datapackage.PublishStaged(ctx, datapackage.StagedPublish{
+	return publishStaged(ctx, stagedPackage{
+		Package: datapackage.Package{
+			Name:       canonical.Name + "-embeddings",
+			Language:   run.corpus.Language,
+			ProducedBy: &datapackage.ProducedBy{Tool: embedProducingTool},
+			Embedding:  &run.embedding,
+			Canonical:  &datapackage.Ref{Name: canonical.Name, Version: canonical.Version, ResourceHash: canonical.ResourceHash},
+			Resources: []datapackage.Resource{{
+				Name:      datapackage.EmbeddingsResource,
+				Path:      embeddingsFile,
+				Format:    "parquet",
+				MediaType: parquetMediaType,
+			}},
+		},
 		ParentDir: run.tagDir,
 		Version:   run.opts.Version,
-		Write: func(stagingDir string) (datapackage.Package, error) {
-			return pkg, writeEmbeddings(ctx, filepath.Join(stagingDir, embeddingsFile), run)
+		WriteResource: func(staging string) error {
+			return writeEmbeddings(ctx, filepath.Join(staging, embeddingsFile), run)
 		},
 	})
+}
+
+// stagedPackage is published as Version under ParentDir once WriteResource has written
+// its one resource into the staging folder.
+type stagedPackage struct {
+	Package       datapackage.Package
+	ParentDir     string
+	Version       string
+	WriteResource func(staging string) error
+}
+
+func publishStaged(ctx context.Context, p stagedPackage) (datapackage.Published, error) {
+	var published datapackage.Published
+	err := withStaging(p.ParentDir, func(staging string) error {
+		if err := p.WriteResource(staging); err != nil {
+			return err
+		}
+		var err error
+		published, err = datapackage.Publish(ctx, p.Package, datapackage.PublishOptions{StagingDir: staging, ParentDir: p.ParentDir, Version: p.Version})
+		if err != nil {
+			return fmt.Errorf("publish embeddings package into %s: %w", p.ParentDir, err)
+		}
+		return nil
+	})
+	return published, err
+}
+
+// withStaging fills a new folder under parent and removes it afterwards unless fill
+// renamed it into place, so a failed or cancelled run leaves nothing behind.
+func withStaging(parent string, fill func(staging string) error) (err error) {
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		return fmt.Errorf("create embeddings output folder: %w", err)
+	}
+	staging, err := os.MkdirTemp(parent, ".staging-*")
+	if err != nil {
+		return fmt.Errorf("create staging package folder: %w", err)
+	}
+	defer func() {
+		if removeErr := os.RemoveAll(staging); removeErr != nil && err == nil {
+			err = fmt.Errorf("remove staging package folder: %w", removeErr)
+		}
+	}()
+	// MkdirTemp creates the folder 0700, and fill publishes it by renaming it.
+	if err := os.Chmod(staging, 0o755); err != nil {
+		return fmt.Errorf("open up staging package folder: %w", err)
+	}
+	return fill(staging)
 }
 
 // writeEmbeddings holds one chunk of articles and vectors in memory at a time.

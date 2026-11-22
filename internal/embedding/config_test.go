@@ -36,3 +36,12 @@ func TestLoadConfigFromEnv_Dim(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadConfigFromEnv_RefusesTheRenamedMaxLength(t *testing.T) {
+	t.Setenv("EMBEDDING_ENABLED", "")
+	t.Setenv("EMBEDDING_MAX_LENGTH", "512")
+
+	_, err := LoadConfigFromEnv()
+
+	require.ErrorContains(t, err, "EMBEDDING_DIM")
+}

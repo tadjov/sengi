@@ -245,18 +245,23 @@ func writeCanonicalPackageAs(t *testing.T, root string, articles []document.Arti
 
 func writeEmbeddingsPackage(t *testing.T, root string, canonical fixturePackage, articles []document.Article, limit *int) fixturePackage {
 	t.Helper()
-	version := "lead-v1-1024-test"
-	if limit != nil {
-		version += fmt.Sprintf("-limit-%d", *limit)
-	}
-	dir := filepath.Join(root, "datasets", "fixture", "embeddings", "qwen3-embedding-0.6b@1024", version)
-	require.NoError(t, os.MkdirAll(dir, 0o755))
 	rows := make([]producerRow, len(articles))
 	for i, a := range articles {
 		values := make([]float32, 1024)
 		values[i%1024] = 1
 		rows[i] = producerRow{ID: a.ID.String(), Embedding: values}
 	}
+	return writeEmbeddingRows(t, root, canonical, rows, limit)
+}
+
+func writeEmbeddingRows(t *testing.T, root string, canonical fixturePackage, rows []producerRow, limit *int) fixturePackage {
+	t.Helper()
+	version := "lead-v1-1024-test"
+	if limit != nil {
+		version += fmt.Sprintf("-limit-%d", *limit)
+	}
+	dir := filepath.Join(root, "datasets", "fixture", "embeddings", "qwen3-embedding-0.6b@1024", version)
+	require.NoError(t, os.MkdirAll(dir, 0o755))
 	path := filepath.Join(dir, "embeddings.parquet")
 	f, err := os.Create(path)
 	require.NoError(t, err)

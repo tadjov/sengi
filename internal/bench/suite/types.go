@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/ingest/reader"
 	"gopkg.in/yaml.v3"
 )
@@ -52,6 +53,7 @@ type Query struct {
 	Category    Category               `yaml:"category,omitempty"`
 	Filters     Filters                `yaml:"filters,omitempty"`
 	Engines     map[string]EngineQuery `yaml:"engines"`
+	Judgments   []RelevanceJudgment    `yaml:"judgments"`
 }
 
 // Filters declare, engine-neutrally, the structured filters every engine's
@@ -243,4 +245,28 @@ func FormatVector(vec []float32) string {
 	}
 	b.WriteByte(']')
 	return b.String()
+}
+
+type RelevanceJudgment struct {
+	DocID     uuid.UUID `yaml:"doc_id"`
+	Relevance int       `yaml:"relevance"`
+}
+
+func (q *Query) JudgmentMap() map[uuid.UUID]int {
+	m := make(map[uuid.UUID]int, len(q.Judgments))
+	for _, j := range q.Judgments {
+		m[j.DocID] = j.Relevance
+	}
+	return m
+}
+
+// InjectJudgments sets the per-query Judgments slice from a flat map produced
+// by the CLI layer after loading an annotations file. Replaces the loader-side
+// auto-injection of v0; keeps the suite YAML focused on queries only.
+func (ls *LoadedSuite) InjectJudgments(byQuery map[string][]RelevanceJudgment) {
+	for i := range ls.Suite.Queries {
+		if js, ok := byQuery[ls.Suite.Queries[i].ID]; ok {
+			ls.Suite.Queries[i].Judgments = js
+		}
+	}
 }

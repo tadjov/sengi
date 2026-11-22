@@ -14,6 +14,8 @@ import (
 	"github.com/tadjov/sengi/internal/apperr"
 )
 
+type OllamaConfig func(client *OllamaClient)
+
 type OllamaClient struct {
 	base url.URL
 	http *http.Client
@@ -21,12 +23,48 @@ type OllamaClient struct {
 
 const defaultTimeout = 60 * time.Second
 
-func NewOllamaClient(baseURL string) (*OllamaClient, error) {
-	base, err := url.Parse(baseURL)
+func NewOllamaClient(baseUrl string, opts ...OllamaConfig) (*OllamaClient, error) {
+	base, err := url.Parse(baseUrl)
 	if err != nil {
 		return nil, err
 	}
-	return &OllamaClient{base: *base, http: &http.Client{Timeout: defaultTimeout}}, nil
+
+	client := &OllamaClient{
+		base: *base,
+		http: &http.Client{
+			Timeout: defaultTimeout,
+		},
+	}
+
+	for _, cfg := range opts {
+		cfg(client)
+	}
+
+	return client, nil
+}
+
+func WithHttpClient(httpClient *http.Client) OllamaConfig {
+	return func(client *OllamaClient) {
+		client.http = httpClient
+	}
+}
+
+type Duration struct {
+	time.Duration
+}
+type OllamaRequest struct {
+	// Model is the model name.
+	Model string `json:"model"`
+
+	// Prompt is the textual prompt to embed.
+	Prompt string `json:"prompt"`
+
+	// KeepAlive controls how long the model will stay loaded in memory following
+	// this request.
+	KeepAlive *Duration `json:"keep_alive,omitempty"`
+
+	// Options lists model-specific options.
+	Options map[string]any `json:"options"`
 }
 
 func (oc *OllamaClient) Generate(ctx context.Context, req Request) (*Response, error) {
@@ -37,8 +75,14 @@ func (oc *OllamaClient) Generate(ctx context.Context, req Request) (*Response, e
 		return nil, &apperr.ValidationError{Err: fmt.Errorf("missing model name")}
 	}
 
+	oReq := OllamaRequest{
+		Model:   req.Model,
+		Prompt:  req.Prompt,
+		Options: req.Options,
+	}
+
 	var resp Response
-	if err := oc.do(ctx, http.MethodPost, "/api/embeddings", req, &resp); err != nil {
+	if err := oc.do(ctx, http.MethodPost, "/api/embeddings", oReq, &resp); err != nil {
 		return nil, err
 	}
 
@@ -137,7 +181,8 @@ type ollamaShowResponse struct {
 	} `json:"details"`
 }
 
-// DescribeModel fails for a model /api/tags does not list.
+// DescribeModel reports the model's manifest digest from /api/tags and its quantization
+// level from /api/show. A model /api/tags doesn't list is an error.
 func (oc *OllamaClient) DescribeModel(ctx context.Context, model string) (ModelDescription, error) {
 	var tags ollamaTagsResponse
 	if err := oc.do(ctx, http.MethodGet, "/api/tags", nil, &tags); err != nil {

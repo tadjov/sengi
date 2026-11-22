@@ -2,13 +2,6 @@ package storage
 
 import "fmt"
 
-type Type string
-
-const (
-	ES Type = "es"
-	PG Type = "pg"
-)
-
 type Engine string
 
 const (

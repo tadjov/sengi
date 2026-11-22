@@ -16,6 +16,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
 	openapi "github.com/tadjov/sengi/api/openapi-spec"
+	mw "github.com/tadjov/sengi/internal/api/middleware"
 	"github.com/tadjov/sengi/internal/apperr"
 )
 
@@ -89,7 +90,7 @@ func (s *Server) Start() error {
 
 func (s *Server) SetupMiddlewares() *Server {
 	s.Echo.Use(middleware.RequestID())
-	s.Echo.Use(requestLogger())
+	s.Echo.Use(mw.Logger())
 	s.Echo.Use(middleware.Recover())
 	s.Echo.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: s.cfg.CorsOrigins,

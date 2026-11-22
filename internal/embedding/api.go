@@ -11,8 +11,13 @@ const DefaultModel = "qwen3-embedding:0.6b"
 const DefaultHuggingFaceModel = "Qwen/Qwen3-Embedding-0.6B"
 
 type Request struct {
-	Model  string `json:"model"`
+	Model string `json:"model"`
+
+	// Prompt is the textual prompt to embed.
 	Prompt string `json:"prompt"`
+
+	// Options lists model-specific options.
+	Options map[string]any `json:"options"`
 }
 
 type Response struct {
@@ -38,4 +43,8 @@ type Client interface {
 type ModelDescription struct {
 	Digest            string
 	QuantizationLevel string
+}
+
+type ModelDescriber interface {
+	DescribeModel(ctx context.Context, model string) (ModelDescription, error)
 }

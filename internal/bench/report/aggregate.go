@@ -82,7 +82,9 @@ type jobScope struct {
 	job     *runner.JobResult
 	kValues []int
 	judged  map[string]bool
-	grades  map[string]map[string]int
+	// grades[queryID][docID] is empty for suite-embedded judgments, which
+	// never reach the runner config.
+	grades map[string]map[string]int
 }
 
 func newJobScope(jr *runner.JobResult, cfg runner.Config) jobScope {
@@ -92,6 +94,8 @@ func newJobScope(jr *runner.JobResult, cfg runner.Config) jobScope {
 			judged[qID] = true
 			continue
 		}
+		// Suite-embedded grades never reach cfg.Judgments; a scored cell is
+		// the only trace of them.
 		for _, qr := range jr.Results[qID] {
 			if qr.Scores.Judged {
 				judged[qID] = true
@@ -121,7 +125,8 @@ func (s jobScope) answeredByEveryEngine(qID string) bool {
 }
 
 // gradedInTopK counts the cell's retrieved docs within the largest K, and how
-// many of them carry a grade.
+// many of them carry a grade. A query graded only in the suite file counts
+// nothing, since its grades are not visible here.
 func (s jobScope) gradedInTopK(qID, engName string) (graded, retrieved int) {
 	qr, ok := s.job.Results[qID][engName]
 	if !ok || qr.Error != nil || len(s.grades[qID]) == 0 {
