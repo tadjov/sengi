@@ -48,6 +48,19 @@ func embeddingsPackage() datapackage.Package {
 	}
 }
 
+// derived is source cut to 512 dimensions.
+func derived(source datapackage.Package) datapackage.Package {
+	pkg := source
+	pkg.ProducedBy = &datapackage.ProducedBy{Tool: "datapipe embed"}
+	narrow := *source.Embedding
+	narrow.Dim, narrow.Tag = 512, "qwen3-embedding:0.6b@512"
+	pkg.Embedding = &narrow
+	pkg.DerivedFrom = &datapackage.DerivedFrom{
+		Name: source.Name, Version: source.Version, Tag: source.Embedding.Tag, ResourceHash: "sha256:" + zeros64,
+	}
+	return pkg
+}
+
 func representativePackages() map[string]datapackage.Package {
 	limit := 500
 	trial := embeddingsPackage()
@@ -57,6 +70,8 @@ func representativePackages() map[string]datapackage.Package {
 	trial.Embedding = &trialEmbedding
 
 	return map[string]datapackage.Package{
+		"derived embeddings":    derived(embeddingsPackage()),
+		"derived query vectors": derived(queryVectorsPackage()),
 		"canonical": {
 			Name:          "cc-news-canonical",
 			Version:       "v1",

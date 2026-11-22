@@ -35,6 +35,29 @@
       },
       "additionalProperties": false
     },
+    "derivedFrom": {
+      "type": "object",
+      "required": [
+        "name",
+        "tag",
+        "resourceHash"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "resourceHash": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
     "embedding": {
       "type": "object",
       "required": [
