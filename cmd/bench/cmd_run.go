@@ -145,31 +145,10 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 
 	printSpecWarnings(cmd.OutOrStdout(), bs)
 
-	// Apply --jobs filter: keep only the named jobs.
 	specJobCount := len(bs.Jobs)
-	var jobFilter []string
-	if f.jobs != "" {
-		wanted := make(map[string]bool)
-		for _, name := range strings.Split(f.jobs, ",") {
-			if n := strings.TrimSpace(name); n != "" {
-				wanted[n] = true
-			}
-		}
-		jobFilter = slices.Sorted(maps.Keys(wanted))
-		filtered := bs.Jobs[:0]
-		for _, job := range bs.Jobs {
-			if wanted[job.Name] {
-				filtered = append(filtered, job)
-			}
-		}
-		if len(filtered) == 0 {
-			var names []string
-			for n := range wanted {
-				names = append(names, n)
-			}
-			return fmt.Errorf("--jobs filter matched no jobs (wanted: %s)", strings.Join(names, ", "))
-		}
-		bs.Jobs = filtered
+	jobFilter, err := keepJobs(bs, f.jobs)
+	if err != nil {
+		return err
 	}
 
 	// Read before measuring, so an edit made while the engines answer cannot
@@ -220,23 +199,7 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 		Corpus:  corpus,
 		Indexes: indexes,
 	})
-	rpt.Provenance.SpecID = bs.ID
-	rpt.Provenance.Sources = &meta.Sources{
-		Spec:      tr.Relative(tr.Spec),
-		Suites:    loadedSuitePaths(bs, tr),
-		Pool:      tr.Relative(tr.Pool),
-		Judgments: tr.Relative(judgments.Path),
-	}
-	if judgments.Meta != nil {
-		rpt.Provenance.PoolRunID = judgments.Pool.Meta.RunID
-		rpt.Provenance.JudgmentsRunID = judgments.Meta.RunID
-		rpt.Provenance.CarriedOver = judgments.Meta.CarriedOver
-		rpt.Provenance.Judge = judgments.Meta.Judge
-		rpt.Provenance.GradedCount = judgments.Meta.GradedCount
-		unjudged := judgments.UnjudgedCount()
-		rpt.Provenance.UnjudgedCount = &unjudged
-		rpt.Provenance.PoolRef = tr.Relative(tr.Pool)
-	}
+	stampProvenance(rpt, bs, tr, judgments)
 	rpt.Settings = report.RunSettings{
 		Warmup:       runCfg.WarmupRuns,
 		Iterations:   runCfg.Runs,
@@ -259,26 +222,82 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 	report.WriteTable(rpt, cmd.OutOrStdout())
 	fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", cli.Muted.Sprint("Elapsed:"), elapsed.Round(time.Millisecond))
 
-	outPath := f.output
+	return publishReport(cmd.OutOrStdout(), rpt, reportDestination{track: tr, output: f.output, failures: failures})
+}
+
+// keepJobs narrows the spec to the comma-separated job names and returns them
+// sorted; an empty list keeps every job.
+func keepJobs(bs *spec.BenchSpec, names string) ([]string, error) {
+	if names == "" {
+		return nil, nil
+	}
+	wanted := make(map[string]bool)
+	for _, name := range strings.Split(names, ",") {
+		if n := strings.TrimSpace(name); n != "" {
+			wanted[n] = true
+		}
+	}
+	filter := slices.Sorted(maps.Keys(wanted))
+	kept := slices.DeleteFunc(bs.Jobs, func(job spec.Job) bool { return !wanted[job.Name] })
+	if len(kept) == 0 {
+		return nil, fmt.Errorf("--jobs filter matched no jobs (wanted: %s)", strings.Join(filter, ", "))
+	}
+	bs.Jobs = kept
+	return filter, nil
+}
+
+func stampProvenance(rpt *report.Report, bs *spec.BenchSpec, tr *trackctx.Track, judgments *rungate.Judgments) {
+	rpt.Provenance.SpecID = bs.ID
+	rpt.Provenance.Sources = &meta.Sources{
+		Spec:      tr.Relative(tr.Spec),
+		Suites:    loadedSuitePaths(bs, tr),
+		Pool:      tr.Relative(tr.Pool),
+		Judgments: tr.Relative(judgments.Path),
+	}
+	if judgments.Meta == nil {
+		return
+	}
+	rpt.Provenance.PoolRunID = judgments.Pool.Meta.RunID
+	rpt.Provenance.JudgmentsRunID = judgments.Meta.RunID
+	rpt.Provenance.CarriedOver = judgments.Meta.CarriedOver
+	rpt.Provenance.Judge = judgments.Meta.Judge
+	rpt.Provenance.GradedCount = judgments.Meta.GradedCount
+	unjudged := judgments.UnjudgedCount()
+	rpt.Provenance.UnjudgedCount = &unjudged
+	rpt.Provenance.PoolRef = tr.Relative(tr.Pool)
+}
+
+type reportDestination struct {
+	track *trackctx.Track
+	// output is --output; empty writes to the track's reports.
+	output   string
+	failures []string
+}
+
+// publishReport writes the report and moves latest.json to it only for a
+// complete run of the spec as written into the track's own reports.
+func publishReport(w io.Writer, rpt *report.Report, dest reportDestination) error {
+	outPath := dest.output
 	if outPath == "" {
-		outPath = tr.ReportPath(rpt.Provenance.RunID)
+		outPath = dest.track.ReportPath(rpt.Provenance.RunID)
 	}
 	if err := report.WriteJSON(rpt, outPath); err != nil {
 		return fmt.Errorf("write report: %w", err)
 	}
-	cli.Done(cmd.OutOrStdout(), "Report written: "+outPath)
+	cli.Done(w, "Report written: "+outPath)
 
-	if len(failures) > 0 {
-		return fmt.Errorf("%s\n  • report written to %s; latest.json was not moved", strings.Join(failures, "\n"), outPath)
+	if len(dest.failures) > 0 {
+		return fmt.Errorf("%s\n  • report written to %s; latest.json was not moved", strings.Join(dest.failures, "\n"), outPath)
 	}
-	switch {
-	case len(rpt.Settings.Incomplete) > 0:
-		cli.Warn(cmd.OutOrStdout(), "latest.json not moved: "+strings.Join(rpt.Settings.Incomplete, "; "))
-	case f.output != "":
-	default:
-		if err := report.WriteLatestPointer(tr.LatestReportPath(), outPath); err != nil {
-			cli.Warn(cmd.OutOrStdout(), fmt.Sprintf("could not update latest.json pointer: %v", err))
-		}
+	if len(rpt.Settings.Incomplete) > 0 {
+		cli.Warn(w, "latest.json not moved: "+strings.Join(rpt.Settings.Incomplete, "; "))
+		return nil
+	}
+	if dest.output != "" {
+		return nil
+	}
+	if err := report.WriteLatestPointer(dest.track.LatestReportPath(), outPath); err != nil {
+		cli.Warn(w, fmt.Sprintf("could not update latest.json pointer: %v", err))
 	}
 	return nil
 }
