@@ -10,7 +10,7 @@ import (
 
 func TestArticleEmbeddingIndex_DeclaresHNSWBuildParams(t *testing.T) {
 	var options []string
-	err := testPool.GetConn().QueryRow(testCtx,
+	err := testPool.Pool().QueryRow(testCtx,
 		`SELECT reloptions FROM pg_class WHERE relname = 'idx_article_embedding'`).Scan(&options)
 	if err != nil {
 		t.Fatalf("read reloptions of idx_article_embedding: %v", err)

@@ -10,9 +10,7 @@ import (
 	"github.com/tadjov/sengi/internal/embedding"
 )
 
-// VectorStore reads document embeddings from article_embeddings and embeds
-// queries with the same model, so query and document vectors are always
-// comparable. It is the Postgres implementation of storage.VectorStore.
+// VectorStore reads document vectors from article_embeddings.
 type VectorStore struct {
 	embedder *embedding.Embedder
 	db       *pgxpool.Pool
@@ -22,7 +20,7 @@ type VectorStore struct {
 func NewVectorStore(embedder *embedding.Embedder, pool *ConnectionPool, model string) *VectorStore {
 	return &VectorStore{
 		embedder: embedder,
-		db:       pool.GetConn(),
+		db:       pool.Pool(),
 		model:    model,
 	}
 }

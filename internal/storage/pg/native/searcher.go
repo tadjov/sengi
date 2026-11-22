@@ -20,8 +20,8 @@ type Searcher struct {
 
 var articleColumns = pg.ArticleColumnList("")
 
-func NewReader(pool *pg.ConnectionPool) (*Searcher, error) {
-	return &Searcher{db: pool.GetConn()}, nil
+func NewSearcher(pool *pg.ConnectionPool) *Searcher {
+	return &Searcher{db: pool.Pool()}
 }
 
 // Capabilities reports a field as isolated only when no other field shares its
@@ -371,8 +371,7 @@ func (r *Searcher) SearchBoolean(ctx context.Context, query *dquery.Boolean, bas
 		"has_cursor", cursor != nil,
 		"size", size)
 
-	boolParser := NewBooleanParser()
-	tsqueryStr, err := boolParser.Parse(query.Expression)
+	tsqueryStr, err := booleanTsQuery(query.Expression)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse boolean expression: %w", err)
 	}
@@ -467,7 +466,7 @@ func (r *Searcher) fetchPage(ctx context.Context, q pageQuery) (*storage.SearchR
 			return nil, fmt.Errorf("%s: %w", q.method, err)
 		}
 		hits = append(hits, dto.ArticleSearchResult{
-			Article:         *article,
+			Article:         dto.NewArticle(article),
 			Score:           utils.RoundFloat64(rawScore, dquery.ScoreDecimalPlaces),
 			ScoreNormalized: normalizedScore(rawScore, q.maxScore),
 		})

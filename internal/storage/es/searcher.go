@@ -22,14 +22,12 @@ import (
 type Searcher struct {
 	client    *elasticsearch.TypedClient
 	indexName string
-	tokenizer *token.BoolTokenizer
 }
 
 func NewSearcher(client *Client) *Searcher {
 	return &Searcher{
 		client:    client.typed,
 		indexName: client.indexName,
-		tokenizer: token.NewBoolTokenizer(),
 	}
 }
 
@@ -466,8 +464,7 @@ func (r *Searcher) SearchBoolean(ctx context.Context, query *dquery.Boolean, bas
 		"has_cursor", cursor != nil,
 		"size", size)
 
-	tokens := r.tokenizer.Tokenize(query.Expression)
-	if err := r.tokenizer.Validate(tokens); err != nil {
+	if err := token.Validate(token.Tokenize(query.Expression)); err != nil {
 		slog.Error("Invalid boolean query expression", "error", err, "expression", query.Expression)
 		return nil, fmt.Errorf("invalid boolean query expression: %w", err)
 	}

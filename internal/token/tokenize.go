@@ -8,20 +8,15 @@ import (
 	"github.com/tadjov/sengi/internal/apperr"
 )
 
-type BoolTokenizer struct {
+type scanner struct {
 	input []rune
 	pos   int
 }
 
-func NewBoolTokenizer() *BoolTokenizer {
-	return &BoolTokenizer{}
-}
-
-// Tokenize converts the input string into a slice of Tokens.
-// Example: Input: `(apple AND "banana split") OR NOT cherry`
-func (t *BoolTokenizer) Tokenize(input string) []Token {
-	t.input = []rune(strings.Trim(input, " "))
-	t.pos = 0
+// Tokenize splits a boolean expression such as `(apple AND "banana split") OR NOT cherry`
+// into tokens ending in EOF.
+func Tokenize(input string) []Token {
+	t := &scanner{input: []rune(strings.Trim(input, " "))}
 
 	var tokens []Token
 
@@ -48,13 +43,13 @@ func (t *BoolTokenizer) Tokenize(input string) []Token {
 	return tokens
 }
 
-func (t *BoolTokenizer) skipWhitespace() {
+func (t *scanner) skipWhitespace() {
 	for t.pos < len(t.input) && unicode.IsSpace(t.input[t.pos]) {
 		t.pos++
 	}
 }
 
-func (t *BoolTokenizer) readWord() Token {
+func (t *scanner) readWord() Token {
 	start := t.pos
 	for t.pos < len(t.input) && isWordChar(t.input[t.pos]) {
 		t.pos++
@@ -74,7 +69,7 @@ func (t *BoolTokenizer) readWord() Token {
 	}
 }
 
-func (t *BoolTokenizer) readQuoted() Token {
+func (t *scanner) readQuoted() Token {
 	t.pos++ // skip opening quote
 	start := t.pos
 	for t.pos < len(t.input) && t.input[t.pos] != '"' {
@@ -91,7 +86,7 @@ func isWordChar(ch rune) bool {
 	return unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_'
 }
 
-func (t *BoolTokenizer) Validate(tokens []Token) error {
+func Validate(tokens []Token) error {
 	depth := 0
 	hasWord := false
 

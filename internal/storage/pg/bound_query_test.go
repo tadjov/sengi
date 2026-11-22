@@ -80,7 +80,7 @@ func TestPgExecutor_RunsQueryVectorArgLikeAnInlinedVector(t *testing.T) {
 	const model = "qwen3-embedding:0.6b"
 	for i, title := range []string{"inflation", "elections", "storms", "markets", "vaccines"} {
 		id := insertArticle(ctx, t, pool, title)
-		_, err := pool.GetConn().Exec(ctx,
+		_, err := pool.Pool().Exec(ctx,
 			"INSERT INTO article_embeddings (article_id, embedding, model_name) VALUES ($1, $2::vector, $3)",
 			id, suite.FormatVector(unitVector(float64(i))), model)
 		require.NoError(t, err)
@@ -135,7 +135,7 @@ func newBoundQueryPool(ctx context.Context, t *testing.T) *pg.ConnectionPool {
 func insertArticle(ctx context.Context, t *testing.T, pool *pg.ConnectionPool, title string) string {
 	t.Helper()
 	var id string
-	err := pool.GetConn().QueryRow(ctx,
+	err := pool.Pool().QueryRow(ctx,
 		"INSERT INTO articles (id, title, content, url, language) VALUES (gen_random_uuid(), $1, $1, 'http://example.test/' || md5($1), 'eng') RETURNING id::text",
 		title).Scan(&id)
 	require.NoError(t, err)

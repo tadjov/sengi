@@ -23,9 +23,7 @@ func TestDescribeIndex_ReadsTheLoadRecordFromTheIndexMeta(t *testing.T) {
 	ctx := context.Background()
 	container := pkgtesting.NewESContainer(ctx, t)
 	cfg := ClientConfig{Addresses: []string{container.Address}, IndexName: "articles_load_record_test"}
-	if _, err := NewIndexer(ctx, cfg); err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
+	createEmptyIndex(t, cfg)
 
 	t.Run("an index nothing recorded a load on", func(t *testing.T) {
 		description, err := DescribeIndex(ctx, cfg)

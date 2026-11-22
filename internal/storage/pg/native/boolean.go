@@ -2,30 +2,16 @@ package native
 
 import (
 	"fmt"
-	"log/slog"
 	"strings"
 	"unicode"
 
 	"github.com/tadjov/sengi/internal/token"
 )
 
-type BooleanParser struct {
-	tokenizer *token.BoolTokenizer
-}
-
-func NewBooleanParser() *BooleanParser {
-	return &BooleanParser{
-		tokenizer: token.NewBoolTokenizer(),
-	}
-}
-
-func (p *BooleanParser) Parse(expression string) (string, error) {
-	tokens := p.tokenizer.Tokenize(expression)
-	return p.convertToTsquery(tokens)
-}
-
-func (p *BooleanParser) convertToTsquery(tokens []token.Token) (string, error) {
-	if err := p.tokenizer.Validate(tokens); err != nil {
+// booleanTsQuery renders a boolean expression as to_tsquery text, its tokens space separated.
+func booleanTsQuery(expression string) (string, error) {
+	tokens := token.Tokenize(expression)
+	if err := token.Validate(tokens); err != nil {
 		return "", err
 	}
 
@@ -59,8 +45,6 @@ func (p *BooleanParser) convertToTsquery(tokens []token.Token) (string, error) {
 			parts = append(parts, "(")
 		case token.RPAREN:
 			parts = append(parts, ")")
-		default:
-			slog.Error("unknown token type", "type", tok.Type, "value", tok.Value)
 		}
 
 		prevType = tok.Type

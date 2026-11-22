@@ -126,15 +126,7 @@ func readCgroupLimits(ctx context.Context, conn *pgx.Conn) (*CgroupLimits, error
 	return &limits, nil
 }
 
-// readLatestLoad returns nil on a schema older than corpus_load.
 func readLatestLoad(ctx context.Context, conn *pgx.Conn) (*storage.LoadRecord, error) {
-	var hasTable bool
-	if err := conn.QueryRow(ctx, "SELECT to_regclass('corpus_load') IS NOT NULL").Scan(&hasTable); err != nil {
-		return nil, fmt.Errorf("look up corpus_load: %w", err)
-	}
-	if !hasTable {
-		return nil, nil
-	}
 	var raw []byte
 	err := conn.QueryRow(ctx, "SELECT record FROM corpus_load ORDER BY finished_at DESC LIMIT 1").Scan(&raw)
 	if errors.Is(err, pgx.ErrNoRows) {

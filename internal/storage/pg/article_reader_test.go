@@ -1,21 +1,20 @@
-package pg
+package pg_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/storage/pg/pgtest"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 )
 
 func TestArticleReader_GetByIDs_ReturnsEverySavedField(t *testing.T) {
-	pool := newEmbedTestPool(t)
-	indexer, err := NewIndexer(pool)
-	require.NoError(t, err)
-
 	full := document.Article{
 		ID:              uuid.MustParse("6f1c0d53-1b0e-5a51-9a2b-7d0f6c3e8a01"),
 		URL:             "https://uk.reuters.com/world/storm",
@@ -43,9 +42,9 @@ func TestArticleReader_GetByIDs_ReturnsEverySavedField(t *testing.T) {
 		Content:  "No date, no description, no metadata.",
 		Language: language.English,
 	}
-	require.NoError(t, indexer.SaveBulk(testCtx, []document.Article{full, bare}))
+	pool := loadedPool(t, pgtest.Corpus{Articles: []document.Article{full, bare}})
 
-	got, err := NewArticleReader(pool).GetByIDs(testCtx, []uuid.UUID{full.ID, bare.ID})
+	got, err := pg.NewArticleReader(pool).GetByIDs(context.Background(), []uuid.UUID{full.ID, bare.ID})
 	require.NoError(t, err)
 
 	byID := make(map[uuid.UUID]document.Article, len(got))

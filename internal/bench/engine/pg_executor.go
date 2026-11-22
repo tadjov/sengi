@@ -27,7 +27,7 @@ func NewPgExecutor(name string, pool *pg.ConnectionPool) *PgExecutor {
 func (e *PgExecutor) Execute(ctx context.Context, req Request) (*Execution, error) {
 	start := time.Now()
 
-	result, err := e.executor.Exec(ctx, req.Query, req.Args, nil)
+	result, err := e.executor.Exec(ctx, req.Query, req.Args)
 	if err != nil {
 		return nil, fmt.Errorf("pg exec: %w", err)
 	}
@@ -56,14 +56,14 @@ func (e *PgExecutor) Close() error { return nil }
 // columns/tables/operators without scanning data. ParadeDB's pdb.* functions
 // also surface here, so it's a real correctness check for those queries too.
 func (e *PgExecutor) Validate(ctx context.Context, req Request) error {
-	if _, err := e.executor.Exec(ctx, "EXPLAIN "+req.Query, req.Args, nil); err != nil {
+	if _, err := e.executor.Exec(ctx, "EXPLAIN "+req.Query, req.Args); err != nil {
 		return fmt.Errorf("pg explain: %w", err)
 	}
 	return nil
 }
 
 func (e *PgExecutor) CorpusCount(ctx context.Context) (int64, error) {
-	res, err := e.executor.Exec(ctx, "SELECT count(*) AS n FROM articles", nil, nil)
+	res, err := e.executor.Exec(ctx, "SELECT count(*) AS n FROM articles", nil)
 	if err != nil {
 		return 0, fmt.Errorf("pg corpus count: %w", err)
 	}

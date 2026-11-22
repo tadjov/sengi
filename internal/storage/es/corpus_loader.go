@@ -188,10 +188,9 @@ func checkCorpus(c storage.Corpus, opts storage.LoadOptions) error {
 
 func (l *CorpusLoader) createIndex(ctx context.Context, lang language.Code) error {
 	index := l.client.indexName
-	builder := NewIndexBuilder()
-	settings := builder.buildSettings()
+	settings := buildSettings()
 	settings.RefreshInterval = "-1"
-	mappings := builder.buildMapping(lang.Analysis().ElasticsearchAnalyzer)
+	mappings := buildMapping(lang.Analysis().ElasticsearchAnalyzer)
 	if _, err := l.client.typed.Indices.Create(index).Settings(&settings).Mappings(&mappings).Do(ctx); err != nil {
 		var esErr *types.ElasticsearchError
 		if errors.As(err, &esErr) && esErr.ErrorCause.Type == "resource_already_exists_exception" {

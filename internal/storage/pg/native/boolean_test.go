@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestBooleanParser_Parse(t *testing.T) {
+func TestBooleanTsQuery(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
@@ -78,11 +78,9 @@ func TestBooleanParser_Parse(t *testing.T) {
 		},
 	}
 
-	p := NewBooleanParser()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := p.Parse(tt.input)
+			result, err := booleanTsQuery(tt.input)
 			if tt.wantErr {
 				if err == nil {
 					t.Fatalf("expected error, got result: %q", result)

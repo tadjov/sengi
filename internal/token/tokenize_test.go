@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestBoolTokenizer_Tokenize(t *testing.T) {
+func TestTokenize(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
@@ -174,11 +174,9 @@ func TestBoolTokenizer_Tokenize(t *testing.T) {
 		},
 	}
 
-	tokenizer := NewBoolTokenizer()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tokens := tokenizer.Tokenize(tt.input)
+			tokens := Tokenize(tt.input)
 
 			if len(tokens) != len(tt.expected) {
 				t.Fatalf("expected %d tokens, got %d\nexpected: %v\ngot:      %v", len(tt.expected), len(tokens), tt.expected, tokens)
@@ -196,26 +194,7 @@ func TestBoolTokenizer_Tokenize(t *testing.T) {
 	}
 }
 
-func TestBoolTokenizer_IsReusable(t *testing.T) {
-	tokenizer := NewBoolTokenizer()
-
-	first := tokenizer.Tokenize("A AND B")
-	second := tokenizer.Tokenize("C OR D")
-
-	if len(first) != 4 {
-		t.Fatalf("first call: expected 4 tokens, got %d", len(first))
-	}
-	if len(second) != 4 {
-		t.Fatalf("second call: expected 4 tokens, got %d", len(second))
-	}
-	if second[0].Value != "C" {
-		t.Errorf("second call first token: expected %q, got %q", "C", second[0].Value)
-	}
-}
-
 func TestValidateTokens(t *testing.T) {
-	tokenizer := NewBoolTokenizer()
-
 	tests := []struct {
 		name    string
 		input   string
@@ -282,8 +261,8 @@ func TestValidateTokens(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tokens := tokenizer.Tokenize(tt.input)
-			err := tokenizer.Validate(tokens)
+			tokens := Tokenize(tt.input)
+			err := Validate(tokens)
 
 			if tt.wantErr == "" {
 				if err != nil {

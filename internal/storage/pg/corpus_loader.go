@@ -401,7 +401,7 @@ func (cp *corpusCopier) copyArticles(ctx context.Context, c storage.Corpus) ([]u
 			return nil, fmt.Errorf("article %s is in %q, the corpus in %q", a.ID, a.Language, c.Language)
 		}
 		ids = append(ids, a.ID)
-		return insertRow(a)
+		return articleRow(a)
 	}
 	plan := copyPlan[document.Article]{Table: "articles", Columns: ArticleColumns, Items: c.Articles, ToRow: toRow, BatchSize: cp.batchSize}
 	if err := copyConcurrently(ctx, cp, plan); err != nil {

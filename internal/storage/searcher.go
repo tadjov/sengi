@@ -7,8 +7,6 @@ import (
 	"github.com/tadjov/sengi/internal/types/query"
 )
 
-// SearchResult represents search results with cursor-based pagination
-// Contains types objects - no encoding/decoding at this layer
 type SearchResult struct {
 	Hits         []dto.ArticleSearchResult `json:"hits"`
 	NextCursor   *query.Cursor             `json:"-"`
@@ -55,25 +53,7 @@ type BooleanSearcher interface {
 	SearchBoolean(ctx context.Context, query *query.Boolean, baseOpts *query.BaseOptions) (*SearchResult, error)
 }
 
-// FtsSearcher serves every full-text paradigm.
-type FtsSearcher interface {
-	FullTextBackend
-	StringQuerySearcher
-	FieldSearcher
-	MultiFieldSearcher
-	PhraseSearcher
-	BooleanSearcher
-}
-
-type EmbedResult struct {
-	Hits       []dto.ArticleSearchResult `json:"hits"`
-	NextCursor *query.Cursor             `json:"-"`
-	HasMore    bool                      `json:"has_more"`
-}
-
-// SemanticSearcher is the semantic search API interface
 type SemanticSearcher interface {
-	// SearchSemantic performs semantic search using vector embeddings
 	SearchSemantic(ctx context.Context, query *query.Semantic, baseOpts *query.BaseOptions) (*VectorSearchResult, error)
 }
 

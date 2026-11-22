@@ -185,7 +185,7 @@ func buildBooleanMatch(tsquery string, lang language.Code) booleanMatch {
 	}
 }
 
-// labelTerms restricts every term of a BooleanParser tsquery, whose tokens are
+// labelTerms restricts every term of a booleanTsQuery result, whose tokens are
 // space separated, to the given weight labels: "trump & ! biden" with "ABC"
 // becomes "trump:ABC & ! biden:ABC".
 func labelTerms(tsquery, labels string) string {

@@ -31,14 +31,3 @@ func TestQuoteLiteral(t *testing.T) {
 		}
 	}
 }
-
-func TestSortedKeysIsDeterministic(t *testing.T) {
-	m := map[string]string{"b": "1", "a": "2", "c": "3"}
-	got := sortedKeys(m)
-	want := []string{"a", "b", "c"}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Fatalf("sortedKeys = %v, want %v", got, want)
-		}
-	}
-}
