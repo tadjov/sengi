@@ -326,7 +326,6 @@ func TestWriters_ShowLinearNDCGNextToExponential(t *testing.T) {
 		wantTermRe string
 	}{
 		{name: "recorded", linear: map[int]float64{10: 0.3}, wantCell: "0.3000", wantTermRe: `0\.5000\s+│\s+0\.3000\s+│`},
-		{name: "report predating it", linear: nil, wantCell: "—", wantTermRe: `0\.5000\s+│\s+—\s+│`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

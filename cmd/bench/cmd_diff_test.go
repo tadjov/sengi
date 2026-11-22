@@ -262,29 +262,6 @@ func TestPrintDiff_NDCGHeadersNameTheGain(t *testing.T) {
 	}
 }
 
-func TestPrintDiff_SameJudgmentsFileInAMovedTrackIsNotAWarning(t *testing.T) {
-	judge := &meta.Judge{Strategy: "keyword"}
-	before := diffRun{
-		runID: "a", kValues: []int{10}, ndcg: map[int]float64{10: 0.6}, threshold: 1, judge: judge,
-		spec:      "/Users/me/projects/sengi/tracks/cc-news/fts/spec.yaml",
-		judgments: "/Users/me/projects/sengi/tracks/cc-news/fts/trec/annotations.keyword.yaml",
-	}
-	moved := before
-	moved.runID = "b"
-	moved.spec = "/Users/me/projects/sengi-wt/fix-x/tracks/cc-news/fts/spec.yaml"
-	moved.judgments = "/Users/me/projects/sengi-wt/fix-x/tracks/cc-news/fts/trec/annotations.keyword.yaml"
-	swapped := moved
-	swapped.judgments = "/Users/me/projects/sengi-wt/fix-x/tracks/cc-news/fts/trec/annotations.bm25.yaml"
-
-	var same bytes.Buffer
-	printDiff(&same, diffReport(before), diffReport(moved))
-	assert.NotContains(t, same.String(), "WARNING")
-
-	var different bytes.Buffer
-	printDiff(&different, diffReport(before), diffReport(swapped))
-	assert.Contains(t, different.String(), "judgments: trec/annotations.keyword.yaml → trec/annotations.bm25.yaml")
-}
-
 func TestPrintDiff_ChangeFromAZeroBaselineHasNoPercentage(t *testing.T) {
 	before := diffReport(diffRun{runID: "a", kValues: []int{10}, ndcg: map[int]float64{10: 0}, threshold: 1})
 	after := diffReport(diffRun{runID: "b", kValues: []int{10}, ndcg: map[int]float64{10: 0.4}, threshold: 1})

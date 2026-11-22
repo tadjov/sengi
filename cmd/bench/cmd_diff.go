@@ -520,15 +520,7 @@ func judgmentsOf(r *report.Report) string {
 	if sources == nil || sources.Judgments == "" {
 		return scoringNotRecorded
 	}
-	if !filepath.IsAbs(sources.Judgments) {
-		return filepath.ToSlash(filepath.Clean(sources.Judgments))
-	}
-	if sources.Spec != "" {
-		// Older reports recorded absolute paths.
-		ranIn := &trackctx.Track{Root: filepath.Dir(sources.Spec)}
-		return ranIn.Relative(sources.Judgments)
-	}
-	return filepath.Clean(sources.Judgments)
+	return filepath.ToSlash(filepath.Clean(sources.Judgments))
 }
 
 type diffJudgmentsFlags struct {

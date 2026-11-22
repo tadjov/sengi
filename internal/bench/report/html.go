@@ -45,39 +45,6 @@ func RenderHTML(r *Report) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// ─── git-relative path helper ────────────────────────────────────────────────
-
-// repoRelPath shortens an older report's absolute path to the repo root, or to its basename.
-func repoRelPath(path string) string {
-	if path == "" || !filepath.IsAbs(path) {
-		return path
-	}
-	root := findGitRoot(filepath.Dir(path))
-	if root == "" {
-		return filepath.Base(path)
-	}
-	rel, err := filepath.Rel(root, path)
-	if err != nil {
-		return path
-	}
-	return rel
-}
-
-func findGitRoot(start string) string {
-	dir := start
-	for i := 0; i < 20; i++ {
-		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return ""
-		}
-		dir = parent
-	}
-	return ""
-}
-
 // ─── view model ─────────────────────────────────────────────────────────────
 
 type htmlReport struct {
@@ -185,7 +152,7 @@ func htmlQualityCells(agg AggregatedEntry, kVals []int) htmlAggRow {
 		row.NDCG = append(row.NDCG, c)
 	}
 	for _, k := range kVals {
-		row.NDCGLinear = append(row.NDCGLinear, fmtLinearNDCG(agg.NDCGLinear, k))
+		row.NDCGLinear = append(row.NDCGLinear, fmt.Sprintf("%.4f", agg.NDCGLinear[k]))
 	}
 	row.MAP = htmlCell{Val: fmt.Sprintf("%.4f", agg.MAP)}
 	row.MRR = htmlCell{Val: fmt.Sprintf("%.4f", agg.MRR)}
@@ -217,10 +184,10 @@ func buildViewModel(r *Report) htmlReport {
 	}
 	if s := r.Provenance.Sources; s != nil {
 		vm.Sources = &htmlSources{
-			Spec:      repoRelPath(s.Spec),
-			Suites:    repoRelPaths(s.Suites),
-			Pool:      repoRelPath(s.Pool),
-			Judgments: repoRelPath(s.Judgments),
+			Spec:      s.Spec,
+			Suites:    strings.Join(s.Suites, ", "),
+			Pool:      s.Pool,
+			Judgments: s.Judgments,
 		}
 	}
 

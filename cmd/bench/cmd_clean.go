@@ -170,9 +170,8 @@ func staleReports(newestFirst []string, retention reportRetention) []string {
 	return stale
 }
 
-// isCompleteReport reports whether path is a readable report that bench run
-// recorded nothing incomplete about. Reports written before settings.incomplete
-// existed are checked for errored executions directly.
+// isCompleteReport reports whether path is a readable report with no errored
+// execution that bench run recorded nothing incomplete about.
 func isCompleteReport(path string) bool {
 	rpt, err := report.ReadJSON(path)
 	if err != nil || len(rpt.Settings.Incomplete) > 0 {

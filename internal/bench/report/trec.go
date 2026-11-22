@@ -2,7 +2,6 @@ package report
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -43,15 +42,9 @@ func WriteTRECRun(w io.Writer, job *JobReport, engineName string) error {
 	return nil
 }
 
-// ErrNoRankings is returned for a report written before rankings were recorded.
-var ErrNoRankings = errors.New("report records no rankings; re-run bench run to export a TREC run")
-
 // WriteTRECRuns writes one run file per job and engine into dir, named
 // <job>.<engine>.run, since trec_eval scores each file as a single run.
 func WriteTRECRuns(r *Report, dir string) ([]string, error) {
-	if !hasRankings(r) {
-		return nil, ErrNoRankings
-	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("create run directory %s: %w", dir, err)
 	}
@@ -82,15 +75,4 @@ func writeTRECRunFile(path string, job *JobReport, engineName string) error {
 		return fmt.Errorf("close run file %s: %w", path, err)
 	}
 	return nil
-}
-
-func hasRankings(r *Report) bool {
-	for _, job := range r.Jobs {
-		for _, e := range job.PerQuery {
-			if len(e.Ranking) > 0 {
-				return true
-			}
-		}
-	}
-	return false
 }

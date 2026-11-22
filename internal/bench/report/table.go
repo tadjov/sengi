@@ -72,7 +72,7 @@ func hasAnyJudgments(jr *JobReport) bool {
 	return false
 }
 
-// fmtRecorded renders a metric older reports never recorded as "—", not 0.
+// fmtRecorded renders a metric that was not recorded as "—", not 0.
 func fmtRecorded(v *float64) string {
 	if v == nil {
 		return "—"
@@ -150,7 +150,7 @@ func writeMDMetricsTable(w io.Writer, title string, aggregated []AggregatedEntry
 				row = append(row, fmt.Sprintf("%.4f", agg.NDCG[k]))
 			}
 			for _, k := range kValues {
-				row = append(row, fmtLinearNDCG(agg.NDCGLinear, k))
+				row = append(row, fmt.Sprintf("%.4f", agg.NDCGLinear[k]))
 			}
 			for _, k := range kValues {
 				row = append(row, fmt.Sprintf("%.4f", agg.Precision[k]))
@@ -341,7 +341,7 @@ func writeMetricsTable(w io.Writer, title string, aggregated []AggregatedEntry, 
 				row = append(row, fmtBest(agg.NDCG[k], bestNDCG[k]))
 			}
 			for _, k := range kValues {
-				row = append(row, fmtBestLinearNDCG(agg.NDCGLinear, k, bestLinearNDCG[k]))
+				row = append(row, fmtBest(agg.NDCGLinear[k], bestLinearNDCG[k]))
 			}
 			for _, k := range kValues {
 				row = append(row, fmtBest(agg.Precision[k], bestP[k]))
@@ -510,8 +510,6 @@ func testCells(s PairwiseSignificance) (w, p, adjusted string) {
 	return fmt.Sprintf("%.1f", s.W), fmt.Sprintf("%.4f", s.P), fmtRecorded(s.AdjustedP)
 }
 
-// fmtMeanDifference shows a dash for reports written before the difference was
-// recorded, which would otherwise read as no difference.
 func fmtMeanDifference(d *metrics.Interval) string {
 	if d == nil {
 		return "—"
@@ -590,22 +588,6 @@ const (
 
 func ndcgHeader(k int, gain string) string {
 	return fmt.Sprintf("NDCG@%d (gain %s)", k, gain)
-}
-
-// fmtLinearNDCG shows a dash for reports written before linear NDCG was
-// recorded, which would otherwise read as 0.
-func fmtLinearNDCG(scores map[int]float64, k int) string {
-	if scores == nil {
-		return "—"
-	}
-	return fmt.Sprintf("%.4f", scores[k])
-}
-
-func fmtBestLinearNDCG(scores map[int]float64, k int, best float64) string {
-	if scores == nil {
-		return tDim.Sprint("—")
-	}
-	return fmtBest(scores[k], best)
 }
 
 func largestK(kValues []int) int {

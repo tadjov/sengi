@@ -173,24 +173,6 @@ func TestRun_ASuiteOutsideTheTrackIsRecordedRelativeToIt(t *testing.T) {
 	assert.Equal(t, want, recorded)
 }
 
-func TestPrintDiff_AnAbsoluteAndATrackRelativeReportOfOneTrackScoreAlike(t *testing.T) {
-	judge := &meta.Judge{Strategy: "keyword"}
-	older := diffRun{
-		runID: "a", kValues: []int{10}, ndcg: map[int]float64{10: 0.6}, threshold: 1, judge: judge,
-		spec:      "/Users/me/projects/sengi/tracks/cc-news/fts/spec.yaml",
-		judgments: "/Users/me/projects/sengi/tracks/cc-news/fts/trec/annotations.keyword.yaml",
-	}
-	relative := older
-	relative.runID = "b"
-	relative.spec = "spec.yaml"
-	relative.judgments = "trec/annotations.keyword.yaml"
-
-	var out bytes.Buffer
-	printDiff(&out, diffReport(older), diffReport(relative))
-
-	assert.NotContains(t, out.String(), "WARNING")
-}
-
 func TestPrintDiff_OneJudgmentsFileReachedThroughASymlinkIsNotAWarning(t *testing.T) {
 	real := filepath.Join(t.TempDir(), "fts")
 	require.NoError(t, os.MkdirAll(filepath.Join(real, "trec"), 0o755))
