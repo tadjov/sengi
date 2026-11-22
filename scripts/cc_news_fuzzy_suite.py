@@ -67,7 +67,7 @@ TEMPLATES = """templates:
           paradedb.match('content', $1)
         ]
       )
-      ORDER BY pdb.score(id) DESC
+      ORDER BY pdb.score(id) DESC, id
       LIMIT $2::int
 
   - id: tiger_multi_field
@@ -83,12 +83,12 @@ TEMPLATES = """templates:
   - id: es_multi_match_boosted
     args: [terms]
     query: |
-      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "_source": false, "track_total_hits": false}
+      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   - id: es_fuzzy
     args: [terms]
     query: |
-      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"], "fuzziness": "AUTO"}}, "size": 100, "_source": false, "track_total_hits": false}
+      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"], "fuzziness": "AUTO"}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   # Trigram similarity of the query to the title, at pg_trgm's default threshold:
   # the approach most people reach for first.
@@ -196,7 +196,7 @@ def paradedb_fuzzy(typed):
             clauses.append(f"paradedb.boost({boost}, {match})" if boost else match)
     body = ",\n    ".join(clauses)
     return ("SELECT id FROM articles\nWHERE id @@@ paradedb.boolean(should => ARRAY[\n    " + body + "\n])\n"
-            "ORDER BY pdb.score(id) DESC\nLIMIT 100")
+            "ORDER BY pdb.score(id) DESC, id\nLIMIT 100")
 
 
 def templated(name, template, params):

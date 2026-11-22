@@ -43,8 +43,7 @@ DESCRIPTIVE = [
 
 # Every leg orders its own ties by id, and the SQL fusions rank inside each leg
 # the same way, so pg-rrf and the client-side pg-rrf-client fuse the same input.
-# The vector legs sort the HNSW top-k afterwards: a tie-break inside the scan
-# would stop the index serving the ORDER BY.
+# Vector legs break ties before the LIMIT, and HNSW still serves the distance.
 TEMPLATES = """templates:
   - id: pg_multi_field
     args: [terms, rank_norm, limit]
@@ -65,7 +64,7 @@ TEMPLATES = """templates:
           paradedb.match('content', $1)
         ]
       )
-      ORDER BY pdb.score(id) DESC
+      ORDER BY pdb.score(id) DESC, id
       LIMIT $2::int
 
   - id: tiger_multi_field
@@ -81,7 +80,7 @@ TEMPLATES = """templates:
   - id: es_multi_match_boosted
     args: [terms]
     query: |
-      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "_source": false, "track_total_hits": false}
+      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   - id: pg_nearest
     args: [embedding_model, query_vector, limit]
@@ -90,22 +89,24 @@ TEMPLATES = """templates:
         SELECT article_id AS id, embedding <=> $2::vector AS distance
         FROM article_embeddings
         WHERE model_name = $1
-        ORDER BY embedding <=> $2::vector
+        ORDER BY embedding <=> $2::vector, article_id
         LIMIT $3::int
       ) nearest
       ORDER BY distance, id
 
+  # k above size lets the id sort cut tied vectors, not load order.
   - id: es_knn
     args: [query_vector]
     query: |
-      {"knn": {"field": "embedding", "query_vector": {{#toJson}}query_vector{{/toJson}}, "k": 100, "num_candidates": 200}, "size": 100, "_source": false, "track_total_hits": false}
+      {"knn": {"field": "embedding", "query_vector": {{#toJson}}query_vector{{/toJson}}, "k": 200, "num_candidates": 200}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   # Elasticsearch's own one-request hybrid on the basic licence: the BM25 and kNN
   # scores are summed with the default boosts.
+  # Tied vectors are cut by load order; no sort reaches the kNN cut.
   - id: es_linear
     args: [terms, query_vector]
     query: |
-      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "knn": {"field": "embedding", "query_vector": {{#toJson}}query_vector{{/toJson}}, "k": 100, "num_candidates": 200}, "size": 100, "_source": false, "track_total_hits": false}
+      {"query": {"multi_match": {"query": "{{terms}}", "fields": ["title^3", "description^2", "content"]}}, "knn": {"field": "embedding", "query_vector": {{#toJson}}query_vector{{/toJson}}, "k": 100, "num_candidates": 200}, "size": 100, "sort": ["_score", {"id": "asc"}], "_source": false, "track_total_hits": false}
 
   - id: pg_rrf
     args: [terms, rank_norm, embedding_model, query_vector, window, rank_constant]
@@ -124,7 +125,7 @@ TEMPLATES = """templates:
           SELECT article_id AS id, embedding <=> $4::vector AS distance
           FROM article_embeddings
           WHERE model_name = $3
-          ORDER BY embedding <=> $4::vector
+          ORDER BY embedding <=> $4::vector, article_id
           LIMIT $5::int
         ) nearest
       )
@@ -150,7 +151,7 @@ TEMPLATES = """templates:
               paradedb.match('content', $1)
             ]
           )
-          ORDER BY pdb.score(id) DESC
+          ORDER BY pdb.score(id) DESC, id
           LIMIT $4::int
         ) top
       ),
@@ -159,7 +160,7 @@ TEMPLATES = """templates:
           SELECT article_id AS id, embedding <=> $3::vector AS distance
           FROM article_embeddings
           WHERE model_name = $2
-          ORDER BY embedding <=> $3::vector
+          ORDER BY embedding <=> $3::vector, article_id
           LIMIT $4::int
         ) nearest
       )
@@ -190,7 +191,7 @@ TEMPLATES = """templates:
           SELECT article_id AS id, embedding <=> $3::vector AS distance
           FROM article_embeddings
           WHERE model_name = $2
-          ORDER BY embedding <=> $3::vector
+          ORDER BY embedding <=> $3::vector, article_id
           LIMIT $4::int
         ) nearest
       )
