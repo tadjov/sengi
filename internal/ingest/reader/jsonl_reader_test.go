@@ -1,7 +1,7 @@
 package reader
 
 import (
-	"context"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -10,29 +10,17 @@ const sampleJSONL = `{"id":"abc123","title":"Test Article","author":"Jane Doe","
 {"id":"def456","title":"Second Article","author":"","content":"More content"}
 `
 
-func TestJSONLReader_ReadParallel(t *testing.T) {
-	jr := NewJSONLReader(strings.NewReader(sampleJSONL))
-	ctx := context.Background()
-	ch, err := jr.ReadParallel(ctx, 4)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestJSONLReader_Records(t *testing.T) {
+	var ids []string
+	for record, err := range NewJSONLReader(strings.NewReader(sampleJSONL)).Records() {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		ids = append(ids, record["id"])
 	}
 
-	var results []ParallelReaderResult
-	for r := range ch {
-		results = append(results, r)
-	}
-
-	if len(results) != 2 {
-		t.Fatalf("expected 2 results, got %d", len(results))
-	}
-	for _, r := range results {
-		if r.Err != nil {
-			t.Errorf("unexpected record error: %v", r.Err)
-		}
-		if r.Record["id"] == "" {
-			t.Error("expected non-empty id")
-		}
+	if want := []string{"abc123", "def456"}; !slices.Equal(ids, want) {
+		t.Fatalf("ids = %v, want %v", ids, want)
 	}
 }
 

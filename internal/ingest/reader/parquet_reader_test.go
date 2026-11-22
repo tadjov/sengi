@@ -2,9 +2,7 @@ package reader
 
 import (
 	"bytes"
-	"context"
 	"fmt"
-	"sort"
 	"testing"
 
 	"github.com/parquet-go/parquet-go"
@@ -100,6 +98,7 @@ func TestParquetReader_ReadAcrossRowGroups(t *testing.T) {
 
 	records := readRecords(t, r)
 	require.Len(t, records, 3)
+	assert.Equal(t, []string{"1", "2", "3"}, []string{records[0]["id"], records[1]["id"], records[2]["id"]})
 }
 
 func TestParquetReader_ReadBatchBoundary(t *testing.T) {
@@ -113,66 +112,6 @@ func TestParquetReader_ReadBatchBoundary(t *testing.T) {
 
 	records := readRecords(t, r)
 	assert.Len(t, records, parquetRowBatchSize+7)
-}
-
-func TestParquetReader_ReadParallel(t *testing.T) {
-	r := newTestParquetReader(t,
-		[]parquetTestRow{{ID: "1", Title: "one"}, {ID: "2", Title: "two"}},
-		[]parquetTestRow{{ID: "3", Title: "three"}},
-		[]parquetTestRow{{ID: "4", Title: "four"}},
-	)
-
-	results, err := r.ReadParallel(context.Background(), 4)
-	require.NoError(t, err)
-
-	var ids []string
-	for result := range results {
-		require.NoError(t, result.Err)
-		ids = append(ids, result.Record["id"])
-	}
-
-	sort.Strings(ids)
-	assert.Equal(t, []string{"1", "2", "3", "4"}, ids)
-}
-
-func TestParquetReader_ReadParallelSingleRowGroup(t *testing.T) {
-	r := newTestParquetReader(t, []parquetTestRow{
-		{ID: "1", Title: "one"},
-		{ID: "2", Title: "two"},
-	})
-	require.Len(t, r.file.RowGroups(), 1)
-
-	results, err := r.ReadParallel(context.Background(), 8)
-	require.NoError(t, err)
-
-	var count int
-	for result := range results {
-		require.NoError(t, result.Err)
-		count++
-	}
-	assert.Equal(t, 2, count)
-}
-
-func TestParquetReader_ReadParallelCancelledContext(t *testing.T) {
-	batches := make([][]parquetTestRow, 4)
-	for i := range batches {
-		batch := make([]parquetTestRow, 500)
-		for j := range batch {
-			batch[j] = parquetTestRow{ID: fmt.Sprintf("%d-%d", i, j), Title: "title"}
-		}
-		batches[i] = batch
-	}
-	r := newTestParquetReader(t, batches...)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	results, err := r.ReadParallel(ctx, 4)
-	require.NoError(t, err)
-
-	cancel()
-
-	// The channel must still close once workers observe the cancellation.
-	for range results {
-	}
 }
 
 func TestParquetReader_OpenInvalidFile(t *testing.T) {

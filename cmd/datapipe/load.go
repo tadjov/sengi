@@ -353,7 +353,7 @@ func (in *loadInputs) Close() {
 // canonicalArticles reads in file order, which the embeddings follow.
 func canonicalArticles(ctx context.Context, file *datapackage.ResourceFile, format string) iter.Seq2[document.Article, error] {
 	return func(yield func(document.Article, error) bool) {
-		var source reader.RawParallelReader
+		var source reader.RecordReader
 		switch format {
 		case "parquet":
 			parquetReader, err := reader.NewParquetReader(file, file.Size())
@@ -369,21 +369,18 @@ func canonicalArticles(ctx context.Context, file *datapackage.ResourceFile, form
 			return
 		}
 
-		readCtx, cancel := context.WithCancel(ctx)
-		defer cancel()
-		records, err := source.ReadParallel(readCtx, 1)
-		if err != nil {
-			yield(document.Article{}, fmt.Errorf("read canonical resource: %w", err))
-			return
-		}
 		mapper := reader.NewArticleDirectMapper()
 		row := 0
-		for record := range records {
-			if record.Err != nil {
-				yield(document.Article{}, fmt.Errorf("read canonical row %d: %w", row, record.Err))
+		for record, err := range source.Records() {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				yield(document.Article{}, ctxErr)
 				return
 			}
-			article, err := mapper.Map(record.Record)
+			if err != nil {
+				yield(document.Article{}, fmt.Errorf("read canonical row %d: %w", row, err))
+				return
+			}
+			article, err := mapper.Map(record)
 			if err != nil {
 				yield(document.Article{}, fmt.Errorf("canonical row %d: %w", row, err))
 				return
@@ -392,10 +389,6 @@ func canonicalArticles(ctx context.Context, file *datapackage.ResourceFile, form
 				return
 			}
 			row++
-		}
-		// The reader closes records on cancel too; that is not the end of the corpus.
-		if err := ctx.Err(); err != nil {
-			yield(document.Article{}, err)
 		}
 	}
 }

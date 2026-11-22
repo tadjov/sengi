@@ -1,21 +1,15 @@
 package reader
 
 import (
-	"context"
 	"errors"
 	"io"
 	"iter"
 	"strings"
-	"sync"
 
 	"github.com/parquet-go/parquet-go"
 )
 
 const parquetRowBatchSize = 256
-
-var (
-	_ RawParallelReader = (*ParquetReader)(nil)
-)
 
 type ParquetReader struct {
 	file    *parquet.File
@@ -70,60 +64,6 @@ func (p *ParquetReader) Records() iter.Seq2[map[string]string, error] {
 			}
 		}
 	}
-}
-
-func (p *ParquetReader) ReadParallel(ctx context.Context, workerCount int) (<-chan ParallelReaderResult, error) {
-	rowGroups := p.file.RowGroups()
-	out := make(chan ParallelReaderResult)
-
-	if workerCount < 1 {
-		workerCount = 1
-	}
-	if workerCount > len(rowGroups) {
-		workerCount = len(rowGroups)
-	}
-
-	jobs := make(chan int, len(rowGroups))
-	for i := range rowGroups {
-		jobs <- i
-	}
-	close(jobs)
-
-	var wg sync.WaitGroup
-	wg.Add(workerCount)
-	for w := 0; w < workerCount; w++ {
-		go func() {
-			defer wg.Done()
-			for i := range jobs {
-				err := p.eachRecord(rowGroups[i], func(record map[string]string) error {
-					select {
-					case out <- ParallelReaderResult{Record: record}:
-						return nil
-					case <-ctx.Done():
-						return ctx.Err()
-					}
-				})
-				if err == nil {
-					continue
-				}
-				if ctx.Err() != nil {
-					return
-				}
-				select {
-				case out <- ParallelReaderResult{Err: err}:
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
-	}
-
-	go func() {
-		wg.Wait()
-		close(out)
-	}()
-
-	return out, nil
 }
 
 // eachRecord decodes a row group in batches, converting every row to a record
