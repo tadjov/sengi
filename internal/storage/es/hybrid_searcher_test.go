@@ -49,7 +49,7 @@ func TestHybridSearcher_SearchHybrid_RanksBothSignalsFirst(t *testing.T) {
 	})
 
 	res, err := searcher.SearchHybrid(ctx,
-		dquery.NewHybrid("climate change"),
+		dquery.NewHybrid("climate change", dquery.HybridOptions{}),
 		&dquery.BaseOptions{Size: 10},
 	)
 	if err != nil {
@@ -93,7 +93,7 @@ func TestHybridSearcher_SearchHybrid_OnlySeesTheQueryModel(t *testing.T) {
 	})
 	retagEmbedding(t, cfg, otherModel, embedding.DefaultModel)
 
-	res, err := searcher.SearchHybrid(ctx, dquery.NewHybrid("climate change"), &dquery.BaseOptions{Size: 10})
+	res, err := searcher.SearchHybrid(ctx, dquery.NewHybrid("climate change", dquery.HybridOptions{}), &dquery.BaseOptions{Size: 10})
 	if err != nil {
 		t.Fatalf("SearchHybrid: %v", err)
 	}

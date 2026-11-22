@@ -9,23 +9,23 @@ func TestConstructorsAcceptOnlySearchableFields(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "match on a searchable field", build: func() error {
-			_, err := NewMatch(FieldDescription, "smith")
+			_, err := NewMatch(FieldDescription, "smith", MatchOptions{})
 			return err
 		}},
 		{name: "match on an unknown field", wantErr: true, build: func() error {
-			_, err := NewMatch("body", "climate")
+			_, err := NewMatch("body", "climate", MatchOptions{})
 			return err
 		}},
 		{name: "match without text", wantErr: true, build: func() error {
-			_, err := NewMatch(FieldTitle, "")
+			_, err := NewMatch(FieldTitle, "", MatchOptions{})
 			return err
 		}},
 		{name: "phrase on searchable fields", build: func() error {
-			_, err := NewPhrase("climate change", []Field{FieldTitle, FieldContent})
+			_, err := NewPhrase("climate change", []Field{FieldTitle, FieldContent}, PhraseOptions{})
 			return err
 		}},
 		{name: "phrase with one unknown field", wantErr: true, build: func() error {
-			_, err := NewPhrase("climate change", []Field{FieldTitle, "headline"})
+			_, err := NewPhrase("climate change", []Field{FieldTitle, "headline"}, PhraseOptions{})
 			return err
 		}},
 	}

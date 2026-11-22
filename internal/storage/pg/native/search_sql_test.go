@@ -68,52 +68,52 @@ func TestSearcher_SendsThePinnedSQL(t *testing.T) {
 		search search
 	}{
 		{"string", func(opts *dquery.BaseOptions) (*storage.SearchResult, error) {
-			return s.SearchStringQuery(testCtx, dquery.NewQueryString("budget tariff"), opts)
+			return s.SearchStringQuery(testCtx, dquery.NewString("budget tariff", dquery.StringOptions{}), opts)
 		}},
 		{"field title", func(opts *dquery.BaseOptions) (*storage.SearchResult, error) {
-			match, err := dquery.NewMatch(dquery.FieldTitle, "budget")
+			match, err := dquery.NewMatch(dquery.FieldTitle, "budget", dquery.MatchOptions{})
 			if err != nil {
 				return nil, err
 			}
 			return s.SearchField(testCtx, match, opts)
 		}},
 		{"field content or", func(opts *dquery.BaseOptions) (*storage.SearchResult, error) {
-			match, err := dquery.NewMatch(dquery.FieldContent, "budget tariff", dquery.WithMatchOperator(operator.Or))
+			match, err := dquery.NewMatch(dquery.FieldContent, "budget tariff", dquery.MatchOptions{Operator: operator.Explicit(operator.Or)})
 			if err != nil {
 				return nil, err
 			}
 			return s.SearchField(testCtx, match, opts)
 		}},
 		{"fields boosted", func(opts *dquery.BaseOptions) (*storage.SearchResult, error) {
-			q, err := dquery.NewMultiMatchQuery("budget", []string{"title^3", "content"})
+			q, err := dquery.NewMultiMatch("budget", []string{"title^3", "content"}, dquery.MultiMatchOptions{})
 			if err != nil {
 				return nil, err
 			}
 			return s.SearchFields(testCtx, q, opts)
 		}},
 		{"fields all", func(opts *dquery.BaseOptions) (*storage.SearchResult, error) {
-			q, err := dquery.NewMultiMatchQuery("budget", []string{"title", "description", "content"})
+			q, err := dquery.NewMultiMatch("budget", []string{"title", "description", "content"}, dquery.MultiMatchOptions{})
 			if err != nil {
 				return nil, err
 			}
 			return s.SearchFields(testCtx, q, opts)
 		}},
 		{"phrase exact", func(opts *dquery.BaseOptions) (*storage.SearchResult, error) {
-			q, err := dquery.NewPhrase("budget tariff", []dquery.Field{dquery.FieldTitle})
+			q, err := dquery.NewPhrase("budget tariff", []dquery.Field{dquery.FieldTitle}, dquery.PhraseOptions{})
 			if err != nil {
 				return nil, err
 			}
 			return s.SearchPhrase(testCtx, q, opts)
 		}},
 		{"phrase slop", func(opts *dquery.BaseOptions) (*storage.SearchResult, error) {
-			q, err := dquery.NewPhrase("budget tariff", []dquery.Field{dquery.FieldTitle, dquery.FieldDescription}, dquery.WithPhraseSlop(2))
+			q, err := dquery.NewPhrase("budget tariff", []dquery.Field{dquery.FieldTitle, dquery.FieldDescription}, dquery.PhraseOptions{Slop: 2})
 			if err != nil {
 				return nil, err
 			}
 			return s.SearchPhrase(testCtx, q, opts)
 		}},
 		{"boolean", func(opts *dquery.BaseOptions) (*storage.SearchResult, error) {
-			return s.SearchBoolean(testCtx, &dquery.Boolean{Expression: "budget AND NOT harbor"}, opts)
+			return s.SearchBoolean(testCtx, dquery.NewBoolean("budget AND NOT harbor", dquery.BooleanOptions{}), opts)
 		}},
 	}
 	pages := []struct {

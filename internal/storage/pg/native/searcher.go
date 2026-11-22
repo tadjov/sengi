@@ -59,7 +59,7 @@ func (r *Searcher) SearchStringQuery(ctx context.Context, query *dquery.String, 
 }
 
 func (r *Searcher) SearchField(ctx context.Context, query *dquery.Match, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
-	lang := query.GetLanguage()
+	lang := query.Language
 	op := operator.Resolve(query.Operator, DefaultOperator)
 	slog.Info("Executing pg match search",
 		"query", query.Query,
@@ -79,7 +79,7 @@ func (r *Searcher) SearchField(ctx context.Context, query *dquery.Match, baseOpt
 }
 
 func (r *Searcher) SearchFields(ctx context.Context, query *dquery.MultiMatch, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
-	lang := query.GetLanguage()
+	lang := query.Language
 	op := operator.Resolve(query.Operator, DefaultOperator)
 	slog.Info("Executing pg multi_match search",
 		"query", query.Query,
@@ -102,8 +102,8 @@ func (r *Searcher) SearchFields(ctx context.Context, query *dquery.MultiMatch, b
 // phraseto_tsquery; a larger slop ORs every allowed distance between the
 // phrase's lexemes, bound as a ready tsquery so they are not stemmed again.
 func (r *Searcher) SearchPhrase(ctx context.Context, query *dquery.Phrase, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
-	lang := query.GetLanguage()
-	slop := query.GetSlop()
+	lang := query.Language
+	slop := query.Slop
 
 	slog.Info("Executing pg phrase search",
 		"query", query.Query,
@@ -137,7 +137,7 @@ func (r *Searcher) SearchPhrase(ctx context.Context, query *dquery.Phrase, baseO
 }
 
 func (r *Searcher) SearchBoolean(ctx context.Context, query *dquery.Boolean, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
-	lang := query.GetLanguage()
+	lang := query.Language
 
 	slog.Info("Executing pg boolean search",
 		"expression", query.Expression,

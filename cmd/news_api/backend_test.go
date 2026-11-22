@@ -226,13 +226,13 @@ func TestOpenSearchBackend_ElasticsearchSearchersShareOneClient(t *testing.T) {
 	if !backend.health.Healthy(ctx) {
 		t.Fatal("health check failed against the fake cluster")
 	}
-	if _, err := backend.fts.(storage.StringQuerySearcher).SearchStringQuery(ctx, dquery.NewQueryString("climate"), opts); err != nil {
+	if _, err := backend.fts.(storage.StringQuerySearcher).SearchStringQuery(ctx, dquery.NewString("climate", dquery.StringOptions{}), opts); err != nil {
 		t.Fatalf("full-text search: %v", err)
 	}
 	if _, err := backend.semantic.SearchSemantic(ctx, dquery.NewSemantic("climate"), opts); err != nil {
 		t.Fatalf("semantic search: %v", err)
 	}
-	if _, err := backend.hybrid.SearchHybrid(ctx, dquery.NewHybrid("climate"), opts); err != nil {
+	if _, err := backend.hybrid.SearchHybrid(ctx, dquery.NewHybrid("climate", dquery.HybridOptions{}), opts); err != nil {
 		t.Fatalf("hybrid search: %v", err)
 	}
 

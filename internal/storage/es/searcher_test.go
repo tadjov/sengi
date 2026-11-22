@@ -28,13 +28,13 @@ var searchMethods = []searchMethod{
 	{
 		name: "SearchStringQuery",
 		search: func(ctx context.Context, s *Searcher, term string, opts *dquery.BaseOptions) (*storage.SearchResult, error) {
-			return s.SearchStringQuery(ctx, &dquery.String{Query: term}, opts)
+			return s.SearchStringQuery(ctx, dquery.NewString(term, dquery.StringOptions{}), opts)
 		},
 	},
 	{
 		name: "SearchField",
 		search: func(ctx context.Context, s *Searcher, term string, opts *dquery.BaseOptions) (*storage.SearchResult, error) {
-			match, err := dquery.NewMatch(dquery.FieldTitle, term)
+			match, err := dquery.NewMatch(dquery.FieldTitle, term, dquery.MatchOptions{})
 			if err != nil {
 				return nil, err
 			}
@@ -44,7 +44,7 @@ var searchMethods = []searchMethod{
 	{
 		name: "SearchFields",
 		search: func(ctx context.Context, s *Searcher, term string, opts *dquery.BaseOptions) (*storage.SearchResult, error) {
-			q, err := dquery.NewMultiMatchQuery(term, []string{"title", "content"})
+			q, err := dquery.NewMultiMatch(term, []string{"title", "content"}, dquery.MultiMatchOptions{})
 			if err != nil {
 				return nil, err
 			}
@@ -54,7 +54,7 @@ var searchMethods = []searchMethod{
 	{
 		name: "SearchPhrase",
 		search: func(ctx context.Context, s *Searcher, term string, opts *dquery.BaseOptions) (*storage.SearchResult, error) {
-			q, err := dquery.NewPhrase(term, []dquery.Field{dquery.FieldTitle})
+			q, err := dquery.NewPhrase(term, []dquery.Field{dquery.FieldTitle}, dquery.PhraseOptions{})
 			if err != nil {
 				return nil, err
 			}
@@ -64,7 +64,7 @@ var searchMethods = []searchMethod{
 	{
 		name: "SearchBoolean",
 		search: func(ctx context.Context, s *Searcher, term string, opts *dquery.BaseOptions) (*storage.SearchResult, error) {
-			return s.SearchBoolean(ctx, &dquery.Boolean{Expression: term}, opts)
+			return s.SearchBoolean(ctx, dquery.NewBoolean(term, dquery.BooleanOptions{}), opts)
 		},
 	},
 }

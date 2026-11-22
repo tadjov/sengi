@@ -60,7 +60,7 @@ func TestHybridSearcher_LexicalLegReadsTheQueryAsFreeText(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := searcher.SearchHybrid(testCtx, dquery.NewHybrid(tt.text), &dquery.BaseOptions{Size: 10})
+			res, err := searcher.SearchHybrid(testCtx, dquery.NewHybrid(tt.text, dquery.HybridOptions{}), &dquery.BaseOptions{Size: 10})
 			if err != nil {
 				t.Fatalf("SearchHybrid: %v", err)
 			}

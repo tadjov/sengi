@@ -95,7 +95,7 @@ func (p *StringQueryParams) ToDomain() (*query.String, error) {
 	if err != nil {
 		return nil, err
 	}
-	return query.NewQueryString(p.Query, query.WithQueryStringLanguage(lang)), nil
+	return query.NewString(p.Query, query.StringOptions{Language: lang}), nil
 }
 
 // HybridParams represents hybrid (lexical FTS + vector) query parameters.
@@ -110,19 +110,11 @@ func (p *HybridParams) ToDomain() (*query.Hybrid, error) {
 		return nil, err
 	}
 
-	var opts []query.HybridOption
-
 	lang, err := parseLanguage(p.Language)
 	if err != nil {
 		return nil, err
 	}
-	opts = append(opts, query.WithHybridLanguage(lang))
-
-	if p.K > 0 {
-		opts = append(opts, query.WithHybridK(p.K))
-	}
-
-	return query.NewHybrid(p.Query, opts...), nil
+	return query.NewHybrid(p.Query, query.HybridOptions{Language: lang, K: p.K}), nil
 }
 
 func (p *MatchParams) ToDomain() (*query.Match, error) {
@@ -134,29 +126,19 @@ func (p *MatchParams) ToDomain() (*query.Match, error) {
 		return nil, err
 	}
 
-	var opts []query.MatchQueryOption
-
 	op, err := parseOperator(p.Operator)
 	if err != nil {
 		return nil, err
 	}
-	if op != nil {
-		opts = append(opts, query.WithMatchOperator(*op))
-	}
-
 	fuzziness, err := parseFuzziness(p.Fuzziness)
 	if err != nil {
 		return nil, err
 	}
-	opts = append(opts, query.WithMatchFuzziness(fuzziness))
-
 	lang, err := parseLanguage(p.Language)
 	if err != nil {
 		return nil, err
 	}
-	opts = append(opts, query.WithMatchLanguage(lang))
-
-	match, err := query.NewMatch(field, p.Query, opts...)
+	match, err := query.NewMatch(field, p.Query, query.MatchOptions{Language: lang, Operator: op, Fuzziness: fuzziness})
 	if err != nil {
 		return nil, apperr.NewValidationWrap("invalid match query", err)
 	}
@@ -167,23 +149,15 @@ func (p *MultiMatchParams) ToDomain() (*query.MultiMatch, error) {
 	if err := checkQueryLength("query", p.Query); err != nil {
 		return nil, err
 	}
-	var opts []query.MultiMatchQueryOption
-
 	op, err := parseOperator(p.Operator)
 	if err != nil {
 		return nil, err
 	}
-	if op != nil {
-		opts = append(opts, query.WithMultiMatchOperator(*op))
-	}
-
 	lang, err := parseLanguage(p.Language)
 	if err != nil {
 		return nil, err
 	}
-	opts = append(opts, query.WithMultiMatchLanguage(lang))
-
-	newQuery, err := query.NewMultiMatchQuery(p.Query, p.Fields, opts...)
+	newQuery, err := query.NewMultiMatch(p.Query, p.Fields, query.MultiMatchOptions{Language: lang, Operator: op})
 	if err != nil {
 		return nil, apperr.NewValidationWrap("invalid multi_match query", err)
 	}
@@ -201,17 +175,11 @@ func (p *BooleanParams) ToDomain() (*query.Boolean, error) {
 		return nil, err
 	}
 
-	b := &query.Boolean{
-		Expression: p.Expression,
-	}
-
 	lang, err := parseLanguage(p.Language)
 	if err != nil {
 		return nil, err
 	}
-	b.Language = lang
-
-	return b, nil
+	return query.NewBoolean(p.Expression, query.BooleanOptions{Language: lang}), nil
 }
 
 func (p *PhraseParams) ToDomain() (*query.Phrase, error) {
@@ -223,19 +191,11 @@ func (p *PhraseParams) ToDomain() (*query.Phrase, error) {
 		return nil, err
 	}
 
-	var opts []query.PhraseOption
-
-	if p.Slop > 0 {
-		opts = append(opts, query.WithPhraseSlop(p.Slop))
-	}
-
 	lang, err := parseLanguage(p.Language)
 	if err != nil {
 		return nil, err
 	}
-	opts = append(opts, query.WithPhraseLanguage(lang))
-
-	newQuery, err := query.NewPhrase(p.Query, fields, opts...)
+	newQuery, err := query.NewPhrase(p.Query, fields, query.PhraseOptions{Slop: p.Slop, Language: lang})
 	if err != nil {
 		return nil, apperr.NewValidationWrap("invalid phrase query", err)
 	}

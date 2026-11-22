@@ -61,7 +61,7 @@ func TestSearcher_UnresponsiveClusterFailsInsteadOfHanging(t *testing.T) {
 
 	result := make(chan error, 1)
 	go func() {
-		_, err := searcher.SearchStringQuery(context.Background(), dquery.NewQueryString("climate"), &dquery.BaseOptions{Size: 10})
+		_, err := searcher.SearchStringQuery(context.Background(), dquery.NewString("climate", dquery.StringOptions{}), &dquery.BaseOptions{Size: 10})
 		result <- err
 	}()
 

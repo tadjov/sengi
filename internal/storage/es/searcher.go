@@ -78,7 +78,7 @@ func (r *Searcher) SearchField(ctx context.Context, query *dquery.Match, baseOpt
 		"query", query.Query,
 		"field", query.Field,
 		"operator", queryoperator.Resolve(query.Operator, DefaultOperator),
-		"fuzziness", query.GetFuzziness(),
+		"fuzziness", query.Fuzziness,
 		"has_cursor", baseOpts.Cursor != nil,
 		"size", baseOpts.Size)
 
@@ -86,7 +86,7 @@ func (r *Searcher) SearchField(ctx context.Context, query *dquery.Match, baseOpt
 		Query:    query.Query,
 		Operator: termOperator(query.Operator),
 	}
-	if fuzziness := query.GetFuzziness(); fuzziness != dquery.NoFuzziness {
+	if fuzziness := query.Fuzziness; fuzziness != dquery.NoFuzziness {
 		editDistance := string(fuzziness)
 		matchQuery.Fuzziness = &editDistance
 	}
@@ -118,13 +118,13 @@ func (r *Searcher) SearchFields(ctx context.Context, query *dquery.MultiMatch, b
 
 // SearchPhrase matches the phrase, within slop, in at least one of the fields.
 func (r *Searcher) SearchPhrase(ctx context.Context, query *dquery.Phrase, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
-	slop := query.GetSlop()
+	slop := query.Slop
 
 	slog.Info("Executing es phrase search",
 		"query", query.Query,
 		"fields", query.Fields,
 		"slop", slop,
-		"language", query.GetLanguage(),
+		"language", query.Language,
 		"has_cursor", baseOpts.Cursor != nil,
 		"size", baseOpts.Size)
 

@@ -36,3 +36,8 @@ func Resolve(op *Operator, engineDefault Operator) Operator {
 func (o Operator) IsOr() bool {
 	return o == Or
 }
+
+// Explicit is op as a stated operator, for options where nil means the engine's default.
+func Explicit(op Operator) *Operator {
+	return &op
+}

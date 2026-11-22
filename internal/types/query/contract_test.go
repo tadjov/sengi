@@ -48,7 +48,7 @@ func TestParseFieldBoost(t *testing.T) {
 }
 
 func TestNewMultiMatchQueryRejectsAnInvalidBoost(t *testing.T) {
-	if _, err := NewMultiMatchQuery("climate", []string{"title^NaN", "content"}); err == nil {
+	if _, err := NewMultiMatch("climate", []string{"title^NaN", "content"}, MultiMatchOptions{}); err == nil {
 		t.Fatal("NewMultiMatchQuery accepted a NaN boost")
 	}
 }

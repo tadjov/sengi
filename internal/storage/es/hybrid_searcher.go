@@ -41,7 +41,7 @@ func NewHybridSearcher(client *Client, embedder *embedding.Embedder, model strin
 // result is a single page (parity with the PG hybrid searcher).
 func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
 	size := baseOpts.Size
-	k := query.GetK()
+	k := query.K
 
 	legDepth := hybridCandidateDepth
 	if size > legDepth {
@@ -50,7 +50,7 @@ func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid,
 
 	slog.Info("Executing es hybrid RRF search",
 		"query", query.Query,
-		"language", query.GetLanguage(),
+		"language", query.Language,
 		"k", k,
 		"size", size,
 		"leg_depth", legDepth)
