@@ -39,7 +39,6 @@ type fakeStrategy struct {
 	calls atomic.Int64
 }
 
-func (f *fakeStrategy) Name() string { return f.name }
 func (f *fakeStrategy) Describe() meta.Judge {
 	return meta.Judge{Strategy: f.name}
 }
@@ -151,7 +150,7 @@ func TestRunner_SinkCalledPerQuery(t *testing.T) {
 // is graded, so the file still lands and names what is missing.
 func TestRunner_QueryWithoutTermsFailsTheRunAfterGradingTheRest(t *testing.T) {
 	for _, strategy := range []Strategy{NewKeywordStrategy(), NewBM25Strategy()} {
-		t.Run(strategy.Name(), func(t *testing.T) {
+		t.Run(strategy.Describe().Strategy, func(t *testing.T) {
 			pf, articles := buildPool(t, 3)
 			pf.Queries[0].QueryText = "the of a"
 			usable := pool.PoolEntry{QueryID: "q2", QueryText: "title"}

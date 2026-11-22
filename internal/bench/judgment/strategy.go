@@ -34,7 +34,6 @@ type GradingDoc struct {
 // Strategy grades through DocStrategy or PoolStrategy.
 // Describe names the judge every artifact records.
 type Strategy interface {
-	Name() string
 	Describe() meta.Judge
 }
 

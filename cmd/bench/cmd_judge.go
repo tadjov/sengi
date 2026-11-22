@@ -334,7 +334,7 @@ func carryOverGrades(f judgeFlags, current *pool.PoolFile, judge meta.Judge, str
 		return judgment.CarriedGrades{}, errors.New("--carry-over needs --carry-over-pool, the pool those judgments graded")
 	}
 	if _, wholePool := strat.(judgment.PoolStrategy); wholePool {
-		return judgment.CarriedGrades{}, fmt.Errorf("%s grades each doc against the whole pool, so its grades can't be carried over", strat.Name())
+		return judgment.CarriedGrades{}, fmt.Errorf("%s grades each doc against the whole pool, so its grades can't be carried over", judge.Strategy)
 	}
 	prior, err := judgment.ReadFile(f.carryOver)
 	if err != nil {

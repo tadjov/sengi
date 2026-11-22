@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -27,21 +28,12 @@ type VectorStrategy struct {
 	model string
 }
 
-// NewVectorStrategy builds the strategy from options. A VectorStore must be
-// supplied by the caller (cmd_judge wires it from the PG pool + embedder).
 func NewVectorStrategy(opts StrategyOptions) (*VectorStrategy, error) {
 	if opts.VectorStore == nil {
-		return nil, errNoVectorStore(StrategyVector)
+		return nil, errNoVectorStore
 	}
 	return &VectorStrategy{store: opts.VectorStore, model: opts.EmbeddingModel}, nil
 }
-
-// NewVectorStrategyWithStore injects a store directly (used in tests).
-func NewVectorStrategyWithStore(store storage.VectorStore, model string) *VectorStrategy {
-	return &VectorStrategy{store: store, model: model}
-}
-
-func (VectorStrategy) Name() string { return string(StrategyVector) }
 
 // Describe records the embedding model that produced the cosine scores, so a
 // vector-graded qrel set names the model it depends on.
@@ -93,9 +85,6 @@ func (s VectorStrategy) GradePool(ctx context.Context, q GradingQuery, docs []Gr
 // vectors looks the query's vector up once and fetches all candidate doc
 // vectors from the store in one round-trip.
 func (s VectorStrategy) vectors(ctx context.Context, q GradingQuery, docs []GradingDoc) ([]float32, map[uuid.UUID][]float32, error) {
-	if s.store == nil {
-		return nil, nil, fmt.Errorf("vector strategy: no vector store configured")
-	}
 	qVec, err := s.store.QueryVector(ctx, q.Text)
 	if err != nil {
 		return nil, nil, fmt.Errorf("embed query %q: %w", q.ID, err)
@@ -153,11 +142,8 @@ func checkVectorWidths(queryID string, qVec []float32, docs []GradingDoc, vecs m
 	return nil
 }
 
-func errNoVectorStore(kind StrategyKind) error {
-	return fmt.Errorf(
-		"%s strategy requires a vector store: set --pg/PG_CONNECTION_STRING and an embedding endpoint (--embedding-base / EMBEDDING_BASE_URL)",
-		kind)
-}
+var errNoVectorStore = errors.New(
+	"vector and hybrid strategies require a vector store: set --pg/PG_CONNECTION_STRING and an embedding endpoint (--embedding-base / EMBEDDING_BASE_URL)")
 
 func cosine(a, b []float32) float64 {
 	if len(a) == 0 || len(b) == 0 || len(a) != len(b) {

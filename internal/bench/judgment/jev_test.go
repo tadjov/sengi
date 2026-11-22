@@ -57,7 +57,6 @@ func TestJev_DescribeNamesTheReleaseTheRubricAndTheEndpoint(t *testing.T) {
 
 	got := s.Describe()
 
-	assert.Equal(t, "jev", s.Name())
 	assert.Equal(t, "jev", got.Strategy)
 	assert.Equal(t, "jev-1.14.0", got.Model)
 	assert.NotEmpty(t, got.RubricVersion)

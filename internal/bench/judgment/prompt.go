@@ -38,8 +38,8 @@ Rules:
 
 Output ONLY the JSON the request asks for. Never wrap it in markdown, never add prose.`
 
-// BuildGradingPrompt is the user payload for grading one doc.
-func BuildGradingPrompt(q GradingQuery, doc GradingDoc) string {
+// buildGradingPrompt is the user payload for grading one doc.
+func buildGradingPrompt(q GradingQuery, doc GradingDoc) string {
 	var sb strings.Builder
 	writeQuery(&sb, q)
 	fmt.Fprintf(&sb, "Article (doc_id: %s):\n", doc.ID)
@@ -88,10 +88,10 @@ type gradeResponse struct {
 	Grade *int   `json:"grade"`
 }
 
-// ParseGradeJSON extracts the {"doc_id","grade"} object from a raw LLM
+// parseGradeJSON extracts the {"doc_id","grade"} object from a raw LLM
 // response. Tolerates surrounding prose/code fences by isolating the first
 // balanced {...} block.
-func ParseGradeJSON(raw string, expectedDocID string) (int, error) {
+func parseGradeJSON(raw string, expectedDocID string) (int, error) {
 	body := isolateJSON(raw)
 
 	var resp gradeResponse

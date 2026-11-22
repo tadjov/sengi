@@ -16,8 +16,6 @@ const keywordRubricVersion = "v2"
 
 func NewKeywordStrategy() *KeywordStrategy { return &KeywordStrategy{} }
 
-func (KeywordStrategy) Name() string { return string(StrategyKeyword) }
-
 func (KeywordStrategy) Describe() meta.Judge {
 	return meta.Judge{Strategy: string(StrategyKeyword), RubricVersion: keywordRubricVersion, GateVersion: gateVersion}
 }

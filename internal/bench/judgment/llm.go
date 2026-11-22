@@ -28,8 +28,6 @@ func NewLLMStrategy(opts StrategyOptions) (*LLMStrategy, error) {
 	return &LLMStrategy{provider: p}, nil
 }
 
-func (s *LLMStrategy) Name() string { return string(StrategyLLM) }
-
 // Describe reports the grader for the artifact's judge block. The model is the
 // provider's resolved id — aliases are expanded at construction — so the qrels
 // name a concrete model and the resume guard can catch a grader swap.
@@ -58,13 +56,13 @@ func (s *LLMStrategy) Grade(ctx context.Context, q GradingQuery, doc GradingDoc)
 	}
 	text, err := s.provider.Complete(ctx, CompletionRequest{
 		System:    systemPrompt,
-		User:      BuildGradingPrompt(q, doc),
+		User:      buildGradingPrompt(q, doc),
 		MaxTokens: llmMaxOutputTokens,
 	})
 	if err != nil {
 		return GradeUnjudged, err
 	}
-	grade, err := ParseGradeJSON(text, doc.ID.String())
+	grade, err := parseGradeJSON(text, doc.ID.String())
 	if err != nil {
 		return GradeUnjudged, fmt.Errorf("doc %s: %w", doc.ID, err)
 	}

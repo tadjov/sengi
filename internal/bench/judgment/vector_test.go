@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/bench/metrics"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 // fakeVectorStore returns canned vectors so the scoring logic can be tested
@@ -57,7 +58,7 @@ func angledDocs(n int) ([]GradingDoc, fakeVectorStore) {
 
 func vectorGrades(t *testing.T, store fakeVectorStore, docs []GradingDoc) map[uuid.UUID]int {
 	t.Helper()
-	got, err := NewVectorStrategyWithStore(store, "fake-model").GradePool(context.Background(), GradingQuery{ID: "q", Text: "q"}, docs)
+	got, err := vectorStrategy(t, store, "fake-model").GradePool(context.Background(), GradingQuery{ID: "q", Text: "q"}, docs)
 	if err != nil {
 		t.Fatalf("GradePool: %v", err)
 	}
@@ -117,7 +118,7 @@ func TestVectorGradePool_LeavesDocsWithoutAVectorUnjudged(t *testing.T) {
 }
 
 func TestVectorDescribe(t *testing.T) {
-	s := NewVectorStrategyWithStore(fakeVectorStore{}, "qwen3")
+	s := vectorStrategy(t, fakeVectorStore{}, "qwen3")
 
 	got := s.Describe()
 	if got.Strategy != string(StrategyVector) {
@@ -148,4 +149,18 @@ func TestCosine(t *testing.T) {
 			}
 		})
 	}
+}
+
+func vectorStrategy(t *testing.T, store storage.VectorStore, model string) *VectorStrategy {
+	t.Helper()
+	s, err := NewVectorStrategy(StrategyOptions{VectorStore: store, EmbeddingModel: model})
+	require.NoError(t, err)
+	return s
+}
+
+func hybridStrategy(t *testing.T, store storage.VectorStore, model string) *HybridStrategy {
+	t.Helper()
+	s, err := NewHybridStrategy(StrategyOptions{VectorStore: store, EmbeddingModel: model})
+	require.NoError(t, err)
+	return s
 }

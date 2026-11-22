@@ -22,7 +22,7 @@ func TestNewStrategy_VectorHybridWithStore(t *testing.T) {
 	for _, kind := range []StrategyKind{StrategyVector, StrategyHybrid} {
 		s, err := NewStrategy(kind, StrategyOptions{VectorStore: fakeVectorStore{}})
 		require.NoError(t, err)
-		assert.Equal(t, string(kind), s.Name())
+		assert.Equal(t, string(kind), s.Describe().Strategy)
 	}
 }
 

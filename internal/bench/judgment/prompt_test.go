@@ -27,12 +27,12 @@ func TestConstraintNote(t *testing.T) {
 func TestBuildGradingPrompt_IncludesCategoryConstraint(t *testing.T) {
 	doc := GradingDoc{ID: uuid.New(), Title: "Markets slide"}
 
-	phrase := BuildGradingPrompt(GradingQuery{ID: "q", Text: "stock market crash", Category: "phrase"}, doc)
+	phrase := buildGradingPrompt(GradingQuery{ID: "q", Text: "stock market crash", Category: "phrase"}, doc)
 	if !strings.Contains(phrase, "phrase query") {
 		t.Error("phrase query prompt should carry the phrase note")
 	}
 
-	keyword := BuildGradingPrompt(GradingQuery{ID: "q", Text: "stock market crash", Category: "keyword"}, doc)
+	keyword := buildGradingPrompt(GradingQuery{ID: "q", Text: "stock market crash", Category: "keyword"}, doc)
 	if strings.Contains(keyword, "phrase query") {
 		t.Error("keyword query prompt should grade on topic alone")
 	}

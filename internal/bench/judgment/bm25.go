@@ -27,8 +27,6 @@ type BM25Strategy struct{}
 
 func NewBM25Strategy() *BM25Strategy { return &BM25Strategy{} }
 
-func (BM25Strategy) Name() string { return string(StrategyBM25) }
-
 func (BM25Strategy) Describe() meta.Judge {
 	return meta.Judge{Strategy: string(StrategyBM25), RubricVersion: bm25RubricVersion, GateVersion: gateVersion}
 }

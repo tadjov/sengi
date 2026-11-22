@@ -25,7 +25,7 @@ func TestHybridGradePool_FusesSignals(t *testing.T) {
 			cold.ID:        {0, 1},       // far on both
 		},
 	}
-	s := NewHybridStrategyWithStore(store, "fake")
+	s := hybridStrategy(t, store, "fake")
 
 	got, err := s.GradePool(context.Background(), GradingQuery{ID: "q", Text: "climate change policy"}, []GradingDoc{lexicalHit, semanticHit, cold})
 	if err != nil {
@@ -47,7 +47,7 @@ func TestHybridGradePool_FusesSignals(t *testing.T) {
 }
 
 func TestHybridDescribe(t *testing.T) {
-	s := NewHybridStrategyWithStore(fakeVectorStore{}, "qwen3")
+	s := hybridStrategy(t, fakeVectorStore{}, "qwen3")
 
 	got := s.Describe()
 	if got.Strategy != string(StrategyHybrid) {
@@ -81,7 +81,7 @@ func TestHybrid_VectorFailureLeavesPoolUnjudged(t *testing.T) {
 		store.docs[id] = []float32{0, 1}
 	}
 
-	grades := runGrades(t, RunnerConfig{Strategy: NewHybridStrategyWithStore(store, "fake"), Reader: reader}, pf)
+	grades := runGrades(t, RunnerConfig{Strategy: hybridStrategy(t, store, "fake"), Reader: reader}, pf)
 
 	for id, grade := range grades {
 		if grade != GradeUnjudged {
@@ -94,7 +94,7 @@ func TestHybridGradePool_QueryWithoutTermsFails(t *testing.T) {
 	doc := GradingDoc{ID: uuid.New(), Title: "anything"}
 	store := fakeVectorStore{query: []float32{1, 0}, docs: map[uuid.UUID][]float32{doc.ID: {1, 0}}}
 
-	_, err := NewHybridStrategyWithStore(store, "fake").GradePool(context.Background(), GradingQuery{ID: "q1", Text: "the a of"}, []GradingDoc{doc})
+	_, err := hybridStrategy(t, store, "fake").GradePool(context.Background(), GradingQuery{ID: "q1", Text: "the a of"}, []GradingDoc{doc})
 
 	var noTerms *NoQueryTermsError
 	if !errors.As(err, &noTerms) || noTerms.QueryID != "q1" {

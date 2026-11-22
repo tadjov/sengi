@@ -80,8 +80,6 @@ func NewJevStrategy(opts StrategyOptions) (*JevStrategy, error) {
 	}, nil
 }
 
-func (s *JevStrategy) Name() string { return string(StrategyJev) }
-
 func (s *JevStrategy) Describe() meta.Judge {
 	return meta.Judge{
 		Strategy:      string(StrategyJev),

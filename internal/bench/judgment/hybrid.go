@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/tadjov/sengi/internal/bench/meta"
-	"github.com/tadjov/sengi/internal/storage"
 )
 
 // Fusion weights for the hybrid score. Equal weighting is the common default
@@ -26,9 +25,6 @@ type HybridStrategy struct {
 }
 
 func NewHybridStrategy(opts StrategyOptions) (*HybridStrategy, error) {
-	if opts.VectorStore == nil {
-		return nil, errNoVectorStore(StrategyHybrid)
-	}
 	v, err := NewVectorStrategy(opts)
 	if err != nil {
 		return nil, err
@@ -36,21 +32,10 @@ func NewHybridStrategy(opts StrategyOptions) (*HybridStrategy, error) {
 	return &HybridStrategy{vector: v}, nil
 }
 
-// NewHybridStrategyWithStore injects a vector store directly (used in tests).
-func NewHybridStrategyWithStore(store storage.VectorStore, model string) *HybridStrategy {
-	return &HybridStrategy{vector: NewVectorStrategyWithStore(store, model)}
-}
-
-func (HybridStrategy) Name() string { return string(StrategyHybrid) }
-
 // Describe names both fusion components: BM25 contributes no model, so the
 // embedding model is what distinguishes one hybrid grade set from another.
 func (s HybridStrategy) Describe() meta.Judge {
-	model := "embedding"
-	if s.vector != nil && s.vector.model != "" {
-		model = s.vector.model
-	}
-	return meta.Judge{Strategy: string(StrategyHybrid), Model: "bm25+" + model, RubricVersion: hybridRubricVersion}
+	return meta.Judge{Strategy: string(StrategyHybrid), Model: "bm25+" + s.vector.model, RubricVersion: hybridRubricVersion}
 }
 
 func (s HybridStrategy) GradePool(ctx context.Context, q GradingQuery, docs []GradingDoc) ([]GradedDoc, error) {
