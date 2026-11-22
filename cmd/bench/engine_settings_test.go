@@ -147,7 +147,7 @@ func TestRun_ReportRecordsWhatTheElasticsearchClusterRanWith(t *testing.T) {
 	require.NotNil(t, info.Index)
 	cluster := info.Index.Elasticsearch
 	require.NotNil(t, cluster, "index error: %s", info.Index.Error)
-	assert.Equal(t, "8.12.0", info.Version)
+	assert.Equal(t, pkgtesting.ElasticsearchVersion, info.Version)
 	require.NotEmpty(t, cluster.Nodes)
 	assert.Equal(t, int64(512<<20), cluster.Nodes[0].HeapMaxBytes, "the container's -Xmx512m")
 }

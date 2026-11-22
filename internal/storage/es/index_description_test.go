@@ -97,7 +97,7 @@ func TestDescribeIndex_ReadsTheLiveIndex(t *testing.T) {
 			t.Fatalf("DescribeIndex: %v", err)
 		}
 
-		if description.Version != "8.12.0" || description.Index != cfg.IndexName || len(description.Analysis) == 0 || len(description.Fields) == 0 {
+		if description.Version != pkgtesting.ElasticsearchVersion || description.Index != cfg.IndexName || len(description.Analysis) == 0 || len(description.Fields) == 0 {
 			t.Errorf("description = %+v, want the index described in full", description)
 		}
 		if len(description.Unreadable) != 1 || !strings.Contains(description.Unreadable[0], "node stats") {
