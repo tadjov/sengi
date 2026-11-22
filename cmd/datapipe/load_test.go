@@ -141,6 +141,20 @@ func TestLoad(t *testing.T) {
 				}
 			})
 
+			t.Run("finds an article by its title once preprocess cleared its body", func(t *testing.T) {
+				db := newLoadDatabase(t, server.ConnString)
+				root := t.TempDir()
+				titleOnly := document.Article{
+					ID: uuid.NewSHA1(loadFixtureNamespace, []byte("title-only")), URL: "https://news.example.com/quokka",
+					Title: "Quokka census counts record numbers", Language: language.English, PublisherDomain: "example.com",
+				}
+				canonical := writeCanonicalPackage(t, root, append(loadFixtureArticles(20), titleOnly))
+
+				require.NoError(t, execDatapipe(t, db, "load", "--engine", string(engine), "--canonical", canonical.location))
+
+				assert.Equal(t, []uuid.UUID{titleOnly.ID}, searchByTitleTerm(t, db, engine, "quokka"))
+			})
+
 			t.Run("skip-index loads the rows without indexes or a record", func(t *testing.T) {
 				db := newLoadDatabase(t, server.ConnString)
 				root := t.TempDir()
@@ -324,6 +338,29 @@ func newLoadDatabase(t *testing.T, serverConnString string) string {
 	config, err := pgx.ParseConfig(serverConnString)
 	require.NoError(t, err)
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", config.User, config.Password, config.Host, config.Port, name)
+}
+
+// searchByTitleTerm runs each engine's multi-field query from the cc-news fts suite.
+func searchByTitleTerm(t *testing.T, connString string, engine storage.Engine, term string) []uuid.UUID {
+	t.Helper()
+	queries := map[storage.Engine]string{
+		storage.PostgresNative: `SELECT id FROM articles WHERE search_vector @@ plainto_tsquery('english', $1)
+			ORDER BY ts_rank(search_vector, plainto_tsquery('english', $1)) DESC, id`,
+		storage.ParadeDB: `SELECT id FROM articles WHERE id @@@ paradedb.boolean(should => ARRAY[
+			paradedb.boost(3.0, paradedb.match('title', $1)), paradedb.boost(2.0, paradedb.match('description', $1)), paradedb.match('content', $1)])
+			ORDER BY pdb.score(id) DESC, id`,
+		storage.Tiger: `WITH matched AS MATERIALIZED (SELECT id, search_text FROM articles WHERE search_text @@ plainto_tsquery('english', $1))
+			SELECT id FROM matched ORDER BY search_text <@> to_bm25query($1, 'idx_articles_bm25'), id`,
+	}
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, connString)
+	require.NoError(t, err)
+	defer conn.Close(ctx)
+	rows, err := conn.Query(ctx, queries[engine], term)
+	require.NoError(t, err)
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+	require.NoError(t, err)
+	return ids
 }
 
 func readLoadedArticles(t *testing.T, connString string, ids ...uuid.UUID) map[uuid.UUID]document.Article {

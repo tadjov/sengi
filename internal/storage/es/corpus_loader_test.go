@@ -332,6 +332,31 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 		})
 	}
 
+	t.Run("finds an article by its title once preprocess cleared its body", func(t *testing.T) {
+		index := "articles_title_only_test"
+		titleOnly := document.Article{
+			ID: document.DeriveArticleID("https://example.com/quokka"), URL: "https://example.com/quokka",
+			Title: "Quokka census counts record numbers", Language: language.English, PublisherDomain: "example.com",
+		}
+		if _, err := loadCorpus(t, container.Address, index, corpusOf(append(testArticles(20), titleOnly), nil), 100); err != nil {
+			t.Fatalf("LoadCorpus: %v", err)
+		}
+
+		var found struct {
+			Hits struct {
+				Hits []struct {
+					ID string `json:"_id"`
+				} `json:"hits"`
+			} `json:"hits"`
+		}
+		// The multi-field query of the cc-news fts suite.
+		postJSON(t, container.Address+"/"+index+"/_search",
+			`{"query":{"multi_match":{"query":"quokka","fields":["title^3","description^2","content"]}}}`, &found)
+		if len(found.Hits.Hits) != 1 || found.Hits.Hits[0].ID != titleOnly.ID.String() {
+			t.Errorf("hits = %+v, want only the title-only article %s", found.Hits.Hits, titleOnly.ID)
+		}
+	})
+
 	t.Run("stops on cancel and leaves no index", func(t *testing.T) {
 		index := "articles_cancelled_test"
 		articles := testArticles(10)
