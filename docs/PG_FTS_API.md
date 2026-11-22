@@ -701,7 +701,7 @@ func buildRankExpression(fieldBoosts []FieldBoost, lang query.Language, op opera
 
 ### 1. QueryString API (Simple)
 
-**Endpoint**: `GET /v1/articles/search?query=climate+change`
+**Endpoint**: `GET /v1/articles/search?q=climate+change`
 
 **PostgreSQL Implementation**:
 ```go
