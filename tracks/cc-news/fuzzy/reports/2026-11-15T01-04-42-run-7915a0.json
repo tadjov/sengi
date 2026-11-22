@@ -15,18 +15,18 @@
       "invocation": "claude --version 2.1.325 (Claude Code); CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1 CLAUDE_CODE_MAX_OUTPUT_TOKENS=\u003cmax-output-tokens\u003e claude -p --safe-mode --setting-sources \"\" --strict-mcp-config --tools \"\" --disable-slash-commands --no-session-persistence --output-format json --model claude-sonnet-5-5 --effort low --system-prompt \u003csystem-prompt\u003e",
       "gate_version": "v1"
     },
-    "pool_ref": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fuzzy/trec/pool.yaml",
+    "pool_ref": "trec/pool.yaml",
     "pool_run_id": "2026-11-15T01-01-06-pool-466575",
     "graded_count": 4914,
     "unjudged_count": 0,
     "judgments_run_id": "2026-11-15T01-01-07-judge-968a35",
     "sources": {
-      "spec": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fuzzy/spec.yaml",
+      "spec": "spec.yaml",
       "suites": [
-        "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fuzzy/suite.yaml"
+        "suite.yaml"
       ],
-      "pool": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fuzzy/trec/pool.yaml",
-      "judgments": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fuzzy/trec/annotations.claude-cli.yaml"
+      "pool": "trec/pool.yaml",
+      "judgments": "trec/annotations.claude-cli.yaml"
     }
   },
   "environment": {

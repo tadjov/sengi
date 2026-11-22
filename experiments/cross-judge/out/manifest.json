@@ -2,25 +2,25 @@
   "bench_commit": "c10f64d",
   "bootstrap_seed": 1,
   "inputs": {
-    "tracks/cc-news/fts/trec/annotations.claude-cli.yaml": "sha256:78474e585b9cb25e053a2e76ac0cb129e4b6d55e56d74cbae03ac49bb05a67a8",
-    "tracks/cc-news/fts/trec/annotations.jev.yaml": "sha256:f4cfaea718c65a1259a1632aace0285675f4f22d63cd67fad48dde363e3ca56b",
-    "tracks/cc-news/fts/trec/cross-judge/annotations.opus.yaml": "sha256:e7f4e683981a14a1843977842bf5293b1fff0f84c990238c29a35864d70ae592",
-    "tracks/cc-news/fts/trec/cross-judge/annotations.jev.yaml": "sha256:cb8f7969c64d941eb3def96867de4114de23b85ade6d6033ad82eeb980f37dfb",
-    "tracks/cc-news/fts/trec/cross-judge/annotations.haiku.yaml": "sha256:cc966ee0f55391b0dd5b4de3aa26bf214ed3b7a7c9813433cf24d0708e844252",
+    "tracks/cc-news/fts/trec/annotations.claude-cli.yaml": "sha256:0b67c8384f0358649c0c0e0bd71df2b50cd3447111f1dddaf98a6bc50794c894",
+    "tracks/cc-news/fts/trec/annotations.jev.yaml": "sha256:b71637fdb60c01ca7c85c1f1a3cc6da46afeeef9e5a08ce75dff314edb32b409",
+    "tracks/cc-news/fts/trec/cross-judge/annotations.opus.yaml": "sha256:b90b42f6a1ce3395ca7e57e53e34a5267b3d9009a926d6e486d557014d64cbf6",
+    "tracks/cc-news/fts/trec/cross-judge/annotations.jev.yaml": "sha256:59e59bfd5c5c2a1af713ded0744877c81bf1403b8cd8d3fe4502fcd2345b9240",
+    "tracks/cc-news/fts/trec/cross-judge/annotations.haiku.yaml": "sha256:5dde83d92724995a609b9c7d9c5ca3bcae9d3291a729cd23d150c27c99b7fad3",
     "9cf1794:tracks/cc-news/fts/trec/annotations.claude-cli.yaml (sonnet, run 1)": "sha256:61df511c0a27718e38471404783f36a1fd9cfda444f952ae8cc5a30a7120b90f",
-    "tracks/cc-news/fts/reports/2026-11-14T20-26-29-run-183a31.json": "sha256:0db48278ad4b0e4cacf40d1022853ec3e1a3497b0d354c94c58968c744f81177",
-    "tracks/cc-news/fts/reports/2026-11-14T23-56-57-run-b2a175.json": "sha256:f254740a171911e9955ceea5c69a812f5eea1c349e348964e8c9157c9f59f65b"
+    "tracks/cc-news/fts/reports/2026-11-14T20-26-29-run-183a31.json": "sha256:dd02f8b0c05259171413f9411421a32f8a23f83305cef5ead880221726f08da5",
+    "tracks/cc-news/fts/reports/2026-11-14T23-56-57-run-b2a175.json": "sha256:5934ecad4e5b4dfe441196094cbb02ade8ee5537bda403c0d7010ff3505bde40"
   },
   "outputs": {
     "relevant-per-query.txt": "sha256:91765433c99fb8f19e5ea66cc75d3c31effe641b84b87e59c06a366c613ae8cd",
-    "rescore.json": "sha256:0c69790ac9ac8c9e809b245fe42954193ef9db825bb8a5ac23af16b345951062",
-    "rescore.txt": "sha256:ba3526ca1cdc6120529bfdd3d9d784d409b4b1049fcc1e2df0766ac0e1a51fb1",
-    "sample-vs-sonnet.json": "sha256:1ccc6ace0be141eb749bd2faa653b0c4f8b61c2366798ea9b06f180113720d1b",
-    "sample-vs-sonnet.txt": "sha256:5a3b259281e5cec185080b6e18cffe2f33eb708750bc01a8a09911ef3f236e57",
-    "sample.json": "sha256:e35524a0e09f0d4c914fb070a565e2aa4e9a7c72d8496f82bd1aaab8f6e7ad2f",
-    "sample.txt": "sha256:7997680dba6930f2cfb886db551e64ad05c7a13ec30374508a4beaf9ff689bdb",
-    "self-agreement.json": "sha256:76dad816543ed34ff21a44b216f1de27fe36b5951e35fa6851532572f90c7a0c",
-    "self-agreement.txt": "sha256:e03bbe34fff8198306f0c2e9d17a581960223149a23941dce118b0926dd898ca",
+    "rescore.json": "sha256:15c9a0de73fe49ed46b0306de21a69899e594552960cd58617781c3fe35eef07",
+    "rescore.txt": "sha256:00ba7f3380446a7ac5c82c242042ad9853031b80a32668df8455ad7015f25a1f",
+    "sample-vs-sonnet.json": "sha256:59c0ff44fc00254db6ed99e208e1559ddf4f4ec9271620cb4f24ebd88e51c4a6",
+    "sample-vs-sonnet.txt": "sha256:282cd5ec070d3d1a1ecd012389b086a36a82ecf929d483cbaccb7934e458b2b7",
+    "sample.json": "sha256:de98bddfa1928c893758fcede2e7eb5d126d2f5887e1eabc4932b4e8e9bee094",
+    "sample.txt": "sha256:b4a06bade82c0277d08aca127a4a4e3ea92f7e5313db27690f2e2dff0d992255",
+    "self-agreement.json": "sha256:48e9d8ed3172b58f337c3a767bcbd26ac41043d3210fd9396eca7eb48cdfe0dd",
+    "self-agreement.txt": "sha256:ac2375848018ce28fd872d093f08dd894820d75f764a133ef72687f761d9f7af",
     "significance.txt": "sha256:e702e74a2e91053915360e150f19b2f2eb24e31d5f2d01aaf9526bb5b13f7ae0"
   }
 }

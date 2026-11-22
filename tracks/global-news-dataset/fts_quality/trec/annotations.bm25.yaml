@@ -5,7 +5,7 @@ meta:
     generated_at: 2026-06-09T22:38:51.318729Z
     strategy: bm25
     judge_prompt_version: v1
-    pool_ref: /Users/djordjevuckovic/projects/news-hunter/tracks/fts_quality/trec/pool.yaml
+    pool_ref: trec/pool.yaml
     graded_count: 2552
     relevance_scale:
         - 0

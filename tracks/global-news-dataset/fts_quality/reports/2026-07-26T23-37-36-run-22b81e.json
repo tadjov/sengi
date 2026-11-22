@@ -6,10 +6,10 @@
     "generated_at": "2026-07-26T23:37:36.449543Z",
     "spec_id": "fts_quality",
     "sources": {
-      "spec": "/Users/djordjevuckovic/projects/news-hunter/tracks/fts_quality/spec.yaml",
-      "suite": "/Users/djordjevuckovic/projects/news-hunter/tracks/fts_quality/suite.yaml",
-      "pool": "/Users/djordjevuckovic/projects/news-hunter/tracks/fts_quality/trec/pool.yaml",
-      "judgments": "/Users/djordjevuckovic/projects/news-hunter/tracks/fts_quality/trec/annotations.lexical.yaml"
+      "spec": "spec.yaml",
+      "suite": "suite.yaml",
+      "pool": "trec/pool.yaml",
+      "judgments": "trec/annotations.lexical.yaml"
     }
   },
   "environment": {

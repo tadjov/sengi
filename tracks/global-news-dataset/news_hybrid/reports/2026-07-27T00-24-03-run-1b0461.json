@@ -6,10 +6,10 @@
     "generated_at": "2026-07-27T00:24:03.26331Z",
     "spec_id": "news_hybrid",
     "sources": {
-      "spec": "/Users/djordjevuckovic/projects/news-hunter/tracks/news_hybrid/spec.yaml",
-      "suite": "/Users/djordjevuckovic/projects/news-hunter/tracks/news_hybrid/suite.yaml",
-      "pool": "/Users/djordjevuckovic/projects/news-hunter/tracks/news_hybrid/trec/pool.yaml",
-      "judgments": "/Users/djordjevuckovic/projects/news-hunter/tracks/news_hybrid/trec/annotations.claude-cli.yaml"
+      "spec": "spec.yaml",
+      "suite": "suite.yaml",
+      "pool": "trec/pool.yaml",
+      "judgments": "trec/annotations.claude-cli.yaml"
     }
   },
   "environment": {

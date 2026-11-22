@@ -168,7 +168,7 @@ kaggle datasets init -p "$PAYLOAD"
 kaggle datasets version -p "$PAYLOAD" -m "slim v1 of canonical <version>"
 ```
 
-`version` adds a new version to `djordjevuckovic/tusker-cc-news`, which the
+`version` adds a new version to `djordjevuckovic/sengi-cc-news`, which the
 kernel already reads. `kaggle datasets create` fails on a dataset that exists;
 use it only for a new dataset, then point `dataset_sources` at that id.
 
@@ -182,8 +182,8 @@ kaggle kernels push -p datasets/cc-news
 **4. Watch it.**
 
 ```bash
-kaggle kernels status djordjevuckovic/tusker-embed
-kaggle kernels logs   djordjevuckovic/tusker-embed
+kaggle kernels status djordjevuckovic/sengi-embed
+kaggle kernels logs   djordjevuckovic/sengi-embed
 ```
 
 **5. Collect the package.** Only `/kaggle/working` is downloadable. Fetch it to a
@@ -191,7 +191,7 @@ scratch dir, then move the version directory in; nothing in `datasets/` is
 overwritten.
 
 ```bash
-kaggle kernels output djordjevuckovic/tusker-embed -p /tmp/sengi-out
+kaggle kernels output djordjevuckovic/sengi-embed -p /tmp/sengi-out
 mkdir -p datasets/cc-news/embeddings/qwen3-embedding-0.6b@1024
 mv /tmp/sengi-out/embeddings/qwen3-embedding-0.6b@1024/v1 \
    datasets/cc-news/embeddings/qwen3-embedding-0.6b@1024/
@@ -207,15 +207,15 @@ scripts stay on Python 3.11 syntax for the same image.
 Drive, for when Kaggle's GPU quota is spent:
 
 1. Copy `scripts/embed_corpus.py` and `scripts/embed_queries.py` to
-   `MyDrive/tusker/`, and the slim package folder's two files
+   `MyDrive/sengi/`, and the slim package folder's two files
    (`slim.datapackage.json` and `articles.parquet`) to
-   `MyDrive/tusker/<corpus>/payload/`. The full canonical package works too.
+   `MyDrive/sengi/<corpus>/payload/`. The full canonical package works too.
 2. Open the notebook in Colab with a GPU runtime, set `DATASET` in its settings
    cell, and run the cells in order.
 3. The run cell calls `embed_corpus.py` with `--device cuda`, `--dim`,
-   `--max-tokens` and checkpoints in `MyDrive/tusker/<corpus>/checkpoints`. After
+   `--max-tokens` and checkpoints in `MyDrive/sengi/<corpus>/checkpoints`. After
    a disconnect, re-running the cell resumes from the finished shards.
-4. The package lands at `MyDrive/tusker/<corpus>/embeddings/<tag-dir>/<version>/`.
+4. The package lands at `MyDrive/sengi/<corpus>/embeddings/<tag-dir>/<version>/`.
    Copy that version directory into `datasets/<corpus>/embeddings/<tag-dir>/`.
 
 The notebook can't run locally. `scripts/tests/test_colab_notebook.py` checks that
@@ -286,7 +286,7 @@ cp tracks/cc-news/<paradigm>/suite.yaml scripts/embed_corpus.py /tmp/sengi-queri
 kaggle datasets init -p /tmp/sengi-queries        # set title and id
 kaggle datasets create -p /tmp/sengi-queries      # first time; later runs use `kaggle datasets version`
 kaggle kernels push -p scripts/kaggle/queries
-kaggle kernels output djordjevuckovic/tusker-embed-queries -p /tmp/sengi-queries-out
+kaggle kernels output djordjevuckovic/sengi-embed-queries -p /tmp/sengi-queries-out
 mv /tmp/sengi-queries-out/query-vectors tracks/cc-news/<paradigm>/trec/
 ```
 

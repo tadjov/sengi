@@ -5,7 +5,7 @@ description: "Typo-tolerant and approximate search queries for fuzzy paradigm ev
 version: "1.0.0"
 
 corpus:
-  name: news_hunter_articles
+  name: sengi_articles
   source: "postgres://localhost:54320/news_db (articles)"
 
 templates:

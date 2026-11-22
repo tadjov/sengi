@@ -12,18 +12,18 @@
       "gate_version": "v1",
       "rubric_version": "v1"
     },
-    "pool_ref": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/pool.yaml",
+    "pool_ref": "trec/pool.yaml",
     "pool_run_id": "2026-11-14T20-05-34-pool-a6c70f",
     "graded_count": 3716,
     "unjudged_count": 0,
     "judgments_run_id": "2026-11-14T22-17-45-judge-6002ee",
     "sources": {
-      "spec": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/spec.yaml",
+      "spec": "spec.yaml",
       "suites": [
-        "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/suite.yaml"
+        "suite.yaml"
       ],
-      "pool": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/pool.yaml",
-      "judgments": "/Users/djordjevuckovic/projects/news-hunter/tracks/cc-news/fts/trec/annotations.jev.yaml"
+      "pool": "trec/pool.yaml",
+      "judgments": "trec/annotations.jev.yaml"
     }
   },
   "environment": {

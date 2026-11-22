@@ -1,3 +1,5 @@
+name: sengi
+
 x-budget: &budget
   cpus: 4
   mem_limit: 6g
