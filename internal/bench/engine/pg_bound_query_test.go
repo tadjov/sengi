@@ -1,10 +1,9 @@
-package pg_test
+package engine_test
 
 import (
 	"context"
 	"fmt"
 	"math"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,10 +14,6 @@ import (
 	"github.com/tadjov/sengi/internal/storage/pg"
 	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
-
-const awkwardQueryText = `Ukraine's voters don't trust the "election"`
-
-var yamlQuoted = strings.ReplaceAll(awkwardQueryText, "'", "''")
 
 func TestPgExecutor_RunsSuiteQueryWithApostrophesAndQuotes(t *testing.T) {
 	ctx := context.Background()
