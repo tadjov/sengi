@@ -1,29 +1,7 @@
-// Package trackctx resolves the "track" — the self-contained folder that
-// owns a benchmark's spec, suite, pool, annotations, and reports. Every
-// subcommand goes through Resolve (single track) or ResolveGlob (a group) to
-// figure out which paths it operates on.
-//
-// A track is any folder holding spec.yaml + suite.yaml + trec/. Nothing above
-// that folder is enforced or assumed: tracks/global-news-dataset/fts_quality
-// and benches/b1 are equally valid — only the layout inside a track is a
-// convention.
-//
-// Track args are ordinary filesystem paths:
-//   - absolute            → used as-is
-//   - relative            → resolved against the track root
-//   - glob (* ? [)        → expanded by ResolveGlob across track-shaped matches
-//   - empty               → walk up from cwd to the nearest track-shaped folder
-//
-// The track root (Inputs.TrackRoot, from --track-root / BENCH_TRACK_ROOT)
-// defaults to the current directory, so paths behave the way they do in any
-// other tool. Pointing it at the folder that holds your tracks is pure
-// convenience: with BENCH_TRACK_ROOT=tracks/global-news-dataset,
-// `bench run fts_quality` is the same as
-// `bench run tracks/global-news-dataset/fts_quality` from the repo root, or as
-// cd-ing into the track and passing no arg at all.
-//
-// Grouping is explicit: only a glob fans out. A single name always means
-// exactly one track — a directory of tracks never implicitly becomes a group.
+// Package trackctx resolves a track: any folder holding spec.yaml, suite.yaml
+// and trec/. A track arg is an ordinary path, absolute or relative to the track
+// root, or empty to walk up from the current directory. Only a glob names more
+// than one track.
 package trackctx
 
 import (
@@ -44,8 +22,7 @@ const (
 	latestReport = "latest.json"
 )
 
-// Inputs lets callers pass explicit overrides that beat track inference.
-// Any field left blank falls back to the track convention.
+// Inputs are a command's track arg and path overrides; a blank field falls back to the track's layout.
 type Inputs struct {
 	TrackArg   string // --track value OR positional arg (already merged by caller)
 	TrackRoot  string // --track-root / BENCH_TRACK_ROOT; base for relative args (default: cwd)
@@ -66,7 +43,7 @@ type Track struct {
 	reportsDir string
 }
 
-// Resolve resolves a single track and layers any explicit overrides on top.
+// Resolve finds one track and applies the overrides.
 func Resolve(in Inputs) (*Track, error) {
 	root, name, err := resolveRoot(in.TrackArg, in.TrackRoot)
 	if err != nil {
@@ -107,7 +84,6 @@ func IsPattern(arg string) bool {
 	return strings.ContainsAny(arg, "*?[")
 }
 
-// newTrack builds a Track with all paths derived from the convention.
 func newTrack(root, name string) *Track {
 	t := &Track{
 		Root:       root,
@@ -120,10 +96,8 @@ func newTrack(root, name string) *Track {
 	return t
 }
 
-// JudgmentsPath resolves --judgments. Three shapes:
-//   - "" or absent → track's default (caller should consult spec.defaults).
-//   - bare name like "keyword" → trec/annotations.keyword.yaml.
-//   - path containing / or .yaml → used verbatim.
+// JudgmentsPath resolves --judgments: a bare name such as "keyword" is
+// trec/annotations.keyword.yaml, a path is used as given, and "" is "".
 func (t *Track) JudgmentsPath(value string) string {
 	if value == "" {
 		return ""
@@ -167,8 +141,6 @@ func (t *Track) QrelsPath(value string) string {
 	return filepath.Join(filepath.Dir(value), "qrels."+name+".tsv")
 }
 
-// ReportPath returns <track>/reports/<run_id>.json. Callers pass the run_id
-// from meta.NewRunID("run").
 func (t *Track) ReportPath(runID string) string {
 	return filepath.Join(t.reportsDir, runID+".json")
 }
@@ -193,13 +165,11 @@ func (t *Track) ReportsDir() string {
 	return t.reportsDir
 }
 
-// LatestReportPath is the conventional pointer to the most-recent report.
 func (t *Track) LatestReportPath() string {
 	return filepath.Join(t.reportsDir, latestReport)
 }
 
-// Name returns the track's id relative to the track root — the same string you
-// would type to address it. Used for display and progress banners.
+// Name is the track's path relative to the track root, as typed to address it.
 func (t *Track) Name() string {
 	if t.name != "" {
 		return t.name
@@ -255,7 +225,6 @@ func underRoot(base, arg string) string {
 	return filepath.Join(base, arg)
 }
 
-// rootLabel renders the root for error messages.
 func rootLabel(base string) string {
 	if base == "." {
 		return "the current directory"
@@ -348,7 +317,6 @@ func walkUp(start string) string {
 	return ""
 }
 
-// isTrackShaped checks for the three signature artifacts of a track folder.
 func isTrackShaped(dir string) bool {
 	if !isDir(dir) {
 		return false

@@ -15,23 +15,12 @@ const (
 	DefaultRuns               = 3
 	DefaultEngineParallelism  = 4
 
-	// QueryParallelismSerial runs one query at a time. Use for bench run so
-	// each query gets the engine's undivided attention and latency numbers are
-	// clean (no cross-query resource contention).
-	QueryParallelismSerial = 1
-
-	// QueryParallelismUnlimited fans out all queries concurrently. Use for
-	// bench pool and bench validate where latency measurement doesn't matter
-	// and throughput does.
-	QueryParallelismUnlimited = 0
-
-	// EngineParallelismSerial runs one engine at a time within a query. Use for
-	// bench run: a job's engines share a host, so a fan-out lands one engine's
-	// warmup in the same window as another's measured iterations.
-	EngineParallelismSerial = 1
-
-	// EngineParallelismUnlimited fans out to every engine in the job at once.
-	// Use for bench pool, where only the returned doc IDs matter.
+	// Serial keeps a measured run's latency free of contention from other
+	// queries or engines on the same host; unlimited is for pooling, where only
+	// the returned doc IDs matter.
+	QueryParallelismSerial     = 1
+	QueryParallelismUnlimited  = 0
+	EngineParallelismSerial    = 1
 	EngineParallelismUnlimited = 0
 )
 
@@ -44,21 +33,13 @@ type Config struct {
 	Seed uint64
 	// RankingDepth cuts every ranking before it is scored or stored, so scores
 	// count only docs a pool that deep could have judged. Zero keeps it whole.
-	RankingDepth int
-	// QueryParallelism bounds concurrent queries. QueryParallelismSerial (1)
-	// = one at a time; QueryParallelismUnlimited (0) = all at once.
+	RankingDepth     int
 	QueryParallelism int
-	// EngineParallelism bounds concurrent engine calls within a single query.
-	// EngineParallelismSerial (1) = one at a time; EngineParallelismUnlimited
-	// (0) = fan out to all engines simultaneously.
+	// EngineParallelism bounds concurrent engine calls within one query.
 	EngineParallelism int
-	// Judgments[queryID][docID]grade — pre-loaded by the CLI from the
-	// resolved annotations file. When nil, queries are scored without
-	// relevance grades and the report flags them as unjudged.
+	// Judgments[queryID][docID] is the grade; nil scores nothing.
 	Judgments map[string]map[string]int
-	// VectorStore, when set, embeds queries that reference the reserved
-	// query-vector placeholder and injects the result before execution. nil for
-	// non-vector tracks (and validate, which is structural only).
+	// VectorStore supplies the vector of a query that takes one; nil for lexical tracks.
 	VectorStore storage.VectorStore
 	// Progress counts each job's queries as they finish; nil counts nothing.
 	Progress progress.Counter

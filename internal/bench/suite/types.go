@@ -35,8 +35,7 @@ type TestSuite struct {
 	Queries       []Query          `yaml:"queries"`
 }
 
-// Corpus records the dataset the suite targets. Lets a report attest "this
-// was scored against the sengi_articles index, snapshot 2026-05-10".
+// Corpus names the dataset the suite was written for; nothing reads it.
 type Corpus struct {
 	Name       string `yaml:"name"`
 	Source     string `yaml:"source,omitempty"`

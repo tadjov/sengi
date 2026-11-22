@@ -17,16 +17,12 @@ type BenchSpec struct {
 	Runs          RunsConfig        `yaml:"runs"`
 	Jobs          []Job             `yaml:"jobs"`
 
-	// Warnings collects non-fatal load-time advisories (e.g. kind omitted). It is
-	// populated by the loader and never serialized; the CLI prints it once.
+	// Warnings are the loader's advisories, for the CLI to print.
 	Warnings []string `yaml:"-"`
 }
 
-// Kind names the IR paradigm a track measures. It is primarily a taxonomy /
-// provenance label (one per track, aligned with the thesis's search
-// paradigms); requirements such as "needs an embedder" are derived from it
-// rather than declared separately. Optional — an empty kind is valid but the
-// loader warns, since it disables the derived preconditions.
+// Kind names the search paradigm a track measures; what the track needs, such
+// as an embedder, is derived from it. An omitted kind derives nothing.
 type Kind string
 
 const (
