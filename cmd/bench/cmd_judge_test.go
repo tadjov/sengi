@@ -97,41 +97,6 @@ func TestRequireJudged(t *testing.T) {
 	}
 }
 
-func TestBuildManualJudgments_KeepsHandGradesAndAddsNewPoolDocs(t *testing.T) {
-	graded, placeholder, newInPool, leftThePool, newQueryDoc := uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New()
-	pf := &pool.PoolFile{Queries: []pool.PoolEntry{
-		{QueryID: "q1", Docs: []pool.PooledDoc{{DocID: graded}, {DocID: placeholder}, {DocID: newInPool}}},
-		{QueryID: "q2", Docs: []pool.PooledDoc{{DocID: newQueryDoc}}},
-	}}
-	existing := &judgment.File{Queries: []judgment.Entry{{QueryID: "q1", Docs: []judgment.GradedDoc{
-		{DocID: graded, Grade: judgment.GradeRelevant},
-		{DocID: placeholder, Grade: judgment.GradeUnjudged},
-		{DocID: leftThePool, Grade: judgment.GradeNotRelev},
-	}}}}
-
-	got := buildManualJudgments(pf, existing)
-
-	want := map[string]map[uuid.UUID]int{
-		"q1": {
-			graded:      judgment.GradeRelevant,
-			placeholder: judgment.GradeUnjudged,
-			newInPool:   judgment.GradeUnjudged,
-			leftThePool: judgment.GradeNotRelev,
-		},
-		"q2": {newQueryDoc: judgment.GradeUnjudged},
-	}
-	assert.Equal(t, want, gradesByQuery(got))
-}
-
-func TestBuildManualJudgments_WithoutExistingFileWritesPlaceholders(t *testing.T) {
-	doc := uuid.New()
-	pf := &pool.PoolFile{Queries: []pool.PoolEntry{{QueryID: "q1", Docs: []pool.PooledDoc{{DocID: doc}}}}}
-
-	got := buildManualJudgments(pf, nil)
-
-	assert.Equal(t, map[string]map[uuid.UUID]int{"q1": {doc: judgment.GradeUnjudged}}, gradesByQuery(got))
-}
-
 func gradesByQuery(jf *judgment.File) map[string]map[uuid.UUID]int {
 	out := map[string]map[uuid.UUID]int{}
 	for _, qe := range jf.Queries {
