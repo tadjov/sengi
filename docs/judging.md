@@ -53,9 +53,9 @@ name**: the strategy for heuristic judges, the provider for LLM ones. A single
 round-trip test), so a set written by `bench judge` is always findable by
 `bench run`.
 
-**One LLM strategy, many endpoints.** `LLMStrategy` owns the rubric, batching
-and response parsing; an `LLMProvider` owns only "send this prompt, return the
-text" plus its preferred batch size. Registering a provider in `provider.go` is
+**One LLM strategy, many endpoints.** `LLMStrategy` owns the rubric and
+response parsing; an `LLMProvider` owns only "send this prompt, return the
+text". Registering a provider in `provider.go` is
 all it takes to add Codex or ChatGPT — the grading behaviour is unchanged, so
 qrels stay comparable across vendors.
 
@@ -115,10 +115,7 @@ will not match a current run and cannot be resumed onto — re-grade instead.
   article is ABOUT, not whether the query terms appear," and "when in doubt
   between two grades, pick the lower one." Returns strict JSON
   `{"doc_id","grade"}`.
-- **Batch:** sends a numbered candidate list, expects a JSON array back. Batch
-  size follows the provider (CLI 10, API 20) since a subprocess handles a
-  smaller payload comfortably than an HTTP call. Partial responses are tolerated
-  — missing docs fall back to per-doc `Grade()` via a typed `PartialBatchError`.
+- One doc per request; a reply without a usable grade leaves the doc unjudged.
 
 ### provider `claude-cli`
 
@@ -135,10 +132,9 @@ subscription rather than per-token API credit. This is the default provider.
 ### provider `claude-api`
 
 Calls `POST /v1/messages` directly. Auth via `ANTHROPIC_API_KEY` or `--api-key`;
-`--api-base` overrides the endpoint. `max_tokens` 4096 for batches, 64 for
-single docs.
+`--api-base` overrides the endpoint.
 
-**When to use:** higher throughput (larger batches, no subprocess churn), or CI
+**When to use:** higher throughput (no subprocess churn), or CI
 where no interactive `claude` login exists.
 
 Both providers send identical prompts, so grades stay comparable across them.

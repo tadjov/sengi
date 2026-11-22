@@ -27,8 +27,6 @@ type judgeFlags struct {
 	strategy       string
 	pg             string
 	concurrency    int
-	batchSize      int
-	batchSeed      uint64
 	resume         bool
 	carryOver      string
 	carryOverPool  string
@@ -66,8 +64,8 @@ func newJudgeCmdWithReader(openReader articleReaderOpener) *cobra.Command {
                 rest 0; doc vectors from PG (--pg), query vectors from
                 trec/query-vectors, else Ollama (EMBEDDING_BASE_URL)
   hybrid      — BM25 + vector fusion, vectors as for vector
-  llm         — LLM-as-judge, one doc per request (--batch N groups N);
-                pick the endpoint with --provider
+  llm         — LLM-as-judge, one doc per request; pick the endpoint with
+                --provider
   jev         — TypeSafe's Jev, one doc per request, a cross-judge of llm;
                 needs TYPESAFE_API_KEY (cmd/bench/.env), grades with the pinned
                 ` + judgment.DefaultJevModel + ` unless --model names another jev-<major>.<minor>.<patch>
@@ -99,11 +97,11 @@ Ctrl-C is safe.
 
 After a re-pool, --carry-over <annotations> --carry-over-pool <their pool>
 reuses each old grade whose judge and query are unchanged and grades only the
-new docs. Take the old pool from git; batched and whole-pool judges can't carry
-over, and neither can a pool built on another canonical package.`,
+new docs. Take the old pool from git; whole-pool judges can't carry over, and
+neither can a pool built on another canonical package.`,
 		Example: `  bench judge tracks/global-news-dataset/fts_quality --strategy keyword
   bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-cli --model sonnet
-  bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-api --model sonnet --batch 20 --resume
+  bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-api --model sonnet --resume
   bench judge --pool /tmp/p.yaml --strategy keyword --output /tmp/a.yaml
   bench judge tracks/cc-news/fuzzy --strategy llm --carry-over /tmp/old-annotations.yaml --carry-over-pool /tmp/old-pool.yaml
   bench judge tracks/cc-news/fts --strategy jev --pool /tmp/sample.yaml --output /tmp/a.jev.yaml`,
@@ -118,8 +116,6 @@ over, and neither can a pool built on another canonical package.`,
 	cmd.Flags().StringVar(&f.strategy, "strategy", string(judgment.StrategyKeyword), "Judge strategy")
 	cmd.Flags().StringVar(&f.pg, "pg", "", "Postgres connection (or set PG_CONNECTION_STRING)")
 	cmd.Flags().IntVar(&f.concurrency, "concurrency", 4, "Parallel Grade calls (per-doc strategies)")
-	cmd.Flags().IntVar(&f.batchSize, "batch", 0, "LLM docs per request (default one); --strategy llm only")
-	cmd.Flags().Uint64Var(&f.batchSeed, "seed", 1, "Seed that shuffles each query's pool into --batch batches")
 	cmd.Flags().BoolVar(&f.resume, "resume", false, "Skip docs already graded in --output; bm25, vector and hybrid skip only fully graded queries")
 	cmd.Flags().StringVar(&f.carryOver, "carry-over", "", "Reuse grades from these older judgments where judge and query are unchanged")
 	cmd.Flags().StringVar(&f.carryOverPool, "carry-over-pool", "", "The pool the --carry-over judgments graded")
@@ -169,9 +165,6 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	}
 	if f.force && kind != judgment.StrategyManual {
 		return fmt.Errorf("--force applies only to --strategy manual; %s rewrites its file on every run without --resume", kind)
-	}
-	if f.batchSize > 0 && kind != judgment.StrategyLLM {
-		return fmt.Errorf("--batch applies only to --strategy llm; %s grades without batches", kind)
 	}
 	// llm judges file under their provider, so two vendors can grade one track.
 	outPath := f.output
@@ -238,11 +231,9 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 		Strategy:    strat,
 		Reader:      reader,
 		Concurrency: f.concurrency,
-		BatchSize:   f.batchSize,
-		BatchSeed:   f.batchSeed,
 	}
 	// Every flush carries this meta, so an interrupted run's file names its grader.
-	judge := cfg.Judge()
+	judge := strat.Describe()
 	runMeta := meta.New("judge")
 	runMeta.Judge = &judge
 	runMeta.PoolRef = poolRef

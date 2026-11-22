@@ -6,7 +6,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/bench/suite"
 )
 
@@ -22,7 +21,7 @@ const (
 		`Grade how well it answers the query.`
 )
 
-// systemPrompt is the rubric of every grading request, one doc or a batch.
+// systemPrompt is the rubric of every grading request.
 const systemPrompt = `You are an information retrieval relevance judge. You score how well each candidate news article matches a user's search query.
 
 Grading scale:
@@ -134,75 +133,3 @@ func truncateRunes(s string, max int) string {
 // you can tell which prompt version produced a given judgment file and catch
 // rubric drift on resume.
 const PromptVersion = "v3"
-
-// BuildBatchGradingPrompt is the user payload for grading docs in one request:
-// candidates numbered [1]..[N], answered as a JSON array in input order.
-func BuildBatchGradingPrompt(q GradingQuery, docs []GradingDoc) string {
-	var sb strings.Builder
-	writeQuery(&sb, q)
-	fmt.Fprintf(&sb, "Grade each of the %d candidate articles below.\n\n", len(docs))
-	for i, d := range docs {
-		fmt.Fprintf(&sb, "[%d] doc_id: %s\n", i+1, d.ID)
-		writeArticle(&sb, d)
-		sb.WriteString("\n")
-	}
-	fmt.Fprintf(&sb, "Return a JSON array of exactly %d entries, in the same order. ", len(docs))
-	sb.WriteString(`Each entry: {"doc_id":"<uuid>","grade":<0|1|2|3>}. ` +
-		`Output ONLY the JSON array. No prose, no markdown, no code fences.`)
-	return sb.String()
-}
-
-// ParseBatchGradeJSON extracts the grades for a batch response. Tolerates:
-//   - surrounding prose / code fences
-//   - extra fields on entries
-//   - shorter responses (returns whatever was parsed; caller falls back)
-//   - longer responses (truncates to expected docs by doc_id match)
-//
-// Returns successfully-parsed entries plus the list of doc_ids that were
-// missing or invalid so the caller can retry them per-doc.
-func ParseBatchGradeJSON(raw string, expected []GradingDoc) (parsed []GradedDoc, missing []uuid.UUID, err error) {
-	body := isolateJSONArray(raw)
-	if body == "" {
-		return nil, idsOf(expected), fmt.Errorf("no JSON array found in response")
-	}
-
-	var entries []gradeResponse
-	if err := json.Unmarshal([]byte(body), &entries); err != nil {
-		return nil, idsOf(expected), fmt.Errorf("parse batch response: %w", err)
-	}
-
-	byID := make(map[string]int, len(entries))
-	for _, e := range entries {
-		if e.Grade == nil || *e.Grade < 0 || *e.Grade > 3 {
-			continue
-		}
-		byID[e.DocID] = *e.Grade
-	}
-
-	parsed = make([]GradedDoc, 0, len(expected))
-	for _, d := range expected {
-		if g, ok := byID[d.ID.String()]; ok {
-			parsed = append(parsed, GradedDoc{DocID: d.ID, Grade: g})
-			continue
-		}
-		missing = append(missing, d.ID)
-	}
-	return parsed, missing, nil
-}
-
-func isolateJSONArray(s string) string {
-	start := strings.Index(s, "[")
-	end := strings.LastIndex(s, "]")
-	if start < 0 || end <= start {
-		return ""
-	}
-	return s[start : end+1]
-}
-
-func idsOf(docs []GradingDoc) []uuid.UUID {
-	out := make([]uuid.UUID, len(docs))
-	for i, d := range docs {
-		out[i] = d.ID
-	}
-	return out
-}

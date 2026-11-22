@@ -116,24 +116,6 @@ func TestVectorGradePool_LeavesDocsWithoutAVectorUnjudged(t *testing.T) {
 	assert.Equal(t, GradeHighly, got[docs[2].ID])
 }
 
-// A batch sees only part of the pool, so its ten nearest are not the pool's.
-func TestVector_RejectsBatchSize(t *testing.T) {
-	pf, articles := buildPool(t, 15)
-	ids := make(map[uuid.UUID]struct{}, len(articles))
-	for id := range articles {
-		ids[id] = struct{}{}
-	}
-	store := widthMismatchStore(t, ids, 2, 2)
-
-	_, err := NewRunner(RunnerConfig{
-		Strategy:  NewVectorStrategyWithStore(store, "fake-model"),
-		Reader:    &stubStorageReader{articles: articles},
-		BatchSize: 5,
-	}).Run(context.Background(), pf)
-
-	assert.ErrorContains(t, err, "vector grades each query's whole pool at once and takes no batch size")
-}
-
 func TestVectorDescribe(t *testing.T) {
 	s := NewVectorStrategyWithStore(fakeVectorStore{}, "qwen3")
 

@@ -33,7 +33,6 @@ import (
 	"github.com/tadjov/sengi/internal/storage/queryvectors"
 	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
-	"gopkg.in/yaml.v3"
 )
 
 func llmJudge(provider, model string) meta.Judge {
@@ -116,27 +115,6 @@ func TestCheckResumeCompat_InvocationMismatch(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `invocation: was "claude -p --model claude-haiku-5-5", now "claude -p --safe-mode --model claude-haiku-5-5"`)
-}
-
-func TestCheckResumeCompat_SameBatchingMatches(t *testing.T) {
-	was := llmJudge("claude-cli", "claude-haiku-5-5")
-	was.Batching = &meta.Batching{Size: 10, Seed: 0}
-	now := was
-	now.Batching = &meta.Batching{Size: 10, Seed: 0}
-
-	assert.NoError(t, checkResumeCompat(fileWith(was), now))
-}
-
-func TestCheckResumeCompat_BatchSeedMismatch(t *testing.T) {
-	was := llmJudge("claude-cli", "claude-haiku-5-5")
-	was.Batching = &meta.Batching{Size: 10, Seed: 1, MaxOutputTokens: 20000}
-	now := was
-	now.Batching = &meta.Batching{Size: 10, Seed: 2, MaxOutputTokens: 20000}
-
-	err := checkResumeCompat(fileWith(was), now)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "batching: was size 10, seed 1, 20000 tokens, now size 10, seed 2, 20000 tokens")
 }
 
 func TestCheckResumeCompat_EffortMismatch(t *testing.T) {
@@ -669,19 +647,16 @@ func TestJudge_UnparsableBooleanTextFailsAfterWritingTheFile(t *testing.T) {
 	assert.Regexp(t, `Judgments written: \S+/trec/annotations\.bm25\.yaml`, out)
 }
 
-func TestJudge_LLMJudgeBlockRecordsItsEffortAndBatching(t *testing.T) {
+func TestJudge_LLMJudgeBlockRecordsItsEffort(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake binary is a POSIX shell script")
 	}
 	tests := []struct {
-		name     string
-		args     []string
-		batching map[string]any
-		effort   string
+		name   string
+		args   []string
+		effort string
 	}{
-		{name: "one doc per request", effort: "low"},
-		{name: "batched", args: []string{"--batch", "2", "--seed", "7"}, batching: map[string]any{"size": 2, "seed": 7, "max_output_tokens": 20000}, effort: "low"},
-		{name: "batched under seed 0", args: []string{"--batch", "2", "--seed", "0"}, batching: map[string]any{"size": 2, "seed": 0, "max_output_tokens": 20000}, effort: "low"},
+		{name: "default effort", effort: "low"},
 		{name: "another effort", args: []string{"--effort", "medium"}, effort: "medium"},
 	}
 	for _, tt := range tests {
@@ -692,26 +667,11 @@ func TestJudge_LLMJudgeBlockRecordsItsEffortAndBatching(t *testing.T) {
 			require.NoError(t, fx.judge(t, append(args, tt.args...)...))
 
 			jf := fx.annotations(t, "claude-cli")
-			batching, _ := writtenJudge(t, fx, "claude-cli")["batching"].(map[string]any)
-			assert.Equal(t, tt.batching, batching)
 			assert.Equal(t, tt.effort, jf.Judge().Effort)
 			assert.Contains(t, jf.Judge().Invocation, "--model claude-haiku-5-5")
 			assert.NotContains(t, slices.Collect(maps.Values(gradesByQuery(jf)["q1"])), judgment.GradeUnjudged)
 		})
 	}
-}
-
-func writtenJudge(t *testing.T, fx *judgeFixture, set string) map[string]any {
-	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(fx.track, "trec", "annotations."+set+".yaml"))
-	require.NoError(t, err)
-	var file struct {
-		Meta struct {
-			Judge map[string]any `yaml:"judge"`
-		} `yaml:"meta"`
-	}
-	require.NoError(t, yaml.Unmarshal(raw, &file))
-	return file.Meta.Judge
 }
 
 // gradingClaudeCLI is a fake claude binary that grades every doc 2 and keeps its last arguments.
@@ -1070,7 +1030,6 @@ func TestJudge_RefusesLLMFlagsOutsideLLM(t *testing.T) {
 		flag string
 		args []string
 	}{
-		{flag: "--batch", args: []string{"--batch", "2"}},
 		{flag: "--provider", args: []string{"--provider", "claude-api"}},
 	}
 	for _, strategy := range []string{"keyword", "bm25", "jev", "manual"} {

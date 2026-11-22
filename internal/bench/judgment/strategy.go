@@ -30,7 +30,7 @@ type GradingDoc struct {
 	PublisherDomain string
 }
 
-// Strategy grades through DocStrategy, BatchStrategy or PoolStrategy.
+// Strategy grades through DocStrategy or PoolStrategy.
 // Describe names the judge every artifact records.
 type Strategy interface {
 	Name() string
@@ -41,15 +41,6 @@ type Strategy interface {
 type DocStrategy interface {
 	Strategy
 	Grade(ctx context.Context, q GradingQuery, doc GradingDoc) (int, error)
-}
-
-// BatchStrategy grades several docs in one LLM call when RunnerConfig.BatchSize asks for it.
-// On a partial reply it returns what it parsed, and the runner grades the rest one by one.
-type BatchStrategy interface {
-	DocStrategy
-	// BatchMaxOutputTokens is the output budget of one batch request.
-	BatchMaxOutputTokens() int
-	GradeBatch(ctx context.Context, q GradingQuery, docs []GradingDoc) ([]GradedDoc, error)
 }
 
 // PoolStrategy grades a query's whole pool at once, since its grades are relative to the pool.

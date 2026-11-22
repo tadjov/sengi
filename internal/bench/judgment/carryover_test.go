@@ -97,8 +97,6 @@ func TestCarryOver_GradesAChangedQueryAgain(t *testing.T) {
 func TestCarryOver_Refuses(t *testing.T) {
 	opus := sonnet
 	opus.Model = "claude-opus-5-5"
-	batched := sonnet
-	batched.Batching = &meta.Batching{Size: 20, Seed: 1}
 	tests := []struct {
 		name           string
 		prior          *File
@@ -111,7 +109,6 @@ func TestCarryOver_Refuses(t *testing.T) {
 		{name: "judgments of another pool", prior: oldJudgments(sonnet, "other-pool"), priorPool: "old-pool", judge: sonnet, wantErr: "other-pool"},
 		{name: "judgments without a pool", prior: oldJudgments(sonnet, ""), priorPool: "old-pool", judge: sonnet, wantErr: "no pool_run_id"},
 		{name: "another judge", prior: oldJudgments(sonnet, "old-pool"), priorPool: "old-pool", judge: opus, wantErr: "another judge"},
-		{name: "batched grades", prior: oldJudgments(batched, "old-pool"), priorPool: "old-pool", judge: batched, wantErr: "batch"},
 		{
 			name: "another canonical package", prior: oldJudgments(sonnet, "old-pool"), priorPool: "old-pool",
 			priorCanonical: canonicalV1, canonical: canonicalV2, judge: sonnet, wantErr: "sha256:bbbb",

@@ -80,9 +80,6 @@ func checkCarryOver(in CarryOverInput) error {
 	if differences := was.Differences(in.Judge); len(differences) > 0 {
 		return fmt.Errorf("old judgments come from another judge: %s", strings.Join(differences, "; "))
 	}
-	if in.Judge.Batching != nil {
-		return errors.New("batched grades depend on their batch, so they can't be carried over")
-	}
 	return checkSameCanonical(in.PriorPool.Meta.Canonical, in.Pool.Meta.Canonical)
 }
 
