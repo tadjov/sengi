@@ -167,23 +167,9 @@ func (e *EsExecutor) send(ctx context.Context, method, url string, body []byte) 
 func (e *EsExecutor) CorpusCount(ctx context.Context) (int64, error) {
 	ctx, cancel := e.withDeadline(ctx)
 	defer cancel()
-	url := fmt.Sprintf("%s/%s/_count", e.baseURL, e.index)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	body, err := e.send(ctx, http.MethodGet, fmt.Sprintf("%s/%s/_count", e.baseURL, e.index), nil)
 	if err != nil {
-		return 0, fmt.Errorf("es count request: %w", err)
-	}
-	resp, err := e.client.Do(req)
-	if err != nil {
-		return 0, fmt.Errorf("es count http: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, fmt.Errorf("es count read: %w", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("es count status %d: %s", resp.StatusCode, string(body))
+		return 0, fmt.Errorf("es count: %w", err)
 	}
 	var c struct {
 		Count int64 `json:"count"`
@@ -194,15 +180,10 @@ func (e *EsExecutor) CorpusCount(ctx context.Context) (int64, error) {
 	return c.Count, nil
 }
 
-// Validate posts the query to <index>/_validate/query?explain=true. ES parses
-// the JSON, type-checks fields, and returns "valid: false" with an explanation
-// for malformed queries — no documents scanned. A stored template is rendered
-// with its params first and the rendered body validated.
-//
-// Bodies that use top-level `knn` (vector search) are routed to
-// validateKnnBody: _validate/query only understands the Query DSL and rejects
-// `knn` outright ("request does not support [knn]"), so the knn clause is
-// checked structurally instead.
+// Validate has ES parse and type-check the query without scanning documents.
+// A stored template is rendered with its params first. _validate/query knows
+// only the Query DSL, so a top-level knn clause is checked structurally and a
+// body it rejects for fields such as size is retried as its query block alone.
 func (e *EsExecutor) Validate(ctx context.Context, search Request) error {
 	ctx, cancel := e.withDeadline(ctx)
 	defer cancel()
@@ -217,81 +198,63 @@ func (e *EsExecutor) Validate(ctx context.Context, search Request) error {
 	if hasKnn(rawQuery) {
 		return e.validateKnnBody(ctx, rawQuery)
 	}
-	url := fmt.Sprintf("%s/%s/_validate/query?explain=true", e.baseURL, e.index)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(rawQuery))
-	if err != nil {
-		return fmt.Errorf("es validate request: %w", err)
+	verdict, err := e.validateQuery(ctx, []byte(rawQuery))
+	if err != nil || verdict.valid {
+		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := e.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("es validate http: %w", err)
+	if verdict.explanation != "" {
+		return verdict.err()
 	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("es validate read: %w", err)
+	queryBlock, ok := stripToQueryBody(rawQuery)
+	if !ok {
+		return verdict.err()
 	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("es validate status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var v esValidateResponse
-	if err := json.Unmarshal(body, &v); err != nil {
-		return fmt.Errorf("es validate parse: %w", err)
-	}
-	if !v.Valid {
-		for _, exp := range v.Explanations {
-			if exp.Error != "" {
-				return fmt.Errorf("es invalid: %s", exp.Error)
-			}
-		}
-		// _validate/query rejects top-level fields like "size","from","aggs".
-		// Strip them and retry with just the query block before failing.
-		stripped, ok := stripToQueryBody(rawQuery)
-		if !ok {
-			return fmt.Errorf("es invalid: %s", string(body))
-		}
-		return e.validateBody(ctx, stripped, body)
-	}
-	return nil
+	return e.validateQueryBlock(ctx, queryBlock)
 }
 
-// validateBody is a second-chance validation against a stripped query body
-// (just the `query` field). origBody is the original response, used in the
-// error message if the retry also fails.
-func (e *EsExecutor) validateBody(ctx context.Context, body []byte, origBody []byte) error {
-	url := fmt.Sprintf("%s/%s/_validate/query?explain=true", e.baseURL, e.index)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("es validate retry: %w", err)
+func (e *EsExecutor) validateQueryBlock(ctx context.Context, body []byte) error {
+	verdict, err := e.validateQuery(ctx, body)
+	if err != nil || verdict.valid {
+		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := e.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("es validate retry http: %w", err)
-	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	var v esValidateResponse
-	if err := json.Unmarshal(respBody, &v); err != nil {
-		return fmt.Errorf("es invalid: %s", string(origBody))
-	}
-	if !v.Valid {
-		for _, exp := range v.Explanations {
-			if exp.Error != "" {
-				return fmt.Errorf("es invalid: %s", exp.Error)
-			}
-		}
-		return fmt.Errorf("es invalid: %s", string(respBody))
-	}
-	return nil
+	return verdict.err()
 }
 
-// stripToQueryBody extracts just the "query" field from an ES search body —
-// _validate/query rejects top-level "size", "from", "aggs", etc.
+// queryVerdict is what _validate/query said about a body.
+type queryVerdict struct {
+	valid       bool
+	explanation string
+	response    []byte
+}
+
+func (v queryVerdict) err() error {
+	if v.explanation != "" {
+		return fmt.Errorf("es invalid: %s", v.explanation)
+	}
+	return fmt.Errorf("es invalid: %s", v.response)
+}
+
+func (e *EsExecutor) validateQuery(ctx context.Context, body []byte) (queryVerdict, error) {
+	url := fmt.Sprintf("%s/%s/_validate/query?explain=true", e.baseURL, e.index)
+	response, err := e.send(ctx, http.MethodPost, url, body)
+	if err != nil {
+		return queryVerdict{}, fmt.Errorf("es validate: %w", err)
+	}
+	var v esValidateResponse
+	if err := json.Unmarshal(response, &v); err != nil {
+		return queryVerdict{}, fmt.Errorf("es validate parse: %w", err)
+	}
+	verdict := queryVerdict{valid: v.Valid, response: response}
+	for _, explained := range v.Explanations {
+		if explained.Error != "" {
+			verdict.explanation = explained.Error
+			break
+		}
+	}
+	return verdict, nil
+}
+
+// stripToQueryBody keeps only the body's query block.
 func stripToQueryBody(raw string) ([]byte, bool) {
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(raw), &m); err != nil {
@@ -318,9 +281,7 @@ func hasKnn(raw string) bool {
 	return ok
 }
 
-// validateKnnBody validates a vector-search body. The `knn` clause is checked
-// structurally; an accompanying `query` block, if present, is validated against
-// _validate/query as usual.
+// validateKnnBody checks the knn clause structurally and any query block with ES.
 func (e *EsExecutor) validateKnnBody(ctx context.Context, rawQuery string) error {
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(rawQuery), &m); err != nil {
@@ -334,7 +295,7 @@ func (e *EsExecutor) validateKnnBody(ctx context.Context, rawQuery string) error
 		if err != nil {
 			return fmt.Errorf("es invalid: %w", err)
 		}
-		return e.validateBody(ctx, body, []byte(rawQuery))
+		return e.validateQueryBlock(ctx, body)
 	}
 	return nil
 }
