@@ -107,7 +107,7 @@ func TestSearchHandler_ReturnsTheArticleShape(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
 			(&apiserver.Server{Echo: e}).SetupValidator()
-			e.HTTPErrorHandler = apperr.GlobalErrorHandler()
+			e.HTTPErrorHandler = apperr.GlobalErrorHandler
 			(&SearchRouter{e: e, searcher: oneArticleSearcher{article: tt.article}}).Bind()
 
 			rec := httptest.NewRecorder()

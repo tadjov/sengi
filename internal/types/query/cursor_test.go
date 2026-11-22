@@ -1,6 +1,7 @@
 package query
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -43,7 +44,7 @@ func TestEncodeCursor(t *testing.T) {
 				return
 			}
 			if tt.wantErr && err != nil && tt.errContains != "" {
-				if !contains(err.Error(), tt.errContains) {
+				if !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("EncodeCursor() error = %v, should contain %v", err, tt.errContains)
 				}
 			}
@@ -98,7 +99,7 @@ func TestDecodeCursor(t *testing.T) {
 				return
 			}
 			if tt.wantErr && err != nil && tt.errContains != "" {
-				if !contains(err.Error(), tt.errContains) {
+				if !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("DecodeCursor() error = %v, should contain %v", err, tt.errContains)
 				}
 			}
@@ -155,42 +156,4 @@ func TestCursorRoundtrip(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestMustEncodeCursor(t *testing.T) {
-	t.Run("valid input", func(t *testing.T) {
-		id := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
-		defer func() {
-			if r := recover(); r != nil {
-				t.Error("MustEncodeCursor() panicked on valid input")
-			}
-		}()
-		result := MustEncodeCursor(0.5, id)
-		if result == "" {
-			t.Error("MustEncodeCursor() returned empty string")
-		}
-	})
-
-	t.Run("nil UUID panics", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Error("MustEncodeCursor() should panic on nil UUID")
-			}
-		}()
-		MustEncodeCursor(0.5, uuid.Nil)
-	})
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > 0 && len(substr) > 0 && containsHelper(s, substr)))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

@@ -200,7 +200,7 @@ func TestStructuredSearchHandlerValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
 			(&apiserver.Server{Echo: e}).SetupValidator()
-			e.HTTPErrorHandler = apperr.GlobalErrorHandler()
+			e.HTTPErrorHandler = apperr.GlobalErrorHandler
 
 			r := &SearchRouter{e: e, searcher: stubFtsSearcher{caps: elasticsearchCaps}, hybridSearcher: stubHybridSearcher{}}
 			r.Bind()
@@ -284,7 +284,7 @@ func TestSearchHandlerValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
-			e.HTTPErrorHandler = apperr.GlobalErrorHandler()
+			e.HTTPErrorHandler = apperr.GlobalErrorHandler
 			r := &SearchRouter{e: e, searcher: stubFtsSearcher{caps: elasticsearchCaps}}
 			r.Bind()
 
@@ -315,7 +315,7 @@ func TestSemanticSearchHandlerValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
-			e.HTTPErrorHandler = apperr.GlobalErrorHandler()
+			e.HTTPErrorHandler = apperr.GlobalErrorHandler
 			NewSearchRouter(e, Searchers{FullText: stubFtsSearcher{caps: elasticsearchCaps}, Semantic: stubSemanticSearcher{}}).Bind()
 
 			rec := httptest.NewRecorder()

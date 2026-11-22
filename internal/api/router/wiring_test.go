@@ -85,7 +85,7 @@ func TestSearchRouterServesOnlyTheParadigmItIsWiredWith(t *testing.T) {
 		t.Run(b.queryType, func(t *testing.T) {
 			e := echo.New()
 			(&apiserver.Server{Echo: e}).SetupValidator()
-			e.HTTPErrorHandler = apperr.GlobalErrorHandler()
+			e.HTTPErrorHandler = apperr.GlobalErrorHandler
 			e.Use(middleware.Recover())
 			NewSearchRouter(e, Searchers{FullText: b.backend}).Bind()
 
