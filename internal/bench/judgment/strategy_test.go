@@ -41,3 +41,16 @@ func TestHeuristicStrategies_NameTheirRubric(t *testing.T) {
 		assert.NotEmpty(t, s.Describe().RubricVersion, "strategy %q", kind)
 	}
 }
+
+// A gate change needs one bump, so every judge that gates names the same version.
+func TestGatingStrategies_NameOneGateVersion(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", testJevKey)
+	jev, err := NewStrategy(StrategyJev, StrategyOptions{Model: DefaultJevModel})
+	require.NoError(t, err)
+	llm := &LLMStrategy{provider: &fakeLLMProvider{}}
+
+	for _, s := range []Strategy{NewKeywordStrategy(), NewBM25Strategy(), llm, jev} {
+		assert.Equal(t, gateVersion, s.Describe().GateVersion, "strategy %q", s.Describe().Strategy)
+	}
+	assert.NotEmpty(t, gateVersion)
+}
