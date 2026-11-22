@@ -34,7 +34,7 @@ The project follows a layered architecture pattern:
 
 - **cmd/**: Entry points for different operations
     - `datapipe/`: Unified data-pipeline CLI. The core path is **preprocess → embed → load**; every stage after the first reads the canonical package, which is what keeps article IDs identical across engines.
-        - `datapipe preprocess`: Maps a raw data package (`.csv`, `.jsonl`, `.parquet` resources) through `datasets/<ds>/mapping.yaml` into a canonical data package at `datasets/<ds>/canonical/<version>/` (`--version`, default `v1`), deduplicated by the mapping's `identity` rules; a rerun that yields the same articles is a no-op, and one that yields different articles under an existing version is refused
+        - `datapipe preprocess <preprocess.yaml> [--version v1]`: Runs a dataset's preprocess spec over the raw data package it names (`.csv`, `.jsonl`, `.parquet` resources) and publishes `<output.path>/<version>/` with `articles`, `rejects` and `changes`. A rerun of the same specs over the same input is a no-op; any other change under an existing version is refused
         - `datapipe embed --canonical <descriptor> [--version v1] [--batch-size 64] [--max-tokens 512] [--limit N]`: Embeds each article's `lead-v1` text through Ollama (`EMBEDDING_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIM`) into an embeddings package at `datasets/<ds>/embeddings/<tag-dir>/<version>/`, the format `embed_corpus.py` writes on a GPU; `producedBy` tells the two apart, and an existing version is refused before anything is embedded
         - `datapipe embed --embeddings <descriptor> --truncate-to N [--version v1] [--out <dir>]`: Cuts an existing embeddings package's vectors to their first N dimensions, L2-renormalised, with no model run, into `datasets/<ds>/embeddings/<model>@N/<version>/`, or a track's query vectors into `--out`; the descriptor records the source under `derivedFrom`
         - `datapipe load --engine <native|paradedb|tiger|es> --canonical <descriptor> [--embeddings <descriptor>]`: Verifies the canonical package and the embeddings package built from it, loads both into an empty engine, builds the indexes afterwards as timed stages, and writes the load record to the engine and to `datasets/<ds>/loads/<engine>/` — see [docs/embeddings.md](docs/embeddings.md)
@@ -59,7 +59,8 @@ The project follows a layered architecture pattern:
     - `resilience/`: Retry policy for HTTP calls: 408, 429 and 5xx or a dropped connection, honouring `Retry-After`, else backing off with jitter; only the `jev` judge uses it today
 
 - **pkg/**: Shared packages and APIs
-    - `apis/datamapping/`: Data mapping type definitions
+    - `apis/mapping/`: The mapping spec, a source's shape (`mapping.Spec`)
+    - `apis/preprocess/`: The preprocess spec, our policy for a corpus (`preprocess.Spec`)
     - `schema/`: Schema generation utilities
 
 - **api/**: API schemas and examples
@@ -87,22 +88,30 @@ The type system is organized into bounded contexts, each with its own package:
 - Follows DDD bounded context principles
 - Query API design follows industry standards (Elasticsearch `query_string` terminology)
 
-### Data Mapping System
-The project uses YAML configuration files to map source data fields to internal Article structure. Configuration files follow the DataMapping schema (`api/mapping-spec/datamapping-v1.json`) with fieldMappings that specify source/target fields and their source types, a `constants:` block (`Language: eng`) and `output.format` (`parquet` or `jsonl`). An unknown key, two sources on one target, or a target outside the list fails the load. `Title` and `URL` are required on every mapping, and `PublisherDomain` is always derived from the url.
+### Mapping and Preprocess Specs
+Each dataset has two YAML specs, and both refuse an unknown key.
 
-Every mapping has an `identity` block that decides which records are one article and how each article gets its id. Preprocess reads records in input order and keeps the first of those that are one article. Records with the same url, as normalised, are always one article, and the url a duplicate carries stays with the article it repeats. No other url spelling is merged, since two spellings can hold different stories.
+`mapping.yaml` (`kind: Mapping`, schema `api/mapping-spec/mapping-v1.json`) is the source's shape. `fields` maps a raw column (`source`) onto an article field (`target`) with a `type` (`string`, `integer`, `number`, `boolean`, `date`, `datetime`, `url`), a date `format`, `required` and a list `separator`. `missingValues` (default `[""]`) lists the raw values, compared trimmed, that mean no value. `Title` and `URL` are required, `PublisherDomain` is derived from the url, and no mapping sets the id: a dataset's own id maps to `Metadata.ExternalID`.
 
-- `unique` (optional) lists rules, each a `name` and the `fields` no two articles share, compared with whitespace collapsed. A record that repeats a kept article's fields is dropped, as an insert would be under SQL `UNIQUE`, and one with any of those fields empty never matches. The fields are `Title`, `Description`, `Content`, `PublisherDomain`, `Metadata.ExternalID`, `Metadata.PublisherName` and `Metadata.Section`.
-- `idKind` (required) is `urlHash`, the uuidv5 of the url, so the same input always yields the same ids and preprocess can be re-run without orphaning pools, qrels, or embeddings. `random` mints a new uuidv7 per article on every run, so a rerun never reproduces a published version.
+`preprocess.yaml` (`kind: Preprocess`, schema `api/preprocess-spec/preprocess-v1.json`) is our policy, with paths relative to the spec. The stages run in a fixed order: read, map, id, duplicates, signals, rules, checks, publish.
 
-The report counts each drop under `deduped`, keyed by the rule that matched (`url` for a repeated url), and the canonical descriptor records the block with the id algorithm. No mapping sets the id directly: a dataset's own id, or any column unique per record, maps to `Metadata.ExternalID` so a canonical row can be traced back to its raw record.
+- `id.kind`: `urlHash` is the uuidv5 of the url, so a rerun gives the same ids and pools, qrels and embeddings stay valid. `random` mints a uuidv7 per article on every run.
+- `duplicates.keys`: field sets no two articles share, compared with whitespace collapsed. The first record in raw order is kept, and an empty field never matches. `urlHash` needs a key on exactly `[URL]`, which also keeps the url of a record another key drops with the article it repeats. Urls compare as normalised (trimmed, host lowercased) and no other spelling is merged, since two spellings can hold different stories.
+- `signals`: `distinct` X `sharing` Y `within` Z, the number of distinct X values among the kept articles with the same Y on the same Z. An empty Y forms no group.
+- `rules`: a threshold on a signal plus `clear` of a field that is not required, or `drop`.
+- `checks`: `dropped` and `duplicates` budgets as shares of the records read, `cleared` of the articles written, each `{warn, error}`. An error publishes nothing.
+
+`rejects.parquet` lists every removed record with its stage, rule and kept twin, and `changes.parquet` every cleared field with the value it held. The descriptor's `preprocess` block records the id algorithm, a lock (spec, mapping and input hashes, and the tool), counts that reconcile with the records read, each signal's distribution and the check results. A missing optional value is NULL in parquet and absent in JSONL.
 
 ```yaml
-identity:
-  unique:
-    - name: same-page
-      fields: [PublisherDomain, Title, Content]
-  idKind: urlHash
+duplicates:
+  keys:
+    - {name: same-url, fields: [URL]}
+    - {name: same-page, fields: [PublisherDomain, Title, Content]}
+signals:
+  - {name: headlines-sharing-body, distinct: Title, sharing: Content, within: PublisherDomain}
+rules:
+  - {name: shared-body, when: {signal: headlines-sharing-body, atLeast: 3}, action: clear, field: Content}
 ```
 
 ### Storage Layer
@@ -239,7 +248,6 @@ Commands expect environment variables (typically in `.env` files):
 
 **Data Import (`cmd/data_import/.env`)**:
 - `STORAGE_TYPE`: Storage backend (`pg`, `es`, `in_mem`)
-- `MAPPING_CONFIG_PATH`: Path to YAML mapping configuration
 - `PG_CONNECTION_STRING`: PostgreSQL connection string
 - `ES_ADDRESSES`: Elasticsearch cluster addresses (comma-separated)
 - `ES_INDEX_NAME`: Elasticsearch index name

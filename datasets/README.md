@@ -5,7 +5,8 @@ Every dataset has its own folder, and every stage reads and writes a [Frictionle
 ```
 datasets/<ds>/
   README.md                          the source, its quirks, how to fetch it
-  mapping.yaml                       raw columns → article fields, read by datapipe preprocess
+  mapping.yaml                       raw columns → article fields
+  preprocess.yaml                    ids, duplicates, rules and budgets, run by datapipe preprocess
   raw/                               the source files as published, plus datapackage.json
   canonical/<version>/               datapipe preprocess output
   embeddings/<tag-dir>/<version>/    vectors for one canonical package
@@ -14,7 +15,7 @@ datasets/<ds>/
 
 `<tag-dir>` is the model tag with `:` replaced by `-`, e.g. `qwen3-embedding-0.6b@1024`.
 
-Git tracks each dataset's `README.md`, `mapping.yaml` and `kernel-metadata.json`, every `datapackage.json`, and the load records under `loads/`. It ignores the data: everything else under `raw/`, `canonical/` and `embeddings/`, and any `.csv`, `.json`, `.jsonl`, `.parquet`, `.npz` or `.gz` file elsewhere in `datasets/`. Fetch or regenerate those.
+Git tracks each dataset's `README.md`, `mapping.yaml`, `preprocess.yaml` and `kernel-metadata.json`, every `datapackage.json`, and the load records under `loads/`. It ignores the data: everything else under `raw/`, `canonical/` and `embeddings/`, and any `.csv`, `.json`, `.jsonl`, `.parquet`, `.npz` or `.gz` file elsewhere in `datasets/`. Fetch or regenerate those.
 
 ## Packages
 
@@ -37,7 +38,7 @@ Both write only into `datasets/<ds>/raw/` (`--mirror` is the Hugging Face raw st
 
 `fetch_hf_dataset.py` without `--mirror` still cuts CSV slices into the dataset folder. Those slices are not packages.
 
-Neither fetcher knows about mapping files. They land raw data under its published column names, and `datapipe preprocess` maps those onto articles through `mapping.yaml`.
+Neither fetcher knows about mapping files. They land raw data under its published column names, and `datapipe preprocess` maps those onto articles through `mapping.yaml`, as `preprocess.yaml` says.
 
 Script tests run offline against a fake Hub and a prepopulated kagglehub cache, and validate each raw descriptor against `api/datapackage-spec/datapackage-v1.json`:
 
