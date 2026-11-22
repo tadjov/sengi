@@ -31,23 +31,6 @@ func IntField(label string, value int) Field {
 	return Field{Label: label, Value: strconv.Itoa(value)}
 }
 
-func ByteField(label string, n int64) Field {
-	return Field{Label: label, Value: humanBytes(n)}
-}
-
-func humanBytes(n int64) string {
-	const unit = 1024
-	if n < unit {
-		return fmt.Sprintf("%d B", n)
-	}
-	div, exp := int64(unit), 0
-	for v := n / unit; v >= unit; v /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %ciB", float64(n)/float64(div), "KMGTPE"[exp])
-}
-
 func Done(w io.Writer, msg string) {
 	fmt.Fprintf(w, "%s %s\n", Success.Sprint("✓"), msg)
 }

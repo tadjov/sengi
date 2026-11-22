@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"maps"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -40,8 +41,8 @@ func newPreprocessCmd() *cobra.Command {
 			if cfg.InputPath == "" || cfg.OutputPath == "" || cfg.MappingPath == "" {
 				return errors.New("--input, --output and --mapping are required")
 			}
-			if err := validateFileExt(cfg.MappingPath, preprocessMappingExtensions); err != nil {
-				return fmt.Errorf("invalid mapping file ext: %w", err)
+			if ext := strings.ToLower(filepath.Ext(cfg.MappingPath)); ext != ".yaml" {
+				return fmt.Errorf("mapping %s has extension %q, want .yaml", cfg.MappingPath, ext)
 			}
 			cfg.Packages = datapackage.Options{S3: datapackage.S3ConfigFromEnv()}
 			return runPreprocess(cmd.Context(), cmd.OutOrStdout(), cfg)
@@ -54,10 +55,6 @@ func newPreprocessCmd() *cobra.Command {
 	f.StringVar(&cfg.MappingPath, "mapping", "", "Path to the YAML field-mapping config")
 	f.StringVar(&cfg.Version, "version", datapackage.DefaultVersion, "Canonical package version, the folder name under --output")
 	return cmd
-}
-
-var preprocessMappingExtensions = map[FileExt]struct{}{
-	ExtYAML: {},
 }
 
 func applyPreprocessEnvDefaults(cfg *preprocessConfig) {
