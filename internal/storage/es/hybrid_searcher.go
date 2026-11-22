@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"sort"
 
-	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/elastic/go-elasticsearch/v9"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/embedding"
@@ -166,7 +166,7 @@ func (s *HybridSearcher) vectorLeg(ctx context.Context, query string, depth int)
 
 	res, err := s.client.Search().
 		Index(s.indexName).
-		Knn(knn).
+		Knn(&knn).
 		SourceIncludes_("id").
 		Size(depth).
 		Do(ctx)

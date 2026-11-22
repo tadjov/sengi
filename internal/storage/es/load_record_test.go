@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/esdsl"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
@@ -42,7 +43,7 @@ func TestDescribeIndex_ReadsTheLoadRecordFromTheIndexMeta(t *testing.T) {
 			t.Fatalf("newTypedClient: %v", err)
 		}
 		if _, err := client.Indices.PutMapping(cfg.IndexName).
-			Meta_(types.Metadata{"load": json.RawMessage(loadRecord)}).Do(ctx); err != nil {
+			Meta_(esdsl.NewMetadata(types.Metadata{"load": json.RawMessage(loadRecord)})).Do(ctx); err != nil {
 			t.Fatalf("put _meta.load: %v", err)
 		}
 

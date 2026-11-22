@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/elastic/go-elasticsearch/v9"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
@@ -76,7 +76,7 @@ func (s *SemanticSearcher) SearchSemantic(ctx context.Context, query *dquery.Sem
 
 	res, err := s.client.Search().
 		Index(s.indexName).
-		Knn(knn).
+		Knn(&knn).
 		SourceExcludes_("embedding").
 		Size(size).
 		Do(ctx)

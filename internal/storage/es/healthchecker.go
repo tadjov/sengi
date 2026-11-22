@@ -3,7 +3,7 @@ package es
 import (
 	"context"
 
-	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v9"
 )
 
 type HealthChecker struct {

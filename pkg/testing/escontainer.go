@@ -11,9 +11,12 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+// ElasticsearchVersion is the version NewESContainer runs.
+const ElasticsearchVersion = "9.5.5"
+
 const (
-	elasticsearchImage  = "docker.elastic.co/elasticsearch/elasticsearch:8.12.0"
-	elasticsearchDigest = "sha256:ec72548cf833e58578d8ff40df44346a49480b2c88a4e73a91e1b85ec7ef0d44"
+	elasticsearchImage  = "docker.elastic.co/elasticsearch/elasticsearch:" + ElasticsearchVersion
+	elasticsearchDigest = "sha256:13b4a40bb095774f5fda635e45fd5677cc6a26565e42b24997b0c72b88e75984"
 )
 
 // digestPin adds the digest at creation, since the module reads its defaults from the bare tag.
@@ -46,8 +49,7 @@ func NewESContainer(ctx context.Context, tb testing.TB) *ESContainer {
 		tb.Skip("skipping testcontainer-backed test in -short mode")
 	}
 
-	// Elasticsearch 8 enables security, and with it TLS, by default; the
-	// readiness probe below speaks plaintext and would poll until it times out.
+	// Security is off because the plaintext probe below would never pass TLS.
 	// ES_JAVA_OPTS overrides the module's 2 GB heap with 512 MB.
 	esContainer, err := elasticsearch.Run(ctx,
 		elasticsearchImage,

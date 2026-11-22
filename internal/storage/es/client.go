@@ -7,7 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/elastic-transport-go/v8/elastictransport"
+	"github.com/elastic/go-elasticsearch/v9"
 )
 
 const (
@@ -57,20 +58,17 @@ func newTypedClient(config ClientConfig) (*elasticsearch.TypedClient, error) {
 }
 
 func newTypedClientOn(config ClientConfig, transport *http.Transport) (*elasticsearch.TypedClient, error) {
-	cfg := elasticsearch.Config{
-		Addresses:    config.Addresses,
-		Transport:    transport,
-		RetryOnError: retryUnlessTimedOut,
+	opts := []elasticsearch.Option{
+		elasticsearch.WithAddresses(config.Addresses...),
+		elasticsearch.WithTransportOptions(
+			elastictransport.WithTransport(transport),
+			elastictransport.WithRetryOnError(retryUnlessTimedOut),
+		),
 	}
-
 	if config.Username != "" && config.Password != "" {
-		cfg.Username = config.Username
-		cfg.Password = config.Password
+		opts = append(opts, elasticsearch.WithBasicAuth(config.Username, config.Password))
 	}
-
-	client, err := elasticsearch.NewTypedClient(cfg)
-
-	return client, err
+	return elasticsearch.NewTyped(opts...)
 }
 
 func newTransport(config ClientConfig) *http.Transport {

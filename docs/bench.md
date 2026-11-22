@@ -251,7 +251,7 @@ check those blocks, store their templates and validate each leg on its own execu
 records the merge settings with the legs' requests, so changing `rank_constant` or `window`
 changes the request digest.
 
-Elasticsearch 8.12 refuses its own RRF on the basic licence, so a fusion engine is how the
+Elasticsearch refuses its own RRF on the basic licence, so a fusion engine is how the
 hybrid track fuses Elasticsearch with the same RRF the Postgres engines run in SQL.
 
 #### `embedding_model`

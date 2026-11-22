@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/operator"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/sortorder"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/textquerytype"
+	"github.com/elastic/go-elasticsearch/v9"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/esdsl"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types/enums/operator"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types/enums/sortorder"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types/enums/textquerytype"
 	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/token"
@@ -80,12 +81,12 @@ func (r *Searcher) SearchStringQuery(ctx context.Context, query *dquery.String, 
 		}).
 		Size(size + 1).
 		TrackScores(true).
-		TrackTotalHits(true)
+		TrackTotalHits(esdsl.NewTrackHits().Bool(true))
 
 	if cursor != nil {
 		searchReq = searchReq.SearchAfter(
-			types.FieldValue(cursor.Score),
-			types.FieldValue(cursor.ID.String()),
+			esdsl.NewFieldValue().Float64(types.Float64(cursor.Score)),
+			esdsl.NewFieldValue().String(cursor.ID.String()),
 		)
 	}
 
@@ -243,13 +244,13 @@ func (r *Searcher) SearchField(ctx context.Context, query *dquery.Match, baseOpt
 		}).
 		Size(size + 1).
 		TrackScores(true).
-		TrackTotalHits(true)
+		TrackTotalHits(esdsl.NewTrackHits().Bool(true))
 
 	// Add cursor support and sorting
 	if cursor != nil {
 		searchReq = searchReq.SearchAfter(
-			types.FieldValue(cursor.Score),
-			types.FieldValue(cursor.ID.String()),
+			esdsl.NewFieldValue().Float64(types.Float64(cursor.Score)),
+			esdsl.NewFieldValue().String(cursor.ID.String()),
 		)
 	}
 
@@ -316,13 +317,13 @@ func (r *Searcher) SearchFields(ctx context.Context, query *dquery.MultiMatch, b
 		}).
 		Size(size + 1).
 		TrackScores(true).
-		TrackTotalHits(true)
+		TrackTotalHits(esdsl.NewTrackHits().Bool(true))
 
 	// Add cursor support and sorting
 	if cursor != nil {
 		searchReq = searchReq.SearchAfter(
-			types.FieldValue(cursor.Score),
-			types.FieldValue(cursor.ID.String()),
+			esdsl.NewFieldValue().Float64(types.Float64(cursor.Score)),
+			esdsl.NewFieldValue().String(cursor.ID.String()),
 		)
 	}
 
@@ -412,13 +413,13 @@ func (r *Searcher) SearchPhrase(ctx context.Context, query *dquery.Phrase, baseO
 		}).
 		Size(size + 1).
 		TrackScores(true).
-		TrackTotalHits(true)
+		TrackTotalHits(esdsl.NewTrackHits().Bool(true))
 
 	// Add cursor support
 	if cursor != nil {
 		searchReq = searchReq.SearchAfter(
-			types.FieldValue(cursor.Score),
-			types.FieldValue(cursor.ID.String()),
+			esdsl.NewFieldValue().Float64(types.Float64(cursor.Score)),
+			esdsl.NewFieldValue().String(cursor.ID.String()),
 		)
 	}
 
@@ -484,12 +485,12 @@ func (r *Searcher) SearchBoolean(ctx context.Context, query *dquery.Boolean, bas
 		}).
 		Size(size + 1).
 		TrackScores(true).
-		TrackTotalHits(true)
+		TrackTotalHits(esdsl.NewTrackHits().Bool(true))
 
 	if cursor != nil {
 		searchReq = searchReq.SearchAfter(
-			types.FieldValue(cursor.Score),
-			types.FieldValue(cursor.ID.String()),
+			esdsl.NewFieldValue().Float64(types.Float64(cursor.Score)),
+			esdsl.NewFieldValue().String(cursor.ID.String()),
 		)
 	}
 

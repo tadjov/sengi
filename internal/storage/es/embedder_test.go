@@ -39,7 +39,7 @@ func vec(dim int, fill float32) []float32 {
 
 func docEmbedding(t *testing.T, e *Embedder, id uuid.UUID) ([]float32, bool) {
 	t.Helper()
-	res, err := e.client.Get(e.indexName, id.String()).Do(context.Background())
+	res, err := e.client.Get(e.indexName, id.String()).SourceIncludes_("embedding", "embedding_model").Do(context.Background())
 	if err != nil {
 		t.Fatalf("Get %s: %v", id, err)
 	}
@@ -110,8 +110,8 @@ func TestEmbedder_SaveBulk_UpdatesDocAndSkipsOrphans(t *testing.T) {
 	refresh(t, embedder)
 
 	emb, _ = docEmbedding(t, embedder, a1)
-	if len(emb) == 0 || emb[0] != 0.9 {
-		t.Errorf("expected upserted embedding[0]=0.9, got %v", emb[:1])
+	if !sameVector(emb, vec(EmbeddingDims, 0.9)) {
+		t.Errorf("expected the upserted embedding of 0.9s, got %v", emb[:min(len(emb), 1)])
 	}
 }
 

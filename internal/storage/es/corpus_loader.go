@@ -15,8 +15,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/elastic/go-elasticsearch/v8/typedapi/core/bulk"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/core/bulk"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/esdsl"
+	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
@@ -400,7 +401,7 @@ func (l *CorpusLoader) writeLoadRecord(ctx context.Context, record storage.LoadR
 	if err != nil {
 		return fmt.Errorf("encode load record: %w", err)
 	}
-	if _, err := l.client.typed.Indices.PutMapping(index).Meta_(types.Metadata{loadMetaKey: encoded}).Do(ctx); err != nil {
+	if _, err := l.client.typed.Indices.PutMapping(index).Meta_(esdsl.NewMetadata(types.Metadata{loadMetaKey: encoded})).Do(ctx); err != nil {
 		return fmt.Errorf("store load record in the _meta of %s: %w", index, err)
 	}
 	return nil
