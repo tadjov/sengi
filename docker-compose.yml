@@ -19,7 +19,7 @@ x-postgres: &postgres
 services:
   pg-news-native:
     <<: *postgres
-    build: docker/native
+    image: pgvector/pgvector:0.8.7-pg18-bookworm@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
     container_name: pg-native-news
     ports:
       - "54320:5432"
@@ -28,7 +28,7 @@ services:
 
   pg-news-parade:
     <<: *postgres
-    build: docker/paradedb
+    image: paradedb/paradedb:0.26.8-pg18@sha256:97a698fdf5dbd1748052f60eaf19befb716fe6313c990d91b365715e3d6532d9
     container_name: pg-parade-news
     # The image retunes work_mem and gather workers; they go back to stock here.
     command: >-
@@ -45,7 +45,7 @@ services:
 
   pg-news-tiger:
     <<: *postgres
-    image: timescale/timescaledb-ha:pg18.6-ts2.32.0-r599.1@sha256:96b6033e7e54c26099f29cb46f634953b749b8c2c92c77bfb715cd630cdadf2e
+    image: timescale/timescaledb-ha:pg18.7-ts2.32.1-r606.1@sha256:ff4362ab6890052930ef75a72d94b7072fcc510bc79c84722700c1b2b68f3474
     container_name: pg-tiger-news
     # The image retunes work_mem, jit, gather workers and TOAST compression at startup; they go back to stock here.
     # pg_textsearch.memory_limit is sighup, so no migration can SET it.

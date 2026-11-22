@@ -3,8 +3,6 @@ package testing
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"runtime"
 	"slices"
 	"testing"
 	"time"
@@ -31,26 +29,11 @@ type PGConfig struct {
 	Unmigrated bool
 }
 
-// engineImage is a digest-pinned image or a docker/ Dockerfile, as docker-compose.yml runs the engine.
-type engineImage struct {
-	reference  string
-	dockerfile testcontainers.FromDockerfile
-}
-
-var engineImages = map[storage.Engine]engineImage{
-	storage.PostgresNative: {dockerfile: thinDockerfile(storage.PostgresNative)},
-	storage.ParadeDB:       {dockerfile: thinDockerfile(storage.ParadeDB)},
-	storage.Tiger:          {reference: "timescale/timescaledb-ha:pg18.6-ts2.32.0-r599.1@sha256:96b6033e7e54c26099f29cb46f634953b749b8c2c92c77bfb715cd630cdadf2e"},
-}
-
-func thinDockerfile(engine storage.Engine) testcontainers.FromDockerfile {
-	_, thisFile, _, _ := runtime.Caller(0)
-	return testcontainers.FromDockerfile{
-		Context:   filepath.Join(filepath.Dir(thisFile), "..", "..", "docker", string(engine)),
-		Repo:      "sengi-test-" + string(engine),
-		Tag:       "latest",
-		KeepImage: true,
-	}
+// engineImages are the digest-pinned images docker-compose.yml runs.
+var engineImages = map[storage.Engine]string{
+	storage.PostgresNative: "pgvector/pgvector:0.8.7-pg18-bookworm@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782",
+	storage.ParadeDB:       "paradedb/paradedb:0.26.8-pg18@sha256:97a698fdf5dbd1748052f60eaf19befb716fe6313c990d91b365715e3d6532d9",
+	storage.Tiger:          "timescale/timescaledb-ha:pg18.7-ts2.32.1-r606.1@sha256:ff4362ab6890052930ef75a72d94b7072fcc510bc79c84722700c1b2b68f3474",
 }
 
 var serverFlags = []string{
@@ -113,7 +96,7 @@ func createPGContainer(ctx context.Context, cfg PGConfig) (*PGContainer, error) 
 	}
 
 	pgContainer, err := postgres.Run(ctx,
-		image.reference, testcontainers.WithDockerfile(image.dockerfile),
+		image,
 		postgres.WithDatabase(cfg.Database),
 		postgres.WithUsername(cfg.Username),
 		postgres.WithPassword(cfg.Password),

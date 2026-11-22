@@ -13,7 +13,6 @@ import (
 
 type serverBuild struct {
 	ServerVersionNum string
-	Vector           string
 	Trigram          string
 	Fuzzystrmatch    string
 }
@@ -37,7 +36,7 @@ func TestPostgresEnginesShareServerBuild(t *testing.T) {
 	}
 }
 
-// readServerBuild reads pg_trgm and fuzzystrmatch as the server ships them: ParadeDB's migration creates neither.
+// readServerBuild leaves out pgvector, which ParadeDB's image ships at its own version.
 func readServerBuild(ctx context.Context, t *testing.T, connString string) serverBuild {
 	t.Helper()
 	conn, err := pgx.Connect(ctx, connString)
@@ -47,10 +46,9 @@ func readServerBuild(ctx context.Context, t *testing.T, connString string) serve
 	var build serverBuild
 	err = conn.QueryRow(ctx, `
 		SELECT current_setting('server_version_num'),
-		       (SELECT extversion FROM pg_extension WHERE extname = 'vector'),
 		       (SELECT default_version FROM pg_available_extensions WHERE name = 'pg_trgm'),
 		       (SELECT default_version FROM pg_available_extensions WHERE name = 'fuzzystrmatch')`,
-	).Scan(&build.ServerVersionNum, &build.Vector, &build.Trigram, &build.Fuzzystrmatch)
+	).Scan(&build.ServerVersionNum, &build.Trigram, &build.Fuzzystrmatch)
 	require.NoError(t, err)
 	t.Logf("%+v", build)
 	return build
