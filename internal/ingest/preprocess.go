@@ -74,34 +74,19 @@ func Preprocess(ctx context.Context, opts PreprocessOptions) (datapackage.Publis
 	return builder.publish(ctx, opts.OutputRoot, opts.Version, pkg)
 }
 
-// publish stages the package so a failed or cancelled run leaves nothing behind.
-func (b *canonicalBuilder) publish(ctx context.Context, outputRoot, version string, pkg datapackage.Package) (_ datapackage.Published, err error) {
-	if err := os.MkdirAll(outputRoot, 0o755); err != nil {
-		return datapackage.Published{}, fmt.Errorf("create canonical output folder: %w", err)
-	}
-	staging, err := os.MkdirTemp(outputRoot, ".staging-*")
-	if err != nil {
-		return datapackage.Published{}, fmt.Errorf("create staging package folder: %w", err)
-	}
-	defer func() {
-		if removeErr := os.RemoveAll(staging); removeErr != nil && err == nil {
-			err = fmt.Errorf("remove staging package folder: %w", removeErr)
-		}
-	}()
-
-	if err := b.writeArticlesFile(ctx, filepath.Join(staging, pkg.Resources[0].Path), datamapping.OutputFormat(pkg.Resources[0].Format)); err != nil {
-		return datapackage.Published{}, err
-	}
-	pkg.Report = &b.report
-	// MkdirTemp creates the folder 0700, and Publish renames this very folder.
-	if err := os.Chmod(staging, 0o755); err != nil {
-		return datapackage.Published{}, fmt.Errorf("open up staging package folder: %w", err)
-	}
-	published, err := datapackage.Publish(ctx, pkg, datapackage.PublishOptions{StagingDir: staging, ParentDir: outputRoot, Version: version})
-	if err != nil {
-		return datapackage.Published{}, fmt.Errorf("publish canonical package into %s: %w", outputRoot, err)
-	}
-	return published, nil
+func (b *canonicalBuilder) publish(ctx context.Context, outputRoot, version string, pkg datapackage.Package) (datapackage.Published, error) {
+	return datapackage.PublishStaged(ctx, datapackage.StagedPublish{
+		ParentDir: outputRoot,
+		Version:   version,
+		Write: func(stagingDir string) (datapackage.Package, error) {
+			articles := pkg.Resources[0]
+			if err := b.writeArticlesFile(ctx, filepath.Join(stagingDir, articles.Path), datamapping.OutputFormat(articles.Format)); err != nil {
+				return datapackage.Package{}, err
+			}
+			pkg.Report = &b.report
+			return pkg, nil
+		},
+	})
 }
 
 func canonicalName(rawName string) string {

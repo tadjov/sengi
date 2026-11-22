@@ -252,28 +252,7 @@ func derivedEmbeddingsDir(canonical string) (string, error) {
 	return filepath.Join(root, "embeddings"), nil
 }
 
-// publishEmbeddings stages the package so a failed or cancelled run leaves nothing behind.
-func publishEmbeddings(ctx context.Context, run embeddingsRun) (_ datapackage.Published, err error) {
-	if err := os.MkdirAll(run.tagDir, 0o755); err != nil {
-		return datapackage.Published{}, fmt.Errorf("create embeddings output folder: %w", err)
-	}
-	staging, err := os.MkdirTemp(run.tagDir, ".staging-*")
-	if err != nil {
-		return datapackage.Published{}, fmt.Errorf("create staging package folder: %w", err)
-	}
-	defer func() {
-		if removeErr := os.RemoveAll(staging); removeErr != nil && err == nil {
-			err = fmt.Errorf("remove staging package folder: %w", removeErr)
-		}
-	}()
-
-	if err := writeEmbeddings(ctx, filepath.Join(staging, embeddingsFile), run); err != nil {
-		return datapackage.Published{}, err
-	}
-	// MkdirTemp creates the folder 0700, and Publish renames this very folder.
-	if err := os.Chmod(staging, 0o755); err != nil {
-		return datapackage.Published{}, fmt.Errorf("open up staging package folder: %w", err)
-	}
+func publishEmbeddings(ctx context.Context, run embeddingsRun) (datapackage.Published, error) {
 	canonical := run.corpus.Canonical
 	pkg := datapackage.Package{
 		Name:       canonical.Name + "-embeddings",
@@ -288,11 +267,13 @@ func publishEmbeddings(ctx context.Context, run embeddingsRun) (_ datapackage.Pu
 			MediaType: parquetMediaType,
 		}},
 	}
-	published, err := datapackage.Publish(ctx, pkg, datapackage.PublishOptions{StagingDir: staging, ParentDir: run.tagDir, Version: run.opts.Version})
-	if err != nil {
-		return datapackage.Published{}, fmt.Errorf("publish embeddings package into %s: %w", run.tagDir, err)
-	}
-	return published, nil
+	return datapackage.PublishStaged(ctx, datapackage.StagedPublish{
+		ParentDir: run.tagDir,
+		Version:   run.opts.Version,
+		Write: func(stagingDir string) (datapackage.Package, error) {
+			return pkg, writeEmbeddings(ctx, filepath.Join(stagingDir, embeddingsFile), run)
+		},
+	})
 }
 
 // writeEmbeddings holds one chunk of articles and vectors in memory at a time.

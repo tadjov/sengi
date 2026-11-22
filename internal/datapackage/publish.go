@@ -76,6 +76,44 @@ func Publish(ctx context.Context, pkg Package, opts PublishOptions) (Published, 
 	return Published{Dir: target, Package: staged}, nil
 }
 
+// StagedPublish names where a package is published and how its files are produced.
+type StagedPublish struct {
+	ParentDir string
+	Version   string // empty means DefaultVersion
+	// Write fills the staging folder and describes the package it now holds.
+	Write func(stagingDir string) (Package, error)
+}
+
+// PublishStaged stages the package beside its version folder, so a failed or cancelled run leaves nothing behind.
+func PublishStaged(ctx context.Context, opts StagedPublish) (_ Published, err error) {
+	if err := os.MkdirAll(opts.ParentDir, 0o755); err != nil {
+		return Published{}, fmt.Errorf("create %s: %w", opts.ParentDir, err)
+	}
+	staging, err := os.MkdirTemp(opts.ParentDir, ".staging-*")
+	if err != nil {
+		return Published{}, fmt.Errorf("create staging package folder: %w", err)
+	}
+	defer func() {
+		if removeErr := os.RemoveAll(staging); removeErr != nil && err == nil {
+			err = fmt.Errorf("remove staging package folder: %w", removeErr)
+		}
+	}()
+
+	pkg, err := opts.Write(staging)
+	if err != nil {
+		return Published{}, err
+	}
+	// MkdirTemp creates the folder 0700, and Publish renames this very folder.
+	if err := os.Chmod(staging, 0o755); err != nil {
+		return Published{}, fmt.Errorf("open up staging package folder: %w", err)
+	}
+	published, err := Publish(ctx, pkg, PublishOptions{StagingDir: staging, ParentDir: opts.ParentDir, Version: opts.Version})
+	if err != nil {
+		return Published{}, fmt.Errorf("publish package %s into %s: %w", pkg.Name, opts.ParentDir, err)
+	}
+	return published, nil
+}
+
 func checkPublishable(pkg Package, opts PublishOptions) error {
 	if len(pkg.Resources) != 1 {
 		return fmt.Errorf("publish package %s: it must list one resource, it lists %d", pkg.Name, len(pkg.Resources))
