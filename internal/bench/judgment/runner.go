@@ -41,7 +41,7 @@ type RunnerConfig struct {
 	Existing *File
 	// Sink receives each query's entry as it finishes, so the caller can
 	// persist incrementally.
-	Sink func(QueryProgress, Entry) error
+	Sink func(Entry) error
 	// OnQueryStart and OnQueryDone are optional per-query callbacks.
 	OnQueryStart func(queryID string, docCount int, alreadyGraded int)
 	OnQueryDone  func(QueryProgress)
@@ -100,7 +100,7 @@ func (r *Runner) Run(ctx context.Context, pf *pool.PoolFile) (*File, error) {
 		jf.Queries = append(jf.Queries, ge)
 
 		if r.cfg.Sink != nil {
-			if err := r.cfg.Sink(prog, ge); err != nil {
+			if err := r.cfg.Sink(ge); err != nil {
 				return nil, fmt.Errorf("sink query %q: %w", entry.QueryID, err)
 			}
 		}

@@ -135,8 +135,8 @@ func TestRunner_SinkCalledPerQuery(t *testing.T) {
 	r := NewRunner(RunnerConfig{
 		Strategy: &fakeStrategy{name: "fake", grade: 2},
 		Reader:   &stubStorageReader{articles: articles},
-		Sink: func(qp QueryProgress, _ Entry) error {
-			assert.Equal(t, "q1", qp.QueryID)
+		Sink: func(e Entry) error {
+			assert.Equal(t, "q1", e.QueryID)
 			calls++
 			return nil
 		},
@@ -163,7 +163,7 @@ func TestRunner_QueryWithoutTermsFailsTheRunAfterGradingTheRest(t *testing.T) {
 			r := NewRunner(RunnerConfig{
 				Strategy: strategy,
 				Reader:   &stubStorageReader{articles: articles},
-				Sink: func(_ QueryProgress, e Entry) error {
+				Sink: func(e Entry) error {
 					sunk[e.QueryID] = true
 					return nil
 				},
@@ -201,7 +201,7 @@ func TestRunner_PoolQueryWithoutTextFailsBeforeGrading(t *testing.T) {
 	_, err := NewRunner(RunnerConfig{
 		Strategy: &fakeStrategy{name: "fake", grade: 2},
 		Reader:   &stubStorageReader{articles: articles},
-		Sink:     func(QueryProgress, Entry) error { sunk = true; return nil },
+		Sink:     func(Entry) error { sunk = true; return nil },
 	}).Run(context.Background(), pf)
 
 	require.Error(t, err)

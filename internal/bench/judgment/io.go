@@ -124,7 +124,7 @@ func (w *IncrementalWriter) Seed(prior *File, pf *pool.PoolFile) {
 }
 
 // Append adds (or updates) a query's judgments and flushes to disk atomically.
-func (w *IncrementalWriter) Append(_ QueryProgress, entry Entry) error {
+func (w *IncrementalWriter) Append(entry Entry) error {
 	for i, qe := range w.current.Queries {
 		if qe.QueryID == entry.QueryID {
 			w.current.Queries[i] = entry
