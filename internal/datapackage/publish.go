@@ -41,9 +41,7 @@ func (e *VersionConflictError) Error() string {
 		e.Version, e.Dir, e.PublishedHash, e.StagedHash)
 }
 
-// Publish moves a staged canonical or embeddings package to ParentDir/<version>.
-// An existing version with the same resource hash is kept, its resource restored if
-// missing; any other is a *VersionConflictError.
+// Publish keeps an existing version with the same resource hash; any other is a *VersionConflictError.
 func Publish(ctx context.Context, pkg Package, opts PublishOptions) (Published, error) {
 	if opts.Version == "" {
 		opts.Version = DefaultVersion
@@ -175,8 +173,7 @@ func keepPublished(staging string, existing Published, staged Package) (Publishe
 	return existing, nil
 }
 
-// restoreMissingResource fills in a resource whose descriptor is on disk without it,
-// as in a clone that tracks descriptors but not payloads. The hashes already match.
+// restoreMissingResource serves a clone that tracks descriptors but not payloads.
 func restoreMissingResource(staging string, existing Published, staged Package) (bool, error) {
 	target := filepath.Join(existing.Dir, existing.Package.Resources[0].Path)
 	if _, err := os.Stat(target); err == nil {

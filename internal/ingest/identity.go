@@ -38,8 +38,7 @@ func newArticleIdentity(identity datamapping.Identity) (*articleIdentity, error)
 	return &articleIdentity{idKind: kind, urls: map[uuid.UUID]struct{}{}, rules: rules}, nil
 }
 
-// admit gives article its id unless a kept article has its url or a unique rule's
-// key; then it names the first rule that matched, and the url stays with that article.
+// admit gives article its id, or names the first rule under which it repeats a kept article.
 func (a *articleIdentity) admit(article *document.Article) (rule string, kept bool, err error) {
 	urlID := document.DeriveArticleID(article.URL)
 	if _, repeated := a.urls[urlID]; repeated {
