@@ -2,7 +2,6 @@ package reader
 
 import "fmt"
 
-// DropReason classifies why a record could not be mapped
 type DropReason string
 
 const (
@@ -12,7 +11,6 @@ const (
 	ReasonInvalidURL    DropReason = "invalid_url"
 )
 
-// MappingDropError reports a record the mapper refused to produce
 type MappingDropError struct {
 	Reason DropReason
 	Source string

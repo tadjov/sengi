@@ -41,9 +41,7 @@ func (e *VersionConflictError) Error() string {
 		e.Version, e.Dir, e.PublishedHash, e.StagedHash)
 }
 
-// Publish moves a staged canonical or embeddings package to ParentDir/<version>.
-// An existing version with the same resource hash is kept, its resource restored if
-// missing; any other is a *VersionConflictError.
+// Publish keeps an existing version with the same resource hash; any other is a *VersionConflictError.
 func Publish(ctx context.Context, pkg Package, opts PublishOptions) (Published, error) {
 	if opts.Version == "" {
 		opts.Version = DefaultVersion
@@ -74,6 +72,44 @@ func Publish(ctx context.Context, pkg Package, opts PublishOptions) (Published, 
 		return Published{}, fmt.Errorf("publish %s as %s: %w", opts.StagingDir, target, err)
 	}
 	return Published{Dir: target, Package: staged}, nil
+}
+
+// StagedPublish names where a package is published and how its files are produced.
+type StagedPublish struct {
+	ParentDir string
+	Version   string // empty means DefaultVersion
+	// Write fills the staging folder and describes the package it now holds.
+	Write func(stagingDir string) (Package, error)
+}
+
+// PublishStaged stages the package beside its version folder, so a failed or cancelled run leaves nothing behind.
+func PublishStaged(ctx context.Context, opts StagedPublish) (_ Published, err error) {
+	if err := os.MkdirAll(opts.ParentDir, 0o755); err != nil {
+		return Published{}, fmt.Errorf("create %s: %w", opts.ParentDir, err)
+	}
+	staging, err := os.MkdirTemp(opts.ParentDir, ".staging-*")
+	if err != nil {
+		return Published{}, fmt.Errorf("create staging package folder: %w", err)
+	}
+	defer func() {
+		if removeErr := os.RemoveAll(staging); removeErr != nil && err == nil {
+			err = fmt.Errorf("remove staging package folder: %w", removeErr)
+		}
+	}()
+
+	pkg, err := opts.Write(staging)
+	if err != nil {
+		return Published{}, err
+	}
+	// MkdirTemp creates the folder 0700, and Publish renames this very folder.
+	if err := os.Chmod(staging, 0o755); err != nil {
+		return Published{}, fmt.Errorf("open up staging package folder: %w", err)
+	}
+	published, err := Publish(ctx, pkg, PublishOptions{StagingDir: staging, ParentDir: opts.ParentDir, Version: opts.Version})
+	if err != nil {
+		return Published{}, fmt.Errorf("publish package %s into %s: %w", pkg.Name, opts.ParentDir, err)
+	}
+	return published, nil
 }
 
 func checkPublishable(pkg Package, opts PublishOptions) error {
@@ -137,8 +173,7 @@ func keepPublished(staging string, existing Published, staged Package) (Publishe
 	return existing, nil
 }
 
-// restoreMissingResource fills in a resource whose descriptor is on disk without it,
-// as in a clone that tracks descriptors but not payloads. The hashes already match.
+// restoreMissingResource serves a clone that tracks descriptors but not payloads.
 func restoreMissingResource(staging string, existing Published, staged Package) (bool, error) {
 	target := filepath.Join(existing.Dir, existing.Package.Resources[0].Path)
 	if _, err := os.Stat(target); err == nil {

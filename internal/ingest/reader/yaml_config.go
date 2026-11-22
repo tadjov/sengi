@@ -8,28 +8,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type YAMLConfigLoader struct {
-	reader io.Reader
-}
-
-func NewYAMLConfigLoader(reader io.Reader) *YAMLConfigLoader {
-	return &YAMLConfigLoader{
-		reader: reader,
-	}
-}
-
-// Load fails on any key the schema does not define.
-func (cl *YAMLConfigLoader) Load(validate bool) (*datamapping.DataMapper, error) {
-	decoder := yaml.NewDecoder(cl.reader)
+// LoadMapping fails on any key the schema does not define, and on a mapping that is not valid.
+func LoadMapping(r io.Reader) (*datamapping.DataMapper, error) {
+	decoder := yaml.NewDecoder(r)
 	decoder.KnownFields(true)
 	var mapping datamapping.DataMapper
 	if err := decoder.Decode(&mapping); err != nil {
 		return nil, fmt.Errorf("decode mapping: %w", err)
 	}
-	if validate {
-		if err := mapping.Validate(); err != nil {
-			return nil, err
-		}
+	if err := mapping.Validate(); err != nil {
+		return nil, err
 	}
 	return &mapping, nil
 }

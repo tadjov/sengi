@@ -37,6 +37,15 @@ type Package struct {
 	Resources     []Resource    `json:"resources" schema:"required,minItems=1"`
 }
 
+func (p Package) Resource(name string) (Resource, bool) {
+	for _, r := range p.Resources {
+		if r.Name == name {
+			return r, true
+		}
+	}
+	return Resource{}, false
+}
+
 // Resource is one file of a package; Path is relative to the descriptor.
 type Resource struct {
 	Name      string `json:"name"`
@@ -73,6 +82,18 @@ type Report struct {
 	Written int64            `json:"written"`
 	Dropped map[string]int64 `json:"dropped,omitempty"`
 	Deduped map[string]int64 `json:"deduped,omitempty"`
+}
+
+func (r Report) DroppedTotal() int64 { return sum(r.Dropped) }
+
+func (r Report) DedupedTotal() int64 { return sum(r.Deduped) }
+
+func sum(counts map[string]int64) int64 {
+	var total int64
+	for _, n := range counts {
+		total += n
+	}
+	return total
 }
 
 // Embedding describes how vectors were made; Limit is set only on a --limit trial.

@@ -31,10 +31,6 @@ type PreprocessOptions struct {
 
 // Preprocess publishes to OutputRoot/<version> and keeps a version already there.
 func Preprocess(ctx context.Context, opts PreprocessOptions) (datapackage.Published, error) {
-	mapper, err := reader.NewArticleMapper(opts.Mapping)
-	if err != nil {
-		return datapackage.Published{}, fmt.Errorf("build article mapper: %w", err)
-	}
 	format, err := opts.Mapping.Output.ResolvedFormat()
 	if err != nil {
 		return datapackage.Published{}, err
@@ -66,7 +62,7 @@ func Preprocess(ctx context.Context, opts PreprocessOptions) (datapackage.Publis
 
 	builder := &canonicalBuilder{
 		raw:      opts.Raw,
-		mapper:   mapper,
+		mapper:   reader.NewArticleMapper(opts.Mapping, lang),
 		identity: identity,
 		report:   datapackage.Report{Dropped: map[string]int64{}, Deduped: map[string]int64{}},
 		counter:  progress.Or(opts.Progress),
@@ -74,34 +70,19 @@ func Preprocess(ctx context.Context, opts PreprocessOptions) (datapackage.Publis
 	return builder.publish(ctx, opts.OutputRoot, opts.Version, pkg)
 }
 
-// publish stages the package so a failed or cancelled run leaves nothing behind.
-func (b *canonicalBuilder) publish(ctx context.Context, outputRoot, version string, pkg datapackage.Package) (_ datapackage.Published, err error) {
-	if err := os.MkdirAll(outputRoot, 0o755); err != nil {
-		return datapackage.Published{}, fmt.Errorf("create canonical output folder: %w", err)
-	}
-	staging, err := os.MkdirTemp(outputRoot, ".staging-*")
-	if err != nil {
-		return datapackage.Published{}, fmt.Errorf("create staging package folder: %w", err)
-	}
-	defer func() {
-		if removeErr := os.RemoveAll(staging); removeErr != nil && err == nil {
-			err = fmt.Errorf("remove staging package folder: %w", removeErr)
-		}
-	}()
-
-	if err := b.writeArticlesFile(ctx, filepath.Join(staging, pkg.Resources[0].Path), datamapping.OutputFormat(pkg.Resources[0].Format)); err != nil {
-		return datapackage.Published{}, err
-	}
-	pkg.Report = &b.report
-	// MkdirTemp creates the folder 0700, and Publish renames this very folder.
-	if err := os.Chmod(staging, 0o755); err != nil {
-		return datapackage.Published{}, fmt.Errorf("open up staging package folder: %w", err)
-	}
-	published, err := datapackage.Publish(ctx, pkg, datapackage.PublishOptions{StagingDir: staging, ParentDir: outputRoot, Version: version})
-	if err != nil {
-		return datapackage.Published{}, fmt.Errorf("publish canonical package into %s: %w", outputRoot, err)
-	}
-	return published, nil
+func (b *canonicalBuilder) publish(ctx context.Context, outputRoot, version string, pkg datapackage.Package) (datapackage.Published, error) {
+	return datapackage.PublishStaged(ctx, datapackage.StagedPublish{
+		ParentDir: outputRoot,
+		Version:   version,
+		Write: func(stagingDir string) (datapackage.Package, error) {
+			articles := pkg.Resources[0]
+			if err := b.writeArticlesFile(ctx, filepath.Join(stagingDir, articles.Path), datamapping.OutputFormat(articles.Format)); err != nil {
+				return datapackage.Package{}, err
+			}
+			pkg.Report = &b.report
+			return pkg, nil
+		},
+	})
 }
 
 func canonicalName(rawName string) string {
@@ -156,7 +137,7 @@ func newCanonicalWriter(w io.Writer, format datamapping.OutputFormat) CanonicalW
 
 type canonicalBuilder struct {
 	raw      *datapackage.Opened
-	mapper   reader.Mapper
+	mapper   *reader.ArticleMapper
 	identity *articleIdentity
 	report   datapackage.Report
 	counter  progress.Counter
@@ -200,11 +181,7 @@ func (b *canonicalBuilder) flush(w CanonicalWriter, batch []document.Article) er
 	if err := w.Write(batch); err != nil {
 		return err
 	}
-	var deduped int64
-	for _, n := range b.report.Deduped {
-		deduped += n
-	}
-	b.counter.Detail("written", b.report.Written, "deduped", deduped)
+	b.counter.Detail("written", b.report.Written, "deduped", b.report.DedupedTotal())
 	return nil
 }
 
@@ -225,10 +202,10 @@ func (b *canonicalBuilder) openSources(ctx context.Context) (rawSources, error) 
 		if err != nil {
 			return sources, fmt.Errorf("open raw resource %s: %w", resource.Name, err)
 		}
-		records, err := recordReaderFor(resource, file)
+		records, err := reader.Open(resource.Format, file)
 		if err != nil {
 			file.Close()
-			return sources, err
+			return sources, fmt.Errorf("raw resource %s: %w", resource.Name, err)
 		}
 		sources = append(sources, rawSource{resource: resource, file: file, records: records})
 	}
@@ -239,7 +216,7 @@ func (b *canonicalBuilder) openSources(ctx context.Context) (rawSources, error) 
 func (s rawSources) records() int64 {
 	var total int64
 	for _, source := range s {
-		counted, ok := source.records.(interface{ NumRows() int64 })
+		counted, ok := source.records.(reader.RowCounter)
 		if !ok {
 			return 0
 		}
@@ -297,20 +274,3 @@ func (b *canonicalBuilder) eachArticle(ctx context.Context, source rawSource, em
 }
 
 const dropMalformed = "malformed_record"
-
-func recordReaderFor(resource datapackage.Resource, file *datapackage.ResourceFile) (reader.RecordReader, error) {
-	switch resource.Format {
-	case "csv":
-		return reader.NewCSVReader(file), nil
-	case "jsonl":
-		return reader.NewJSONLReader(file), nil
-	case "parquet":
-		parquet, err := reader.NewParquetReader(file, file.Size())
-		if err != nil {
-			return nil, fmt.Errorf("open raw resource %s as parquet: %w", resource.Name, err)
-		}
-		return parquet, nil
-	default:
-		return nil, fmt.Errorf("raw resource %s has format %q, want csv, jsonl or parquet", resource.Name, resource.Format)
-	}
-}

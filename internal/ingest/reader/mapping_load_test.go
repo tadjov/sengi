@@ -41,7 +41,7 @@ fieldMappings:
 const repoRoot = "../../.."
 
 func loadMapping(doc string) (*datamapping.DataMapper, error) {
-	return reader.NewYAMLConfigLoader(strings.NewReader(doc)).Load(true)
+	return reader.LoadMapping(strings.NewReader(doc))
 }
 
 func withIdentity(lines string) string {

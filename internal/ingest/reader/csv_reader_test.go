@@ -1,7 +1,6 @@
 package reader
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -9,97 +8,78 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCSVReader_ReadParallel(t *testing.T) {
-	csvData := `id,title,author,published
-1,Go Concurrency,John Doe,2023-10-01
-2,Understanding Interfaces,Jane Smith,2023-10-02
-3,Intro to Channels,Alice,2023-10-03`
-
-	ctx := t.Context()
-	reader := NewCSVReader(strings.NewReader(csvData))
-
-	resultsChan, err := reader.ReadParallel(ctx, 2)
-	require.NoError(t, err)
-
-	var results []map[string]string
-	for res := range resultsChan {
-		require.NoError(t, res.Err)
-		results = append(results, res.Record)
+func TestCSVReader_Records(t *testing.T) {
+	malformed := func(t *testing.T, err error) {
+		t.Helper()
+		var target *MalformedRecordError
+		require.ErrorAs(t, err, &target)
 	}
 
-	assert.Len(t, results, 3)
-
-	// Optionally check one by one (order is preserved in your current implementation)
-	assert.Contains(t, results, map[string]string{
-		"id":        "1",
-		"title":     "Go Concurrency",
-		"author":    "John Doe",
-		"published": "2023-10-01",
-	})
-	assert.Contains(t, results, map[string]string{
-		"id":        "2",
-		"title":     "Understanding Interfaces",
-		"author":    "Jane Smith",
-		"published": "2023-10-02",
-	})
-	assert.Contains(t, results, map[string]string{
-		"id":        "3",
-		"title":     "Intro to Channels",
-		"author":    "Alice",
-		"published": "2023-10-03",
-	})
+	tests := []struct {
+		name  string
+		input string
+		want  []map[string]string
+		// wantErr checks the error yielded in place of the record at the same position in want.
+		wantErr map[int]func(*testing.T, error)
+	}{
+		{
+			name:  "keys every row by the header, in file order",
+			input: "id,title\n1,Go Concurrency\n2,Understanding Interfaces\n",
+			want: []map[string]string{
+				{"id": "1", "title": "Go Concurrency"},
+				{"id": "2", "title": "Understanding Interfaces"},
+			},
+		},
+		{
+			name:  "keeps a quoted comma and newline inside one value",
+			input: "id,title\n1,\"Storms, then\nsun\"\n",
+			want:  []map[string]string{{"id": "1", "title": "Storms, then\nsun"}},
+		},
+		{
+			name:  "keeps an empty value as an empty string",
+			input: "id,title\n1,\n",
+			want:  []map[string]string{{"id": "1", "title": ""}},
+		},
+		{
+			name:    "reports a row of the wrong width as malformed and reads on",
+			input:   "id,title\n1,One\n2\n3,Three\n",
+			want:    []map[string]string{{"id": "1", "title": "One"}, nil, {"id": "3", "title": "Three"}},
+			wantErr: map[int]func(*testing.T, error){1: malformed},
+		},
+		{
+			name:  "yields nothing for a header without rows",
+			input: "id,title\n",
+		},
+		{
+			name:  "yields nothing for an empty file",
+			input: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got []map[string]string
+			for record, err := range NewCSVReader(strings.NewReader(tt.input)).Records() {
+				if check, ok := tt.wantErr[len(got)]; ok {
+					check(t, err)
+				} else {
+					require.NoError(t, err)
+				}
+				got = append(got, record)
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
 
-func TestCSVReader_ReadParallel_CancelEarly(t *testing.T) {
-	csvData := `id,title,author,published
-1,Go Concurrency,John Doe,2023-10-01
-2,Understanding Interfaces,Jane Smith,2023-10-02
-3,Intro to Channels,Alice,2023-10-03`
+func TestCSVReader_RecordsStopsWhenTheCallerDoes(t *testing.T) {
+	reader := NewCSVReader(strings.NewReader("id\n1\n2\n3\n"))
 
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	reader := NewCSVReader(strings.NewReader(csvData))
-
-	resultsChan, err := reader.ReadParallel(ctx, 2)
-	require.NoError(t, err)
-
-	var results []map[string]string
-	for res := range resultsChan {
-		require.NoError(t, res.Err)
-		results = append(results, res.Record)
-		if len(results) == 1 {
-			cancel() // simulate early exit
-			break
-		}
+	var got []string
+	for record, err := range reader.Records() {
+		require.NoError(t, err)
+		got = append(got, record["id"])
+		break
 	}
 
-	assert.Len(t, results, 1)
-}
-
-func TestCSVReader_ReadParallel_MalformedRow(t *testing.T) {
-	csvData := `id,title,author
-1,Go Concurrency,John Doe
-2,OnlyTitle
-3,Interfaces in Go,Alice`
-
-	ctx := t.Context()
-	reader := NewCSVReader(strings.NewReader(csvData))
-
-	resultsChan, err := reader.ReadParallel(ctx, 2)
-	require.NoError(t, err)
-
-	var validResults []map[string]string
-	var errorCount int
-
-	for res := range resultsChan {
-		if res.Err != nil {
-			errorCount++
-			continue
-		}
-		validResults = append(validResults, res.Record)
-	}
-
-	assert.Equal(t, 2, len(validResults))
-	assert.Equal(t, 1, errorCount)
-	assert.Contains(t, validResults[0], "id")
+	assert.Equal(t, []string{"1"}, got)
 }

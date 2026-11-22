@@ -263,3 +263,92 @@ func TestPublishRefusesAParentInsideTheStagingFolder(t *testing.T) {
 		t.Errorf("the package published earlier is gone: %v", err)
 	}
 }
+
+func stagedPublish(parent, content string) datapackage.StagedPublish {
+	return datapackage.StagedPublish{
+		ParentDir: parent,
+		Write: func(stagingDir string) (datapackage.Package, error) {
+			err := os.WriteFile(filepath.Join(stagingDir, "articles.jsonl"), []byte(content), 0o644)
+			return datapackage.Package{
+				Name:      "cc-news-canonical",
+				Resources: []datapackage.Resource{{Name: datapackage.ArticlesResource, Path: "articles.jsonl", Format: "jsonl"}},
+			}, err
+		},
+	}
+}
+
+func entryNames(t *testing.T, dir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := make([]string, len(entries))
+	for i, entry := range entries {
+		names[i] = entry.Name()
+	}
+	return names
+}
+
+func TestPublishStagedLeavesOnlyTheVersionFolder(t *testing.T) {
+	parent := filepath.Join(t.TempDir(), "datasets", "cc-news", "canonical")
+
+	published, err := datapackage.PublishStaged(context.Background(), stagedPublish(parent, "hello\n"))
+	if err != nil {
+		t.Fatalf("PublishStaged: %v", err)
+	}
+
+	if got := published.Package.Resources[0].Hash; got != helloHash {
+		t.Errorf("published hash = %s, want %s", got, helloHash)
+	}
+	if got := entryNames(t, parent); len(got) != 1 || got[0] != datapackage.DefaultVersion {
+		t.Errorf("parent holds %v, want only %s", got, datapackage.DefaultVersion)
+	}
+	info, err := os.Stat(published.Dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm()&0o055 != 0o055 {
+		t.Errorf("version folder mode = %v, want it readable by everyone", info.Mode().Perm())
+	}
+}
+
+func TestPublishStagedLeavesNothingWhenWritingFails(t *testing.T) {
+	parent := t.TempDir()
+	failed := errors.New("disk full")
+	opts := stagedPublish(parent, "hello\n")
+	opts.Write = func(stagingDir string) (datapackage.Package, error) {
+		writeFile(t, stagingDir, "articles.jsonl", "partial")
+		return datapackage.Package{}, failed
+	}
+
+	_, err := datapackage.PublishStaged(context.Background(), opts)
+
+	if !errors.Is(err, failed) {
+		t.Fatalf("err = %v, want %v", err, failed)
+	}
+	if got := entryNames(t, parent); len(got) != 0 {
+		t.Errorf("parent holds %v after a failed write", got)
+	}
+}
+
+func TestPublishStagedKeepsAnExistingVersionOrRefusesOtherBytes(t *testing.T) {
+	parent := t.TempDir()
+	if _, err := datapackage.PublishStaged(context.Background(), stagedPublish(parent, "hello\n")); err != nil {
+		t.Fatalf("PublishStaged: %v", err)
+	}
+
+	again, err := datapackage.PublishStaged(context.Background(), stagedPublish(parent, "hello\n"))
+	if err != nil || !again.Existing {
+		t.Errorf("same bytes: existing = %v, err = %v; want the published version kept", again.Existing, err)
+	}
+
+	_, err = datapackage.PublishStaged(context.Background(), stagedPublish(parent, "hello again\n"))
+	var conflict *datapackage.VersionConflictError
+	if !errors.As(err, &conflict) {
+		t.Errorf("other bytes: err = %v, want a version conflict", err)
+	}
+	if got := entryNames(t, parent); len(got) != 1 {
+		t.Errorf("parent holds %v, want only the published version", got)
+	}
+}

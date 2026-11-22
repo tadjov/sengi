@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/fs"
 	"iter"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -19,20 +18,21 @@ import (
 	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
-	"github.com/tadjov/sengi/pkg/config/env"
 )
 
 const (
-	embeddingsFile     = "embeddings.parquet"
-	parquetMediaType   = "application/vnd.apache.parquet"
-	batchesPerChunk    = 64
-	embedProducingTool = "datapipe embed"
-	leadRecipe         = "lead-v1"
-	lastTokenPooling   = "last_token"
-	defaultMaxTokens   = 512
+	embeddingsFile        = "embeddings.parquet"
+	parquetMediaType      = "application/vnd.apache.parquet"
+	batchesPerChunk       = 64
+	embedProducingTool    = "datapipe embed"
+	leadRecipe            = "lead-v1"
+	lastTokenPooling      = "last_token"
+	defaultMaxTokens      = 512
+	defaultEmbedBatchSize = 64
 )
 
 type embedOptions struct {
@@ -57,16 +57,13 @@ datasets/<ds>/embeddings/<tag-dir>/<version>/, one row per canonical row in orde
 Ollama comes from the environment: EMBEDDING_BASE_URL, EMBEDDING_MODEL and
 EMBEDDING_DIM, as the search API reads them.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := env.LoadDotEnv(os.Getenv("ENV")); err != nil {
-				slog.Info("Skipping .env environment variables", "error", err)
-			}
 			return runEmbed(cmd.Context(), cmd.OutOrStdout(), opts)
 		},
 	}
 	flags := cmd.Flags()
 	flags.StringVar(&opts.Canonical, "canonical", "", "local canonical package descriptor under datasets/<ds>/canonical/<version>/")
 	flags.StringVar(&opts.Version, "version", datapackage.DefaultVersion, "embeddings package version, a folder under embeddings/<tag-dir>/ that must not exist yet")
-	flags.IntVar(&opts.BatchSize, "batch-size", embedding.DefaultBatchSize, "articles per embedding request")
+	flags.IntVar(&opts.BatchSize, "batch-size", defaultEmbedBatchSize, "articles per embedding request")
 	flags.IntVar(&opts.MaxTokens, "max-tokens", defaultMaxTokens, "input tokens per article, sent to Ollama as num_ctx; a longer lead is cut")
 	flags.StringVar(&opts.HuggingFaceModel, "hf-model", "", "Hugging Face repo the model is built from; required unless EMBEDDING_MODEL is "+embedding.DefaultModel)
 	flags.IntVar(&opts.Limit, "limit", 0, "embed only the first N rows, as a trial with its own --version; 0 embeds every row")
@@ -79,12 +76,12 @@ func runEmbed(ctx context.Context, out io.Writer, opts embedOptions) error {
 	if err != nil {
 		return err
 	}
-	inputs, err := openLoadInputs(ctx, loadOptions{Canonical: opts.Canonical})
+	packaged, err := ingest.OpenCorpus(ctx, ingest.CorpusOptions{Canonical: opts.Canonical})
 	if err != nil {
 		return err
 	}
-	defer inputs.Close()
-	run.corpus = inputs.corpus(ctx)
+	defer packaged.Close()
+	run.corpus = packaged.Corpus(ctx)
 
 	command := cli.Command{
 		Title: "sengi embed",
@@ -99,9 +96,9 @@ func runEmbed(ctx context.Context, out io.Writer, opts embedOptions) error {
 		Unit:  "articles",
 	}
 	return command.Run(out, func(p *cli.Progress) (cli.Summary, error) {
-		articles, err := countArticles(ctx, inputs.articles, inputs.articlesFormat)
+		articles, err := packaged.ArticleCount(ctx)
 		if err != nil {
-			return cli.Summary{}, fmt.Errorf("count articles of canonical package %s: %w", run.corpus.Canonical.Name, err)
+			return cli.Summary{}, err
 		}
 		if opts.Limit > 0 {
 			articles = min(articles, int64(opts.Limit))
@@ -151,16 +148,15 @@ func prepareEmbeddings(ctx context.Context, opts embedOptions) (embeddingsRun, e
 		return embeddingsRun{}, err
 	}
 	embedder := embedding.NewEmbedder(api.client,
-		embedding.WithExecutorModel(api.model),
+		embedding.WithModel(api.model),
 		embedding.WithDim(api.dim),
-		embedding.WithBatchSize(opts.BatchSize),
 		embedding.WithDocumentOptions(map[string]any{"num_ctx": opts.MaxTokens}),
 	)
 	tagDir := filepath.Join(embeddingsDir, strings.ReplaceAll(embedder.Model(), ":", "-"))
 	if err := refuseExistingVersion(filepath.Join(tagDir, opts.Version)); err != nil {
 		return embeddingsRun{}, err
 	}
-	model, err := api.describer.DescribeModel(ctx, api.model)
+	model, err := api.client.DescribeModel(ctx, api.model)
 	if err != nil {
 		return embeddingsRun{}, err
 	}
@@ -199,10 +195,9 @@ func (o embedOptions) validate() error {
 }
 
 type embeddingAPI struct {
-	client    embedding.Client
-	describer embedding.ModelDescriber
-	model     string
-	dim       int
+	client *embedding.OllamaClient
+	model  string
+	dim    int
 }
 
 func embeddingAPIFromEnv() (embeddingAPI, error) {
@@ -217,7 +212,7 @@ func embeddingAPIFromEnv() (embeddingAPI, error) {
 	if err != nil {
 		return embeddingAPI{}, fmt.Errorf("embedding client for %s: %w", cfg.BaseURL, err)
 	}
-	return embeddingAPI{client: client, describer: client, model: cmp.Or(cfg.Model, embedding.DefaultModel), dim: cfg.Dim}, nil
+	return embeddingAPI{client: client, model: cmp.Or(cfg.Model, embedding.DefaultModel), dim: cfg.Dim}, nil
 }
 
 func huggingFaceModelOf(model, flagValue string) (string, error) {
@@ -251,28 +246,7 @@ func derivedEmbeddingsDir(canonical string) (string, error) {
 	return filepath.Join(root, "embeddings"), nil
 }
 
-// publishEmbeddings stages the package so a failed or cancelled run leaves nothing behind.
-func publishEmbeddings(ctx context.Context, run embeddingsRun) (_ datapackage.Published, err error) {
-	if err := os.MkdirAll(run.tagDir, 0o755); err != nil {
-		return datapackage.Published{}, fmt.Errorf("create embeddings output folder: %w", err)
-	}
-	staging, err := os.MkdirTemp(run.tagDir, ".staging-*")
-	if err != nil {
-		return datapackage.Published{}, fmt.Errorf("create staging package folder: %w", err)
-	}
-	defer func() {
-		if removeErr := os.RemoveAll(staging); removeErr != nil && err == nil {
-			err = fmt.Errorf("remove staging package folder: %w", removeErr)
-		}
-	}()
-
-	if err := writeEmbeddings(ctx, filepath.Join(staging, embeddingsFile), run); err != nil {
-		return datapackage.Published{}, err
-	}
-	// MkdirTemp creates the folder 0700, and Publish renames this very folder.
-	if err := os.Chmod(staging, 0o755); err != nil {
-		return datapackage.Published{}, fmt.Errorf("open up staging package folder: %w", err)
-	}
+func publishEmbeddings(ctx context.Context, run embeddingsRun) (datapackage.Published, error) {
 	canonical := run.corpus.Canonical
 	pkg := datapackage.Package{
 		Name:       canonical.Name + "-embeddings",
@@ -287,11 +261,13 @@ func publishEmbeddings(ctx context.Context, run embeddingsRun) (_ datapackage.Pu
 			MediaType: parquetMediaType,
 		}},
 	}
-	published, err := datapackage.Publish(ctx, pkg, datapackage.PublishOptions{StagingDir: staging, ParentDir: run.tagDir, Version: run.opts.Version})
-	if err != nil {
-		return datapackage.Published{}, fmt.Errorf("publish embeddings package into %s: %w", run.tagDir, err)
-	}
-	return published, nil
+	return datapackage.PublishStaged(ctx, datapackage.StagedPublish{
+		ParentDir: run.tagDir,
+		Version:   run.opts.Version,
+		Write: func(stagingDir string) (datapackage.Package, error) {
+			return pkg, writeEmbeddings(ctx, filepath.Join(stagingDir, embeddingsFile), run)
+		},
+	})
 }
 
 // writeEmbeddings holds one chunk of articles and vectors in memory at a time.
@@ -301,13 +277,13 @@ func writeEmbeddings(ctx context.Context, path string, run embeddingsRun) error 
 		return fmt.Errorf("create %s: %w", path, err)
 	}
 	defer f.Close()
-	writer := parquet.NewGenericWriter[embeddingRow](f)
+	writer := parquet.NewGenericWriter[ingest.EmbeddingRow](f)
 	counter := progress.Or(run.progress)
 	for chunk, err := range articleChunks(run.corpus.Articles, run.opts.BatchSize*batchesPerChunk, run.opts.Limit) {
 		if err != nil {
 			return err
 		}
-		rows := make([]embeddingRow, 0, len(chunk))
+		rows := make([]ingest.EmbeddingRow, 0, len(chunk))
 		// One request per batch, so the count moves as each one returns rather than once per chunk.
 		for batch := range slices.Chunk(chunk, run.opts.BatchSize) {
 			vecs, err := run.embedder.EmbedDocuments(ctx, batch)
@@ -315,7 +291,7 @@ func writeEmbeddings(ctx context.Context, path string, run embeddingsRun) error 
 				return err
 			}
 			for _, vec := range vecs {
-				rows = append(rows, embeddingRow{ID: vec.ID.String(), Embedding: vec.Embedding})
+				rows = append(rows, ingest.EmbeddingRow{ID: vec.ID.String(), Embedding: vec.Embedding})
 			}
 			counter.Add(int64(len(batch)))
 		}
