@@ -74,9 +74,9 @@ func newMapper(t *testing.T, doc string) *reader.ArticleMapper {
 	t.Helper()
 	mapping, err := loadMapping(doc)
 	require.NoError(t, err)
-	mapper, err := reader.NewArticleMapper(mapping)
+	lang, err := mapping.Constants.ResolvedLanguage()
 	require.NoError(t, err)
-	return mapper
+	return reader.NewArticleMapper(mapping, lang)
 }
 
 func TestArticleMapper_MapsEveryTargetAndSourceType(t *testing.T) {

@@ -31,10 +31,6 @@ type PreprocessOptions struct {
 
 // Preprocess publishes to OutputRoot/<version> and keeps a version already there.
 func Preprocess(ctx context.Context, opts PreprocessOptions) (datapackage.Published, error) {
-	mapper, err := reader.NewArticleMapper(opts.Mapping)
-	if err != nil {
-		return datapackage.Published{}, fmt.Errorf("build article mapper: %w", err)
-	}
 	format, err := opts.Mapping.Output.ResolvedFormat()
 	if err != nil {
 		return datapackage.Published{}, err
@@ -66,7 +62,7 @@ func Preprocess(ctx context.Context, opts PreprocessOptions) (datapackage.Publis
 
 	builder := &canonicalBuilder{
 		raw:      opts.Raw,
-		mapper:   mapper,
+		mapper:   reader.NewArticleMapper(opts.Mapping, lang),
 		identity: identity,
 		report:   datapackage.Report{Dropped: map[string]int64{}, Deduped: map[string]int64{}},
 		counter:  progress.Or(opts.Progress),
@@ -141,7 +137,7 @@ func newCanonicalWriter(w io.Writer, format datamapping.OutputFormat) CanonicalW
 
 type canonicalBuilder struct {
 	raw      *datapackage.Opened
-	mapper   reader.Mapper
+	mapper   *reader.ArticleMapper
 	identity *articleIdentity
 	report   datapackage.Report
 	counter  progress.Counter

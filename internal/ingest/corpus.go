@@ -193,7 +193,7 @@ func (c *PackagedCorpus) readArticles(ctx context.Context) iter.Seq2[document.Ar
 				yield(document.Article{}, fmt.Errorf("read canonical row %d: %w", row, err))
 				return
 			}
-			article, err := reader.NewArticleDirectMapper().Map(record)
+			article, err := reader.CanonicalArticle(record)
 			if err != nil {
 				yield(document.Article{}, fmt.Errorf("canonical row %d: %w", row, err))
 				return

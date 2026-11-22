@@ -120,7 +120,7 @@ func loadPreprocessMapping(path string) (*datamapping.DataMapper, error) {
 		return nil, fmt.Errorf("open mapping config: %w", err)
 	}
 	defer f.Close()
-	mapping, err := reader.NewYAMLConfigLoader(f).Load(true)
+	mapping, err := reader.LoadMapping(f)
 	if err != nil {
 		return nil, fmt.Errorf("load mapping %s: %w", path, err)
 	}
