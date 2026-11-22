@@ -495,14 +495,30 @@ func TestPreprocess_ComparesUniqueFieldsWithWhitespaceCollapsed(t *testing.T) {
 	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", samePageRule),
 		csvFile("part.csv", "title,text,url\n"+
 			"Storm hits coast,Wire body,https://example.com/a\n"+
-			"\"  Storm  hits\ncoast \",\"Wire\t body\",https://example.com/b\n"),
+			"\"  Storm  hits\ncoast \",\"Wire\t body\",https://example.com/b\n"+
+			"Storm\u00a0hits coast,Wire\u2003body,https://example.com/c\n"),
 	)
 
 	require.NoError(t, run.execute(t.Context()))
 
 	pkg, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/a"}, rows.urls)
-	assert.Equal(t, map[string]int64{"same-page": 1}, pkg.Report.Deduped)
+	assert.Equal(t, map[string]int64{"same-page": 2}, pkg.Report.Deduped)
+}
+
+func TestPreprocess_ComparesEachUniqueFieldOnItsOwn(t *testing.T) {
+	rules := "  unique:\n    - {name: same-text, fields: [Title, Content]}\n"
+	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", rules),
+		csvFile("part.csv", "title,text,url\n"+
+			"Storm hits,coast now,https://example.com/1\n"+
+			"Storm,hits coast now,https://example.com/2\n"),
+	)
+
+	require.NoError(t, run.execute(t.Context()))
+
+	pkg, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, []string{"https://example.com/1", "https://example.com/2"}, rows.urls)
+	assert.Empty(t, pkg.Report.Deduped)
 }
 
 func TestPreprocess_NeverMatchesAUniqueRuleOnAnEmptyField(t *testing.T) {
