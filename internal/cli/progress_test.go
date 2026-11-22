@@ -54,7 +54,7 @@ func TestProgress_TerminalRedrawsOneLineInPlace(t *testing.T) {
 	f.clock.advance(12 * time.Second)
 	f.progress.tick()
 
-	assert.Contains(t, lastDraw(f.status.String()), "preprocess  312,000 / 708,241 records  44%  12s")
+	assert.Contains(t, lastDraw(f.status.String()), "preprocess  ████████░░░░░░░░░░░░   44%  312,000 / 708,241 records  26.0k/s  12s  eta 15s")
 
 	f.progress.Add(1_000)
 	f.clock.advance(time.Second)
@@ -74,16 +74,51 @@ func TestProgress_TerminalAnimatesTheSpinnerWithoutNewCounts(t *testing.T) {
 	assert.NotEqual(t, first, lastDraw(f.status.String()))
 }
 
-func TestProgress_WithoutTotalShowsCountAndElapsed(t *testing.T) {
+func TestProgress_BarFillsWithTheCount(t *testing.T) {
+	f := newFixture(t, true, 0)
+	f.progress.SetTotal(100)
+	f.progress.Add(50)
+	f.progress.tick()
+
+	assert.Contains(t, lastDraw(f.status.String()), "██████████░░░░░░░░░░   50%")
+}
+
+func TestProgress_CountKeepsItsColumnAsItGrows(t *testing.T) {
+	f := newFixture(t, true, 0)
+	f.progress.SetTotal(708_241)
+	f.progress.Add(5)
+	f.progress.tick()
+	early := lastDraw(f.status.String())
+	f.progress.Add(499_995)
+	f.progress.tick()
+	late := lastDraw(f.status.String())
+
+	assert.Equal(t, strings.Index(early, " / 708,241"), strings.Index(late, " / 708,241"), "the line must not shift as digits are added")
+}
+
+func TestProgress_ShowsRateAndTimeLeft(t *testing.T) {
+	f := newFixture(t, true, 0)
+	f.progress.SetTotal(300_000)
+	f.progress.Add(100_000)
+	f.clock.advance(10 * time.Second)
+	f.progress.tick()
+
+	line := lastDraw(f.status.String())
+	assert.Contains(t, line, "10.0k/s")
+	assert.Contains(t, line, "eta 20s")
+}
+
+func TestProgress_WithoutTotalShowsCountRateAndElapsed(t *testing.T) {
 	f := newFixture(t, true, 0)
 	f.progress.Add(5_000)
 	f.clock.advance(3*time.Minute + 4*time.Second)
 	f.progress.tick()
 
 	line := lastDraw(f.status.String())
-	assert.Contains(t, line, "preprocess  5,000 records  3m04s")
+	assert.Contains(t, line, "preprocess  5,000 records  27/s  3m04s")
 	assert.NotContains(t, line, "%")
-	assert.NotContains(t, line, "/")
+	assert.NotContains(t, line, "eta")
+	assert.NotContains(t, line, "░")
 }
 
 func TestProgress_NothingCountedShowsOnlyLabelAndElapsed(t *testing.T) {
@@ -112,18 +147,21 @@ func TestProgress_PlainOutputWritesOneLineEveryTenSeconds(t *testing.T) {
 	f.clock.advance(5 * time.Second)
 	f.progress.tick()
 
-	assert.Equal(t, "preprocess  100 records  10s\npreprocess  150 records  20s\n", f.status.String())
+	assert.Equal(t, "preprocess  100 records  10/s  10s\npreprocess  150 records  7.5/s  20s\n", f.status.String())
 }
 
-func TestProgress_PlainOutputHasNoTerminalControls(t *testing.T) {
+func TestProgress_PlainOutputHasNoTerminalControlsOrBar(t *testing.T) {
 	f := newFixture(t, false, 0)
+	f.progress.SetTotal(10)
 	f.progress.Add(1)
 	f.clock.advance(10 * time.Second)
 	f.progress.tick()
 	f.progress.Done()
 
+	assert.Contains(t, f.status.String(), "10%")
 	assert.NotContains(t, f.status.String(), "\r")
 	assert.NotContains(t, f.status.String(), "\033")
+	assert.NotContains(t, f.status.String(), "░")
 }
 
 func TestProgress_DoneClearsTheLine(t *testing.T) {
@@ -156,7 +194,7 @@ func TestProgress_StageCountsAfreshAndShowsDetail(t *testing.T) {
 	f.progress.Stage("copy_articles")
 	f.progress.Add(10)
 	f.progress.tick()
-	assert.Contains(t, lastDraw(f.status.String()), "preprocess  copy_articles  10 records")
+	assert.Contains(t, lastDraw(f.status.String()), "copy_articles  10 records")
 
 	f.progress.Stage("build_search_index")
 	f.progress.Detail("phase", "building index", "tuples", "10/20")
@@ -164,8 +202,62 @@ func TestProgress_StageCountsAfreshAndShowsDetail(t *testing.T) {
 	f.progress.tick()
 
 	line := lastDraw(f.status.String())
-	assert.Contains(t, line, "preprocess  build_search_index  phase building index  tuples 10/20  1m00s")
+	assert.Contains(t, line, "build_search_index  1m00s  phase building index  tuples 10/20")
 	assert.NotContains(t, line, "records", "a new stage starts with nothing counted")
+}
+
+func TestProgress_AnEndedStageLeavesItsOwnLine(t *testing.T) {
+	f := newFixture(t, true, 0)
+	end := f.progress.Stage("copy_articles")
+	f.progress.Add(708_241)
+	f.clock.advance(time.Minute + 52*time.Second)
+	end()
+	f.progress.tick()
+
+	status := f.status.String()
+	assert.Contains(t, status, "✓ copy_articles  708,241 records  1m52s  6.3k/s\n")
+	assert.Contains(t, lastDraw(status), "preprocess", "with no stage running the line names the command again")
+	assert.NotContains(t, lastDraw(status), "copy_articles")
+}
+
+func TestProgress_PlainOutputWritesAnEndedStageRightAway(t *testing.T) {
+	f := newFixture(t, false, 0)
+	end := f.progress.Stage("schema")
+	f.clock.advance(120 * time.Millisecond)
+	end()
+	f.progress.tick()
+
+	assert.Equal(t, "✓ schema  0.1s\n", f.status.String())
+}
+
+func TestProgress_DoneWritesStagesThatEndedSinceTheLastDraw(t *testing.T) {
+	f := newFixture(t, true, 0)
+	end := f.progress.Stage("vacuum_analyze")
+	f.clock.advance(3 * time.Second)
+	end()
+	f.progress.Done()
+
+	assert.Contains(t, f.status.String(), "✓ vacuum_analyze  3.0s\n")
+}
+
+func TestProgress_AStageThatNeverEndsLeavesNoLine(t *testing.T) {
+	f := newFixture(t, true, 0)
+	f.progress.Stage("copy_articles")
+	f.progress.Add(10)
+	f.progress.tick()
+	f.progress.Done()
+
+	assert.NotContains(t, f.status.String(), "✓")
+}
+
+func TestProgress_EndingAStageAfterTheNextBeganDoesNothing(t *testing.T) {
+	f := newFixture(t, true, 0)
+	endSchema := f.progress.Stage("schema")
+	f.progress.Stage("copy_articles")
+	endSchema()
+	f.progress.Done()
+
+	assert.NotContains(t, f.status.String(), "✓")
 }
 
 func TestProgress_DetailGroupsIntegerThousands(t *testing.T) {
@@ -174,7 +266,7 @@ func TestProgress_DetailGroupsIntegerThousands(t *testing.T) {
 	f.progress.Detail("written", int64(300_000), "deduped", 1_204)
 	f.progress.tick()
 
-	assert.Contains(t, lastDraw(f.status.String()), "312,000 records  written 300,000  deduped 1,204  0s")
+	assert.Contains(t, lastDraw(f.status.String()), "312,000 records  0s  written 300,000  deduped 1,204")
 }
 
 func TestProgress_TerminalLineFitsTheWidth(t *testing.T) {

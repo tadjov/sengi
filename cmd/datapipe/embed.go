@@ -117,10 +117,7 @@ func runEmbed(ctx context.Context, out io.Writer, opts embedOptions) error {
 		Unit:  "articles",
 	}
 	return command.Run(out, func(p *cli.Progress) (cli.Summary, error) {
-		articles, err := countArticles(ctx, inputs.articles, inputs.articlesFormat)
-		if err != nil {
-			return cli.Summary{}, fmt.Errorf("count articles of canonical package %s: %w", run.corpus.Canonical.Name, err)
-		}
+		articles := inputs.articleCount
 		if opts.Limit > 0 {
 			articles = min(articles, int64(opts.Limit))
 		}

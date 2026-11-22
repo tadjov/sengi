@@ -184,6 +184,8 @@ type loadInputs struct {
 	embeddings     *datapackage.Opened
 	vectors        *datapackage.ResourceFile
 	vectorsHash    string
+	articleCount   int64
+	vectorCount    int64
 }
 
 // openLoadInputs checks both descriptors before it reads either resource.
@@ -231,29 +233,23 @@ func (in *loadInputs) open(ctx context.Context, opts loadOptions) error {
 	if in.articles, err = in.canonical.Resource(ctx, datapackage.ArticlesResource); err != nil {
 		return fmt.Errorf("verify canonical package %s: %w", canonical.Name, err)
 	}
-	if in.embeddings != nil {
-		if in.vectors, err = in.embeddings.Resource(ctx, datapackage.EmbeddingsResource); err != nil {
-			return fmt.Errorf("verify embeddings package %s: %w", in.embeddings.Package.Name, err)
-		}
-		if !opts.Trial {
-			return in.refusePartialVectors(ctx)
-		}
+	if in.articleCount, err = countArticles(ctx, in.articles, in.articlesFormat); err != nil {
+		return fmt.Errorf("count articles of canonical package %s: %w", canonical.Name, err)
 	}
-	return nil
-}
-
-func (in *loadInputs) refusePartialVectors(ctx context.Context) error {
+	if in.embeddings == nil {
+		return nil
+	}
+	if in.vectors, err = in.embeddings.Resource(ctx, datapackage.EmbeddingsResource); err != nil {
+		return fmt.Errorf("verify embeddings package %s: %w", in.embeddings.Package.Name, err)
+	}
 	vectors, err := parquet.OpenFile(in.vectors, in.vectors.Size())
 	if err != nil {
 		return fmt.Errorf("read embeddings package %s: %w", in.embeddings.Package.Name, err)
 	}
-	articles, err := countArticles(ctx, in.articles, in.articlesFormat)
-	if err != nil {
-		return fmt.Errorf("count articles of canonical package %s: %w", in.canonical.Package.Name, err)
-	}
-	if vectors.NumRows() < articles {
+	in.vectorCount = vectors.NumRows()
+	if !opts.Trial && in.vectorCount < in.articleCount {
 		return fmt.Errorf("embeddings package %s holds %d vectors for %d articles; pass --trial to load a partial package",
-			in.embeddings.Package.Name, vectors.NumRows(), articles)
+			in.embeddings.Package.Name, in.vectorCount, in.articleCount)
 	}
 	return nil
 }
@@ -314,14 +310,16 @@ func checkEmbeddings(pkg datapackage.Package, canonicalHash string, trial bool) 
 func (in *loadInputs) corpus(ctx context.Context) storage.Corpus {
 	canonical := in.canonical.Package
 	c := storage.Corpus{
-		Articles:  canonicalArticles(ctx, in.articles, in.articlesFormat),
-		Language:  canonical.Language,
-		Canonical: storage.PackageRef{Name: canonical.Name, Version: canonical.Version, ResourceHash: in.articlesHash},
+		Articles:     canonicalArticles(ctx, in.articles, in.articlesFormat),
+		ArticleCount: in.articleCount,
+		Language:     canonical.Language,
+		Canonical:    storage.PackageRef{Name: canonical.Name, Version: canonical.Version, ResourceHash: in.articlesHash},
 	}
 	if in.embeddings != nil {
 		embeddings := in.embeddings.Package
 		c.ModelTag = embeddings.Embedding.Tag
 		c.Vectors = packageVectors(ctx, in.vectors, c.ModelTag)
+		c.VectorCount = in.vectorCount
 		c.Embeddings = &storage.PackageRef{Name: embeddings.Name, Version: embeddings.Version, ResourceHash: in.vectorsHash}
 	}
 	return c

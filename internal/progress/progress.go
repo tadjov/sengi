@@ -6,8 +6,9 @@ type Counter interface {
 	// SetTotal is how many items the work will count; 0 means unknown.
 	SetTotal(n int64)
 	Add(n int64)
-	// Stage starts a named step, counting from zero with no total.
-	Stage(name string)
+	// Stage starts a named step, counting from zero with no total; end marks it
+	// finished, and a step that fails is never ended.
+	Stage(name string) (end func())
 	// Detail replaces the key-value pairs shown beside the count.
 	Detail(attrs ...any)
 }
@@ -22,7 +23,7 @@ func Or(c Counter) Counter {
 
 type discard struct{}
 
-func (discard) SetTotal(int64) {}
-func (discard) Add(int64)      {}
-func (discard) Stage(string)   {}
-func (discard) Detail(...any)  {}
+func (discard) SetTotal(int64)      {}
+func (discard) Add(int64)           {}
+func (discard) Stage(string) func() { return func() {} }
+func (discard) Detail(...any)       {}

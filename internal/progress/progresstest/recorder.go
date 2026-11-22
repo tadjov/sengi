@@ -30,11 +30,12 @@ func (r *Recorder) Add(n int64) {
 	r.count += n
 }
 
-func (r *Recorder) Stage(string) {
+func (r *Recorder) Stage(string) func() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.total = 0
 	r.detail = nil
+	return func() {}
 }
 
 func (r *Recorder) Detail(attrs ...any) {
