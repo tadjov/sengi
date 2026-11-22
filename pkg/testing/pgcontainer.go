@@ -3,7 +3,11 @@ package testing
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"slices"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -22,11 +26,15 @@ type PGContainer struct {
 
 // PGConfig defaults Engine to storage.PostgresNative and migrates unless Unmigrated is set.
 type PGConfig struct {
+	// Database, Username and Password apply to NewPGContainer only.
 	Database   string
 	Username   string
 	Password   string
 	Engine     storage.Engine
 	Unmigrated bool
+	// Isolated starts a server for this test alone, for a test that stops or
+	// reconfigures it.
+	Isolated bool
 	// ServerFlags follow the engine's own server-start flags, e.g. "-c", "work_mem=8MB".
 	ServerFlags []string
 }
@@ -55,6 +63,7 @@ var engineServerFlags = map[storage.Engine][]string{
 		"-c", "pg_textsearch.memory_limit=2GB"),
 }
 
+// NewPGContainer starts a server of its own, which the caller terminates.
 func NewPGContainer(ctx context.Context, cfg PGConfig) (*PGContainer, error) {
 	return createPGContainer(ctx, cfg)
 }
@@ -64,28 +73,122 @@ func NewPGContainerWithCleanup(ctx context.Context, tb testing.TB) *PGContainer 
 	return NewPGContainerWithConfig(ctx, tb, PGConfig{})
 }
 
-// NewPGContainerWithConfig defaults an empty Database to news_test_db as test/test.
+// NewPGContainerWithConfig gives the test a database of its own, dropped when
+// the test ends. The server is shared by every test of the process that asks
+// for the same engine and flags, unless cfg.Isolated starts one for this test.
 func NewPGContainerWithConfig(ctx context.Context, tb testing.TB, cfg PGConfig) *PGContainer {
 	tb.Helper()
 	if testing.Short() {
 		tb.Skip("skipping testcontainer-backed test in -short mode")
 	}
-	if cfg.Database == "" {
-		cfg.Database, cfg.Username, cfg.Password = "news_test_db", "test", "test"
+	if cfg.Engine == "" {
+		cfg.Engine = storage.PostgresNative
+	}
+	if cfg.Isolated {
+		return isolatedPGContainer(ctx, tb, cfg)
 	}
 
+	server, err := sharedPGServer(ctx, cfg)
+	if err != nil {
+		tb.Fatalf("failed to start the shared %s server: %v", cfg.Engine, err)
+	}
+	database, err := server.createDatabase(ctx, cfg)
+	if err != nil {
+		tb.Fatalf("failed to create a test database on %s: %v", cfg.Engine, err)
+	}
+	tb.Cleanup(func() {
+		if err := server.dropDatabase(context.WithoutCancel(ctx), database); err != nil {
+			tb.Logf("failed to drop test database %s: %v", database, err)
+		}
+	})
+	return &PGContainer{Container: server.container.Container, ConnString: server.connString(database)}
+}
+
+func isolatedPGContainer(ctx context.Context, tb testing.TB, cfg PGConfig) *PGContainer {
+	tb.Helper()
+	cfg.Database, cfg.Username, cfg.Password = adminDatabase, testUser, testUser
 	container, err := createPGContainer(ctx, cfg)
 	if err != nil {
 		tb.Fatalf("failed to create postgres container: %v", err)
 	}
-
 	tb.Cleanup(func() {
 		if err := testcontainers.TerminateContainer(container.Container); err != nil {
 			tb.Logf("failed to terminate postgres container: %v", err)
 		}
 	})
-
 	return container
+}
+
+const (
+	adminDatabase = "news_test_db"
+	testUser      = "test"
+)
+
+// sharedServer is one container the tests of a process create databases on.
+// It is never terminated here: the testcontainers reaper removes it when the
+// test process exits.
+type sharedServer struct {
+	container *PGContainer
+	databases atomic.Int64
+}
+
+var (
+	sharedServersMu sync.Mutex
+	sharedServers   = map[string]*sharedServer{}
+)
+
+func sharedPGServer(ctx context.Context, cfg PGConfig) (*sharedServer, error) {
+	key := string(cfg.Engine) + "\x00" + strings.Join(cfg.ServerFlags, "\x00")
+	sharedServersMu.Lock()
+	defer sharedServersMu.Unlock()
+	if server, ok := sharedServers[key]; ok {
+		return server, nil
+	}
+	container, err := createPGContainer(context.WithoutCancel(ctx), PGConfig{
+		Database: adminDatabase, Username: testUser, Password: testUser,
+		Engine: cfg.Engine, ServerFlags: cfg.ServerFlags, Unmigrated: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	server := &sharedServer{container: container}
+	sharedServers[key] = server
+	return server, nil
+}
+
+func (s *sharedServer) connString(database string) string {
+	u, err := url.Parse(s.container.ConnString)
+	if err != nil {
+		panic(fmt.Sprintf("testcontainer: connection string %q: %v", s.container.ConnString, err))
+	}
+	u.Path = "/" + database
+	return u.String()
+}
+
+func (s *sharedServer) createDatabase(ctx context.Context, cfg PGConfig) (string, error) {
+	database := fmt.Sprintf("test_%d", s.databases.Add(1))
+	admin, err := pgx.Connect(ctx, s.container.ConnString)
+	if err != nil {
+		return "", fmt.Errorf("connect to create %s: %w", database, err)
+	}
+	defer admin.Close(context.WithoutCancel(ctx))
+	if _, err := admin.Exec(ctx, "CREATE DATABASE "+database); err != nil {
+		return "", fmt.Errorf("create %s: %w", database, err)
+	}
+	if cfg.Unmigrated {
+		return database, nil
+	}
+	return database, migrate(ctx, s.connString(database), cfg.Engine)
+}
+
+func (s *sharedServer) dropDatabase(ctx context.Context, database string) error {
+	admin, err := pgx.Connect(ctx, s.container.ConnString)
+	if err != nil {
+		return err
+	}
+	defer admin.Close(ctx)
+	_, err = admin.Exec(ctx, "DROP DATABASE IF EXISTS "+database+" WITH (FORCE)")
+	return err
 }
 
 func createPGContainer(ctx context.Context, cfg PGConfig) (*PGContainer, error) {

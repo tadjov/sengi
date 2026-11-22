@@ -67,12 +67,26 @@ func createDatabase(ctx context.Context, tb testing.TB, serverConnString string)
 	if _, err := conn.Exec(ctx, "CREATE DATABASE "+name); err != nil {
 		tb.Fatalf("create database %s: %v", name, err)
 	}
+	tb.Cleanup(func() { dropDatabase(tb, serverConnString, name) })
 	u, err := url.Parse(serverConnString)
 	if err != nil {
 		tb.Fatalf("parse %s: %v", serverConnString, err)
 	}
 	u.Path = "/" + name
 	return u.String()
+}
+
+func dropDatabase(tb testing.TB, serverConnString, name string) {
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, serverConnString)
+	if err != nil {
+		tb.Logf("connect to drop database %s: %v", name, err)
+		return
+	}
+	defer conn.Close(ctx)
+	if _, err := conn.Exec(ctx, "DROP DATABASE IF EXISTS "+name+" WITH (FORCE)"); err != nil {
+		tb.Logf("drop database %s: %v", name, err)
+	}
 }
 
 func seq[T any](items []T) iter.Seq2[T, error] {

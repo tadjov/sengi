@@ -3,6 +3,8 @@ package testing
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -36,28 +38,54 @@ func (p digestPin) Substitute(image string) (string, error) {
 	return image + "@" + p.digest, nil
 }
 
-// ESContainer represents a running Elasticsearch test container
 type ESContainer struct {
 	Container testcontainers.Container
 	Address   string
 }
 
-// NewESContainer starts an Elasticsearch test container
+var (
+	sharedESMu sync.Mutex
+	sharedES   *ESContainer
+)
+
+// NewESContainer hands the test the Elasticsearch server shared by every test
+// of the process, and deletes the indices the test leaves behind when it ends.
+// The server is never terminated here: the testcontainers reaper removes it
+// when the test process exits.
 func NewESContainer(ctx context.Context, tb testing.TB) *ESContainer {
 	tb.Helper()
 	if testing.Short() {
 		tb.Skip("skipping testcontainer-backed test in -short mode")
 	}
+	sharedESMu.Lock()
+	defer sharedESMu.Unlock()
+	if sharedES == nil {
+		container, err := startES(context.WithoutCancel(ctx))
+		if err != nil {
+			tb.Fatalf("failed to start elasticsearch container: %v", err)
+		}
+		sharedES = container
+	}
+	server := sharedES
+	tb.Cleanup(func() {
+		if err := server.deleteIndices(context.WithoutCancel(ctx)); err != nil {
+			tb.Logf("failed to delete the test's elasticsearch indices: %v", err)
+		}
+	})
+	return server
+}
 
+func startES(ctx context.Context) (*ESContainer, error) {
 	// Security is off because the plaintext probe below would never pass TLS.
 	// ES_JAVA_OPTS overrides the module's 2 GB heap with 512 MB.
 	esContainer, err := elasticsearch.Run(ctx,
 		elasticsearchImage,
 		testcontainers.WithImageSubstitutors(digestPin{image: elasticsearchImage, digest: elasticsearchDigest}),
 		testcontainers.WithEnv(map[string]string{
-			"xpack.security.enabled": "false",
-			"discovery.type":         "single-node",
-			"ES_JAVA_OPTS":           "-Xms512m -Xmx512m",
+			"xpack.security.enabled":           "false",
+			"discovery.type":                   "single-node",
+			"ES_JAVA_OPTS":                     "-Xms512m -Xmx512m",
+			"action.destructive_requires_name": "false",
 		}),
 		testcontainers.WithWaitStrategy(
 			wait.ForHTTP("/").
@@ -66,29 +94,31 @@ func NewESContainer(ctx context.Context, tb testing.TB) *ESContainer {
 		),
 	)
 	if err != nil {
-		tb.Fatalf("failed to start elasticsearch container: %v", err)
+		return nil, err
 	}
-
-	tb.Cleanup(func() {
-		if err := testcontainers.TerminateContainer(esContainer); err != nil {
-			tb.Logf("failed to terminate elasticsearch container: %v", err)
-		}
-	})
-
 	host, err := esContainer.Host(ctx)
 	if err != nil {
-		tb.Fatalf("failed to get elasticsearch host: %v", err)
+		return nil, fmt.Errorf("get elasticsearch host: %w", err)
 	}
-
 	port, err := esContainer.MappedPort(ctx, "9200")
 	if err != nil {
-		tb.Fatalf("failed to get elasticsearch port: %v", err)
+		return nil, fmt.Errorf("get elasticsearch port: %w", err)
 	}
+	return &ESContainer{Container: esContainer, Address: fmt.Sprintf("http://%s:%s", host, port.Port())}, nil
+}
 
-	address := fmt.Sprintf("http://%s:%s", host, port.Port())
-
-	return &ESContainer{
-		Container: esContainer,
-		Address:   address,
+func (c *ESContainer) deleteIndices(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.Address+"/*", nil)
+	if err != nil {
+		return err
 	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("delete indices: status %d", resp.StatusCode)
+	}
+	return nil
 }
