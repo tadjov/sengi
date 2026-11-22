@@ -26,11 +26,6 @@ func NewFusionExecutor(name string, legs []string, executors map[string]Executor
 	return &FusionExecutor{name: name, legs: legs, executors: executors}
 }
 
-func (f *FusionExecutor) Name() string { return f.name }
-
-// Close leaves the legs open: each is closed as an engine of its own.
-func (f *FusionExecutor) Close() error { return nil }
-
 func (f *FusionExecutor) Execute(ctx context.Context, req Request) (*Execution, error) {
 	if err := f.checkRequest(req); err != nil {
 		return nil, err

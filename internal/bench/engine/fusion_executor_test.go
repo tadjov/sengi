@@ -88,9 +88,6 @@ func (e *fixedExecutor) Execute(_ context.Context, req Request) (*Execution, err
 	return &Execution{RankedDocIDs: e.ranking}, nil
 }
 
-func (e *fixedExecutor) Name() string { return "fixed" }
-func (e *fixedExecutor) Close() error { return nil }
-
 func (e *fixedExecutor) Validate(_ context.Context, req Request) error {
 	e.received = append(e.received, req)
 	return e.err

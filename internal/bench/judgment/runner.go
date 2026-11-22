@@ -234,11 +234,10 @@ func (r *Runner) gradeQuery(ctx context.Context, entry pool.PoolEntry, prior map
 	}
 
 	q := GradingQuery{
-		ID:          entry.QueryID,
-		Text:        entry.QueryText,
-		Description: entry.QueryDesc,
-		Category:    entry.Category,
-		Filters:     entry.Filters,
+		ID:       entry.QueryID,
+		Text:     entry.QueryText,
+		Category: entry.Category,
+		Filters:  entry.Filters,
 	}
 	var gradedByID map[uuid.UUID]int
 	var err error

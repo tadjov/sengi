@@ -194,9 +194,6 @@ func (e *EsExecutor) CorpusCount(ctx context.Context) (int64, error) {
 	return c.Count, nil
 }
 
-func (e *EsExecutor) Name() string { return e.name }
-func (e *EsExecutor) Close() error { return nil }
-
 // Validate posts the query to <index>/_validate/query?explain=true. ES parses
 // the JSON, type-checks fields, and returns "valid: false" with an explanation
 // for malformed queries — no documents scanned. A stored template is rendered

@@ -82,11 +82,10 @@ func (o GateOptions) readArticles(ctx context.Context) (map[uuid.UUID]document.A
 
 func gradingQuery(entry pool.PoolEntry) judgment.GradingQuery {
 	return judgment.GradingQuery{
-		ID:          entry.QueryID,
-		Text:        entry.QueryText,
-		Description: entry.QueryDesc,
-		Category:    entry.Category,
-		Filters:     entry.Filters,
+		ID:       entry.QueryID,
+		Text:     entry.QueryText,
+		Category: entry.Category,
+		Filters:  entry.Filters,
 	}
 }
 

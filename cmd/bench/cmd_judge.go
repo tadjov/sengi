@@ -200,11 +200,10 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	}
 
 	opts := judgment.StrategyOptions{
-		Provider:    provider,
-		Model:       f.model,
-		APIBaseURL:  f.apiBaseURL,
-		CLIBinary:   f.cliBinary,
-		Concurrency: f.concurrency,
+		Provider:   provider,
+		Model:      f.model,
+		APIBaseURL: f.apiBaseURL,
+		CLIBinary:  f.cliBinary,
 	}
 	// Only an omitted --model means jev's pin, since the default is a claude id.
 	if kind == judgment.StrategyJev && !cmd.Flags().Changed("model") {
@@ -506,7 +505,7 @@ type manualJudgments struct {
 // writes the file.
 func (m manualJudgments) write(existing *judgment.File) (*judgment.File, error) {
 	jf := buildManualJudgments(m.pool, existing)
-	judge := judgment.NewManualStrategy().Describe()
+	judge := judgment.ManualJudge()
 	jf.Meta = meta.New("judge")
 	jf.Meta.Judge = &judge
 	jf.Meta.PoolRef = m.poolRef

@@ -100,9 +100,6 @@ func (e *APIExecutor) Execute(ctx context.Context, search Request) (*Execution, 
 	}, nil
 }
 
-func (e *APIExecutor) Name() string { return e.name }
-func (e *APIExecutor) Close() error { return nil }
-
 // Validate parses the request descriptor. We can't validate against the live
 // API without firing a real request, so this just checks shape: method, path,
 // optional body/params.

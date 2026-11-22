@@ -18,10 +18,9 @@ import (
 	"github.com/tadjov/sengi/internal/types/document"
 )
 
-// The model grades the query a user would type, exactly as stored; the suite
-// author's description of it never reaches the model.
-func TestLLMJudge_PromptCarriesTheQueryTextAndNeverItsDescription(t *testing.T) {
-	q := GradingQuery{ID: "q1", Text: `"climate change" summit`, Description: "Coverage of the yearly UN climate conference"}
+// The model grades the query a user would type, exactly as stored.
+func TestLLMJudge_PromptCarriesTheQueryText(t *testing.T) {
+	q := GradingQuery{ID: "q1", Text: `"climate change" summit`}
 	docs := []GradingDoc{
 		{ID: uuid.New(), Title: "Climate change summit opens"},
 		{ID: uuid.New(), Title: "Summit delegates arrive"},
@@ -37,8 +36,6 @@ func TestLLMJudge_PromptCarriesTheQueryTextAndNeverItsDescription(t *testing.T) 
 	require.Len(t, provider.requests(), 2)
 	for _, req := range provider.requests() {
 		assert.Contains(t, req.User, "Query: "+q.Text)
-		assert.NotContains(t, req.User, q.Description)
-		assert.NotContains(t, req.System, q.Description)
 	}
 }
 

@@ -20,10 +20,7 @@ type Meta struct {
 	Tool        string    `yaml:"tool" json:"tool"`
 	GeneratedAt time.Time `yaml:"generated_at" json:"generated_at"`
 
-	// Identity of the track/spec/suite that produced this artifact.
-	SpecID       string `yaml:"spec_id,omitempty" json:"spec_id,omitempty"`
-	SuiteID      string `yaml:"suite_id,omitempty" json:"suite_id,omitempty"`
-	SuiteVersion string `yaml:"suite_version,omitempty" json:"suite_version,omitempty"`
+	SpecID string `yaml:"spec_id,omitempty" json:"spec_id,omitempty"`
 
 	// Pool-only fields.
 	PoolDepth         int                `yaml:"pool_depth,omitempty" json:"pool_depth,omitempty"`
@@ -157,11 +154,10 @@ func (m *Meta) Normalize() {
 
 // Sources names the artifacts a report's metrics were computed from.
 type Sources struct {
-	Spec       string   `yaml:"spec,omitempty" json:"spec,omitempty"`
-	Suites     []string `yaml:"suites,omitempty" json:"suites,omitempty"`
-	Pool       string   `yaml:"pool,omitempty" json:"pool,omitempty"`
-	Judgments  string   `yaml:"judgments,omitempty" json:"judgments,omitempty"`
-	JudgesPath string   `yaml:"judgments_path,omitempty" json:"judgments_path,omitempty"`
+	Spec      string   `yaml:"spec,omitempty" json:"spec,omitempty"`
+	Suites    []string `yaml:"suites,omitempty" json:"suites,omitempty"`
+	Pool      string   `yaml:"pool,omitempty" json:"pool,omitempty"`
+	Judgments string   `yaml:"judgments,omitempty" json:"judgments,omitempty"`
 }
 
 // New stamps a Meta with the tool, the time and a run id carrying kind.

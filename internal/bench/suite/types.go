@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/ingest/reader"
 	"gopkg.in/yaml.v3"
 )
@@ -54,7 +53,6 @@ type Query struct {
 	Category    Category               `yaml:"category,omitempty"`
 	Filters     Filters                `yaml:"filters,omitempty"`
 	Engines     map[string]EngineQuery `yaml:"engines"`
-	Judgments   []RelevanceJudgment    `yaml:"judgments"`
 }
 
 // Filters declare, engine-neutrally, the structured filters every engine's
@@ -218,30 +216,6 @@ type ResolvedQuery struct {
 	// Params are every value the query, its engine and the run supply, with the
 	// query vector as numbers, for an engine that renders the template itself.
 	Params TemplateParams
-}
-
-type RelevanceJudgment struct {
-	DocID     uuid.UUID `yaml:"doc_id"`
-	Relevance int       `yaml:"relevance"`
-}
-
-func (q *Query) JudgmentMap() map[uuid.UUID]int {
-	m := make(map[uuid.UUID]int, len(q.Judgments))
-	for _, j := range q.Judgments {
-		m[j.DocID] = j.Relevance
-	}
-	return m
-}
-
-// InjectJudgments sets the per-query Judgments slice from a flat map produced
-// by the CLI layer after loading an annotations file. Replaces the loader-side
-// auto-injection of v0; keeps the suite YAML focused on queries only.
-func (ls *LoadedSuite) InjectJudgments(byQuery map[string][]RelevanceJudgment) {
-	for i := range ls.Suite.Queries {
-		if js, ok := byQuery[ls.Suite.Queries[i].ID]; ok {
-			ls.Suite.Queries[i].Judgments = js
-		}
-	}
 }
 
 // ResolveEngineQuery renders the block named by opts.Engine, or returns a nil

@@ -657,7 +657,7 @@ func TestDiffJudgments_MeasuresHandGradesAgainstAJudgeWithoutTouchingThem(t *tes
 	for i := range docs {
 		docs[i] = uuid.New()
 	}
-	tr.writeGrades(t, "manual", judgment.NewManualStrategy().Describe(), docs, hand)
+	tr.writeGrades(t, "manual", judgment.ManualJudge(), docs, hand)
 	tr.writeGrades(t, "bm25", judgment.NewBM25Strategy().Describe(), docs, judge)
 	manual := filepath.Join(tr.root, "trec", "annotations.manual.yaml")
 	before, err := os.ReadFile(manual)

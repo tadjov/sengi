@@ -49,9 +49,6 @@ func (e *PgExecutor) Execute(ctx context.Context, req Request) (*Execution, erro
 	}, nil
 }
 
-func (e *PgExecutor) Name() string { return e.name }
-func (e *PgExecutor) Close() error { return nil }
-
 // Validate runs EXPLAIN on the query. This catches syntax errors and missing
 // columns/tables/operators without scanning data. ParadeDB's pdb.* functions
 // also surface here, so it's a real correctness check for those queries too.

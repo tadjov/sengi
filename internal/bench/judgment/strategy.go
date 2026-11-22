@@ -14,12 +14,10 @@ import (
 
 // GradingQuery is the query a judge grades against.
 type GradingQuery struct {
-	ID string
-	// Text is the query as typed; the deterministic judges grade against it, not Description.
-	Text        string
-	Description string
-	Category    suite.Category
-	Filters     suite.Filters
+	ID       string
+	Text     string
+	Category suite.Category
+	Filters  suite.Filters
 }
 
 // GradingDoc is a single article candidate to grade.
@@ -83,10 +81,9 @@ type StrategyOptions struct {
 	// Model is a full id or an alias such as "sonnet", which the provider expands.
 	Model string
 	// Effort is the effort an LLM judge's model grades at.
-	Effort      Effort
-	APIBaseURL  string
-	CLIBinary   string
-	Concurrency int
+	Effort     Effort
+	APIBaseURL string
+	CLIBinary  string
 
 	// VectorStore holds the doc vectors and embeds the query for vector and hybrid.
 	VectorStore storage.VectorStore
@@ -108,8 +105,6 @@ func NewStrategy(kind StrategyKind, opts StrategyOptions) (Strategy, error) {
 		return NewLLMStrategy(opts)
 	case StrategyJev:
 		return NewJevStrategy(opts)
-	case StrategyManual:
-		return NewManualStrategy(), nil
 	default:
 		return nil, fmt.Errorf("unknown strategy %q (known: %s)", kind, strings.Join(KnownStrategies(), ", "))
 	}
