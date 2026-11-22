@@ -37,6 +37,15 @@ type Package struct {
 	Resources     []Resource    `json:"resources" schema:"required,minItems=1"`
 }
 
+func (p Package) Resource(name string) (Resource, bool) {
+	for _, r := range p.Resources {
+		if r.Name == name {
+			return r, true
+		}
+	}
+	return Resource{}, false
+}
+
 // Resource is one file of a package; Path is relative to the descriptor.
 type Resource struct {
 	Name      string `json:"name"`
