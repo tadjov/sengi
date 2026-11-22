@@ -43,9 +43,9 @@ Any (query, engine) execution that errors fails the pool, since its documents
 would be missing from it. --allow-partial writes the pool anyway, lists only
 the engines that answered in meta.engines and records the failed pairs in
 meta.dropped_executions.`,
-		Example: `  bench pool tracks/global-news-dataset/fts_quality
-  bench pool tracks/global-news-dataset/fts_quality --depth 50
-  bench pool --track tracks/global-news-dataset/fts_quality --output /tmp/adhoc-pool.yaml`,
+		Example: `  bench pool tracks/cc-news/fts
+  bench pool tracks/cc-news/fts --depth 50
+  bench pool --track tracks/cc-news/fts --output /tmp/adhoc-pool.yaml`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return executePool(cmd, f, args)

@@ -38,8 +38,8 @@ regressions, largest first.
 Without --b, B is latest.json's report. Without --a, A is the newest earlier
 fully scored report, or the newest earlier one with a warning. --a and --b
 take run IDs or report paths.`,
-		Example: `  bench diff runs tracks/global-news-dataset/fts_quality                               # latest two runs
-  bench diff runs tracks/global-news-dataset/fts_quality --b 2026-05-26T23-39-05-run-7e0750
+		Example: `  bench diff runs tracks/cc-news/fts                               # latest two runs
+  bench diff runs tracks/cc-news/fts --b 2026-05-26T23-39-05-run-7e0750
   bench diff runs --a /tmp/before.json --b /tmp/after.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

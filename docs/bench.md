@@ -75,7 +75,7 @@ own implicit transaction on whichever connection is free.
 `hnsw.ef_search` fixes the ANN operating point, which decides how many candidates a vector
 scan considers and so both its recall and its latency. Turning the planner's index access
 off gives an unindexed arm to compare against: `enable_indexscan` plus `enable_bitmapscan`
-for the GIN A/B in `fts_quality`, `enable_indexscan` alone for the exact-scan vector
+for the GIN A/B in the fts track, `enable_indexscan` alone for the exact-scan vector
 baseline in `news_semantic`.
 
 `hnsw.ef_search` is only the query-time half of that knob. The build-time half, `m` and
@@ -319,7 +319,7 @@ bench diff judgments [<name>] --judgments <set,...>
 bench clean  [<name>]              remove old report files
 ```
 
-Every command accepts a track path as a positional arg (`bench run tracks/global-news-dataset/fts_quality`), a `--track` flag, or resolves from the current directory when you `cd` into a track. Relative paths start at `--track-root` / `BENCH_TRACK_ROOT` — see [Track resolution](#track-resolution--the-track-root).
+Every command accepts a track path as a positional arg (`bench run tracks/cc-news/fts`), a `--track` flag, or resolves from the current directory when you `cd` into a track. Relative paths start at `--track-root` / `BENCH_TRACK_ROOT` — see [Track resolution](#track-resolution--the-track-root).
 
 ## Strategy taxonomy
 
@@ -598,7 +598,7 @@ The report is always written. A run fails, exits non-zero and leaves `reports/la
 - it ran a query the pool holds no entry for
 - it measured an engine the pool never saw
 - a (query, engine) cell's request differs from the one the pool recorded, or the pool records none, as after editing a template, a declared param or a query's params; the error names the cells (`q07/pg`). `--latency-only` skips this check
-- a query's `text`, `category` or `filters` differ from its pool entry, which is what the judges graded; the error names the queries. Editing only a description passes. A pool written before entries carried `query_text` fails as one that predates query text. `--latency-only` skips this check
+- a query's `text`, `category` or `filters` differ from its pool entry, which is what the judges graded; the error names the queries. Editing only a description passes. `--latency-only` skips this check
 - the judgments leave pooled docs unjudged
 - an engine ranks a doc with no grade within the pool depth (`meta.pool_depth`). With requests unchanged this happens only when the corpus changed or a rank tie broke differently; the error counts the docs and names the cells
 
@@ -698,11 +698,11 @@ A read of the server settings, cgroup limits or node stats that fails, as `pg_re
 
 Examples:
 ```bash
-bench export tracks/global-news-dataset/fts_quality --format qrels
-bench export tracks/global-news-dataset/fts_quality --format qrels --strategy claude-api
-bench export tracks/global-news-dataset/fts_quality --format html
-bench export tracks/global-news-dataset/fts_quality --format markdown
-bench export tracks/global-news-dataset/fts_quality --format markdown --output /tmp/results.md
+bench export tracks/cc-news/fts --format qrels
+bench export tracks/cc-news/fts --format qrels --strategy claude-api
+bench export tracks/cc-news/fts --format html
+bench export tracks/cc-news/fts --format markdown
+bench export tracks/cc-news/fts --format markdown --output /tmp/results.md
 ```
 
 ### `bench status [<name>]`
@@ -767,9 +767,9 @@ Pretty-prints a one-page summary of any artifact:
 Removes old JSON, HTML, and Markdown files from `reports/`, keeping the `--keep` most-recent (default 5). `latest.json` is never deleted, and neither is the JSON report it points at. Of the JSON reports, complete runs fill the remaining slots before incomplete ones (failed, partial or latency-only), so those go first. HTML and Markdown exports keep only the `--keep` newest, even the latest run's export. A deleted report takes its `reports/<run_id>.run/` run files with it.
 
 ```bash
-bench clean tracks/global-news-dataset/fts_quality            # keep 5 most recent
-bench clean tracks/global-news-dataset/fts_quality --keep 2
-bench clean tracks/global-news-dataset/fts_quality --dry-run  # show what would be deleted
+bench clean tracks/cc-news/fts            # keep 5 most recent
+bench clean tracks/cc-news/fts --keep 2
+bench clean tracks/cc-news/fts --dry-run  # show what would be deleted
 ```
 
 ## Metrics
@@ -820,12 +820,11 @@ above it is enforced — `bench` never assumes a `tracks/` directory — so how 
 group tracks is your call. This repo uses one folder per dataset, one track per
 (dataset × IR paradigm):
 
-| Track                                       | Paradigm            | Engines                                 |
-|---------------------------------------------|---------------------|-----------------------------------------|
-| `tracks/global-news-dataset/fts_quality`    | Full-text search    | pg-seq, pg-gin, paradedb, elasticsearch |
-| `tracks/global-news-dataset/news_fuzzy`     | Fuzzy / approximate | pg_trgm, ES fuzziness                   |
-| `tracks/global-news-dataset/news_semantic`  | Semantic / vector   | pgvector, ES dense_vector kNN           |
-| `tracks/global-news-dataset/news_hybrid`    | Hybrid (RRF fusion) | pgvector+BM25, ES hybrid                |
+| Track                            | Paradigm                  | Engines                                   |
+|----------------------------------|---------------------------|-------------------------------------------|
+| `tracks/cc-news/fts`             | Full-text search          | native, ParadeDB, Tiger, Elasticsearch    |
+| `tracks/cc-news/fuzzy`           | Fuzzy / approximate       | native, ParadeDB, Tiger, Elasticsearch    |
+| `tracks/cc-news/semantic-hybrid` | Semantic and hybrid (RRF) | native, ParadeDB, Tiger, Elasticsearch    |
 
 This decomposition ensures that pools and judgments are paradigm-specific (different query types, different relevance criteria) and that statistical comparisons are between equivalent systems.
 
@@ -842,16 +841,16 @@ A track arg is an ordinary filesystem path:
 defaults to the current directory, so from the repo root:
 
 ```bash
-bench run tracks/global-news-dataset/fts_quality
-bench run 'tracks/global-news-dataset/*'          # the whole dataset
+bench run tracks/cc-news/fts
+bench run 'tracks/cc-news/*'          # the whole dataset
 ```
 
 Point it at a dataset folder and the same tracks get short names — it is pure
 convenience, identical to `cd`-ing there:
 
 ```bash
-export BENCH_TRACK_ROOT=tracks/global-news-dataset
-bench run fts_quality
+export BENCH_TRACK_ROOT=tracks/cc-news
+bench run fts
 bench run '*'                                     # the whole dataset
 ```
 

@@ -34,9 +34,9 @@ Markdown exports keep only the --keep newest, even the latest run's export.
 A deleted report takes its exported run files, reports/<run_id>.run/, with it.
 Files are dated by the run timestamp in their name (lexicographic =
 chronological).`,
-		Example: `  bench clean tracks/global-news-dataset/fts_quality            # keep 5 most recent (default)
-  bench clean tracks/global-news-dataset/fts_quality --keep 3
-  bench clean tracks/global-news-dataset/fts_quality --dry-run  # show what would be deleted`,
+		Example: `  bench clean tracks/cc-news/fts            # keep 5 most recent (default)
+  bench clean tracks/cc-news/fts --keep 3
+  bench clean tracks/cc-news/fts --dry-run  # show what would be deleted`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return executeClean(cmd, f, args)

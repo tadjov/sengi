@@ -73,10 +73,10 @@ latest.json alone when the run failed:
 latest.json also stays put, with exit 0, unless the run took every spec job at
 the spec's warmup, iterations and K, from the track's own spec.yaml and
 spec.defaults.judgments.`,
-		Example: `  bench run tracks/global-news-dataset/fts_quality
+		Example: `  bench run tracks/cc-news/fts
   bench run tracks/global-news-dataset/news_semantic
-  bench run 'tracks/global-news-dataset/*'        # every paradigm of the dataset
-  bench run tracks/global-news-dataset/fts_quality --judgments claude-api`,
+  bench run 'tracks/cc-news/*'        # every paradigm of the dataset
+  bench run tracks/cc-news/fts --judgments claude-api`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return executeRun(cmd, f, args)
