@@ -8,7 +8,6 @@ import (
 	"maps"
 	"math/rand/v2"
 	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -281,7 +280,7 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 		cli.Warn(cmd.OutOrStdout(), "latest.json not moved: "+strings.Join(rpt.Settings.Incomplete, "; "))
 	case f.output != "":
 	default:
-		if err := updateLatestPointer(tr.LatestReportPath(), outPath); err != nil {
+		if err := report.WriteLatestPointer(tr.LatestReportPath(), outPath); err != nil {
 			cli.Warn(cmd.OutOrStdout(), fmt.Sprintf("could not update latest.json pointer: %v", err))
 		}
 	}
@@ -810,16 +809,4 @@ func firstNonZero(a, b int) int {
 		return a
 	}
 	return b
-}
-
-// updateLatestPointer writes a small JSON file ({"path":"reports/x.json"})
-// next to the latest report. Cheap and doesn't depend on symlinks (which break
-// on Windows / some FUSE mounts).
-func updateLatestPointer(latestPath, actualPath string) error {
-	rel, err := filepath.Rel(filepath.Dir(latestPath), actualPath)
-	if err != nil {
-		rel = actualPath
-	}
-	data := []byte(fmt.Sprintf(`{"latest": %q}`+"\n", rel))
-	return os.WriteFile(latestPath, data, 0644)
 }

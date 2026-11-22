@@ -118,7 +118,7 @@ func afterReport(tr *trackctx.Track, flag string) (*report.Report, error) {
 	}
 	rpt, err := report.ReadLatestReport(tr.LatestReportPath())
 	if errors.Is(err, fs.ErrNotExist) {
-		return previousScoredReport(baselineSearch{ReportsDir: reportsDir(tr)})
+		return previousScoredReport(baselineSearch{ReportsDir: tr.ReportsDir()})
 	}
 	return rpt, err
 }
@@ -131,11 +131,7 @@ func beforeReport(tr *trackctx.Track, flag string, after *report.Report) (*repor
 	if tr == nil {
 		return nil, fmt.Errorf("no path or run ID given and no track available")
 	}
-	return previousScoredReport(baselineSearch{ReportsDir: reportsDir(tr), BeforeRunID: after.Provenance.RunID})
-}
-
-func reportsDir(tr *trackctx.Track) string {
-	return filepath.Dir(tr.LatestReportPath())
+	return previousScoredReport(baselineSearch{ReportsDir: tr.ReportsDir(), BeforeRunID: after.Provenance.RunID})
 }
 
 // readExplicitReport reads a report named by a run ID or a path.

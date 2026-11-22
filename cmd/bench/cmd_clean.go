@@ -1,12 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -59,13 +57,12 @@ func executeClean(cmd *cobra.Command, f cleanFlags, args []string) error {
 		return err
 	}
 
-	reportsDir := filepath.Dir(tr.LatestReportPath())
+	reportsDir := tr.ReportsDir()
 	entries, err := os.ReadDir(reportsDir)
 	if err != nil {
 		return fmt.Errorf("read reports dir %s: %w", reportsDir, err)
 	}
 
-	// Collect report files by extension, excluding latest.json (the pointer).
 	var jsons, htmls []string
 	for _, e := range entries {
 		if e.IsDir() {
@@ -83,12 +80,14 @@ func executeClean(cmd *cobra.Command, f cleanFlags, args []string) error {
 		}
 	}
 
-	// Sort descending (newest first by lexicographic name).
-	sort.Slice(jsons, func(i, j int) bool { return jsons[i] > jsons[j] })
-	sort.Slice(htmls, func(i, j int) bool { return htmls[i] > htmls[j] })
+	// Run IDs are timestamped, so reverse lexicographic order is newest first.
+	slices.SortFunc(jsons, func(a, b string) int { return strings.Compare(b, a) })
+	slices.SortFunc(htmls, func(a, b string) int { return strings.Compare(b, a) })
 
-	toDelete := withRunFiles(staleReports(jsons, reportRetention{keep: f.keep, latest: latestTarget(tr.LatestReportPath())}))
-	toDelete = append(toDelete, collectStale(htmls, f.keep)...)
+	// Without a readable pointer no report is pinned.
+	latest, _ := report.LatestTarget(tr.LatestReportPath())
+	toDelete := withRunFiles(staleReports(jsons, reportRetention{keep: f.keep, latest: latest}))
+	toDelete = append(toDelete, htmls[min(f.keep, len(htmls)):]...)
 
 	if len(toDelete) == 0 {
 		fmt.Fprintf(cmd.OutOrStdout(), "%s Nothing to clean in %s\n",
@@ -187,31 +186,4 @@ func isCompleteReport(path string) bool {
 		}
 	}
 	return true
-}
-
-// latestTarget is the report latest.json points at, or "" without a readable
-// pointer.
-func latestTarget(latestPath string) string {
-	data, err := os.ReadFile(latestPath)
-	if err != nil {
-		return ""
-	}
-	var pointer struct {
-		Latest string `json:"latest"`
-	}
-	if err := json.Unmarshal(data, &pointer); err != nil || pointer.Latest == "" {
-		return ""
-	}
-	if filepath.IsAbs(pointer.Latest) {
-		return filepath.Clean(pointer.Latest)
-	}
-	return filepath.Join(filepath.Dir(latestPath), pointer.Latest)
-}
-
-// collectStale returns all items after index keep (i.e. the ones to delete).
-func collectStale(sorted []string, keep int) []string {
-	if len(sorted) <= keep {
-		return nil
-	}
-	return sorted[keep:]
 }

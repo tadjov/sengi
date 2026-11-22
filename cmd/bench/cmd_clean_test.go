@@ -47,7 +47,7 @@ func TestClean_KeepsLatestAndDropsIncompleteRunsFirst(t *testing.T) {
 				"r4-complete":     writeCleanReport(t, tr, "2026-10-04T00-00-00-run-r4-complete"),
 				"r5-latency-only": writeCleanReport(t, tr, "2026-10-05T00-00-00-run-r5-latency-only", "latency-only run"),
 			}
-			require.NoError(t, updateLatestPointer(tr.latestPath(), paths["r2-latest"]))
+			require.NoError(t, report.WriteLatestPointer(tr.latestPath(), paths["r2-latest"]))
 
 			_, err := execute(t, newCleanCmd(), tr.dir, "--keep", strconv.Itoa(tt.keep))
 			require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestClean_RejectsNegativeKeep(t *testing.T) {
 	tr := newLineageTrack(t, "http://unused.invalid")
 	kept := writeCleanReport(t, tr, "2026-10-01T00-00-00-run-r1-complete")
 	newer := writeCleanReport(t, tr, "2026-10-02T00-00-00-run-r2-complete")
-	require.NoError(t, updateLatestPointer(tr.latestPath(), newer))
+	require.NoError(t, report.WriteLatestPointer(tr.latestPath(), newer))
 
 	_, err := execute(t, newCleanCmd(), tr.dir, "--keep=-1")
 
@@ -97,7 +97,7 @@ func TestClean_RemovesARunsExportedRunFilesWithItsReport(t *testing.T) {
 	tr := newLineageTrack(t, "http://unused.invalid")
 	stale := writeCleanReport(t, tr, "2026-10-01T00-00-00-run-r1-complete")
 	latest := writeCleanReport(t, tr, "2026-10-02T00-00-00-run-r2-complete")
-	require.NoError(t, updateLatestPointer(tr.latestPath(), latest))
+	require.NoError(t, report.WriteLatestPointer(tr.latestPath(), latest))
 	runDirOf := func(reportPath string) string { return strings.TrimSuffix(reportPath, ".json") + ".run" }
 	for _, path := range []string{stale, latest} {
 		require.NoError(t, os.MkdirAll(runDirOf(path), 0o755))

@@ -189,6 +189,10 @@ func (t *Track) Relative(path string) string {
 	return filepath.ToSlash(rel)
 }
 
+func (t *Track) ReportsDir() string {
+	return t.reportsDir
+}
+
 // LatestReportPath is the conventional pointer to the most-recent report.
 func (t *Track) LatestReportPath() string {
 	return filepath.Join(t.reportsDir, latestReport)

@@ -101,37 +101,10 @@ func exportTSV(cmd *cobra.Command, f exportFlags, args []string) error {
 	if err != nil {
 		return fmt.Errorf("read judgments %s: %w", jPath, err)
 	}
-	if err := writeQrelsAtomic(jf, outPath); err != nil {
+	if err := judgment.WriteQrels(jf, outPath); err != nil {
 		return fmt.Errorf("write qrels %s: %w", outPath, err)
 	}
 	cli.Done(cmd.OutOrStdout(), "Qrels written: "+outPath)
-	return nil
-}
-
-// writeQrelsAtomic writes the qrels beside path and renames them over it, so a
-// reader of path sees the old file or the new one, never a partial write.
-func writeQrelsAtomic(jf *judgment.File, path string) error {
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".qrels-*.tmp")
-	if err != nil {
-		return fmt.Errorf("create temp: %w", err)
-	}
-	tmpPath := tmp.Name()
-	if err := tmp.Close(); err != nil {
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("close temp: %w", err)
-	}
-	if err := judgment.WriteQrels(jf, tmpPath); err != nil {
-		_ = os.Remove(tmpPath)
-		return err
-	}
-	if err := os.Chmod(tmpPath, 0o644); err != nil {
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("chmod temp: %w", err)
-	}
-	if err := os.Rename(tmpPath, path); err != nil {
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("rename temp: %w", err)
-	}
 	return nil
 }
 
@@ -155,58 +128,45 @@ func resolvedPath(p string) string {
 	return abs
 }
 
-func exportMarkdown(cmd *cobra.Command, f exportFlags, args []string) error {
+// latestReportExport reads the track's latest report and names the export
+// beside it, reports/<run_id><extension>, unless --output says otherwise.
+func latestReportExport(f exportFlags, args []string, extension string) (*report.Report, string, error) {
 	tr, err := trackctx.Resolve(trackInputs(f.trackArg, args))
+	if err != nil {
+		return nil, "", err
+	}
+	rpt, err := report.ReadLatestReport(tr.LatestReportPath())
+	if err != nil {
+		return nil, "", fmt.Errorf("read latest report: %w", err)
+	}
+	outPath := f.output
+	if outPath == "" {
+		outPath = filepath.Join(tr.ReportsDir(), rpt.Provenance.RunID+extension)
+	}
+	return rpt, outPath, nil
+}
+
+func exportMarkdown(cmd *cobra.Command, f exportFlags, args []string) error {
+	rpt, outPath, err := latestReportExport(f, args, ".md")
 	if err != nil {
 		return err
 	}
-
-	rpt, err := report.ReadLatestReport(tr.LatestReportPath())
-	if err != nil {
-		return fmt.Errorf("read latest report: %w", err)
-	}
-
-	outPath := f.output
-	if outPath == "" {
-		runID := rpt.Provenance.RunID
-		if runID == "" {
-			runID = "report"
-		}
-		outPath = filepath.Join(filepath.Dir(tr.LatestReportPath()), runID+".md")
-	}
-
-	f2, err := os.Create(outPath)
+	file, err := os.Create(outPath)
 	if err != nil {
 		return fmt.Errorf("create markdown file: %w", err)
 	}
-	defer f2.Close()
+	defer file.Close()
 
-	report.WriteMarkdown(rpt, f2)
+	report.WriteMarkdown(rpt, file)
 	cli.Done(cmd.OutOrStdout(), "Markdown report written: "+outPath)
 	return nil
 }
 
 func exportHTML(cmd *cobra.Command, f exportFlags, args []string) error {
-	tr, err := trackctx.Resolve(trackInputs(f.trackArg, args))
+	rpt, outPath, err := latestReportExport(f, args, ".html")
 	if err != nil {
 		return err
 	}
-
-	rpt, err := report.ReadLatestReport(tr.LatestReportPath())
-	if err != nil {
-		return fmt.Errorf("read latest report: %w", err)
-	}
-
-	outPath := f.output
-	if outPath == "" {
-		// Derive HTML path from the run ID: reports/<run_id>.html
-		runID := rpt.Provenance.RunID
-		if runID == "" {
-			runID = "report"
-		}
-		outPath = filepath.Join(filepath.Dir(tr.LatestReportPath()), runID+".html")
-	}
-
 	if err := report.WriteHTML(rpt, outPath); err != nil {
 		return fmt.Errorf("write HTML report: %w", err)
 	}
@@ -214,28 +174,12 @@ func exportHTML(cmd *cobra.Command, f exportFlags, args []string) error {
 	return nil
 }
 
-// exportRun writes the latest report's rankings as TREC run files, one per job
-// and engine, into --output or reports/<run_id>.run/.
+// exportRun writes one TREC run file per job and engine into the output directory.
 func exportRun(cmd *cobra.Command, f exportFlags, args []string) error {
-	tr, err := trackctx.Resolve(trackInputs(f.trackArg, args))
+	rpt, outDir, err := latestReportExport(f, args, ".run")
 	if err != nil {
 		return err
 	}
-
-	rpt, err := report.ReadLatestReport(tr.LatestReportPath())
-	if err != nil {
-		return fmt.Errorf("read latest report: %w", err)
-	}
-
-	outDir := f.output
-	if outDir == "" {
-		runID := rpt.Provenance.RunID
-		if runID == "" {
-			runID = "report"
-		}
-		outDir = filepath.Join(filepath.Dir(tr.LatestReportPath()), runID+".run")
-	}
-
 	paths, err := report.WriteTRECRuns(rpt, outDir)
 	if err != nil {
 		return fmt.Errorf("write TREC runs: %w", err)
