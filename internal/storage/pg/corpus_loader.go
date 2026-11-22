@@ -31,7 +31,7 @@ var _ storage.CorpusLoader = (*CorpusLoader)(nil)
 type CorpusLoader struct {
 	pool    *ConnectionPool
 	engine  storage.Engine
-	schema  string
+	schema  migrations.Set
 	indexes []migrations.IndexStatement
 }
 
@@ -107,7 +107,7 @@ func (cl corpusLoad) prepareDatabase(ctx context.Context) error {
 	if err := lockLoad(ctx, cl.conn); err != nil {
 		return err
 	}
-	if err := cl.stages.timed("schema", func() error { return migrations.Up(ctx, cl.conn, cl.loader.schema) }); err != nil {
+	if err := cl.stages.timed("schema", func() error { return cl.loader.schema.Up(ctx, cl.conn) }); err != nil {
 		return err
 	}
 	if err := cl.loader.refuseLoaded(ctx, cl.conn); err != nil {
