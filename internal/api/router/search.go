@@ -127,16 +127,13 @@ func (r *SearchRouter) honour(q paramQuery, handling dquery.Handling) ([]dquery.
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /v1/articles/search [get]
 func (r *SearchRouter) searchHandler(c echo.Context) error {
-	if err := dto.CheckQueryParams(c.QueryParams(), "q", "query", "size", "cursor", "lang"); err != nil {
+	if err := dto.CheckQueryParams(c.QueryParams(), "q", "size", "cursor", "lang"); err != nil {
 		return err
 	}
 
 	params := dto.StringQueryParams{
 		Query:    c.QueryParam("q"),
 		Language: c.QueryParam("lang"),
-	}
-	if params.Query == "" {
-		params.Query = c.QueryParam("query")
 	}
 	queryString, err := params.ToDomain()
 	if err != nil {

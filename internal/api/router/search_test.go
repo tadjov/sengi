@@ -274,7 +274,7 @@ func TestSearchHandlerValidation(t *testing.T) {
 		wantCode int
 	}{
 		{name: "query only", target: "/v1/articles/search?q=climate", wantCode: http.StatusOK},
-		{name: "legacy query parameter", target: "/v1/articles/search?query=climate", wantCode: http.StatusOK},
+		{name: "query is not an alias of q", target: "/v1/articles/search?query=climate", wantCode: http.StatusBadRequest},
 		{name: "english", target: "/v1/articles/search?q=climate&lang=eng", wantCode: http.StatusOK},
 		{name: "serbian is not supported yet", target: "/v1/articles/search?q=klima&lang=srp", wantCode: http.StatusBadRequest},
 		{name: "unsupported language", target: "/v1/articles/search?q=climate&lang=klingon", wantCode: http.StatusBadRequest},
