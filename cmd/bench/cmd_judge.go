@@ -353,19 +353,17 @@ func carryOverGrades(f judgeFlags, current *pool.PoolFile, judge meta.Judge, str
 
 // resolveJudge maps --strategy and --provider to what the strategy factory needs.
 func resolveJudge(f judgeFlags) (judgment.StrategyKind, judgment.Provider, error) {
-	kind := judgment.StrategyKind(f.strategy)
-	switch kind {
-	case judgment.StrategyLLM:
-		return kind, judgment.Provider(f.provider), nil
-	case judgment.StrategyKeyword, judgment.StrategyBM25, judgment.StrategyVector,
-		judgment.StrategyHybrid, judgment.StrategyJev, judgment.StrategyManual:
-		if f.provider != "" {
-			return "", "", fmt.Errorf("--provider applies only to --strategy llm, not %s", kind)
-		}
-		return kind, "", nil
+	kind, err := judgment.ParseStrategyKind(f.strategy)
+	if err != nil {
+		return "", "", err
 	}
-	return "", "", fmt.Errorf("unknown strategy %q (known: %s)",
-		f.strategy, strings.Join(judgment.KnownJudgeStrategies(), ", "))
+	if kind == judgment.StrategyLLM {
+		return kind, judgment.Provider(f.provider), nil
+	}
+	if f.provider != "" {
+		return "", "", fmt.Errorf("--provider applies only to --strategy llm, not %s", kind)
+	}
+	return kind, "", nil
 }
 
 // checkResumeCompat refuses to resume a file another judge graded.

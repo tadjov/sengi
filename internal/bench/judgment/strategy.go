@@ -3,6 +3,7 @@ package judgment
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -66,6 +67,39 @@ const (
 	StrategyManual StrategyKind = "manual"
 )
 
+// strategyKinds lists what --strategy accepts.
+var strategyKinds = []StrategyKind{
+	StrategyKeyword, StrategyBM25, StrategyVector, StrategyHybrid, StrategyLLM, StrategyJev, StrategyManual,
+}
+
+func ParseStrategyKind(s string) (StrategyKind, error) {
+	if slices.Contains(strategyKinds, StrategyKind(s)) {
+		return StrategyKind(s), nil
+	}
+	return "", fmt.Errorf("unknown strategy %q (known: %s)", s, strings.Join(strategyKindNames(), ", "))
+}
+
+func strategyKindNames() []string {
+	names := make([]string, len(strategyKinds))
+	for i, kind := range strategyKinds {
+		names[i] = string(kind)
+	}
+	return names
+}
+
+// KnownStrategies lists every judgment-set name; LLM sets go by provider.
+func KnownStrategies() []string {
+	var names []string
+	for _, kind := range strategyKinds {
+		if kind == StrategyLLM {
+			names = append(names, KnownProviders()...)
+			continue
+		}
+		names = append(names, string(kind))
+	}
+	return names
+}
+
 type StrategyOptions struct {
 	// Provider selects the endpoint behind StrategyLLM; empty means DefaultProvider.
 	Provider Provider
@@ -97,6 +131,6 @@ func NewStrategy(kind StrategyKind, opts StrategyOptions) (Strategy, error) {
 	case StrategyJev:
 		return NewJevStrategy(opts)
 	default:
-		return nil, fmt.Errorf("unknown strategy %q (known: %s)", kind, strings.Join(KnownStrategies(), ", "))
+		return nil, fmt.Errorf("unknown strategy %q (known: %s)", kind, strings.Join(strategyKindNames(), ", "))
 	}
 }

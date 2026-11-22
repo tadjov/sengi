@@ -105,28 +105,3 @@ func JudgmentSetName(kind StrategyKind, provider Provider) string {
 	}
 	return string(provider)
 }
-
-// KnownJudgeStrategies lists what --strategy accepts, unlike the set names in KnownStrategies.
-func KnownJudgeStrategies() []string {
-	return []string{
-		string(StrategyKeyword),
-		string(StrategyBM25),
-		string(StrategyVector),
-		string(StrategyHybrid),
-		string(StrategyLLM),
-		string(StrategyJev),
-		string(StrategyManual),
-	}
-}
-
-// KnownStrategies lists every judgment-set name, registered providers included.
-func KnownStrategies() []string {
-	out := []string{
-		string(StrategyKeyword),
-		string(StrategyBM25),
-		string(StrategyVector),
-		string(StrategyHybrid),
-	}
-	out = append(out, KnownProviders()...)
-	return append(out, string(StrategyJev), string(StrategyManual))
-}
