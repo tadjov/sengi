@@ -4,19 +4,220 @@
   "version": "v1",
   "articleSchema": "article/v2",
   "language": "eng",
-  "identity": {
-    "idKind": "urlHash",
-    "algorithm": "uuidv5",
-    "namespace": "697bf49f-ca14-4303-83eb-f9d05f7c7c42"
-  },
   "producedBy": {
     "tool": "datapipe preprocess"
   },
-  "report": {
-    "read": 708241,
-    "written": 707910,
-    "dropped": {
-      "empty_required_value/Title": 331
+  "preprocess": {
+    "id": {
+      "kind": "urlHash",
+      "algorithm": "uuidv5",
+      "namespace": "697bf49f-ca14-4303-83eb-f9d05f7c7c42"
+    },
+    "lock": {
+      "spec": "sha256:8c931c0bcbef278688931bed07077358e9a728569e589bc8516fe35c0ff7c6b9",
+      "mapping": "sha256:32a9e02647b7ccfdd51ba584b4a7adf7c3228b37b33fc98bd42d1cabe796f6ef",
+      "input": "sha256:592574f3c05708a6f2050e9eb0b849b3b675c9c7a345f8211c31cf0350e4004c",
+      "tool": "datapipe (devel)"
+    },
+    "counts": {
+      "read": 708241,
+      "dropped": {
+        "required/Title": 331
+      },
+      "duplicates": {
+        "same-page": 41665,
+        "same-url": 0
+      },
+      "cleared": {
+        "shared-body": 43599,
+        "shared-description": 18680
+      },
+      "written": 666245
+    },
+    "signals": {
+      "headlines-sharing-body": {
+        "distinct": "Title",
+        "sharing": "Content",
+        "within": "PublisherDomain",
+        "articles": 666245,
+        "median": 1,
+        "p90": 1,
+        "p99": 1841,
+        "max": 2228,
+        "atLeast": {
+          "10": 34124,
+          "100": 16995,
+          "1000": 9147,
+          "2": 50015,
+          "20": 28387,
+          "3": 43599,
+          "5": 39376,
+          "50": 21562
+        },
+        "top": [
+          {
+            "within": "amarujala.com",
+            "sharing": "Read the latest and breaking Hindi news on amarujala.com. Get live Hindi news about India and the World from politics, sports, bollywood, business, cities, life…",
+            "value": 2228,
+            "articles": 2228
+          },
+          {
+            "within": "which.co.uk",
+            "sharing": "Cookies at Which? We use cookies to help improve our sites. If you continue, we'll assume that you're happy to accept our cookies. Find out more about cookies O…",
+            "value": 2076,
+            "articles": 2076
+          },
+          {
+            "within": "which.co.uk",
+            "sharing": "We always recommend that before selecting or making any important decisions about a care home you take the time to check that it is right for your or your relat…",
+            "value": 1883,
+            "articles": 1883
+          },
+          {
+            "within": "reuters.com",
+            "sharing": "UPDATE 3-Nestle takes food price rises in its stride ZURICH, Aug 9 Nestle expects pressure from the rising price of ingredients for its products such as chocola…",
+            "value": 1841,
+            "articles": 1841
+          },
+          {
+            "within": "amarujala.com",
+            "sharing": "Read the latest and breaking news on amarujala.com. Get live Hindi news about India and the World from politics, sports, bollywood, business, cities, lifestyle,…",
+            "value": 1119,
+            "articles": 1119
+          },
+          {
+            "within": "saucey.com",
+            "sharing": "Thank you for submitting a review! Your input is very much appreciated. Share it with your friends so they can enjoy it too!",
+            "value": 949,
+            "articles": 949
+          },
+          {
+            "within": "fox.com",
+            "sharing": "Get the new app Now including FX, National Geographic, and hundreds of movies on all your devices",
+            "value": 555,
+            "articles": 555
+          },
+          {
+            "within": "slideshare.net",
+            "sharing": "We use your LinkedIn profile and activity data to personalize ads and to show you more relevant ads. You can change your ad preferences anytime.",
+            "value": 535,
+            "articles": 535
+          },
+          {
+            "within": "iwanna.com",
+            "sharing": "Welcome to IWANNA.com! Please enter your zipcode so we can show you ads closest to your location. GO Please enter correct zip code. You can change this at any t…",
+            "value": 427,
+            "articles": 427
+          },
+          {
+            "within": "cnn.com",
+            "sharing": "Chat with us in Facebook Messenger. Find out what's happening in the world as it unfolds.",
+            "value": 322,
+            "articles": 322
+          }
+        ]
+      },
+      "headlines-sharing-description": {
+        "distinct": "Title",
+        "sharing": "Description",
+        "within": "PublisherDomain",
+        "articles": 494929,
+        "median": 1,
+        "p90": 1,
+        "p99": 162,
+        "max": 603,
+        "atLeast": {
+          "10": 16638,
+          "100": 8378,
+          "2": 33374,
+          "20": 14508,
+          "3": 22256,
+          "5": 18680,
+          "50": 10844
+        },
+        "top": [
+          {
+            "within": "si.com",
+            "sharing": "News from around the web.",
+            "value": 603,
+            "articles": 603
+          },
+          {
+            "within": "nigeriatoday.ng",
+            "sharing": "Latest and breaking as it happens in Nigeria Today",
+            "value": 448,
+            "articles": 457
+          },
+          {
+            "within": "noozhawk.com",
+            "sharing": "Noozhawk.com delivers local breaking news, local sports, schools, nonprofits, obituaries, business, arts and entertainment, calendar, local opinions and more.",
+            "value": 409,
+            "articles": 409
+          },
+          {
+            "within": "go.com",
+            "sharing": "Get breaking national and world news, broadcast video coverage, and exclusive interviews. Find the top news online at ABC news.",
+            "value": 304,
+            "articles": 311
+          },
+          {
+            "within": "lfpress.com",
+            "sharing": "News, Local, Provincial, Canada, World, Sports, High School Sports, Local Hockey, Hockey, Basketball, Baseball, Football, Soccer, Lacrosse, Curling, Other Sport…",
+            "value": 300,
+            "articles": 301
+          },
+          {
+            "within": "wjhl.com",
+            "sharing": "WJHL-TV is the source for breaking local news, weather, and sports in the Tri-Cities. We ask the questions when you can't with our investigative and community w…",
+            "value": 295,
+            "articles": 295
+          },
+          {
+            "within": "wpri.com",
+            "sharing": "WPRI 12 Eyewitness News on WPRI.com is Providence, New Bedford, Fall River news and weather. We're coverage you can count on in Rhode Island and Southeastern Ma…",
+            "value": 289,
+            "articles": 289
+          },
+          {
+            "within": "wivb.com",
+            "sharing": "Buffalo News, Buffalo Weather | WIVB-TV News 4 Buffalo, NY | WIVB.com",
+            "value": 249,
+            "articles": 249
+          },
+          {
+            "within": "wnd.com",
+            "sharing": "A Free Press For A Free People Since 1997",
+            "value": 246,
+            "articles": 247
+          },
+          {
+            "within": "tv3.ie",
+            "sharing": "Catch-up TV, Entertainment, News, Sport, Soaps and all your favourite Irish and International shows from TV3",
+            "value": 221,
+            "articles": 222
+          }
+        ]
+      }
+    },
+    "checks": {
+      "cleared": {
+        "observed": 0.09073839203296084,
+        "warn": 0.1,
+        "error": 0.12,
+        "result": "pass"
+      },
+      "dropped": {
+        "observed": 0.00046735503875093364,
+        "warn": 0.01,
+        "error": 0.02,
+        "result": "pass"
+      },
+      "duplicates": {
+        "observed": 0.05882884498355786,
+        "warn": 0.08,
+        "error": 0.1,
+        "result": "pass"
+      }
     }
   },
   "raw": {
@@ -35,8 +236,22 @@
       "name": "articles",
       "path": "articles.parquet",
       "format": "parquet",
-      "bytes": 2103776263,
-      "hash": "sha256:7cdf4c719dc70cd013a1eb76fa33688564dc99af03ddf8cc57d20952cd4c89a3"
+      "bytes": 1952645322,
+      "hash": "sha256:671b29fdc8aa0f76fc20f858d1c6e3e321c94dac46ced44f66263c37e3176567"
+    },
+    {
+      "name": "rejects",
+      "path": "rejects.parquet",
+      "format": "parquet",
+      "bytes": 9113480,
+      "hash": "sha256:f9157b427550319c0a0bf59172e5485441099427decc492dfada4b33df03d984"
+    },
+    {
+      "name": "changes",
+      "path": "changes.parquet",
+      "format": "parquet",
+      "bytes": 34451912,
+      "hash": "sha256:9938e35d03687503fb7af60aa837bb0b2494a4a62f0308244ae3bf75eab4fc14"
     }
   ]
 }
