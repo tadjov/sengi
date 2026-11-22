@@ -249,15 +249,15 @@ func buildViewModel(r *Report) htmlReport {
 			s := agg.Latency
 			job.Latency = append(job.Latency, htmlLatRow{
 				Engine:          agg.EngineName,
-				Min:             fmtDuration(s.Min),
-				P50:             fmtDuration(s.P50()),
-				P75:             fmtDuration(s.P75()),
-				P90:             fmtDuration(s.P90()),
-				P95:             fmtDuration(s.P95()),
-				P99:             fmtDuration(s.P99()),
-				Max:             fmtDuration(s.Max),
-				Mean:            fmtDuration(s.Mean),
-				Stddev:          fmtDuration(s.Stddev),
+				Min:             FormatDuration(s.Min),
+				P50:             FormatDuration(s.P50()),
+				P75:             FormatDuration(s.P75()),
+				P90:             FormatDuration(s.P90()),
+				P95:             FormatDuration(s.P95()),
+				P99:             FormatDuration(s.P99()),
+				Max:             FormatDuration(s.Max),
+				Mean:            FormatDuration(s.Mean),
+				Stddev:          FormatDuration(s.Stddev),
 				Samples:         s.SampleCount,
 				ExcludedQueries: agg.LatencyExcludedQueries,
 			})
@@ -302,7 +302,7 @@ func buildViewModel(r *Report) htmlReport {
 				NDCG: fmtScore(e.NDCG, k), Precision: fmtScore(e.Precision, k),
 				AP: ap, RR: rr, Bpref: bp,
 				ReturnedCount: e.ReturnedCount, CorpusMatches: htmlCorpusMatches(e.CorpusMatches),
-				P50: fmtDuration(e.Latency.P50()), P95: fmtDuration(e.Latency.P95()),
+				P50: FormatDuration(e.Latency.P50()), P95: FormatDuration(e.Latency.P95()),
 				Status: status, IsErr: isErr,
 			})
 		}
@@ -411,7 +411,7 @@ func buildLatencyChart(aggregated []AggregatedEntry) template.HTML {
 		entries = append(entries, latEntry{
 			name:   agg.EngineName,
 			us:     us,
-			valStr: fmtDuration(agg.Latency.P50()),
+			valStr: FormatDuration(agg.Latency.P50()),
 			color:  engineColors[i%len(engineColors)],
 		})
 	}

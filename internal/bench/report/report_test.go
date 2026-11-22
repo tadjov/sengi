@@ -390,9 +390,9 @@ func TestFmtDuration(t *testing.T) {
 		{2 * time.Second, "2.00s"},
 	}
 	for _, c := range cases {
-		got := fmtDuration(c.d)
+		got := FormatDuration(c.d)
 		if got != c.want {
-			t.Errorf("fmtDuration(%v) = %q, want %q", c.d, got, c.want)
+			t.Errorf("FormatDuration(%v) = %q, want %q", c.d, got, c.want)
 		}
 	}
 }

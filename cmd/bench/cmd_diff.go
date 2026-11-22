@@ -140,14 +140,13 @@ func reportsDir(tr *trackctx.Track) string {
 
 // readExplicitReport reads a report named by a run ID or a path.
 func readExplicitReport(tr *trackctx.Track, flag string) (*report.Report, error) {
-	path := flag
-	if !looksLikePath(flag) {
-		if tr == nil {
-			return nil, fmt.Errorf("run ID %q given but no track resolved", flag)
-		}
-		path = tr.ReportPath(flag)
+	if file, ok := fileArg([]string{flag}); ok {
+		return report.ReadJSON(file)
 	}
-	return report.ReadJSON(path)
+	if tr == nil {
+		return nil, fmt.Errorf("run ID %q given but no track resolved", flag)
+	}
+	return report.ReadJSON(tr.ReportPath(flag))
 }
 
 // baselineSearch scopes the hunt for a report to diff against.
@@ -311,7 +310,7 @@ func printAggregateDiff(w io.Writer, jA, jB *report.JobReport, ndcgK int) {
 		}
 		ndcg := "—"
 		if ndcgK > 0 {
-			ndcg = fmtDelta("%.4f", eA.NDCG[ndcgK], eB.NDCG[ndcgK], true)
+			ndcg = fmtDelta(eA.NDCG[ndcgK], eB.NDCG[ndcgK])
 		}
 		mapA, mapB := eA.MAP, eB.MAP
 		mrrA, mrrB := eA.MRR, eB.MRR
@@ -320,8 +319,8 @@ func printAggregateDiff(w io.Writer, jA, jB *report.JobReport, ndcgK int) {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
 			eng,
 			ndcg,
-			fmtDelta("%.4f", mapA, mapB, true),
-			fmtDelta("%.4f", mrrA, mrrB, true),
+			fmtDelta(mapA, mapB),
+			fmtDelta(mrrA, mrrB),
 			fmtDurationDelta(latA, latB), // last column — safe to color
 		)
 	}
@@ -431,17 +430,16 @@ func unionKeys[V any](a, b map[string]V) []string {
 	return out
 }
 
-func fmtDelta(format string, a, b float64, higherBetter bool) string {
+func fmtDelta(a, b float64) string {
 	d := b - a
 	if d == 0 {
-		return fmt.Sprintf(format+" (=)", a)
+		return fmt.Sprintf("%.4f (=)", a)
 	}
-	improved := (d > 0) == higherBetter
 	arrow := "↑"
-	if !improved {
+	if d < 0 {
 		arrow = "↓"
 	}
-	return fmt.Sprintf(format+"→"+format+" %s%s", a, b, arrow, fmtRelativeChange(d, a))
+	return fmt.Sprintf("%.4f→%.4f %s%s", a, b, arrow, fmtRelativeChange(d, a))
 }
 
 // fmtRelativeChange has no percentage to give for a change from zero.
@@ -458,7 +456,7 @@ func fmtDurationDelta(a, b time.Duration) string {
 	}
 	d := b - a
 	if d == 0 {
-		return cli.Muted.Sprint(durStr(a) + " (=)")
+		return cli.Muted.Sprint(report.FormatDuration(a) + " (=)")
 	}
 	// For latency: lower is better, so improvement = d < 0.
 	improved := d < 0
@@ -466,7 +464,7 @@ func fmtDurationDelta(a, b time.Duration) string {
 	if improved {
 		arrow = "↓" // down = faster = better
 	}
-	s := fmt.Sprintf("%s→%s %s%s", durStr(a), durStr(b), arrow, fmtRelativeChange(float64(d), float64(a)))
+	s := fmt.Sprintf("%s→%s %s%s", report.FormatDuration(a), report.FormatDuration(b), arrow, fmtRelativeChange(float64(d), float64(a)))
 	if improved {
 		return cli.Success.Sprint(s)
 	}
@@ -535,19 +533,6 @@ func judgmentsOf(r *report.Report) string {
 		return ranIn.Relative(sources.Judgments)
 	}
 	return filepath.Clean(sources.Judgments)
-}
-
-func durStr(d time.Duration) string {
-	if d == 0 {
-		return "-"
-	}
-	if d < time.Millisecond {
-		return fmt.Sprintf("%.1fµs", float64(d.Microseconds()))
-	}
-	if d < time.Second {
-		return fmt.Sprintf("%.2fms", float64(d.Microseconds())/1000)
-	}
-	return fmt.Sprintf("%.2fs", d.Seconds())
 }
 
 type diffJudgmentsFlags struct {

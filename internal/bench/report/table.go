@@ -187,15 +187,15 @@ func writeMDLatencyTable(w io.Writer, jr *JobReport) {
 		s := agg.Latency
 		t.AppendRow(table.Row{
 			agg.EngineName,
-			fmtDuration(s.Min),
-			fmtDuration(s.P50()),
-			fmtDuration(s.P75()),
-			fmtDuration(s.P90()),
-			fmtDuration(s.P95()),
-			fmtDuration(s.P99()),
-			fmtDuration(s.Max),
-			fmtDuration(s.Mean),
-			fmtDuration(s.Stddev),
+			FormatDuration(s.Min),
+			FormatDuration(s.P50()),
+			FormatDuration(s.P75()),
+			FormatDuration(s.P90()),
+			FormatDuration(s.P95()),
+			FormatDuration(s.P99()),
+			FormatDuration(s.Max),
+			FormatDuration(s.Mean),
+			FormatDuration(s.Stddev),
 			s.SampleCount,
 			agg.LatencyExcludedQueries,
 		})
@@ -398,21 +398,21 @@ func writeLatencyTable(w io.Writer, jr *JobReport) {
 	for _, agg := range jr.Aggregated {
 		s := agg.Latency
 		p50 := agg.Latency.P50()
-		p50Str := fmtDuration(p50)
+		p50Str := FormatDuration(p50)
 		if p50 == bestP50 {
 			p50Str = tGreen.Sprint(p50Str)
 		}
 		t.AppendRow(table.Row{
 			agg.EngineName,
-			fmtDuration(s.Min),
+			FormatDuration(s.Min),
 			p50Str,
-			fmtDuration(s.P75()),
-			fmtDuration(s.P90()),
-			fmtDuration(s.P95()),
-			fmtDuration(s.P99()),
-			fmtDuration(s.Max),
-			fmtDuration(s.Mean),
-			fmtDuration(s.Stddev),
+			FormatDuration(s.P75()),
+			FormatDuration(s.P90()),
+			FormatDuration(s.P95()),
+			FormatDuration(s.P99()),
+			FormatDuration(s.Max),
+			FormatDuration(s.Mean),
+			FormatDuration(s.Stddev),
 			s.SampleCount,
 			agg.LatencyExcludedQueries,
 		})
@@ -470,7 +470,7 @@ func fmtServerTime(d time.Duration) string {
 	if d == 0 {
 		return "0.00ms"
 	}
-	return fmtDuration(d)
+	return FormatDuration(d)
 }
 
 func writeSignificanceTable(w io.Writer, jr *JobReport) {
@@ -564,7 +564,7 @@ func writePerQueryTable(w io.Writer, jr *JobReport, kValues []int) {
 			fmtScore(e.NDCG, k), fmtScore(e.Precision, k),
 			apStr, rrStr, bprefStr,
 			e.ReturnedCount, fmtCorpusMatches(e.CorpusMatches),
-			fmtDuration(e.Latency.P50()), fmtDuration(e.Latency.P95()),
+			FormatDuration(e.Latency.P50()), FormatDuration(e.Latency.P95()),
 			status,
 		})
 	}
@@ -622,7 +622,7 @@ func fmtScore(scores map[int]float64, k int) string {
 	return fmt.Sprintf("%.4f", scores[k])
 }
 
-func fmtDuration(d time.Duration) string {
+func FormatDuration(d time.Duration) string {
 	if d == 0 {
 		return "-"
 	}
