@@ -8,12 +8,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -575,6 +577,29 @@ func TestPreprocess_WritesEveryMissingOptionalValueAsNull(t *testing.T) {
 	assert.Nil(t, plain.Metadata, "an article without metadata has NULL metadata")
 	assert.Nil(t, rows.parquet[1].Content)
 	assert.Nil(t, rows.parquet[1].PublishedAt)
+}
+
+// parquet-go v0.30 and v0.32 write some runs of zero strings in an optional string column as
+// empty strings rather than NULL; this run of descriptions, taken from cc-news, is one of them.
+func TestPreprocess_WritesARunOfMissingValuesAsNull(t *testing.T) {
+	descriptions := slices.Repeat([]string{strings.Repeat("d", 150)}, 124)
+	descriptions = append(descriptions, "", "", "", "", "", strings.Repeat("e", 102))
+	descriptions = append(descriptions, slices.Repeat([]string{""}, 62)...)
+	var csv strings.Builder
+	csv.WriteString("title,text,description,url\n")
+	for i, description := range descriptions {
+		fmt.Fprintf(&csv, "Title %d,Body %d,%s,https://example.com/%d\n", i, i, description, i)
+	}
+	run := newPreprocessRun(t, urlKeySpec, ccNewsLikeMapping, csvFile("part.csv", csv.String()))
+
+	require.NoError(t, run.execute(t.Context()))
+
+	_, rows := readArticles(t, run.packageDir(t))
+	for _, row := range rows.parquet {
+		if row.Description != nil {
+			assert.NotEmpty(t, *row.Description, "the description of %s is an empty string, not NULL", row.URL)
+		}
+	}
 }
 
 func TestPreprocess_ChecksEachBudgetAgainstTheShareObserved(t *testing.T) {

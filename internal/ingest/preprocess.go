@@ -287,7 +287,7 @@ func (r *preprocessRun) eachRecord(ctx context.Context, resource int, source raw
 		reject := rejectRow{Resource: source.resource.Name, Row: row}
 		var malformed *reader.MalformedRecordError
 		if errors.As(err, &malformed) {
-			reject.Stage, reject.Reason = string(stageRead), reasonMalformed
+			reject.Stage, reject.Reason = string(stageRead), optional(reasonMalformed)
 			counts.Dropped[string(stageRead)+"/"+reasonMalformed]++
 			if err := rejects.Write([]rejectRow{reject}); err != nil {
 				return fmt.Errorf("write rejects: %w", err)
@@ -302,7 +302,7 @@ func (r *preprocessRun) eachRecord(ctx context.Context, resource int, source raw
 		var drop *reader.MappingDropError
 		if errors.As(err, &drop) {
 			slog.Debug("dropped record", "resource", source.resource.Name, "row", row, "error", err)
-			reject.Stage, reject.Field, reject.Reason, reject.URL = string(stageRequired), drop.Target, string(drop.Reason), record[r.urlSource]
+			reject.Stage, reject.Field, reject.Reason, reject.URL = string(stageRequired), optional(drop.Target), optional(string(drop.Reason)), optional(record[r.urlSource])
 			counts.Dropped[string(stageRequired)+"/"+drop.Target]++
 			if err := rejects.Write([]rejectRow{reject}); err != nil {
 				return fmt.Errorf("write rejects: %w", err)
@@ -319,7 +319,7 @@ func (r *preprocessRun) eachRecord(ctx context.Context, resource int, source raw
 			return fmt.Errorf("identify record %d of %s: %w", row, source.resource.Name, err)
 		}
 		if repeated != nil {
-			reject.Stage, reject.Rule, reject.KeptID, reject.URL = string(stageDuplicates), repeated.key, repeated.twin.String(), article.URL
+			reject.Stage, reject.Rule, reject.KeptID, reject.URL = string(stageDuplicates), optional(repeated.key), optional(repeated.twin.String()), optional(article.URL)
 			counts.Duplicates[repeated.key]++
 			if err := rejects.Write([]rejectRow{reject}); err != nil {
 				return fmt.Errorf("write rejects: %w", err)
@@ -453,8 +453,8 @@ func (r *preprocessRun) write(ctx context.Context, keptPath, staging string, pkg
 			if hit, drop := decided.outcome.drops[k]; drop {
 				origin := r.origins[k]
 				dropped = append(dropped, rejectRow{
-					Resource: r.raw.Package.Resources[origin.resource].Name, Row: origin.row, URL: row.URL,
-					Stage: string(stageRule), Rule: hit.rule, ID: row.ID, SignalValue: hit.value,
+					Resource: r.raw.Package.Resources[origin.resource].Name, Row: origin.row, URL: optional(row.URL),
+					Stage: string(stageRule), Rule: optional(hit.rule), ID: optional(row.ID), SignalValue: &hit.value,
 				})
 			} else {
 				out = append(out, edited)

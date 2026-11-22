@@ -19,18 +19,34 @@ type CanonicalWriter interface {
 	Close() error
 }
 
-// canonicalRow is an article as a canonical package stores it. Parquet and JSONL share its
-// column names, and an empty optional value has one form in each: NULL in parquet, absent in JSONL.
+// canonicalRow is an article as a canonical package stores it: a missing value is NULL in parquet
+// and absent in JSONL. Optional columns are pointers, since parquet-go writes some runs of empty
+// optional strings as ” rather than NULL.
 type canonicalRow struct {
-	ID              string     `json:"id" parquet:"id"`
-	URL             string     `json:"url" parquet:"url"`
-	Title           string     `json:"title" parquet:"title"`
-	Description     string     `json:"description,omitempty" parquet:"description,optional"`
-	Content         string     `json:"content,omitempty" parquet:"content,optional"`
-	PublishedAt     string     `json:"publishedAt,omitempty" parquet:"publishedAt,optional"`
-	Language        string     `json:"language" parquet:"language"`
-	PublisherDomain string     `json:"publisherDomain,omitempty" parquet:"publisherDomain,optional"`
-	Metadata        jsonObject `json:"metadata,omitempty" parquet:"metadata,optional"`
+	ID              string      `json:"id" parquet:"id"`
+	URL             string      `json:"url" parquet:"url"`
+	Title           string      `json:"title" parquet:"title"`
+	Description     *string     `json:"description,omitempty" parquet:"description,optional"`
+	Content         *string     `json:"content,omitempty" parquet:"content,optional"`
+	PublishedAt     *string     `json:"publishedAt,omitempty" parquet:"publishedAt,optional"`
+	Language        string      `json:"language" parquet:"language"`
+	PublisherDomain *string     `json:"publisherDomain,omitempty" parquet:"publisherDomain,optional"`
+	Metadata        *jsonObject `json:"metadata,omitempty" parquet:"metadata,optional"`
+}
+
+// optional is nil for an empty value, the only way a canonical row holds one.
+func optional[T ~string](value T) *T {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func valueOf[T ~string](value *T) T {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 // jsonObject is JSON text: a string column in parquet, a nested object in JSONL.
@@ -50,20 +66,20 @@ func toCanonicalRow(a document.Article) (canonicalRow, error) {
 		ID:              a.ID.String(),
 		URL:             a.URL,
 		Title:           a.Title,
-		Description:     a.Description,
-		Content:         a.Content,
+		Description:     optional(a.Description),
+		Content:         optional(a.Content),
 		Language:        string(a.Language),
-		PublisherDomain: a.PublisherDomain,
+		PublisherDomain: optional(a.PublisherDomain),
 	}
 	if !a.PublishedAt.IsZero() {
-		row.PublishedAt = a.PublishedAt.Format(time.RFC3339)
+		row.PublishedAt = optional(a.PublishedAt.Format(time.RFC3339))
 	}
 	metadata, err := json.Marshal(a.Metadata)
 	if err != nil {
 		return canonicalRow{}, fmt.Errorf("marshal metadata of article %s: %w", a.ID, err)
 	}
 	if !bytes.Equal(metadata, []byte("{}")) {
-		row.Metadata = jsonObject(metadata)
+		row.Metadata = optional(jsonObject(metadata))
 	}
 	return row, nil
 }
@@ -83,18 +99,18 @@ func (r canonicalRow) article() (document.Article, error) {
 		ID:              id,
 		URL:             r.URL,
 		Title:           r.Title,
-		Description:     r.Description,
-		Content:         r.Content,
+		Description:     valueOf(r.Description),
+		Content:         valueOf(r.Content),
 		Language:        lang,
-		PublisherDomain: r.PublisherDomain,
+		PublisherDomain: valueOf(r.PublisherDomain),
 	}
-	if r.PublishedAt != "" {
-		if a.PublishedAt, err = time.Parse(time.RFC3339, r.PublishedAt); err != nil {
+	if r.PublishedAt != nil {
+		if a.PublishedAt, err = time.Parse(time.RFC3339, *r.PublishedAt); err != nil {
 			return document.Article{}, fmt.Errorf("article %s: publishedAt: %w", id, err)
 		}
 	}
-	if r.Metadata != "" {
-		decoder := json.NewDecoder(bytes.NewReader([]byte(r.Metadata)))
+	if r.Metadata != nil {
+		decoder := json.NewDecoder(bytes.NewReader([]byte(*r.Metadata)))
 		decoder.UseNumber()
 		if err := decoder.Decode(&a.Metadata); err != nil {
 			return document.Article{}, fmt.Errorf("article %s: metadata: %w", id, err)
