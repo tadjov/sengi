@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"reflect"
 	"strings"
 	"time"
 
@@ -35,7 +34,6 @@ func NewArticleMapper(cfg *datamapping.DataMapper) (*ArticleMapper, error) {
 // Map returns the article without an id, or a *MappingDropError when a required value is missing or invalid.
 func (m *ArticleMapper) Map(record map[string]string) (document.Article, error) {
 	article := document.Article{Language: m.language}
-	val := reflect.ValueOf(&article).Elem()
 
 	for _, fm := range m.cfg.FieldMappings {
 		raw, present := record[fm.Source]
@@ -58,7 +56,7 @@ func (m *ArticleMapper) Map(record map[string]string) (document.Article, error) 
 			err = fmt.Errorf("value %q converted to an empty %s", raw, fm.SourceType)
 		}
 		if err == nil {
-			err = m.assign(val, &article, fm.Target, converted)
+			err = assign(&article, fm.Target, converted)
 		}
 		if err != nil {
 			if fm.Required {
@@ -86,14 +84,7 @@ func (m *ArticleMapper) convert(raw string, fm datamapping.FieldMapping) (any, e
 	if datamapping.IsListTarget(fm.Target) {
 		return splitList(raw, fm.Separator), nil
 	}
-	if sourceType == datamapping.SourceURL {
-		normalized, ok := NormalizeURL(raw)
-		if !ok {
-			return nil, fmt.Errorf("value %q: %w", raw, errInvalidURL)
-		}
-		return normalized, nil
-	}
-	return convertValueToType(raw, string(sourceType), m.cfg.DateFormat)
+	return convertValue(raw, sourceType, m.cfg.DateFormat)
 }
 
 // splitList without a separator keeps raw as one element.
@@ -111,10 +102,7 @@ func splitList(raw, separator string) []string {
 	return values
 }
 
-// assign routes a converted value to its target. Metadata.Extra.<key> is a
-// struct hop then a map key, which reflection cannot walk in one pass, so it is
-// matched by prefix ahead of the ordinary struct paths.
-func (m *ArticleMapper) assign(val reflect.Value, article *document.Article, target string, converted any) error {
+func assign(article *document.Article, target string, converted any) error {
 	if key, ok := strings.CutPrefix(target, datamapping.ExtraTargetPrefix); ok {
 		if article.Metadata.Extra == nil {
 			article.Metadata.Extra = make(map[string]any)
@@ -123,10 +111,54 @@ func (m *ArticleMapper) assign(val reflect.Value, article *document.Article, tar
 		return nil
 	}
 
-	if path := strings.Split(target, "."); len(path) > 1 {
-		return AssignNestedField(val, path, converted)
+	var field any
+	switch target {
+	case datamapping.TargetURL:
+		field = &article.URL
+	case datamapping.TargetTitle:
+		field = &article.Title
+	case "Description":
+		field = &article.Description
+	case "Content":
+		field = &article.Content
+	case "PublishedAt":
+		field = &article.PublishedAt
+	case "Metadata.ExternalID":
+		field = &article.Metadata.ExternalID
+	case "Metadata.PublisherName":
+		field = &article.Metadata.PublisherName
+	case "Metadata.Authors":
+		field = &article.Metadata.Authors
+	case "Metadata.Section":
+		field = &article.Metadata.Section
+	case "Metadata.Keywords":
+		field = &article.Metadata.Keywords
+	case "Metadata.Image":
+		field = &article.Metadata.Image
+	case "Metadata.DateModified":
+		field = &article.Metadata.DateModified
+	default:
+		return fmt.Errorf("unknown target %q", target)
 	}
-	return AssignField(val, target, converted)
+
+	switch field := field.(type) {
+	case *string:
+		if value, ok := converted.(string); ok {
+			*field = value
+			return nil
+		}
+	case *time.Time:
+		if value, ok := converted.(time.Time); ok {
+			*field = value
+			return nil
+		}
+	case *[]string:
+		if value, ok := converted.([]string); ok {
+			*field = value
+			return nil
+		}
+	}
+	return fmt.Errorf("target %s cannot hold a %T", target, converted)
 }
 
 func isBlank(converted any) bool {
