@@ -71,11 +71,12 @@ func decodeArticle(source json.RawMessage) (dto.Article, error) {
 	return dto.NewArticle(article), nil
 }
 
-// BM25 parameters match tiger's bm25 index.
+// BM25 parameters match tiger's bm25 index. They redefine the index's default
+// similarity, since combined_fields refuses fields with a per-field one.
 const (
-	textSimilarity = "article_bm25"
-	bm25K1         = 1.2
-	bm25B          = 0.75
+	defaultSimilarity = "default"
+	bm25K1            = 1.2
+	bm25B             = 0.75
 )
 
 type IndexBuilder struct{}
@@ -119,7 +120,7 @@ func (b *IndexBuilder) buildSettings() types.IndexSettings {
 		NumberOfReplicas: &replicas,
 		MaxResultWindow:  &maxResultWindow,
 		Similarity: map[string]types.SettingsSimilarity{
-			textSimilarity: types.SettingsSimilarityBm25{Type: "BM25", K1: &k1, B: &lengthNormalization},
+			defaultSimilarity: types.SettingsSimilarityBm25{Type: "BM25", K1: &k1, B: &lengthNormalization},
 		},
 		Analysis: &types.IndexSettingsAnalysis{
 			Analyzer: map[string]types.Analyzer{
@@ -203,7 +204,5 @@ func searchedTextProperty(analyzer string) *types.TextProperty {
 	if analyzer != "" {
 		textProp.Analyzer = &analyzer
 	}
-	similarity := textSimilarity
-	textProp.Similarity = &similarity
 	return textProp
 }

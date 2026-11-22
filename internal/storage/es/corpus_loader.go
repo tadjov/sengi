@@ -330,7 +330,7 @@ func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string,
 	}
 
 	settings := make(map[string]string)
-	similarityPrefix := "index.similarity." + textSimilarity + "."
+	similarityPrefix := "index.similarity." + defaultSimilarity + "."
 	for key, recorded := range map[string]string{
 		"index.number_of_shards":   "index.number_of_shards",
 		"index.number_of_replicas": "index.number_of_replicas",
@@ -353,7 +353,6 @@ func (l *CorpusLoader) declaredSettings(ctx context.Context) (map[string]string,
 	fields := searchFieldMappings(mappings[index].Mappings.Properties)
 	for _, name := range []string{"title", "description", "content"} {
 		settings[name+".analyzer"] = fields[name].Analyzer
-		settings[name+".similarity"] = fields[name].Similarity
 	}
 	vector := fields["embedding"]
 	if vector.VectorIndex == nil {
