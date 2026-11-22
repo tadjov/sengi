@@ -53,7 +53,6 @@ func (r *Searcher) Capabilities() dquery.Capabilities {
 // Postgres search_vector. The contract language is not applied: analysis is
 // fixed per field by the index mapping.
 func (r *Searcher) SearchStringQuery(ctx context.Context, query *dquery.String, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
-	cursor, size := baseOpts.Cursor, baseOpts.Size
 	contract := query.Contract()
 
 	slog.Info("Executing es query_string search",
@@ -61,53 +60,136 @@ func (r *Searcher) SearchStringQuery(ctx context.Context, query *dquery.String, 
 		"fields", contract.Fields,
 		"operator", queryoperator.Resolve(contract.Operator, DefaultOperator),
 		"language", contract.Language,
-		"has_cursor", cursor != nil,
-		"size", size)
+		"has_cursor", baseOpts.Cursor != nil,
+		"size", baseOpts.Size)
 
-	multiMatch := &types.MultiMatchQuery{
+	return r.search(ctx, "query_string", &types.Query{
+		MultiMatch: &types.MultiMatchQuery{
+			Query:    query.Query,
+			Fields:   boostedFields(contract.Fields),
+			Type:     &textquerytype.Crossfields,
+			Operator: termOperator(contract.Operator),
+		},
+	}, baseOpts)
+}
+
+func (r *Searcher) SearchField(ctx context.Context, query *dquery.Match, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
+	slog.Info("Executing es match search",
+		"query", query.Query,
+		"field", query.Field,
+		"operator", queryoperator.Resolve(query.Operator, DefaultOperator),
+		"fuzziness", query.GetFuzziness(),
+		"has_cursor", baseOpts.Cursor != nil,
+		"size", baseOpts.Size)
+
+	matchQuery := types.MatchQuery{
 		Query:    query.Query,
-		Fields:   boostedFields(contract.Fields),
-		Type:     &textquerytype.Crossfields,
-		Operator: termOperator(contract.Operator),
+		Operator: termOperator(query.Operator),
+	}
+	if fuzziness := query.GetFuzziness(); fuzziness != dquery.NoFuzziness {
+		editDistance := string(fuzziness)
+		matchQuery.Fuzziness = &editDistance
 	}
 
-	searchReq := r.client.Search().
+	return r.search(ctx, "match", &types.Query{
+		Match: map[string]types.MatchQuery{string(query.Field): matchQuery},
+	}, baseOpts)
+}
+
+func (r *Searcher) SearchFields(ctx context.Context, query *dquery.MultiMatch, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
+	slog.Info("Executing es multi_match search",
+		"query", query.Query,
+		"fields", query.Fields,
+		"operator", queryoperator.Resolve(query.Operator, DefaultOperator),
+		"has_cursor", baseOpts.Cursor != nil,
+		"size", baseOpts.Size)
+
+	// cross_fields lets each term match any of the fields, as the Postgres
+	// search_vector does; the default best_fields wants every term in one.
+	return r.search(ctx, "multi_match", &types.Query{
+		MultiMatch: &types.MultiMatchQuery{
+			Query:    query.Query,
+			Fields:   boostedFields(query.Params().Fields),
+			Type:     &textquerytype.Crossfields,
+			Operator: termOperator(query.Operator),
+		},
+	}, baseOpts)
+}
+
+// SearchPhrase matches the phrase, within slop, in at least one of the fields.
+func (r *Searcher) SearchPhrase(ctx context.Context, query *dquery.Phrase, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
+	slop := query.GetSlop()
+
+	slog.Info("Executing es phrase search",
+		"query", query.Query,
+		"fields", query.Fields,
+		"slop", slop,
+		"language", query.GetLanguage(),
+		"has_cursor", baseOpts.Cursor != nil,
+		"size", baseOpts.Size)
+
+	perField := make([]types.Query, 0, len(query.Fields))
+	for _, field := range query.Fields {
+		matchPhrase := types.MatchPhraseQuery{Query: query.Query}
+		if slop > 0 {
+			matchPhrase.Slop = &slop
+		}
+		perField = append(perField, types.Query{
+			MatchPhrase: map[string]types.MatchPhraseQuery{string(field): matchPhrase},
+		})
+	}
+
+	return r.search(ctx, "phrase", &types.Query{
+		Bool: &types.BoolQuery{Should: perField, MinimumShouldMatch: "1"},
+	}, baseOpts)
+}
+
+func (r *Searcher) SearchBoolean(ctx context.Context, query *dquery.Boolean, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
+	slog.Info("Executing es boolean search",
+		"expression", query.Expression,
+		"has_cursor", baseOpts.Cursor != nil,
+		"size", baseOpts.Size)
+
+	if err := token.Validate(token.Tokenize(query.Expression)); err != nil {
+		return nil, fmt.Errorf("invalid boolean query expression: %w", err)
+	}
+
+	return r.search(ctx, "boolean", &types.Query{
+		QueryString: &types.QueryStringQuery{
+			Query:  query.Expression,
+			Fields: boostedFields(dquery.DefaultSearchContract().Fields),
+		},
+	}, baseOpts)
+}
+
+// search ranks by score, then id, and fetches one hit past the page to learn whether another follows.
+func (r *Searcher) search(ctx context.Context, kind string, query *types.Query, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
+	cursor, size := baseOpts.Cursor, baseOpts.Size
+
+	request := r.client.Search().
 		Index(r.indexName).
 		SourceExcludes_("embedding").
-		Query(&types.Query{
-			MultiMatch: multiMatch,
-		}).
+		Query(query).
 		Size(size + 1).
 		TrackScores(true).
 		TrackTotalHits(esdsl.NewTrackHits().Bool(true))
 
 	if cursor != nil {
-		searchReq = searchReq.SearchAfter(
+		request = request.SearchAfter(
 			esdsl.NewFieldValue().Float64(types.Float64(cursor.Score)),
 			esdsl.NewFieldValue().String(cursor.ID.String()),
 		)
 	}
 
-	sortOrderDesc := sortorder.Desc
-	searchReq = searchReq.Sort(
-		&types.SortOptions{
-			SortOptions: map[string]types.FieldSort{
-				"_score": {Order: &sortOrderDesc},
-			},
-		},
-		&types.SortOptions{
-			SortOptions: map[string]types.FieldSort{
-				"id": {Order: &sortOrderDesc},
-			},
-		},
+	descending := sortorder.Desc
+	request = request.Sort(
+		&types.SortOptions{SortOptions: map[string]types.FieldSort{"_score": {Order: &descending}}},
+		&types.SortOptions{SortOptions: map[string]types.FieldSort{"id": {Order: &descending}}},
 	)
 
-	var err error
-
-	res, err := searchReq.Do(ctx)
+	res, err := request.Do(ctx)
 	if err != nil {
-		slog.Error("Elasticsearch query failed", "error", err, "query", query.Query, "cursor", cursor != nil)
-		return nil, fmt.Errorf("failed to execute search: %w", err)
+		return nil, fmt.Errorf("failed to execute %s search: %w", kind, err)
 	}
 
 	page, err := searchResultPage(res.Hits, size)
@@ -115,7 +197,8 @@ func (r *Searcher) SearchStringQuery(ctx context.Context, query *dquery.String, 
 		return nil, fmt.Errorf("failed to map search results to types: %w", err)
 	}
 
-	slog.Info("Es search results fetched",
+	slog.Info("ES search results fetched",
+		"kind", kind,
 		"total_matches", page.TotalMatches,
 		"returned_count", len(page.Hits),
 		"max_score", page.MaxScore)
@@ -209,322 +292,6 @@ func mapToResult(hits []types.Hit, maxScore float64) ([]dto.ArticleSearchResult,
 	return articles, rawScores, nil
 }
 
-// SearchField implements storage.SingleMatchSearcher interface
-// Performs single-field match query using Elasticsearch's match query
-func (r *Searcher) SearchField(ctx context.Context, query *dquery.Match, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
-	cursor, size := baseOpts.Cursor, baseOpts.Size
-	slog.Info("Executing es match search",
-		"query", query.Query,
-		"field", query.Field,
-		"operator", queryoperator.Resolve(query.Operator, DefaultOperator),
-		"fuzziness", query.GetFuzziness(),
-		"has_cursor", cursor != nil,
-		"size", size)
-
-	matchQuery := &types.MatchQuery{
-		Query:    query.Query,
-		Operator: termOperator(query.Operator),
-	}
-
-	if fuzziness := query.GetFuzziness(); fuzziness != dquery.NoFuzziness {
-		editDistance := string(fuzziness)
-		matchQuery.Fuzziness = &editDistance
-	}
-
-	// Build search request with match query on specific field
-	searchReq := r.client.Search().
-		Index(r.indexName).
-		SourceExcludes_("embedding").
-		Query(&types.Query{
-			Match: map[string]types.MatchQuery{
-				string(query.Field): *matchQuery,
-			},
-		}).
-		Size(size + 1).
-		TrackScores(true).
-		TrackTotalHits(esdsl.NewTrackHits().Bool(true))
-
-	// Add cursor support and sorting
-	if cursor != nil {
-		searchReq = searchReq.SearchAfter(
-			esdsl.NewFieldValue().Float64(types.Float64(cursor.Score)),
-			esdsl.NewFieldValue().String(cursor.ID.String()),
-		)
-	}
-
-	sortOrderDesc := sortorder.Desc
-	searchReq = searchReq.Sort(
-		&types.SortOptions{
-			SortOptions: map[string]types.FieldSort{
-				"_score": {Order: &sortOrderDesc},
-			},
-		},
-		&types.SortOptions{
-			SortOptions: map[string]types.FieldSort{
-				"id": {Order: &sortOrderDesc},
-			},
-		},
-	)
-
-	// Execute query
-	res, err := searchReq.Do(ctx)
-	if err != nil {
-		slog.Error("Elasticsearch match query failed", "error", err, "query", query.Query, "field", query.Field)
-		return nil, fmt.Errorf("failed to execute match search: %w", err)
-	}
-
-	page, err := searchResultPage(res.Hits, size)
-	if err != nil {
-		return nil, fmt.Errorf("failed to map search results to types: %w", err)
-	}
-
-	slog.Info("ES match search results fetched",
-		"total_matches", page.TotalMatches,
-		"returned_count", len(page.Hits),
-		"max_score", page.MaxScore)
-
-	return page, nil
-}
-
-// SearchFields implements storage.MultiMatchSearcher interface
-// Performs multi-field match query using Elasticsearch's multi_match query
-func (r *Searcher) SearchFields(ctx context.Context, query *dquery.MultiMatch, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
-	cursor, size := baseOpts.Cursor, baseOpts.Size
-	slog.Info("Executing es multi_match search",
-		"query", query.Query,
-		"fields", query.Fields,
-		"operator", queryoperator.Resolve(query.Operator, DefaultOperator),
-		"has_cursor", cursor != nil,
-		"size", size)
-
-	// cross_fields lets each term match any of the fields, as the Postgres
-	// search_vector does; the default best_fields wants every term in one.
-	multiMatch := &types.MultiMatchQuery{
-		Query:    query.Query,
-		Fields:   boostedFields(query.Params().Fields),
-		Type:     &textquerytype.Crossfields,
-		Operator: termOperator(query.Operator),
-	}
-
-	// Build and execute search request
-	searchReq := r.client.Search().
-		Index(r.indexName).
-		SourceExcludes_("embedding").
-		Query(&types.Query{
-			MultiMatch: multiMatch,
-		}).
-		Size(size + 1).
-		TrackScores(true).
-		TrackTotalHits(esdsl.NewTrackHits().Bool(true))
-
-	// Add cursor support and sorting
-	if cursor != nil {
-		searchReq = searchReq.SearchAfter(
-			esdsl.NewFieldValue().Float64(types.Float64(cursor.Score)),
-			esdsl.NewFieldValue().String(cursor.ID.String()),
-		)
-	}
-
-	sortOrderDesc := sortorder.Desc
-	searchReq = searchReq.Sort(
-		&types.SortOptions{
-			SortOptions: map[string]types.FieldSort{
-				"_score": {Order: &sortOrderDesc},
-			},
-		},
-		&types.SortOptions{
-			SortOptions: map[string]types.FieldSort{
-				"id": {Order: &sortOrderDesc},
-			},
-		},
-	)
-
-	// Execute query
-	res, err := searchReq.Do(ctx)
-	if err != nil {
-		slog.Error("Elasticsearch multi_match query failed", "error", err, "query", query.Query)
-		return nil, fmt.Errorf("failed to execute multi_match search: %w", err)
-	}
-
-	page, err := searchResultPage(res.Hits, size)
-	if err != nil {
-		return nil, fmt.Errorf("failed to map search results to types: %w", err)
-	}
-
-	slog.Info("ES multi_match search results fetched",
-		"total_matches", page.TotalMatches,
-		"returned_count", len(page.Hits),
-		"max_score", page.MaxScore)
-
-	return page, nil
-}
-
-// SearchPhrase implements storage.FtsSearcher interface
-// Performs phrase search using Elasticsearch's match_phrase query with slop support
-func (r *Searcher) SearchPhrase(ctx context.Context, query *dquery.Phrase, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
-	cursor, size := baseOpts.Cursor, baseOpts.Size
-	slop := query.GetSlop()
-
-	slog.Info("Executing es phrase search",
-		"query", query.Query,
-		"fields", query.Fields,
-		"slop", slop,
-		"language", query.GetLanguage(),
-		"has_cursor", cursor != nil,
-		"size", size)
-
-	// Build bool query with should clauses for each field
-	// Each field gets a match_phrase query with the same slop
-	shouldClauses := make([]types.Query, 0, len(query.Fields))
-	for _, field := range query.Fields {
-		matchPhraseQuery := types.MatchPhraseQuery{
-			Query: query.Query,
-		}
-		if slop > 0 {
-			matchPhraseQuery.Slop = &slop
-		}
-
-		shouldClauses = append(shouldClauses, types.Query{
-			MatchPhrase: map[string]types.MatchPhraseQuery{
-				string(field): matchPhraseQuery,
-			},
-		})
-	}
-
-	// Build bool query - at least one field should match
-	boolQuery := &types.BoolQuery{
-		Should:             shouldClauses,
-		MinimumShouldMatch: "1",
-	}
-
-	slog.Debug("Elasticsearch phrase query",
-		"fields", query.Fields,
-		"slop", slop,
-		"num_should_clauses", len(shouldClauses))
-
-	// Build search request
-	searchReq := r.client.Search().
-		Index(r.indexName).
-		SourceExcludes_("embedding").
-		Query(&types.Query{
-			Bool: boolQuery,
-		}).
-		Size(size + 1).
-		TrackScores(true).
-		TrackTotalHits(esdsl.NewTrackHits().Bool(true))
-
-	// Add cursor support
-	if cursor != nil {
-		searchReq = searchReq.SearchAfter(
-			esdsl.NewFieldValue().Float64(types.Float64(cursor.Score)),
-			esdsl.NewFieldValue().String(cursor.ID.String()),
-		)
-	}
-
-	// Add sorting
-	sortOrderDesc := sortorder.Desc
-	searchReq = searchReq.Sort(
-		&types.SortOptions{
-			SortOptions: map[string]types.FieldSort{
-				"_score": {Order: &sortOrderDesc},
-			},
-		},
-		&types.SortOptions{
-			SortOptions: map[string]types.FieldSort{
-				"id": {Order: &sortOrderDesc},
-			},
-		},
-	)
-
-	// Execute query
-	res, err := searchReq.Do(ctx)
-	if err != nil {
-		slog.Error("Elasticsearch phrase query failed", "error", err, "query", query.Query, "fields", query.Fields)
-		return nil, fmt.Errorf("failed to execute phrase search: %w", err)
-	}
-
-	page, err := searchResultPage(res.Hits, size)
-	if err != nil {
-		return nil, fmt.Errorf("failed to map search results to types: %w", err)
-	}
-
-	slog.Info("ES phrase search results fetched",
-		"total_matches", page.TotalMatches,
-		"returned_count", len(page.Hits),
-		"max_score", page.MaxScore)
-
-	return page, nil
-}
-
-func (r *Searcher) SearchBoolean(ctx context.Context, query *dquery.Boolean, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
-	cursor, size := baseOpts.Cursor, baseOpts.Size
-
-	slog.Info("Executing es boolean search",
-		"expression", query.Expression,
-		"has_cursor", cursor != nil,
-		"size", size)
-
-	if err := token.Validate(token.Tokenize(query.Expression)); err != nil {
-		slog.Error("Invalid boolean query expression", "error", err, "expression", query.Expression)
-		return nil, fmt.Errorf("invalid boolean query expression: %w", err)
-	}
-
-	queryStringQuery := &types.QueryStringQuery{
-		Query:  query.Expression,
-		Fields: boostedFields(dquery.DefaultSearchContract().Fields),
-	}
-
-	searchReq := r.client.Search().
-		Index(r.indexName).
-		SourceExcludes_("embedding").
-		Query(&types.Query{
-			QueryString: queryStringQuery,
-		}).
-		Size(size + 1).
-		TrackScores(true).
-		TrackTotalHits(esdsl.NewTrackHits().Bool(true))
-
-	if cursor != nil {
-		searchReq = searchReq.SearchAfter(
-			esdsl.NewFieldValue().Float64(types.Float64(cursor.Score)),
-			esdsl.NewFieldValue().String(cursor.ID.String()),
-		)
-	}
-
-	sortOrderDesc := sortorder.Desc
-	searchReq = searchReq.Sort(
-		&types.SortOptions{
-			SortOptions: map[string]types.FieldSort{
-				"_score": {Order: &sortOrderDesc},
-			},
-		},
-		&types.SortOptions{
-			SortOptions: map[string]types.FieldSort{
-				"id": {Order: &sortOrderDesc},
-			},
-		},
-	)
-
-	res, err := searchReq.Do(ctx)
-	if err != nil {
-		slog.Error("Elasticsearch boolean query failed", "error", err, "expression", query.Expression)
-		return nil, fmt.Errorf("failed to execute boolean search: %w", err)
-	}
-
-	page, err := searchResultPage(res.Hits, size)
-	if err != nil {
-		return nil, fmt.Errorf("failed to map search results to types: %w", err)
-	}
-
-	slog.Info("ES boolean search results fetched",
-		"total_matches", page.TotalMatches,
-		"returned_count", len(page.Hits),
-		"max_score", page.MaxScore)
-
-	return page, nil
-}
-
-// Compile-time interface assertions
 var (
 	_ storage.FullTextBackend     = (*Searcher)(nil)
 	_ storage.StringQuerySearcher = (*Searcher)(nil)
