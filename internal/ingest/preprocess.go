@@ -225,10 +225,10 @@ func (b *canonicalBuilder) openSources(ctx context.Context) (rawSources, error) 
 		if err != nil {
 			return sources, fmt.Errorf("open raw resource %s: %w", resource.Name, err)
 		}
-		records, err := recordReaderFor(resource, file)
+		records, err := reader.Open(resource.Format, file)
 		if err != nil {
 			file.Close()
-			return sources, err
+			return sources, fmt.Errorf("raw resource %s: %w", resource.Name, err)
 		}
 		sources = append(sources, rawSource{resource: resource, file: file, records: records})
 	}
@@ -239,7 +239,7 @@ func (b *canonicalBuilder) openSources(ctx context.Context) (rawSources, error) 
 func (s rawSources) records() int64 {
 	var total int64
 	for _, source := range s {
-		counted, ok := source.records.(interface{ NumRows() int64 })
+		counted, ok := source.records.(reader.RowCounter)
 		if !ok {
 			return 0
 		}
@@ -297,20 +297,3 @@ func (b *canonicalBuilder) eachArticle(ctx context.Context, source rawSource, em
 }
 
 const dropMalformed = "malformed_record"
-
-func recordReaderFor(resource datapackage.Resource, file *datapackage.ResourceFile) (reader.RecordReader, error) {
-	switch resource.Format {
-	case "csv":
-		return reader.NewCSVReader(file), nil
-	case "jsonl":
-		return reader.NewJSONLReader(file), nil
-	case "parquet":
-		parquet, err := reader.NewParquetReader(file, file.Size())
-		if err != nil {
-			return nil, fmt.Errorf("open raw resource %s as parquet: %w", resource.Name, err)
-		}
-		return parquet, nil
-	default:
-		return nil, fmt.Errorf("raw resource %s has format %q, want csv, jsonl or parquet", resource.Name, resource.Format)
-	}
-}
