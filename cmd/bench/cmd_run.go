@@ -7,7 +7,6 @@ import (
 	"io"
 	"maps"
 	"math/rand/v2"
-	"os"
 	"slices"
 	"strings"
 	"time"
@@ -190,7 +189,7 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 	}
 	runCfg.VectorStore = vectorStore
 
-	executors, cleanup, err := createExecutors(cmd.Context(), bs)
+	executors, cleanup, err := engine.CreateFromSpec(cmd.Context(), bs.Engines)
 	if err != nil {
 		return fmt.Errorf("create executors: %w", err)
 	}
@@ -257,8 +256,8 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 			measuredAsSpecified: measuredAsSpecified(runCfg, bs),
 		}.deviations()...)
 
-	report.WriteTable(rpt, os.Stdout)
-	fmt.Fprintf(os.Stdout, "%s %s\n", cli.Muted.Sprint("Elapsed:"), elapsed.Round(time.Millisecond))
+	report.WriteTable(rpt, cmd.OutOrStdout())
+	fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", cli.Muted.Sprint("Elapsed:"), elapsed.Round(time.Millisecond))
 
 	outPath := f.output
 	if outPath == "" {

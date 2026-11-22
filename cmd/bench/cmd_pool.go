@@ -1,7 +1,6 @@
 package main
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"io"
@@ -107,7 +106,7 @@ func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
 	}
 	runCfg.VectorStore = vectorStore
 
-	executors, cleanup, err := createExecutors(cmd.Context(), bs)
+	executors, cleanup, err := engine.CreateFromSpec(cmd.Context(), bs.Engines)
 	if err != nil {
 		return fmt.Errorf("create executors: %w", err)
 	}
@@ -130,16 +129,16 @@ func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
 	if err != nil {
 		return fmt.Errorf("pool run: %w", err)
 	}
-	dropped := droppedExecutions(result)
+	dropped := pool.DroppedExecutions(result)
 	if len(dropped) > 0 && !f.allowPartial {
 		return incompletePoolError(dropped)
 	}
 
-	pf := buildPoolFile(result, queries, depth)
+	pf := pool.FromResult(result, queries, depth)
 	pf.Meta = meta.New("pool")
 	pf.Meta.SpecID = bs.ID
 	pf.Meta.PoolDepth = depth
-	pf.Meta.Engines = collectEngines(bs, result)
+	pf.Meta.Engines = pool.AnsweredEngines(result, specEngines(bs))
 	pf.Meta.DroppedExecutions = dropped
 	pf.Meta.Canonical = canonical
 
@@ -180,68 +179,17 @@ func loadedCanonical(ctx context.Context, w io.Writer, executors map[string]engi
 	return pool.SharedCanonical(loads)
 }
 
-// buildPoolFile merges results across all jobs into one entry per query_id.
-// Multiple jobs commonly share a suite (e.g. a 3-engine job + an all-engines
-// job), so the same query_id surfaces in several JobResults. We union the
-// per-engine executions by query_id so each query is pooled — and later judged
-// — exactly once, regardless of how many jobs touched it.
-func buildPoolFile(result *runner.BenchmarkResult, queries map[string]suite.Query, depth int) *pool.PoolFile {
-	pf := &pool.PoolFile{}
-
-	var order []string                                       // first-seen query order
-	byQuery := make(map[string]map[string]*engine.Execution) // query_id → engine → execution
-	digests := make(map[string]map[string]string)
-	jobSeen := make(map[string]struct{})
-	var jobNames []string
-
-	for _, jr := range result.Jobs {
-		if _, ok := jobSeen[jr.JobName]; !ok {
-			jobSeen[jr.JobName] = struct{}{}
-			jobNames = append(jobNames, jr.JobName)
-		}
-		for _, qID := range jr.QueryOrder {
-			execs, ok := byQuery[qID]
-			if !ok {
-				execs = make(map[string]*engine.Execution)
-				byQuery[qID] = execs
-				digests[qID] = make(map[string]string)
-				order = append(order, qID)
-			}
-			engResults := jr.Results[qID]
-			for _, engName := range jr.EngineNames {
-				// First job to contribute an engine wins; the same engine on
-				// the same suite/query produces an identical ranked list, so
-				// there's nothing to merge — we only need engines not yet seen.
-				if _, exists := execs[engName]; exists {
-					continue
-				}
-				qr, ok := engResults[engName]
-				if !ok || qr.Error != nil {
-					continue
-				}
-				execs[engName] = &engine.Execution{
-					RankedDocIDs:  qr.RankedDocIDs,
-					CorpusMatches: qr.CorpusMatches,
-				}
-				digests[qID][engName] = qr.RequestDigest
+// specEngines lists the engines the spec's jobs run, in spec order.
+func specEngines(bs *spec.BenchSpec) []string {
+	var engines []string
+	for _, job := range bs.Jobs {
+		for _, name := range job.Engines {
+			if !slices.Contains(engines, name) {
+				engines = append(engines, name)
 			}
 		}
 	}
-
-	pf.SuiteName = strings.Join(jobNames, ",")
-	for _, qID := range order {
-		q := queries[qID]
-		pf.Queries = append(pf.Queries, pool.PoolEntry{
-			QueryID:        qID,
-			QueryText:      q.Text,
-			QueryDesc:      q.Description,
-			Category:       q.Category,
-			Filters:        q.Filters,
-			Docs:           pool.PoolResults(byQuery[qID], depth),
-			RequestDigests: digests[qID],
-		})
-	}
-	return pf
+	return engines
 }
 
 // collectSuiteQueries reads every job's suite queries by id. A query without
@@ -267,74 +215,6 @@ func collectSuiteQueries(bs *spec.BenchSpec) (map[string]suite.Query, error) {
 		}
 	}
 	return queries, nil
-}
-
-// collectEngines lists, in spec order, the engines that answered at least one
-// query, so an engine whose every execution failed is not claimed by the pool.
-func collectEngines(bs *spec.BenchSpec, result *runner.BenchmarkResult) []string {
-	answered := make(map[string]bool)
-	for cell := range answeredCells(result) {
-		answered[cell.engine] = true
-	}
-	seen := make(map[string]struct{})
-	var out []string
-	for _, job := range bs.Jobs {
-		for _, eng := range job.Engines {
-			if _, ok := seen[eng]; ok || !answered[eng] {
-				continue
-			}
-			seen[eng] = struct{}{}
-			out = append(out, eng)
-		}
-	}
-	return out
-}
-
-type poolCell struct {
-	queryID string
-	engine  string
-}
-
-func answeredCells(result *runner.BenchmarkResult) map[poolCell]bool {
-	answered := make(map[poolCell]bool)
-	for _, jr := range result.Jobs {
-		for queryID, byEngine := range jr.Results {
-			for engineName, qr := range byEngine {
-				if qr.Error == nil {
-					answered[poolCell{queryID: queryID, engine: engineName}] = true
-				}
-			}
-		}
-	}
-	return answered
-}
-
-// droppedExecutions lists the (query, engine) pairs no job got an answer for,
-// sorted by query then engine.
-func droppedExecutions(result *runner.BenchmarkResult) []meta.DroppedExecution {
-	answered := answeredCells(result)
-	failures := make(map[poolCell]string)
-	for _, jr := range result.Jobs {
-		for queryID, byEngine := range jr.Results {
-			for engineName, qr := range byEngine {
-				cell := poolCell{queryID: queryID, engine: engineName}
-				if qr.Error == nil || answered[cell] {
-					continue
-				}
-				if _, recorded := failures[cell]; !recorded {
-					failures[cell] = qr.Error.Error()
-				}
-			}
-		}
-	}
-	dropped := make([]meta.DroppedExecution, 0, len(failures))
-	for cell, msg := range failures {
-		dropped = append(dropped, meta.DroppedExecution{QueryID: cell.queryID, Engine: cell.engine, Error: msg})
-	}
-	slices.SortFunc(dropped, func(a, b meta.DroppedExecution) int {
-		return cmp.Or(cmp.Compare(a.QueryID, b.QueryID), cmp.Compare(a.Engine, b.Engine))
-	})
-	return dropped
 }
 
 func incompletePoolError(dropped []meta.DroppedExecution) error {

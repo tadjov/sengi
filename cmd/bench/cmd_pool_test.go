@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tadjov/sengi/internal/bench/pool"
 	"github.com/tadjov/sengi/internal/bench/runner"
 	"github.com/tadjov/sengi/internal/bench/suite"
 )
@@ -52,7 +53,7 @@ func TestBuildPoolFile_DedupsQueryAcrossJobs(t *testing.T) {
 		},
 	}
 
-	pf := buildPoolFile(result, map[string]suite.Query{"q1": {ID: "q1", Text: "text", Description: "desc", Category: "keyword"}}, 50)
+	pf := pool.FromResult(result, map[string]suite.Query{"q1": {ID: "q1", Text: "text", Description: "desc", Category: "keyword"}}, 50)
 
 	require.Len(t, pf.Queries, 1, "q1 should appear exactly once after merging jobs")
 	assert.Equal(t, "q1", pf.Queries[0].QueryID)
@@ -85,7 +86,7 @@ func TestBuildPoolFile_PreservesDistinctQueries(t *testing.T) {
 	}
 	result := &runner.BenchmarkResult{Jobs: []*runner.JobResult{job}}
 
-	pf := buildPoolFile(result, map[string]suite.Query{"q1": {ID: "q1", Text: "t1"}, "q2": {ID: "q2", Text: "t2"}}, 50)
+	pf := pool.FromResult(result, map[string]suite.Query{"q1": {ID: "q1", Text: "t1"}, "q2": {ID: "q2", Text: "t2"}}, 50)
 
 	require.Len(t, pf.Queries, 2)
 	assert.Equal(t, "q1", pf.Queries[0].QueryID)

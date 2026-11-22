@@ -93,7 +93,7 @@ func validateTrack(cmd *cobra.Command, f validateFlags, tr *trackctx.Track) erro
 		return err
 	}
 
-	executors, cleanup, err := createExecutors(cmd.Context(), bs)
+	executors, cleanup, err := engine.CreateFromSpec(cmd.Context(), bs.Engines)
 	if err != nil {
 		return fmt.Errorf("create executors: %w", err)
 	}
@@ -289,10 +289,8 @@ func colorStatus(s string) string {
 	switch s {
 	case "OK":
 		return cli.Success.Sprint(s)
-	case "INVALID", "TEMPLATE_ERR":
+	case "INVALID", "TEMPLATE_ERR", "EMBED_ERR":
 		return cli.Failure.Sprint(s)
-	case "SKIP":
-		return cli.Muted.Sprint(s)
 	case "UNSUPPORTED":
 		return cli.Caution.Sprint(s)
 	default:

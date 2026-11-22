@@ -12,7 +12,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/tadjov/sengi/internal/bench/engine"
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/suite"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
@@ -32,10 +31,6 @@ const trackRootEnv = "BENCH_TRACK_ROOT"
 // $BENCH_TRACK_ROOT). Empty means the current directory, so a track arg behaves
 // like any other path; pointing it at a folder of tracks is pure convenience.
 var trackRoot string
-
-func createExecutors(ctx context.Context, bs *spec.BenchSpec) (map[string]engine.Executor, func(), error) {
-	return engine.CreateFromSpec(ctx, bs.Engines)
-}
 
 // buildQueryVectorStore prefers the track's query-vectors package over live
 // Ollama embedding; the store is nil when neither is available.
@@ -203,15 +198,6 @@ func envOrFlag(envKey, flagVal string) string {
 // Callers layer their own --spec/--pool/--output overrides on top.
 func trackInputs(flag string, args []string) trackctx.Inputs {
 	return trackctx.Inputs{TrackArg: trackArg(flag, args), TrackRoot: trackRoot}
-}
-
-// trackRootOrCwd is the track root with its default applied, for commands that
-// build paths themselves instead of going through trackctx.
-func trackRootOrCwd() string {
-	if trackRoot == "" {
-		return "."
-	}
-	return trackRoot
 }
 
 // trackArg picks up the track from a flag or first positional arg. The CLI
