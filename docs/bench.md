@@ -352,14 +352,10 @@ bench judge <track> --strategy llm --provider claude-cli
   refuses a file graded under other gates and a gate change needs one bump.
 - The prompt carries the query's `text` exactly as the pool stores it. `description` never
   reaches the model.
-- One doc per request by default, so what a request holds depends on the query and the doc
-  alone, never on pool order or on which engine found the doc. On `claude-api` the request
-  is byte-identical; `claude-cli` adds its own blocks, below. `--batch N` cuts a shuffle of
-  the query's whole pool, seeded by `--seed` (default 1), into batches of N. A resumed run,
-  or one that cannot read every pooled article, sends what is left of those same batches.
-  The judge block then records both under `batching` (`size`, `seed`, `max_output_tokens`),
-  seed 0 included.
-- Every request carries one rubric and shows each doc's title and description in full and
+- One doc per request, so what a request holds depends on the query and the doc alone,
+  never on pool order or on which engine found the doc. On `claude-api` the request is
+  byte-identical; `claude-cli` adds its own blocks, below.
+- Every request carries one rubric and shows the doc's title and description in full and
   its content up to 1,744 characters, the length of the median cc-news article.
 - `--model` defaults to `claude-sonnet-5-5`, the model of the final cc-news judgments, and
   takes a lowercase `claude-` model id or `haiku`, `sonnet`, `opus` or `fable` for the
@@ -367,9 +363,8 @@ bench judge <track> --strategy llm --provider claude-cli
   `--model ""` fails naming the flag. Ids the CLI would answer under another name
   (`sonnet[1m]`, `opusplan`, `Claude-Sonnet-5-5`) are refused. `--effort` sets how much the model
   thinks before it grades (`low` by default). The judge block records the resolved model,
-  the effort, the output budget (16,000 tokens a doc, room for thinking at any effort; a
-  batch's 20,000 sits under `batching`, below the ~21,333 a request may ask for without
-  streaming) and the prompt version (`v3`).
+  the effort, the output budget (16,000 tokens a doc, room for thinking at any effort and
+  below the ~21,333 a request may ask for without streaming) and the prompt version (`v3`).
 - A reply without a grade, a null grade, a refused request, or a `claude-cli` answer whose
   `modelUsage` names any model but the pinned one leaves the doc unjudged for `--resume` to
   retry. It never grades 0.
@@ -484,7 +479,7 @@ the same gate as the category's. `vector` and `hybrid` do not read them.
 searches the same model's vectors, so the question is how much of exact search's top 10 each
 engine finds. The judge grades the 10 pooled documents nearest the query by cosine 3, ties
 broken by the lower id, and every other pooled document 0; it reads the whole pool of a query
-at once and takes no `--batch`. The semantic track pools the exact pgvector arm at depth ≥ 10,
+at once. The semantic track pools the exact pgvector arm at depth ≥ 10,
 so the pool's top 10 is the exact top 10, and `R@10` in the report is recall@10 against exact
 search. A pooled document without a stored vector stays unjudged. `hybrid` keeps its graded
 fusion.
@@ -558,12 +553,10 @@ Key flags:
 - `--model M`: the LLM judge's model, a full id or `haiku`, `sonnet`, `opus`, `fable` (default `claude-sonnet-5-5`; `haiku` for cheap trial runs). For `jev`, a pinned `jev-<major>.<minor>.<patch>` (default `jev-1.14.0`)
 - `--effort E`: the LLM judge's effort, `low` (default), `medium`, `high`, `xhigh` or `max`
 - `--provider P`: the LLM judge's endpoint, `claude-cli` (default) or `claude-api`. Any other strategy refuses it
-- `--batch N`: grade N LLM docs per request instead of one. Any other strategy refuses it
-- `--seed S`: seed of the shuffle that forms `--batch` batches (default 1)
-- `--concurrency N`: parallel Grade calls (per-doc mode)
+- `--concurrency N`: parallel Grade calls, for the judges that grade one doc per request
 - `--allow-unjudged`: exit 0 even when some pooled docs are left unjudged. A query with no usable terms still fails the run
 - `--force`: for `manual` only, rewrite the placeholders from scratch. Without it, `manual` keeps every existing hand grade, adds `-1` placeholders for new pool docs, and refuses a file another judge wrote
-- `--carry-over <annotations> --carry-over-pool <pool>`: after a re-pool, reuse the old grades and grade only new docs. A grade is reused when the judge and the query's text, category and filters are unchanged. A pool records the canonical package its engines had loaded under `meta.canonical`, and carry-over refuses when the two pools' hashes differ. Take the old pool from git (`git show <commit>:<track>/trec/pool.yaml`). Batched judges and `bm25`, `vector`, `hybrid` refuse it. The new file records where its grades came from under `carried_over`
+- `--carry-over <annotations> --carry-over-pool <pool>`: after a re-pool, reuse the old grades and grade only new docs. A grade is reused when the judge and the query's text, category and filters are unchanged. A pool records the canonical package its engines had loaded under `meta.canonical`, and carry-over refuses when the two pools' hashes differ. Take the old pool from git (`git show <commit>:<track>/trec/pool.yaml`). `bm25`, `vector` and `hybrid` refuse it. The new file records where its grades came from under `carried_over`
 - `--api-base URL`: the API `claude-api` or `jev` calls (defaults `https://api.anthropic.com`, `https://api.typesafe.ai`)
 
 `--strategy jev` grades with TypeSafe's Jev (`POST /v1/systemone`), a non-Anthropic cross-judge of the LLM judge, so it must grade exactly what the LLM judge graded:

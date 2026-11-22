@@ -7,16 +7,12 @@ import (
 	"github.com/tadjov/sengi/internal/bench/meta"
 )
 
-// KeywordStrategy is a deterministic baseline judge. It tokenizes the query
-// text, then counts how many distinct query tokens appear in the document's
-// title, description, and content.
+// KeywordStrategy grades by the share of the query's terms the title and the doc hold.
 type KeywordStrategy struct{}
 
 const keywordRubricVersion = "v2"
 
 func NewKeywordStrategy() *KeywordStrategy { return &KeywordStrategy{} }
-
-func (KeywordStrategy) Name() string { return string(StrategyKeyword) }
 
 func (KeywordStrategy) Describe() meta.Judge {
 	return meta.Judge{Strategy: string(StrategyKeyword), RubricVersion: keywordRubricVersion, GateVersion: gateVersion}

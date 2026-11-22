@@ -63,26 +63,26 @@ func TestParseGradeJSON(t *testing.T) {
 	id := "493384af-c5fc-4677-ad11-2081e73f0588"
 
 	t.Run("plain JSON", func(t *testing.T) {
-		g, err := ParseGradeJSON(`{"doc_id":"`+id+`","grade":2}`, id)
+		g, err := parseGradeJSON(`{"doc_id":"`+id+`","grade":2}`, id)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, g)
 	})
 
 	t.Run("JSON with surrounding prose", func(t *testing.T) {
 		raw := "Here is my grade:\n{\"doc_id\":\"" + id + "\",\"grade\":3}\nThanks!"
-		g, err := ParseGradeJSON(raw, id)
+		g, err := parseGradeJSON(raw, id)
 		assert.NoError(t, err)
 		assert.Equal(t, 3, g)
 	})
 
 	t.Run("doc_id mismatch errors", func(t *testing.T) {
 		other := "00000000-0000-0000-0000-000000000000"
-		_, err := ParseGradeJSON(`{"doc_id":"`+other+`","grade":2}`, id)
+		_, err := parseGradeJSON(`{"doc_id":"`+other+`","grade":2}`, id)
 		assert.ErrorContains(t, err, "doc_id mismatch")
 	})
 
 	t.Run("out-of-range grade errors", func(t *testing.T) {
-		_, err := ParseGradeJSON(`{"doc_id":"`+id+`","grade":7}`, id)
+		_, err := parseGradeJSON(`{"doc_id":"`+id+`","grade":7}`, id)
 		assert.ErrorContains(t, err, "out of range")
 	})
 }

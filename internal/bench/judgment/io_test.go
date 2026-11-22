@@ -44,7 +44,7 @@ func TestIncrementalWriter_AppendFlushesEachQuery(t *testing.T) {
 	w := NewIncrementalWriter(path, meta.Meta{Judge: &meta.Judge{Strategy: "test-strat"}})
 
 	docID := uuid.New()
-	err := w.Append(QueryProgress{QueryID: "q1"}, Entry{
+	err := w.Append(Entry{
 		QueryID: "q1",
 		Docs:    []GradedDoc{{DocID: docID, Grade: 2}},
 	})
@@ -57,7 +57,7 @@ func TestIncrementalWriter_AppendFlushesEachQuery(t *testing.T) {
 	assert.Equal(t, 2, jf.Queries[0].Docs[0].Grade)
 
 	// Append another query; existing one persists.
-	err = w.Append(QueryProgress{QueryID: "q2"}, Entry{
+	err = w.Append(Entry{
 		QueryID: "q2",
 		Docs:    []GradedDoc{{DocID: uuid.New(), Grade: 3}},
 	})
@@ -73,11 +73,11 @@ func TestIncrementalWriter_AppendReplacesSameQuery(t *testing.T) {
 	w := NewIncrementalWriter(path, meta.Meta{Judge: &meta.Judge{Strategy: "test"}})
 
 	id := uuid.New()
-	require.NoError(t, w.Append(QueryProgress{QueryID: "q1"}, Entry{
+	require.NoError(t, w.Append(Entry{
 		QueryID: "q1",
 		Docs:    []GradedDoc{{DocID: id, Grade: 0}},
 	}))
-	require.NoError(t, w.Append(QueryProgress{QueryID: "q1"}, Entry{
+	require.NoError(t, w.Append(Entry{
 		QueryID: "q1",
 		Docs:    []GradedDoc{{DocID: id, Grade: 3}},
 	}))
@@ -114,7 +114,7 @@ func TestIncrementalWriter_StampsMetaOnEveryFlush(t *testing.T) {
 
 	w := NewIncrementalWriter(path, stamp)
 	w.Seed(prior, poolOf("q1", "q2"))
-	require.NoError(t, w.Append(QueryProgress{QueryID: "q2"}, Entry{QueryID: "q2"}))
+	require.NoError(t, w.Append(Entry{QueryID: "q2"}))
 
 	jf, err := ReadFile(path)
 	require.NoError(t, err)
@@ -127,7 +127,7 @@ func TestIncrementalWriter_StampsMetaOnFirstFlush(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "ann.yaml")
 
 	w := NewIncrementalWriter(path, meta.Meta{Judge: &meta.Judge{Strategy: "test"}, PoolRef: "pool.yaml"})
-	require.NoError(t, w.Append(QueryProgress{QueryID: "q1"}, Entry{QueryID: "q1"}))
+	require.NoError(t, w.Append(Entry{QueryID: "q1"}))
 
 	jf, err := ReadFile(path)
 	require.NoError(t, err)
@@ -139,7 +139,7 @@ func TestIncrementalWriter_FlushRecordsGradeCounts(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "ann.yaml")
 	w := NewIncrementalWriter(path, meta.Meta{Judge: &meta.Judge{Strategy: "test"}})
 
-	require.NoError(t, w.Append(QueryProgress{QueryID: "q1"}, Entry{QueryID: "q1", Docs: []GradedDoc{
+	require.NoError(t, w.Append(Entry{QueryID: "q1", Docs: []GradedDoc{
 		{DocID: uuid.New(), Grade: GradeRelevant},
 		{DocID: uuid.New(), Grade: GradeUnjudged},
 	}}))
@@ -205,7 +205,7 @@ func TestIncrementalWriter_SeedDropsQueriesThatLeftThePool(t *testing.T) {
 
 	w := NewIncrementalWriter(path, meta.Meta{Judge: &meta.Judge{Strategy: "test"}})
 	w.Seed(prior, poolOf("q1", "q2"))
-	require.NoError(t, w.Append(QueryProgress{QueryID: "q2"}, Entry{QueryID: "q2"}))
+	require.NoError(t, w.Append(Entry{QueryID: "q2"}))
 
 	jf, err := ReadFile(path)
 	require.NoError(t, err)

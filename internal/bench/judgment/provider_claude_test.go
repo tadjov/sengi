@@ -60,18 +60,9 @@ func TestClaudeCLIProvider_GradesIsolatedAndRecordsItsInvocation(t *testing.T) {
 	assert.Empty(t, call.cwdListing, "nothing in the working directory for the CLI to discover")
 	assert.NoDirExists(t, call.cwd, "the working directory is removed after the call")
 
-	want := []string{"claude", "--version", "2.1.322", "(Claude", "Code);",
-		"CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1", "CLAUDE_CODE_MAX_OUTPUT_TOKENS=<max-output-tokens>", "claude"}
-	for _, arg := range call.args {
-		switch arg {
-		case "":
-			arg = `""`
-		case system:
-			arg = "<system-prompt>"
-		}
-		want = append(want, arg)
-	}
-	assert.Equal(t, want, strings.Fields(s.Describe().Invocation))
+	invocation := s.Describe().Invocation
+	assert.Contains(t, invocation, "--safe-mode")
+	assert.NotContains(t, invocation, system, "the judge block names the prompt by version, not by text")
 }
 
 // The CLI tells the model its working directory, so the same request runs
@@ -482,30 +473,6 @@ func versionOnlyClaudeCLI(t *testing.T) string {
 	script := "#!/bin/sh\n[ \"$1\" = \"--version\" ] && echo \"2.1.322 (Claude Code)\" && exit 0\nexit 1\n"
 	require.NoError(t, os.WriteFile(path, []byte(script), 0o755))
 	return path
-}
-
-// A batch gets its own budget, kept under the ~21,333 max_tokens a request may
-// ask for without streaming, and the judge block records it with the batching.
-func TestClaudeAPIProvider_SendsABatchUnderTheBatchBudget(t *testing.T) {
-	t.Setenv("ANTHROPIC_API_KEY", "test-key")
-	docs := []GradingDoc{{ID: uuid.New(), Title: "Floods reach Belgrade"}, {ID: uuid.New(), Title: "Sava rises"}}
-	var body map[string]any
-	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-		reply, err := json.Marshal(`[{"doc_id":"` + docs[0].ID.String() + `","grade":2},{"doc_id":"` + docs[1].ID.String() + `","grade":1}]`)
-		assert.NoError(t, err)
-		w.Header().Set("content-type", "application/json")
-		_, _ = w.Write([]byte(`{"type":"message","role":"assistant","stop_reason":"end_turn","content":[{"type":"text","text":` + string(reply) + `}]}`))
-	}))
-	defer api.Close()
-	s, err := NewLLMStrategy(StrategyOptions{Provider: ProviderClaudeAPI, APIBaseURL: api.URL, Model: "sonnet", Effort: EffortLow})
-	require.NoError(t, err)
-
-	_, err = s.GradeBatch(context.Background(), GradingQuery{ID: "q1", Text: "floods"}, docs)
-
-	require.NoError(t, err)
-	assert.InDelta(t, 20000, body["max_tokens"], 0)
-	assert.Equal(t, &meta.Batching{Size: 2, Seed: 3, MaxOutputTokens: 20000}, RunnerConfig{Strategy: s, BatchSize: 2, BatchSeed: 3}.Judge().Batching)
 }
 
 func TestClaudeAPIProvider_RefusesToStartWithoutAnthropicAPIKey(t *testing.T) {

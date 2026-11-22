@@ -36,7 +36,7 @@ func TestVectorStrategy_WidthMismatchStopsTheRunAndWritesNothing(t *testing.T) {
 	writer := NewIncrementalWriter(outPath, meta.Meta{Judge: &meta.Judge{Strategy: string(StrategyVector)}})
 
 	r := NewRunner(RunnerConfig{
-		Strategy: NewVectorStrategyWithStore(store, "qwen3-embedding:0.6b"),
+		Strategy: vectorStrategy(t, store, "qwen3-embedding:0.6b"),
 		Reader:   &stubStorageReader{articles: articles},
 		Sink:     writer.Append,
 	})
@@ -62,7 +62,7 @@ func TestVectorStrategy_EmptyQueryVectorStopsTheRun(t *testing.T) {
 
 	store := widthMismatchStore(t, ids, 0, 768)
 	r := NewRunner(RunnerConfig{
-		Strategy: NewVectorStrategyWithStore(store, "qwen3-embedding:0.6b"),
+		Strategy: vectorStrategy(t, store, "qwen3-embedding:0.6b"),
 		Reader:   &stubStorageReader{articles: articles},
 	})
 
@@ -83,7 +83,7 @@ func TestHybridStrategy_WidthMismatchStopsTheRun(t *testing.T) {
 
 	store := widthMismatchStore(t, ids, 1024, 768)
 	r := NewRunner(RunnerConfig{
-		Strategy: NewHybridStrategyWithStore(store, "qwen3-embedding:0.6b"),
+		Strategy: hybridStrategy(t, store, "qwen3-embedding:0.6b"),
 		Reader:   &stubStorageReader{articles: articles},
 	})
 

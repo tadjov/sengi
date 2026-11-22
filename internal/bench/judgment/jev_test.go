@@ -57,7 +57,6 @@ func TestJev_DescribeNamesTheReleaseTheRubricAndTheEndpoint(t *testing.T) {
 
 	got := s.Describe()
 
-	assert.Equal(t, "jev", s.Name())
 	assert.Equal(t, "jev", got.Strategy)
 	assert.Equal(t, "jev-1.14.0", got.Model)
 	assert.NotEmpty(t, got.RubricVersion)
@@ -68,17 +67,6 @@ func TestJev_DescribeNamesTheReleaseTheRubricAndTheEndpoint(t *testing.T) {
 	assert.Empty(t, got.PromptVersion)
 	assert.Empty(t, got.Effort)
 	assert.Zero(t, got.MaxOutputTokens)
-}
-
-func TestJev_GradesOneDocPerRequest(t *testing.T) {
-	t.Setenv("TYPESAFE_API_KEY", testJevKey)
-	s, err := NewStrategy(StrategyJev, StrategyOptions{Model: "jev-1.14.0"})
-	require.NoError(t, err)
-
-	_, perDoc := s.(DocStrategy)
-	_, batches := s.(BatchStrategy)
-	assert.True(t, perDoc)
-	assert.False(t, batches)
 }
 
 func TestJev_AsksAboutTheArticleTheLLMJudgeSees(t *testing.T) {

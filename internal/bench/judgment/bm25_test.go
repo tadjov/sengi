@@ -139,16 +139,6 @@ func TestBM25_GradesIgnorePoolOrder(t *testing.T) {
 	}
 }
 
-func TestBM25_RejectsBatchSize(t *testing.T) {
-	pf, reader := bm25Pool("climate report", "weather update")
-
-	_, err := NewRunner(RunnerConfig{Strategy: NewBM25Strategy(), Reader: reader, BatchSize: 1}).Run(context.Background(), pf)
-
-	if err == nil {
-		t.Fatal("Run with a batch size: want an error, got nil")
-	}
-}
-
 // Grades from a run that could not read every pooled article were scaled to a
 // smaller pool, so resuming once the article is back must regrade the query.
 func TestBM25_ResumeAfterMissingArticleMatchesFreshRun(t *testing.T) {

@@ -39,11 +39,6 @@ type Meta struct {
 	// CarriedOver is set when grades were reused from older judgments.
 	CarriedOver *CarriedOver `yaml:"carried_over,omitempty" json:"carried_over,omitempty"`
 
-	// Legacy flat judgment fields, read but never written; Normalize folds them into Judge.
-	LegacyStrategy      string `yaml:"strategy,omitempty" json:"strategy,omitempty"`
-	LegacyJudgeModel    string `yaml:"judge_model,omitempty" json:"judge_model,omitempty"`
-	LegacyPromptVersion string `yaml:"judge_prompt_version,omitempty" json:"judge_prompt_version,omitempty"`
-
 	// Report-only fields.
 	JudgmentsRunID string   `yaml:"judgments_run_id,omitempty" json:"judgments_run_id,omitempty"`
 	Sources        *Sources `yaml:"sources,omitempty" json:"sources,omitempty"`
@@ -72,27 +67,14 @@ type Judge struct {
 	PromptVersion string `yaml:"prompt_version,omitempty" json:"prompt_version,omitempty"`
 	// Effort is the effort level an LLM judge's model graded at.
 	Effort string `yaml:"effort,omitempty" json:"effort,omitempty"`
-	// MaxOutputTokens is an LLM judge's output budget per single-doc request.
+	// MaxOutputTokens is an LLM judge's output budget per request.
 	MaxOutputTokens int `yaml:"max_output_tokens,omitempty" json:"max_output_tokens,omitempty"`
 	// Invocation is how an LLM judge reached its model: a command line or API version.
 	Invocation string `yaml:"invocation,omitempty" json:"invocation,omitempty"`
-	// Batching is set when an LLM judge grades several docs per request.
-	Batching *Batching `yaml:"batching,omitempty" json:"batching,omitempty"`
 	// GateVersion names the phrase, boolean and filter gates behind a judge's zeros.
 	GateVersion string `yaml:"gate_version,omitempty" json:"gate_version,omitempty"`
 	// RubricVersion names the grading rules of a judge without a prompt.
 	RubricVersion string `yaml:"rubric_version,omitempty" json:"rubric_version,omitempty"`
-}
-
-// Batching is an LLM judge's batch size, shuffle seed and per-batch output budget.
-type Batching struct {
-	Size            int    `yaml:"size" json:"size"`
-	Seed            uint64 `yaml:"seed" json:"seed"`
-	MaxOutputTokens int    `yaml:"max_output_tokens,omitempty" json:"max_output_tokens,omitempty"`
-}
-
-func (b Batching) String() string {
-	return fmt.Sprintf("size %d, seed %d, %d tokens", b.Size, b.Seed, b.MaxOutputTokens)
 }
 
 // Equal reports whether two judges grade alike; the resume guard refuses a mismatch.
@@ -135,21 +117,6 @@ func (j Judge) String() string {
 		s += " " + j.Model
 	}
 	return s
-}
-
-// Normalize folds the legacy flat fields into Judge; calling it twice is safe.
-func (m *Meta) Normalize() {
-	if m.Judge != nil {
-		return
-	}
-	if m.LegacyStrategy == "" && m.LegacyJudgeModel == "" {
-		return
-	}
-	m.Judge = &Judge{
-		Strategy:      m.LegacyStrategy,
-		Model:         m.LegacyJudgeModel,
-		PromptVersion: m.LegacyPromptVersion,
-	}
 }
 
 // Sources names the artifacts a report's metrics were computed from.

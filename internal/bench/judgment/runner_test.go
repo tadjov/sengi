@@ -2,8 +2,7 @@ package judgment
 
 import (
 	"context"
-	"errors"
-	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/google/uuid"
@@ -37,65 +36,15 @@ type fakeStrategy struct {
 	name  string
 	grade int
 	err   error
+	calls atomic.Int64
 }
 
-func (f *fakeStrategy) Name() string { return f.name }
 func (f *fakeStrategy) Describe() meta.Judge {
 	return meta.Judge{Strategy: f.name}
 }
 func (f *fakeStrategy) Grade(_ context.Context, _ GradingQuery, _ GradingDoc) (int, error) {
+	f.calls.Add(1)
 	return f.grade, f.err
-}
-
-// fakeBatchStrategy simulates Anthropic-style batched grading. Configurable
-// to drop docs (partial response) or fail outright.
-type fakeBatchStrategy struct {
-	name           string
-	dropFirstN     int // number of docs in each batch to omit from the response
-	batchErr       error
-	perDocGrade    int
-	mu             sync.Mutex
-	batchCallCount int
-	perDocCalls    int
-}
-
-func (f *fakeBatchStrategy) Name() string { return f.name }
-func (f *fakeBatchStrategy) Describe() meta.Judge {
-	return meta.Judge{Strategy: f.name}
-}
-
-func (f *fakeBatchStrategy) BatchMaxOutputTokens() int { return 0 }
-func (f *fakeBatchStrategy) Grade(_ context.Context, _ GradingQuery, _ GradingDoc) (int, error) {
-	f.mu.Lock()
-	f.perDocCalls++
-	f.mu.Unlock()
-	return f.perDocGrade, nil
-}
-func (f *fakeBatchStrategy) GradeBatch(_ context.Context, _ GradingQuery, docs []GradingDoc) ([]GradedDoc, error) {
-	f.mu.Lock()
-	f.batchCallCount++
-	f.mu.Unlock()
-
-	if f.batchErr != nil {
-		return nil, f.batchErr
-	}
-	start := f.dropFirstN
-	if start > len(docs) {
-		start = len(docs)
-	}
-	out := make([]GradedDoc, 0, len(docs)-start)
-	var missing []uuid.UUID
-	for i, d := range docs {
-		if i < start {
-			missing = append(missing, d.ID)
-			continue
-		}
-		out = append(out, GradedDoc{DocID: d.ID, Grade: 2})
-	}
-	if len(missing) > 0 {
-		return out, &PartialBatchError{Missing: missing, Got: len(out), Want: len(docs)}
-	}
-	return out, nil
 }
 
 func buildPool(t *testing.T, n int) (*pool.PoolFile, map[uuid.UUID]document.Article) {
@@ -110,74 +59,13 @@ func buildPool(t *testing.T, n int) (*pool.PoolFile, map[uuid.UUID]document.Arti
 	return &pool.PoolFile{SuiteName: "t", Queries: []pool.PoolEntry{pe}}, articles
 }
 
-func TestRunner_BatchedHappyPath(t *testing.T) {
-	pf, articles := buildPool(t, 25)
-	bs := &fakeBatchStrategy{name: "fake-batch"}
-
-	r := NewRunner(RunnerConfig{
-		Strategy:  bs,
-		BatchSize: 10,
-		Reader:    &stubStorageReader{articles: articles},
-	})
-	jf, err := r.Run(context.Background(), pf)
-	require.NoError(t, err)
-	require.Len(t, jf.Queries[0].Docs, 25)
-
-	// 25 docs / batch 10 → 3 batches (10 + 10 + 5)
-	assert.Equal(t, 3, bs.batchCallCount)
-	assert.Equal(t, 0, bs.perDocCalls)
-}
-
-func TestRunner_BatchedPartialFallsBackPerDoc(t *testing.T) {
-	pf, articles := buildPool(t, 10)
-	// Drop the first 2 docs of each batch → 2 missing per call → 2 per-doc retries
-	bs := &fakeBatchStrategy{
-		name: "fake-batch", dropFirstN: 2, perDocGrade: 1,
-	}
-
-	r := NewRunner(RunnerConfig{
-		Strategy:  bs,
-		BatchSize: 10,
-		Reader:    &stubStorageReader{articles: articles},
-	})
-	jf, err := r.Run(context.Background(), pf)
-	require.NoError(t, err)
-	require.Len(t, jf.Queries[0].Docs, 10)
-	assert.Equal(t, 1, bs.batchCallCount)
-	assert.Equal(t, 2, bs.perDocCalls, "missing docs should be retried per-doc")
-
-	// First 2 docs should have the per-doc grade (1); rest the batch grade (2)
-	gradeCounts := map[int]int{}
-	for _, d := range jf.Queries[0].Docs {
-		gradeCounts[d.Grade]++
-	}
-	assert.Equal(t, 2, gradeCounts[1], "2 per-doc fallback grades")
-	assert.Equal(t, 8, gradeCounts[2], "8 batch grades")
-}
-
-func TestRunner_BatchHardFailureFallsBackPerDoc(t *testing.T) {
-	pf, articles := buildPool(t, 5)
-	bs := &fakeBatchStrategy{
-		name:        "fake-batch",
-		batchErr:    errors.New("kaboom"),
-		perDocGrade: 3,
-	}
-	r := NewRunner(RunnerConfig{Strategy: bs, BatchSize: 10, Reader: &stubStorageReader{articles: articles}})
-	jf, err := r.Run(context.Background(), pf)
-	require.NoError(t, err)
-	assert.Equal(t, 5, bs.perDocCalls)
-	for _, d := range jf.Queries[0].Docs {
-		assert.Equal(t, 3, d.Grade)
-	}
-}
-
 func TestRunner_ResumeSkipsAlreadyGraded(t *testing.T) {
 	pf, articles := buildPool(t, 5)
-	bs := &fakeBatchStrategy{name: "fake-batch"}
+	strategy := &fakeStrategy{name: "fake", grade: 2}
 
 	// Pre-grade the first 3 docs
 	prior := &File{
-		Meta: meta.Meta{Judge: &meta.Judge{Strategy: "fake-batch"}},
+		Meta: meta.Meta{Judge: &meta.Judge{Strategy: "fake"}},
 		Queries: []Entry{
 			{
 				QueryID: "q1",
@@ -191,22 +79,21 @@ func TestRunner_ResumeSkipsAlreadyGraded(t *testing.T) {
 	}
 
 	r := NewRunner(RunnerConfig{
-		Strategy:  bs,
-		BatchSize: 10,
-		Reader:    &stubStorageReader{articles: articles},
-		Existing:  prior,
+		Strategy: strategy,
+		Reader:   &stubStorageReader{articles: articles},
+		Existing: prior,
 	})
 	jf, err := r.Run(context.Background(), pf)
 	require.NoError(t, err)
 	require.Len(t, jf.Queries[0].Docs, 5)
 
-	// The 3 prior grades survive, the new 2 come from the batch strategy (grade=2)
+	// The 3 prior grades survive, the new 2 come from the strategy (grade=2)
 	assert.Equal(t, 3, jf.Queries[0].Docs[0].Grade)
 	assert.Equal(t, 3, jf.Queries[0].Docs[1].Grade)
 	assert.Equal(t, 3, jf.Queries[0].Docs[2].Grade)
 	assert.Equal(t, 2, jf.Queries[0].Docs[3].Grade)
 	assert.Equal(t, 2, jf.Queries[0].Docs[4].Grade)
-	assert.Equal(t, 1, bs.batchCallCount, "only one batch for the 2 remaining docs")
+	assert.Equal(t, int64(2), strategy.calls.Load(), "only the 2 remaining docs are graded")
 }
 
 func TestRunner_PerDocPathStillWorks(t *testing.T) {
@@ -229,7 +116,7 @@ func TestRunner_MissingArticleStaysUnjudged(t *testing.T) {
 	delete(articles, missingID)
 
 	r := NewRunner(RunnerConfig{
-		Strategy: &fakeBatchStrategy{name: "fake-batch"},
+		Strategy: &fakeStrategy{name: "fake", grade: 2},
 		Reader:   &stubStorageReader{articles: articles},
 	})
 	jf, err := r.Run(context.Background(), pf)
@@ -244,14 +131,12 @@ func TestRunner_MissingArticleStaysUnjudged(t *testing.T) {
 
 func TestRunner_SinkCalledPerQuery(t *testing.T) {
 	pf, articles := buildPool(t, 2)
-	bs := &fakeBatchStrategy{name: "fake-batch"}
-
 	calls := 0
 	r := NewRunner(RunnerConfig{
-		Strategy: bs,
+		Strategy: &fakeStrategy{name: "fake", grade: 2},
 		Reader:   &stubStorageReader{articles: articles},
-		Sink: func(qp QueryProgress, _ Entry) error {
-			assert.Equal(t, "q1", qp.QueryID)
+		Sink: func(e Entry) error {
+			assert.Equal(t, "q1", e.QueryID)
 			calls++
 			return nil
 		},
@@ -261,17 +146,11 @@ func TestRunner_SinkCalledPerQuery(t *testing.T) {
 	assert.Equal(t, 1, calls)
 }
 
-func TestRunner_NilStrategyErrors(t *testing.T) {
-	r := NewRunner(RunnerConfig{Reader: &stubStorageReader{}})
-	_, err := r.Run(context.Background(), &pool.PoolFile{})
-	assert.ErrorContains(t, err, "strategy is nil")
-}
-
 // A query with no usable terms fails the run, but only after every other query
 // is graded, so the file still lands and names what is missing.
 func TestRunner_QueryWithoutTermsFailsTheRunAfterGradingTheRest(t *testing.T) {
 	for _, strategy := range []Strategy{NewKeywordStrategy(), NewBM25Strategy()} {
-		t.Run(strategy.Name(), func(t *testing.T) {
+		t.Run(strategy.Describe().Strategy, func(t *testing.T) {
 			pf, articles := buildPool(t, 3)
 			pf.Queries[0].QueryText = "the of a"
 			usable := pool.PoolEntry{QueryID: "q2", QueryText: "title"}
@@ -284,7 +163,7 @@ func TestRunner_QueryWithoutTermsFailsTheRunAfterGradingTheRest(t *testing.T) {
 			r := NewRunner(RunnerConfig{
 				Strategy: strategy,
 				Reader:   &stubStorageReader{articles: articles},
-				Sink: func(_ QueryProgress, e Entry) error {
+				Sink: func(e Entry) error {
 					sunk[e.QueryID] = true
 					return nil
 				},
@@ -320,9 +199,9 @@ func TestRunner_PoolQueryWithoutTextFailsBeforeGrading(t *testing.T) {
 	sunk := false
 
 	_, err := NewRunner(RunnerConfig{
-		Strategy: &fakeBatchStrategy{name: "fake-batch"},
+		Strategy: &fakeStrategy{name: "fake", grade: 2},
 		Reader:   &stubStorageReader{articles: articles},
-		Sink:     func(QueryProgress, Entry) error { sunk = true; return nil },
+		Sink:     func(Entry) error { sunk = true; return nil },
 	}).Run(context.Background(), pf)
 
 	require.Error(t, err)

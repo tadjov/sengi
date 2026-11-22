@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/tadjov/sengi/internal/bench/judgment"
 	"github.com/tadjov/sengi/internal/bench/meta"
@@ -27,8 +27,6 @@ type judgeFlags struct {
 	strategy       string
 	pg             string
 	concurrency    int
-	batchSize      int
-	batchSeed      uint64
 	resume         bool
 	carryOver      string
 	carryOverPool  string
@@ -66,8 +64,8 @@ func newJudgeCmdWithReader(openReader articleReaderOpener) *cobra.Command {
                 rest 0; doc vectors from PG (--pg), query vectors from
                 trec/query-vectors, else Ollama (EMBEDDING_BASE_URL)
   hybrid      — BM25 + vector fusion, vectors as for vector
-  llm         — LLM-as-judge, one doc per request (--batch N groups N);
-                pick the endpoint with --provider
+  llm         — LLM-as-judge, one doc per request; pick the endpoint with
+                --provider
   jev         — TypeSafe's Jev, one doc per request, a cross-judge of llm;
                 needs TYPESAFE_API_KEY (cmd/bench/.env), grades with the pinned
                 ` + judgment.DefaultJevModel + ` unless --model names another jev-<major>.<minor>.<patch>
@@ -99,11 +97,11 @@ Ctrl-C is safe.
 
 After a re-pool, --carry-over <annotations> --carry-over-pool <their pool>
 reuses each old grade whose judge and query are unchanged and grades only the
-new docs. Take the old pool from git; batched and whole-pool judges can't carry
-over, and neither can a pool built on another canonical package.`,
+new docs. Take the old pool from git; whole-pool judges can't carry over, and
+neither can a pool built on another canonical package.`,
 		Example: `  bench judge tracks/global-news-dataset/fts_quality --strategy keyword
   bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-cli --model sonnet
-  bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-api --model sonnet --batch 20 --resume
+  bench judge tracks/global-news-dataset/fts_quality --strategy llm --provider claude-api --model sonnet --resume
   bench judge --pool /tmp/p.yaml --strategy keyword --output /tmp/a.yaml
   bench judge tracks/cc-news/fuzzy --strategy llm --carry-over /tmp/old-annotations.yaml --carry-over-pool /tmp/old-pool.yaml
   bench judge tracks/cc-news/fts --strategy jev --pool /tmp/sample.yaml --output /tmp/a.jev.yaml`,
@@ -118,8 +116,6 @@ over, and neither can a pool built on another canonical package.`,
 	cmd.Flags().StringVar(&f.strategy, "strategy", string(judgment.StrategyKeyword), "Judge strategy")
 	cmd.Flags().StringVar(&f.pg, "pg", "", "Postgres connection (or set PG_CONNECTION_STRING)")
 	cmd.Flags().IntVar(&f.concurrency, "concurrency", 4, "Parallel Grade calls (per-doc strategies)")
-	cmd.Flags().IntVar(&f.batchSize, "batch", 0, "LLM docs per request (default one); --strategy llm only")
-	cmd.Flags().Uint64Var(&f.batchSeed, "seed", 1, "Seed that shuffles each query's pool into --batch batches")
 	cmd.Flags().BoolVar(&f.resume, "resume", false, "Skip docs already graded in --output; bm25, vector and hybrid skip only fully graded queries")
 	cmd.Flags().StringVar(&f.carryOver, "carry-over", "", "Reuse grades from these older judgments where judge and query are unchanged")
 	cmd.Flags().StringVar(&f.carryOverPool, "carry-over-pool", "", "The pool the --carry-over judgments graded")
@@ -150,6 +146,7 @@ func (j judgeCommand) execute(cmd *cobra.Command, args []string) error {
 
 func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	f := j.flags
+	out := cmd.OutOrStdout()
 	poolPath := f.poolPath
 	if poolPath == "" {
 		poolPath = tr.Pool
@@ -164,14 +161,8 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 	if err != nil {
 		return err
 	}
-	if f.carryOver != "" && kind == judgment.StrategyManual {
-		return errors.New("--carry-over doesn't apply to --strategy manual, which already keeps hand grades")
-	}
-	if f.force && kind != judgment.StrategyManual {
-		return fmt.Errorf("--force applies only to --strategy manual; %s rewrites its file on every run without --resume", kind)
-	}
-	if f.batchSize > 0 && kind != judgment.StrategyLLM {
-		return fmt.Errorf("--batch applies only to --strategy llm; %s grades without batches", kind)
+	if err := checkManualOnlyFlags(f, kind); err != nil {
+		return err
 	}
 	// llm judges file under their provider, so two vendors can grade one track.
 	outPath := f.output
@@ -181,120 +172,201 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 
 	// Manual grades nothing, so it needs no article reader.
 	if kind == judgment.StrategyManual {
-		var existing *judgment.File
-		if !f.force {
-			if existing, err = judgment.ReadFileIfExists(outPath); err != nil {
-				return fmt.Errorf("read existing manual judgments: %w", err)
-			}
-			if existing != nil && existing.Judge().Strategy != string(judgment.StrategyManual) {
-				return fmt.Errorf("%s was graded by %q, not by hand: merging would relabel its grades as manual; pass --force to replace it",
-					outPath, existing.Judge())
-			}
-		}
-		jf, err := manualJudgments{pool: pf, poolRef: poolRef, path: outPath}.write(existing)
-		if err != nil {
-			return err
-		}
-		cli.Done(cmd.OutOrStdout(), fmt.Sprintf("Manual template written: %s  (queries=%d)", outPath, len(jf.Queries)))
-		return nil
+		return writeManualTemplate(out, judgment.ManualFile{Pool: pf, PoolRef: poolRef, Path: outPath}, f.force)
 	}
 
-	opts := judgment.StrategyOptions{
-		Provider:   provider,
-		Model:      f.model,
-		APIBaseURL: f.apiBaseURL,
-		CLIBinary:  f.cliBinary,
+	opts, closeStore, err := strategyOptions(cmd, tr, judgeSelection{flags: f, kind: kind, provider: provider})
+	if err != nil {
+		return err
 	}
-	// Only an omitted --model means jev's pin, since the default is a claude id.
-	if kind == judgment.StrategyJev && !cmd.Flags().Changed("model") {
-		opts.Model = judgment.DefaultJevModel
-	}
-	if kind == judgment.StrategyLLM {
-		if opts.Effort, err = judgment.ParseEffort(f.effort); err != nil {
-			return fmt.Errorf("--effort: %w", err)
-		}
-	}
-	if kind == judgment.StrategyVector || kind == judgment.StrategyHybrid {
-		store, model, closeStore, err := buildVectorStore(cmd.Context(), f, tr)
-		if err != nil {
-			return err
-		}
-		defer closeStore()
-		opts.VectorStore = store
-		opts.EmbeddingModel = model
-	}
-
+	defer closeStore()
 	strat, err := judgment.NewStrategy(kind, opts)
 	if err != nil {
 		return err
 	}
-
 	reader, err := j.openReader(cmd, f.pg)
 	if err != nil {
 		return err
+	}
+
+	// Every flush carries this meta, so an interrupted run's file names its grader.
+	judge := strat.Describe()
+	runMeta := meta.New("judge")
+	runMeta.Judge = &judge
+	runMeta.PoolRef = poolRef
+	runMeta.PoolRunID = pf.Meta.RunID
+	runMeta.RelevanceScale = []int{0, 1, 2, 3}
+	var carried, existing *judgment.File
+	if f.carryOver != "" {
+		if carried, runMeta.CarriedOver, err = carryOver(out, f, pf, strat); err != nil {
+			return err
+		}
+	}
+	if f.resume {
+		if existing, err = resumableJudgments(out, outPath, pf, judge); err != nil {
+			return err
+		}
+		// A resumed file keeps the grades an earlier run carried over.
+		if existing != nil && runMeta.CarriedOver == nil {
+			runMeta.CarriedOver = existing.Meta.CarriedOver
+		}
 	}
 
 	cfg := judgment.RunnerConfig{
 		Strategy:    strat,
 		Reader:      reader,
 		Concurrency: f.concurrency,
-		BatchSize:   f.batchSize,
-		BatchSeed:   f.batchSeed,
+		Existing:    judgment.MergeGrades(carried, existing),
 	}
-	// Every flush carries this meta, so an interrupted run's file names its grader.
-	judge := cfg.Judge()
-	runMeta := meta.New("judge")
-	runMeta.Judge = &judge
-	runMeta.PoolRef = poolRef
-	runMeta.PoolRunID = pf.Meta.RunID
-	runMeta.RelevanceScale = []int{0, 1, 2, 3}
-	var carried *judgment.File
-	if f.carryOver != "" {
-		carry, err := carryOverGrades(f, pf, judge, strat)
-		if err != nil {
-			return err
-		}
-		carried = carry.Grades
-		runMeta.CarriedOver = &meta.CarriedOver{
-			JudgmentsRunID: carry.Grades.Meta.RunID,
-			PoolRunID:      carry.Grades.Meta.PoolRunID,
-			Grades:         carry.Count,
-		}
-		msg := fmt.Sprintf("Carry-over: %d grades from %s", carry.Count, carry.Grades.Meta.RunID)
-		if len(carry.ChangedQueries) > 0 {
-			msg += fmt.Sprintf("; changed queries graded again: %s", strings.Join(carry.ChangedQueries, ", "))
-		}
-		if !carry.CorpusChecked {
-			msg += "; corpus not checked, a pool names no canonical package"
-		}
-		cli.Warn(cmd.OutOrStdout(), msg)
-	}
-	var existing *judgment.File
-	if f.resume {
-		if existing, err = judgment.ReadFileIfExists(outPath); err != nil {
-			return fmt.Errorf("load prior judgments: %w", err)
-		}
-		if existing != nil {
-			if err := checkResumeCompat(existing, judge); err != nil {
-				return err
-			}
-			if err := pf.CheckJudgedAgainst(existing.Meta.PoolRunID); err != nil {
-				return fmt.Errorf("--resume: %w\n  • re-run without --resume to grade the current pool from scratch", err)
-			}
-			// A resumed file keeps the grades an earlier run carried over.
-			if runMeta.CarriedOver == nil {
-				runMeta.CarriedOver = existing.Meta.CarriedOver
-			}
-			cli.Warn(cmd.OutOrStdout(), fmt.Sprintf("Resume: loaded %d prior queries from %s", len(existing.Queries), outPath))
-		}
-	}
-	cfg.Existing = judgment.MergeGrades(carried, existing)
 	writer := judgment.NewIncrementalWriter(outPath, runMeta)
 	writer.Seed(cfg.Existing, pf)
 	cfg.Sink = writer.Append
-	var final *judgment.File
-	var runErr error
-	err = cli.Command{Label: "judge " + tr.Name(), Unit: "docs"}.Run(cmd.OutOrStdout(), func(p *cli.Progress) (cli.Summary, error) {
+	final, unusable, err := gradePool(cmd, "judge "+tr.Name(), cfg, pf)
+	if err != nil {
+		return err
+	}
+
+	// Run keeps only the queries still in the pool.
+	final.Meta = runMeta
+	if err := judgment.WriteFile(final, outPath); err != nil {
+		return fmt.Errorf("finalise judgments: %w", err)
+	}
+
+	cli.Done(out, fmt.Sprintf("Judgments written: %s  (judge=%s  queries=%d  run_id=%s)",
+		outPath, judge, len(final.Queries), final.Meta.RunID))
+	if unusable != nil {
+		return fmt.Errorf("judge run: %w", unusable)
+	}
+	return requireJudged(final, f.allowUnjudged)
+}
+
+func checkManualOnlyFlags(f judgeFlags, kind judgment.StrategyKind) error {
+	if f.carryOver != "" && kind == judgment.StrategyManual {
+		return errors.New("--carry-over doesn't apply to --strategy manual, which already keeps hand grades")
+	}
+	if f.force && kind != judgment.StrategyManual {
+		return fmt.Errorf("--force applies only to --strategy manual; %s rewrites its file on every run without --resume", kind)
+	}
+	return nil
+}
+
+func writeManualTemplate(out io.Writer, m judgment.ManualFile, force bool) error {
+	var existing *judgment.File
+	if !force {
+		var err error
+		if existing, err = judgment.ReadFileIfExists(m.Path); err != nil {
+			return fmt.Errorf("read existing manual judgments: %w", err)
+		}
+		if existing != nil && existing.Judge().Strategy != string(judgment.StrategyManual) {
+			return fmt.Errorf("%s was graded by %q, not by hand: merging would relabel its grades as manual; pass --force to replace it",
+				m.Path, existing.Judge())
+		}
+	}
+	jf, err := m.Write(existing)
+	if err != nil {
+		return err
+	}
+	cli.Done(out, fmt.Sprintf("Manual template written: %s  (queries=%d)", m.Path, len(jf.Queries)))
+	return nil
+}
+
+type judgeSelection struct {
+	flags    judgeFlags
+	kind     judgment.StrategyKind
+	provider judgment.Provider
+}
+
+// strategyOptions opens the vector store vector and hybrid read; the caller closes it.
+func strategyOptions(cmd *cobra.Command, tr *trackctx.Track, sel judgeSelection) (judgment.StrategyOptions, func(), error) {
+	f := sel.flags
+	noop := func() {}
+	opts := judgment.StrategyOptions{
+		Provider:   sel.provider,
+		Model:      f.model,
+		APIBaseURL: f.apiBaseURL,
+		CLIBinary:  f.cliBinary,
+	}
+	// Only an omitted --model means jev's pin, since the default is a claude id.
+	if sel.kind == judgment.StrategyJev && !cmd.Flags().Changed("model") {
+		opts.Model = judgment.DefaultJevModel
+	}
+	if sel.kind == judgment.StrategyLLM {
+		effort, err := judgment.ParseEffort(f.effort)
+		if err != nil {
+			return judgment.StrategyOptions{}, noop, fmt.Errorf("--effort: %w", err)
+		}
+		opts.Effort = effort
+	}
+	if sel.kind != judgment.StrategyVector && sel.kind != judgment.StrategyHybrid {
+		return opts, noop, nil
+	}
+	store, model, closeStore, err := buildVectorStore(cmd.Context(), f, tr)
+	if err != nil {
+		return judgment.StrategyOptions{}, noop, err
+	}
+	opts.VectorStore = store
+	opts.EmbeddingModel = model
+	return opts, closeStore, nil
+}
+
+func carryOver(out io.Writer, f judgeFlags, current *pool.PoolFile, strat judgment.Strategy) (*judgment.File, *meta.CarriedOver, error) {
+	if f.carryOverPool == "" {
+		return nil, nil, errors.New("--carry-over needs --carry-over-pool, the pool those judgments graded")
+	}
+	judge := strat.Describe()
+	if _, wholePool := strat.(judgment.PoolStrategy); wholePool {
+		return nil, nil, fmt.Errorf("%s grades each doc against the whole pool, so its grades can't be carried over", judge.Strategy)
+	}
+	prior, err := judgment.ReadFile(f.carryOver)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read --carry-over: %w", err)
+	}
+	priorPool, err := pool.ReadPoolFile(f.carryOverPool)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read --carry-over-pool: %w", err)
+	}
+	carry, err := judgment.CarryOver(judgment.CarryOverInput{Prior: prior, PriorPool: priorPool, Pool: current, Judge: judge})
+	if err != nil {
+		return nil, nil, fmt.Errorf("--carry-over: %w", err)
+	}
+	msg := fmt.Sprintf("Carry-over: %d grades from %s", carry.Count, carry.Grades.Meta.RunID)
+	if len(carry.ChangedQueries) > 0 {
+		msg += fmt.Sprintf("; changed queries graded again: %s", strings.Join(carry.ChangedQueries, ", "))
+	}
+	if !carry.CorpusChecked {
+		msg += "; corpus not checked, a pool names no canonical package"
+	}
+	cli.Warn(out, msg)
+	return carry.Grades, &meta.CarriedOver{
+		JudgmentsRunID: carry.Grades.Meta.RunID,
+		PoolRunID:      carry.Grades.Meta.PoolRunID,
+		Grades:         carry.Count,
+	}, nil
+}
+
+// resumableJudgments returns nil when outPath holds no file yet.
+func resumableJudgments(out io.Writer, outPath string, pf *pool.PoolFile, judge meta.Judge) (*judgment.File, error) {
+	existing, err := judgment.ReadFileIfExists(outPath)
+	if err != nil {
+		return nil, fmt.Errorf("load prior judgments: %w", err)
+	}
+	if existing == nil {
+		return nil, nil
+	}
+	if err := checkResumeCompat(existing, judge); err != nil {
+		return nil, err
+	}
+	if err := pf.CheckJudgedAgainst(existing.Meta.PoolRunID); err != nil {
+		return nil, fmt.Errorf("--resume: %w\n  • re-run without --resume to grade the current pool from scratch", err)
+	}
+	cli.Warn(out, fmt.Sprintf("Resume: loaded %d prior queries from %s", len(existing.Queries), outPath))
+	return existing, nil
+}
+
+// gradePool returns the file together with the error of the queries left
+// unjudged whole; any other failure returns no file.
+func gradePool(cmd *cobra.Command, label string, cfg judgment.RunnerConfig, pf *pool.PoolFile) (final *judgment.File, unusable, err error) {
+	err = cli.Command{Label: label, Unit: "docs"}.Run(cmd.OutOrStdout(), func(p *cli.Progress) (cli.Summary, error) {
 		out := p.Above(cmd.OutOrStdout())
 		cfg.OnQueryStart = func(qid string, total, skipped int) {
 			if skipped > 0 {
@@ -314,82 +386,33 @@ func (j judgeCommand) judgeTrack(cmd *cobra.Command, tr *trackctx.Track) error {
 				cli.Muted.Sprint(formatHistogram(qp.Histogram)))
 		}
 		cfg.Progress = p
-		final, runErr = judgment.NewRunner(cfg).Run(cmd.Context(), pf)
-		if runErr != nil && !judgment.FailsWholeQuery(runErr) {
-			return cli.Summary{}, fmt.Errorf("judge run: %w", runErr)
+		final, unusable = judgment.NewRunner(cfg).Run(cmd.Context(), pf)
+		if unusable != nil && !judgment.FailsWholeQuery(unusable) {
+			return cli.Summary{}, fmt.Errorf("judge run: %w", unusable)
 		}
 		return cli.Summary{}, nil
 	})
-	if err != nil {
-		return err
-	}
-
-	// Run keeps only the queries still in the pool.
-	final.Meta = runMeta
-	if err := judgment.WriteFile(final, outPath); err != nil {
-		return fmt.Errorf("finalise judgments: %w", err)
-	}
-
-	cli.Done(cmd.OutOrStdout(), fmt.Sprintf("Judgments written: %s  (judge=%s  queries=%d  run_id=%s)",
-		outPath, judge, len(final.Queries), final.Meta.RunID))
-	if runErr != nil {
-		return fmt.Errorf("judge run: %w", runErr)
-	}
-	return requireJudged(final, f.allowUnjudged)
-}
-
-func carryOverGrades(f judgeFlags, current *pool.PoolFile, judge meta.Judge, strat judgment.Strategy) (judgment.CarriedGrades, error) {
-	if f.carryOverPool == "" {
-		return judgment.CarriedGrades{}, errors.New("--carry-over needs --carry-over-pool, the pool those judgments graded")
-	}
-	if _, wholePool := strat.(judgment.PoolStrategy); wholePool {
-		return judgment.CarriedGrades{}, fmt.Errorf("%s grades each doc against the whole pool, so its grades can't be carried over", strat.Name())
-	}
-	prior, err := judgment.ReadFile(f.carryOver)
-	if err != nil {
-		return judgment.CarriedGrades{}, fmt.Errorf("read --carry-over: %w", err)
-	}
-	priorPool, err := pool.ReadPoolFile(f.carryOverPool)
-	if err != nil {
-		return judgment.CarriedGrades{}, fmt.Errorf("read --carry-over-pool: %w", err)
-	}
-	carried, err := judgment.CarryOver(judgment.CarryOverInput{Prior: prior, PriorPool: priorPool, Pool: current, Judge: judge})
-	if err != nil {
-		return judgment.CarriedGrades{}, fmt.Errorf("--carry-over: %w", err)
-	}
-	return carried, nil
+	return final, unusable, err
 }
 
 // resolveJudge maps --strategy and --provider to what the strategy factory needs.
 func resolveJudge(f judgeFlags) (judgment.StrategyKind, judgment.Provider, error) {
-	kind := judgment.StrategyKind(f.strategy)
-	switch kind {
-	case judgment.StrategyLLM:
+	kind, err := judgment.ParseStrategyKind(f.strategy)
+	if err != nil {
+		return "", "", err
+	}
+	if kind == judgment.StrategyLLM {
 		return kind, judgment.Provider(f.provider), nil
-	case judgment.StrategyKeyword, judgment.StrategyBM25, judgment.StrategyVector,
-		judgment.StrategyHybrid, judgment.StrategyJev, judgment.StrategyManual:
-		if f.provider != "" {
-			return "", "", fmt.Errorf("--provider applies only to --strategy llm, not %s", kind)
-		}
-		return kind, "", nil
 	}
-
-	// A provider in --strategy is the old spelling; point to the explicit form.
-	if _, p, err := judgment.ParseSelector(f.strategy); err == nil {
-		return "", "", fmt.Errorf("%q names a provider, not a strategy — use --strategy llm --provider %s",
-			f.strategy, p)
+	if f.provider != "" {
+		return "", "", fmt.Errorf("--provider applies only to --strategy llm, not %s", kind)
 	}
-	return "", "", fmt.Errorf("unknown strategy %q (known: %s)",
-		f.strategy, strings.Join(judgment.KnownJudgeStrategies(), ", "))
+	return kind, "", nil
 }
 
 // checkResumeCompat refuses to resume a file another judge graded.
 func checkResumeCompat(prior *judgment.File, now meta.Judge) error {
-	was := prior.Judge()
-	if (was == meta.Judge{}) {
-		return nil
-	}
-	differences := was.Differences(now)
+	differences := prior.Judge().Differences(now)
 	if len(differences) == 0 {
 		return nil
 	}
@@ -460,60 +483,6 @@ func openArticleReader(cmd *cobra.Command, pgConn string) (storage.Reader, error
 		return nil, fmt.Errorf("create reader: %w", err)
 	}
 	return reader, nil
-}
-
-// buildManualJudgments adds a -1 placeholder for each pooled doc without a hand
-// grade and keeps every existing grade.
-func buildManualJudgments(pf *pool.PoolFile, existing *judgment.File) *judgment.File {
-	jf := &judgment.File{}
-	if existing != nil {
-		jf.Queries = existing.Queries
-	}
-	entryIndex := make(map[string]int, len(jf.Queries))
-	for i, qe := range jf.Queries {
-		entryIndex[qe.QueryID] = i
-	}
-	for _, entry := range pf.Queries {
-		i, ok := entryIndex[entry.QueryID]
-		if !ok {
-			i = len(jf.Queries)
-			entryIndex[entry.QueryID] = i
-			jf.Queries = append(jf.Queries, judgment.Entry{QueryID: entry.QueryID})
-		}
-		known := make(map[uuid.UUID]bool, len(jf.Queries[i].Docs))
-		for _, d := range jf.Queries[i].Docs {
-			known[d.DocID] = true
-		}
-		for _, d := range entry.Docs {
-			if !known[d.DocID] {
-				jf.Queries[i].Docs = append(jf.Queries[i].Docs, judgment.GradedDoc{DocID: d.DocID, Grade: judgment.GradeUnjudged})
-			}
-		}
-	}
-	return jf
-}
-
-// manualJudgments is a hand-grading file bound to the pool it was built from.
-type manualJudgments struct {
-	pool *pool.PoolFile
-	// poolRef is relative to the track.
-	poolRef string
-	path    string
-}
-
-// write merges existing (nil starts over) with placeholders for missing docs and
-// writes the file.
-func (m manualJudgments) write(existing *judgment.File) (*judgment.File, error) {
-	jf := buildManualJudgments(m.pool, existing)
-	judge := judgment.ManualJudge()
-	jf.Meta = meta.New("judge")
-	jf.Meta.Judge = &judge
-	jf.Meta.PoolRef = m.poolRef
-	jf.Meta.PoolRunID = m.pool.Meta.RunID
-	if err := judgment.WriteFile(jf, m.path); err != nil {
-		return nil, fmt.Errorf("write manual judgments: %w", err)
-	}
-	return jf, nil
 }
 
 // requireJudged fails on an ungraded doc, which bench run would score as non-relevant.
