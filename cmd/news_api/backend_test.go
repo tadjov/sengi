@@ -19,8 +19,8 @@ import (
 	"github.com/tadjov/sengi/internal/storage/es"
 	"github.com/tadjov/sengi/internal/storage/factory"
 	"github.com/tadjov/sengi/internal/storage/pg"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 func pgSearchConfig(connStr string) *NewsSearchConfig {
@@ -254,7 +254,7 @@ func TestServer_SearchPastRequestDeadlineReleasesItsConnection(t *testing.T) {
 		t.Fatalf("server.New: %v", err)
 	}
 	s.SetupMiddlewares().SetupErrorHandler().SetupHealthChecks("/health")
-	router.NewSearchRouter(s.Echo, backend.fts).Bind()
+	router.NewSearchRouter(s.Echo, router.Searchers{FullText: backend.fts}).Bind()
 
 	locker, err := pgx.Connect(ctx, container.ConnString)
 	if err != nil {

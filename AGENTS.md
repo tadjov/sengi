@@ -49,17 +49,17 @@ The project follows a layered architecture pattern:
         - `operator/`: Operator value object (AND/OR logic)
     - `ingest/`: Data ingestion pipeline
         - `reader/`: CSV/JSONL/Parquet/YAML data reading and parsing
-    - `api/`: API layer for HTTP server
+        - `datamapping/`: Data mapping type definitions
+    - `api/`: API layer for HTTP server (`router/` routes, `dto/` request and response shapes, `server/` Echo setup and config)
+    - `schema/`: JSON schema generation from Go struct tags, used by `cmd/schemagen`
+    - `env/`: `.env` loading (`ENV_PATHS`) and duration settings
+    - `testcontainer/`: Postgres and Elasticsearch containers for integration tests
     - `storage/`: Storage abstractions and implementations
         - `factory/`: Storage factory for creating storage instances
         - `pg/`: PostgreSQL storage implementation with full-text search
         - `es/`: Elasticsearch storage implementation
     - `progress/`: The counter long-running domain code reports to (records read, rows copied, queries run); `internal/cli` draws it as one status line on stderr
     - `resilience/`: Retry policy for HTTP calls: 408, 429 and 5xx or a dropped connection, honouring `Retry-After`, else backing off with jitter; only the `jev` judge uses it today
-
-- **pkg/**: Shared packages and APIs
-    - `apis/datamapping/`: Data mapping type definitions
-    - `schema/`: Schema generation utilities
 
 - **api/**: API schemas and examples
     - Data mapping configuration examples and JSON schemas
@@ -69,7 +69,7 @@ The project follows a layered architecture pattern:
 - **db/**: Database-related files
     - `migrations/`: SQL migrations per Postgres engine, `<engine>/schema/` (golang-migrate) and `<engine>/indexes.sql` (the search indexes, and on native and tiger the `corpus_words` table fuzzy search expands query words against, built after the load as timed stages), embedded by the `migrations` Go package
     - `query/`: SQL query files for database operations
-- **dataset/**: Sample datasets and documentation
+- **datasets/**: Per-dataset mappings, canonical packages, embeddings and load records
 - **scripts/**: Utility scripts for setup and maintenance
 
 ## Key Components
@@ -81,7 +81,7 @@ The type system is organized into bounded contexts, each with its own package:
 **Benefits of this organization**:
 - Clear separation of concerns between document and query types
 - Reduced import cycles through proper package boundaries
-- Clean namespacing (e.g., `query.QueryString`, `document.Article`)
+- Clean namespacing (e.g., `query.String`, `document.Article`)
 - Easier to understand and navigate type definitions
 - Follows DDD bounded context principles
 - Query API design follows industry standards (Elasticsearch `query_string` terminology)
@@ -154,43 +154,27 @@ Built with Echo framework providing:
 - **Configuration**: Environment-based config with validation
 - **Graceful Shutdown**: Proper resource cleanup on termination
 
-**Search API Endpoints**:
+**Search API Endpoints** (`internal/api/router/search.go`; request shapes and status codes in [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)):
 
-1. **Simple Query String API** (`GET /v1/articles/search`)
-    - Simple, Google-like search experience
-    - Application determines optimal fields and weights
-    - Query parameter: `?query=climate change`
-    - Best for: End-user search boxes, simple text queries
+| Method and path | Serves |
+|---|---|
+| `GET /v1/articles/search?q=...` | free-text search box over title, description and content; takes `q`, `size`, `cursor`, `lang` |
+| `POST /v1/articles/_search` | structured search: the body holds one of `match`, `multi_match`, `phrase`, `boolean`, `hybrid` under `query` |
+| `GET /v1/articles/semantic_search?q=...` | vector similarity search; routed only when embeddings are enabled |
+| `GET /v1/capabilities` | the query types the backend serves and the full-text parameters its engine honours |
+| `GET /health` | backend connectivity |
 
-2. **Structured Match API** (`POST /v1/articles/_search/match`)
-    - Explicit single-field control
-    - User specifies field, operator (AND/OR), fuzziness
-    - Request body:
-      ```json
-      {
-        "field": "title",
-        "query": "climate change",
-        "operator": "AND",
-        "fuzziness": 1
-      }
-      ```
-    - Best for: Advanced users needing precise control
-
-**Search Features**:
-- Full-text search with relevance ranking
-- Single-field and multi-field search support
-- Cursor-based pagination with total count and hasMore indicators
-- Field-level weight control for relevance tuning
-- Operator control (AND/OR) for term combination
-- Fuzziness support for typo tolerance (Elasticsearch)
-- Query language as an ISO 639-3 code: `eng` only (the default); any other value returns 400
-- Input validation and comprehensive error handling
-- PostgreSQL: tsvector with ts_rank scoring
-- Elasticsearch: match/multi_match queries with BM25 scoring
+**Search contract**:
+- A stated parameter is honoured or the request is a 400; an unknown query parameter or JSON key is a 400 too
+- An omitted operator takes the engine's default (PostgreSQL AND, Elasticsearch OR); every response echoes the contract it ran under in `effective`
+- `Prefer: handling=lenient` drops an unsupported parameter and lists it in `ignored` instead of a 400
+- Cursor-based pagination: `next_cursor`, `has_more`, `total_matches`
+- Query language is an ISO 639-3 code: `eng` only (the default); any other value returns 400
+- PostgreSQL: tsvector with ts_rank scoring. Elasticsearch: BM25 scoring, and the only engine with fuzziness
 
 **API Design Pattern**:
-- **Simple API**: Application-optimized (QueryString)
-- **Explicit API**: User-controlled (Match, MultiMatch)
+- **Simple API**: Application-optimized (`query.String`)
+- **Explicit API**: User-controlled (`Match`, `MultiMatch`, `Phrase`, `Boolean`, `Hybrid`)
 - **DTO Layer**: Clean separation between API and domain
 - **Optional Interfaces**: A backend serves the paradigms whose searcher interfaces it implements; the API answers the rest with 404 (GET) or 400 (`_search`)
 - **Extensible**: Easy to add new query types in the future
@@ -200,7 +184,7 @@ Built with Echo framework providing:
 ### Database
 ```bash
 # Start PostgreSQL container
-docker-compose up -d
+docker compose up -d
 
 # Database runs on port 54320 with:
 # - Database: news_db
@@ -218,13 +202,13 @@ ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load --engine native --canon
 
 # Build other commands
 go build -o bin/schemagen ./cmd/schemagen
-go build -o bin/news-search ./cmd/news_api
+go build -o bin/news-api ./cmd/news_api
 
 # Run tests
 go test ./...
 
 # Run tests for specific package
-go test ./internal/reader
+go test ./internal/ingest/reader
 
 # Format code
 go fmt ./...
@@ -236,7 +220,9 @@ go vet ./...
 ### Environment Setup
 Commands expect environment variables (typically in `.env` files):
 
-**Data Import (`cmd/data_import/.env`)**:
+Every command loads the files named in `ENV_PATHS` (comma-separated) and then its own default file if it exists; a variable that is already set wins.
+
+**Storage (`cmd/datapipe/*.env`, `cmd/news_api/pg.env`, `cmd/news_api/es.env`)**:
 - `STORAGE_TYPE`: Storage backend (`pg`, `es`, `in_mem`)
 - `PG_CONNECTION_STRING`: PostgreSQL connection string
 - `ES_ADDRESSES`: Elasticsearch cluster addresses (comma-separated)
@@ -250,7 +236,7 @@ Commands expect environment variables (typically in `.env` files):
 - `BENCH_TRACK_ROOT`: where relative track paths start
 - Never `ANTHROPIC_API_KEY`: `claude -p` inherits the environment and would bill the API instead of the claude.ai login
 
-**Search API (`cmd/news_search/.env`)**:
+**Search API (`cmd/news_api/.env`, loaded by default; copy `cmd/news_api/.env.example`)**:
 - `PORT`: HTTP server port (default: 8080)
 - `USE_HTTP2`: Enable HTTP/2 support (`true`/`false`)
 - `CORS_ORIGINS`: Allowed CORS origins (comma-separated)
@@ -261,7 +247,7 @@ Commands expect environment variables (typically in `.env` files):
 ## Testing
 Tests are located alongside source files with `_test.go` suffix. Use standard Go testing patterns:
 - `go test ./...` - Run all tests
-- `go test -v ./internal/reader` - Run specific package tests with verbose output
+- `go test -v ./internal/ingest/reader` - Run specific package tests with verbose output
 
 **Type System Purity**:
 - Type definitions should represent search concepts, not implementation details

@@ -44,7 +44,7 @@ func serveSearch(t *testing.T, call searchCall) *httptest.ResponseRecorder {
 	t.Helper()
 	e := echo.New()
 	(&apiserver.Server{Echo: e}).SetupValidator()
-	e.HTTPErrorHandler = apperr.GlobalErrorHandler()
+	e.HTTPErrorHandler = apperr.GlobalErrorHandler
 	r := &SearchRouter{e: e, searcher: stubFtsSearcher{caps: call.caps}, hybridSearcher: stubHybridSearcher{}}
 	r.Bind()
 
@@ -334,7 +334,7 @@ func TestSearchBoxAcceptsTheParamsItDocuments(t *testing.T) {
 func TestStructuredSearchOverTheBodyLimitKeepsItsStatus(t *testing.T) {
 	e := echo.New()
 	(&apiserver.Server{Echo: e}).SetupValidator()
-	e.HTTPErrorHandler = apperr.GlobalErrorHandler()
+	e.HTTPErrorHandler = apperr.GlobalErrorHandler
 	e.Use(middleware.BodyLimit("64"))
 	(&SearchRouter{e: e, searcher: stubFtsSearcher{caps: elasticsearchCaps}}).Bind()
 

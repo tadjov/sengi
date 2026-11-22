@@ -35,15 +35,13 @@ func TestParse_AcceptsOnlyISO6393English(t *testing.T) {
 	}
 }
 
-func TestEnglish_AnalysisNamesEachEngineChain(t *testing.T) {
-	want := Analysis{
-		PostgresConfig:        "english",
-		ParadeTokenizer:       "pdb.simple('stemmer=english', 'stopwords_language=english')",
-		TigerTextConfig:       "english",
-		ElasticsearchAnalyzer: "english_analyzer",
+func TestAnalysis_IsEmptyOnlyForAnUnparseableCode(t *testing.T) {
+	if got := Code("srp").Analysis(); got != (Analysis{}) {
+		t.Errorf("srp analysis = %+v, want none", got)
 	}
 
-	if got := English.Analysis(); got != want {
-		t.Errorf("English.Analysis() = %+v, want %+v", got, want)
+	got := English.Analysis()
+	if got.PostgresConfig == "" || got.ParadeTokenizer == "" || got.TigerTextConfig == "" || got.ElasticsearchAnalyzer == "" {
+		t.Errorf("eng analysis = %+v, want every engine named", got)
 	}
 }

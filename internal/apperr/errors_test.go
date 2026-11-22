@@ -1,57 +1,78 @@
 package apperr_test
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/labstack/echo/v4"
 	"github.com/tadjov/sengi/internal/apperr"
 )
 
-func TestNewValidation(t *testing.T) {
-	err := apperr.NewValidation("field is required")
-
-	if err.Error() != "field is required" {
-		t.Errorf("expected 'field is required', got %q", err.Error())
+func TestValidationErrorMessage(t *testing.T) {
+	inner := errors.New("parse failed")
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{name: "message only", err: apperr.NewValidation("field is required"), want: "field is required"},
+		{name: "message with cause", err: apperr.NewValidationWrap("invalid expression", inner), want: "invalid expression: parse failed"},
 	}
-	if err.Unwrap() != nil {
-		t.Errorf("expected nil unwrap, got %v", err.Unwrap())
-	}
-}
 
-func TestNewValidationWrap(t *testing.T) {
-	inner := fmt.Errorf("parse failed")
-	err := apperr.NewValidationWrap("invalid expression", inner)
-
-	if err.Error() != "invalid expression: parse failed" {
-		t.Errorf("expected 'invalid expression: parse failed', got %q", err.Error())
-	}
-	if !errors.Is(err, inner) {
-		t.Error("expected Unwrap to return inner error")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.err.Error(); got != tt.want {
+				t.Errorf("Error() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 
-func TestValidationError_SurvivesFmtWrapping(t *testing.T) {
-	original := apperr.NewValidation("empty parentheses")
-
-	wrapped := fmt.Errorf("failed to parse: %w", original)
-	doubleWrapped := fmt.Errorf("storage error: %w", wrapped)
-
-	var ve *apperr.ValidationError
-	if !errors.As(doubleWrapped, &ve) {
-		t.Fatal("errors.As should find ValidationError through double wrapping")
+func TestGlobalErrorHandler(t *testing.T) {
+	tests := []struct {
+		name      string
+		err       error
+		wantCode  int
+		wantError string
+	}{
+		{
+			name:      "validation error wrapped by a lower layer",
+			err:       fmt.Errorf("storage: %w", apperr.NewValidationWrap("empty parentheses", errors.New("at offset 3"))),
+			wantCode:  http.StatusBadRequest,
+			wantError: "empty parentheses",
+		},
+		{
+			name:      "echo error keeps its status",
+			err:       echo.NewHTTPError(http.StatusRequestEntityTooLarge, "too large"),
+			wantCode:  http.StatusRequestEntityTooLarge,
+			wantError: "too large",
+		},
+		{
+			name:      "any other error hides its message",
+			err:       errors.New("database connection failed"),
+			wantCode:  http.StatusInternalServerError,
+			wantError: "internal server error",
+		},
 	}
-	if ve.Message != "empty parentheses" {
-		t.Errorf("expected 'empty parentheses', got %q", ve.Message)
-	}
-}
 
-func TestValidationError_NotFoundForPlainErrors(t *testing.T) {
-	plain := fmt.Errorf("database connection failed")
-	wrapped := fmt.Errorf("storage error: %w", plain)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			c := echo.New().NewContext(httptest.NewRequest(http.MethodGet, "/", nil), rec)
 
-	var ve *apperr.ValidationError
-	if errors.As(wrapped, &ve) {
-		t.Fatal("errors.As should NOT find ValidationError in plain error chain")
+			apperr.GlobalErrorHandler(tt.err, c)
+
+			var body map[string]string
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatalf("decode body: %v (body: %s)", err, rec.Body.String())
+			}
+			if rec.Code != tt.wantCode || body["error"] != tt.wantError {
+				t.Errorf("status = %d, error = %q, want %d and %q", rec.Code, body["error"], tt.wantCode, tt.wantError)
+			}
+		})
 	}
 }

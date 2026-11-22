@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pgvector/pgvector-go"
 	"github.com/tadjov/sengi/internal/embedding"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 )
 
 func newEmbedTestPool(t *testing.T) *ConnectionPool {

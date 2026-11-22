@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/bench/report"
 	pgstore "github.com/tadjov/sengi/internal/storage/pg"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 )
 
 func latencyOnlyTrack(t *testing.T, name, engineYAML, block string) string {

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
+	"github.com/tadjov/sengi/internal/ingest/datamapping"
 )
 
 var fallbackDatetimeFormats = []string{

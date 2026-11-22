@@ -14,10 +14,13 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	pkgserver "github.com/tadjov/sengi/pkg/server"
 )
 
-func newServer(t *testing.T, cfg *Config, checker pkgserver.HealthChecker) *Server {
+type alwaysHealthy struct{}
+
+func (alwaysHealthy) Healthy(context.Context) bool { return true }
+
+func newServer(t *testing.T, cfg *Config, checker HealthChecker) *Server {
 	t.Helper()
 	s, err := New(cfg, checker)
 	if err != nil {
@@ -41,7 +44,7 @@ func startOnLoopback(t *testing.T, s *Server) string {
 }
 
 func TestServer_DropsConnectionThatNeverFinishesHeaders(t *testing.T) {
-	s := newServer(t, &Config{Port: "0", ReadHeaderTimeout: 50 * time.Millisecond}, pkgserver.NewOkHealthChecker()).
+	s := newServer(t, &Config{Port: "0", ReadHeaderTimeout: 50 * time.Millisecond}, alwaysHealthy{}).
 		SetupHealthChecks("/health")
 	addr := startOnLoopback(t, s)
 
@@ -82,7 +85,7 @@ func TestServer_RejectsBodyOverLimit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := newServer(t, &Config{Port: "0", BodyLimit: 1000}, pkgserver.NewOkHealthChecker()).
+			s := newServer(t, &Config{Port: "0", BodyLimit: 1000}, alwaysHealthy{}).
 				SetupMiddlewares().
 				SetupErrorHandler()
 			s.Echo.POST("/echo", func(c echo.Context) error {
@@ -186,7 +189,7 @@ func TestNew_RejectsInvalidBounds(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := New(&tt.cfg, pkgserver.NewOkHealthChecker()); err == nil {
+			if _, err := New(&tt.cfg, alwaysHealthy{}); err == nil {
 				t.Errorf("New(%+v) succeeded, want an error", tt.cfg)
 			}
 		})
@@ -263,7 +266,7 @@ func waitForStart(t *testing.T, stopped <-chan error) error {
 func TestServer_StartReturnsOnShutdownSignal(t *testing.T) {
 	for _, sig := range []syscall.Signal{syscall.SIGINT, syscall.SIGTERM} {
 		t.Run(sig.String(), func(t *testing.T) {
-			s := newServer(t, &Config{Port: "0"}, pkgserver.NewOkHealthChecker())
+			s := newServer(t, &Config{Port: "0"}, alwaysHealthy{})
 			_, stopped := serve(t, s)
 
 			if err := syscall.Kill(os.Getpid(), sig); err != nil {
@@ -278,7 +281,7 @@ func TestServer_StartReturnsOnShutdownSignal(t *testing.T) {
 }
 
 func TestServer_StartReturnsErrorWhenRequestOutlivesGracePeriod(t *testing.T) {
-	s := newServer(t, &Config{Port: "0"}, pkgserver.NewOkHealthChecker())
+	s := newServer(t, &Config{Port: "0"}, alwaysHealthy{})
 	s.gracefulShutdownTimeout = 50 * time.Millisecond
 	entered, release := make(chan struct{}), make(chan struct{})
 	t.Cleanup(func() { close(release) })
@@ -305,7 +308,7 @@ func TestServer_StartReturnsErrorWhenRequestOutlivesGracePeriod(t *testing.T) {
 }
 
 func TestServer_StartCancelsRequestsThatOutliveTheGracePeriod(t *testing.T) {
-	s := newServer(t, &Config{Port: "0"}, pkgserver.NewOkHealthChecker())
+	s := newServer(t, &Config{Port: "0"}, alwaysHealthy{})
 	s.gracefulShutdownTimeout = 50 * time.Millisecond
 	entered, cancelled := make(chan struct{}), make(chan struct{})
 	s.Echo.GET("/slow", func(c echo.Context) error {
@@ -347,7 +350,7 @@ func TestNew_RejectsNegativeBounds(t *testing.T) {
 	}
 	for name, cfg := range tests {
 		t.Run(name, func(t *testing.T) {
-			if _, err := New(&cfg, pkgserver.NewOkHealthChecker()); err == nil {
+			if _, err := New(&cfg, alwaysHealthy{}); err == nil {
 				t.Errorf("New accepted a negative %s, which net/http reads as no bound", name)
 			}
 		})
@@ -364,7 +367,7 @@ func TestServer_StartReturnsErrorWhenPortIsTaken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("split address: %v", err)
 	}
-	s := newServer(t, &Config{Port: port}, pkgserver.NewOkHealthChecker())
+	s := newServer(t, &Config{Port: port}, alwaysHealthy{})
 	s.Echo.HideBanner = true
 
 	stopped := make(chan error, 1)

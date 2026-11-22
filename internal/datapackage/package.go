@@ -2,8 +2,8 @@
 package datapackage
 
 import (
+	"github.com/tadjov/sengi/internal/ingest/datamapping"
 	"github.com/tadjov/sengi/internal/types/language"
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
 )
 
 const (

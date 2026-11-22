@@ -8,7 +8,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
-	"github.com/tadjov/sengi/pkg/config/env"
+	"github.com/tadjov/sengi/internal/env"
 )
 
 const (
@@ -51,7 +51,7 @@ func newRootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRun: func(*cobra.Command, []string) {
-			if err := env.LoadDotEnv(os.Getenv("ENV")); err != nil {
+			if err := env.LoadDotEnv(".env"); err != nil {
 				slog.Info("Skipping .env environment variables", "error", err)
 			}
 		},

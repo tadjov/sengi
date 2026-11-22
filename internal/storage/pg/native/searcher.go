@@ -11,7 +11,7 @@ import (
 	"github.com/tadjov/sengi/internal/storage/pg"
 	"github.com/tadjov/sengi/internal/types/operator"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	"github.com/tadjov/sengi/pkg/utils"
+	"github.com/tadjov/sengi/internal/utils"
 )
 
 type Searcher struct {

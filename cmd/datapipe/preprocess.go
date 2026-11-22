@@ -15,8 +15,8 @@ import (
 	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/ingest"
+	"github.com/tadjov/sengi/internal/ingest/datamapping"
 	"github.com/tadjov/sengi/internal/ingest/reader"
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
 )
 
 type preprocessConfig struct {

@@ -12,7 +12,6 @@ import (
 	"github.com/tadjov/sengi/internal/api/dto"
 	apiserver "github.com/tadjov/sengi/internal/api/server"
 	"github.com/tadjov/sengi/internal/apperr"
-	"github.com/tadjov/sengi/pkg/pagination"
 )
 
 func TestSearchHandlers_RejectOutOfBoundsRequests(t *testing.T) {
@@ -28,7 +27,7 @@ func TestSearchHandlers_RejectOutOfBoundsRequests(t *testing.T) {
 		},
 		{
 			name: "query string page too large",
-			req:  httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/articles/search?q=climate&size=%d", pagination.PageMaxSize+1), nil),
+			req:  httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v1/articles/search?q=climate&size=%d", dto.PageMaxSize+1), nil),
 		},
 		{
 			name: "semantic query too long",
@@ -42,7 +41,7 @@ func TestSearchHandlers_RejectOutOfBoundsRequests(t *testing.T) {
 		{
 			name: "structured page too large",
 			req: jsonRequest(http.MethodPost, "/v1/articles/_search",
-				fmt.Sprintf(`{"size":%d,"query":{"match":{"field":"title","query":"climate"}}}`, pagination.PageMaxSize+1)),
+				fmt.Sprintf(`{"size":%d,"query":{"match":{"field":"title","query":"climate"}}}`, dto.PageMaxSize+1)),
 		},
 	}
 
@@ -50,8 +49,8 @@ func TestSearchHandlers_RejectOutOfBoundsRequests(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
 			(&apiserver.Server{Echo: e}).SetupValidator()
-			e.HTTPErrorHandler = apperr.GlobalErrorHandler()
-			NewSearchRouter(e, stubFtsSearcher{caps: elasticsearchCaps}, WithSemanticSearcher(stubSemanticSearcher{})).Bind()
+			e.HTTPErrorHandler = apperr.GlobalErrorHandler
+			NewSearchRouter(e, Searchers{FullText: stubFtsSearcher{caps: elasticsearchCaps}, Semantic: stubSemanticSearcher{}}).Bind()
 
 			rec := httptest.NewRecorder()
 			e.ServeHTTP(rec, tt.req)

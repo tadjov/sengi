@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
+	"github.com/tadjov/sengi/internal/ingest/datamapping"
 	"gopkg.in/yaml.v3"
 )
 

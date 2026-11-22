@@ -85,9 +85,9 @@ func TestSearchRouterServesOnlyTheParadigmItIsWiredWith(t *testing.T) {
 		t.Run(b.queryType, func(t *testing.T) {
 			e := echo.New()
 			(&apiserver.Server{Echo: e}).SetupValidator()
-			e.HTTPErrorHandler = apperr.GlobalErrorHandler()
+			e.HTTPErrorHandler = apperr.GlobalErrorHandler
 			e.Use(middleware.Recover())
-			NewSearchRouter(e, b.backend).Bind()
+			NewSearchRouter(e, Searchers{FullText: b.backend}).Bind()
 
 			for _, call := range queryTypeRequests {
 				req := httptest.NewRequest(call.method, call.target, strings.NewReader(call.body))

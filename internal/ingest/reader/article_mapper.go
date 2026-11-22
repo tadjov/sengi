@@ -9,10 +9,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tadjov/sengi/internal/ingest/datamapping"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
-	"github.com/tadjov/sengi/pkg/utils"
 )
 
 type ArticleMapper struct {
@@ -180,7 +179,7 @@ func CanonicalArticle(record map[string]string) (document.Article, error) {
 		return document.Article{}, fmt.Errorf("article %s: %w", id, err)
 	}
 
-	publishedAt, err := utils.ParseTimeOptional(record["publishedAt"])
+	publishedAt, err := parseOptionalTime(record["publishedAt"])
 	if err != nil {
 		return document.Article{}, fmt.Errorf("article %s: invalid publishedAt: %w", id, err)
 	}
@@ -203,4 +202,11 @@ func CanonicalArticle(record map[string]string) (document.Article, error) {
 		PublisherDomain: record["publisherDomain"],
 		Metadata:        metadata,
 	}, nil
+}
+
+func parseOptionalTime(v string) (time.Time, error) {
+	if v == "" {
+		return time.Time{}, nil
+	}
+	return time.Parse(time.RFC3339, v)
 }

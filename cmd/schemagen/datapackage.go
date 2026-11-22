@@ -8,15 +8,14 @@ import (
 	"reflect"
 
 	"github.com/tadjov/sengi/internal/datapackage"
-	"github.com/tadjov/sengi/pkg/schema"
+	"github.com/tadjov/sengi/internal/schema"
 )
 
 const dataPackageSchemaFile = "datapackage-v1.json"
 
 // dataPackageSchema is closed so a misspelled key fails validation.
 func dataPackageSchema() ([]byte, error) {
-	generator := schema.NewGeneratorWithConfig(schema.GeneratorConfig{
-		StrictValidation:     true,
+	generator := schema.NewGenerator(schema.GeneratorConfig{
 		ClosedObjects:        true,
 		RequireUnlessOmitted: true,
 	})

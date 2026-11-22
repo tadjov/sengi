@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/tadjov/sengi/internal/storage"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
+	pkgtesting "github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/testcontainers/testcontainers-go"
 )
 

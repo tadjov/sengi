@@ -16,9 +16,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
 	openapi "github.com/tadjov/sengi/api/openapi-spec"
-	mw "github.com/tadjov/sengi/internal/api/middleware"
 	"github.com/tadjov/sengi/internal/apperr"
-	"github.com/tadjov/sengi/pkg/server"
 )
 
 const (
@@ -31,12 +29,12 @@ type Server struct {
 
 	cfg *Config
 
-	checker server.HealthChecker
+	checker HealthChecker
 
 	gracefulShutdownTimeout time.Duration
 }
 
-func New(cfg *Config, checker server.HealthChecker) (*Server, error) {
+func New(cfg *Config, checker HealthChecker) (*Server, error) {
 	cfg, err := cfg.validated()
 	if err != nil {
 		return nil, fmt.Errorf("server config: %w", err)
@@ -91,7 +89,7 @@ func (s *Server) Start() error {
 
 func (s *Server) SetupMiddlewares() *Server {
 	s.Echo.Use(middleware.RequestID())
-	s.Echo.Use(mw.Logger())
+	s.Echo.Use(requestLogger())
 	s.Echo.Use(middleware.Recover())
 	s.Echo.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: s.cfg.CorsOrigins,
@@ -120,7 +118,7 @@ func (s *Server) handleHealthCheck(c echo.Context) error {
 }
 
 func (s *Server) SetupErrorHandler() *Server {
-	s.Echo.HTTPErrorHandler = apperr.GlobalErrorHandler()
+	s.Echo.HTTPErrorHandler = apperr.GlobalErrorHandler
 
 	return s
 }

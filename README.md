@@ -39,7 +39,7 @@ go test ./...
 ### Run linter
 - Install golangci-lint
 ```bash
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+make install-lint
 ```
 ```bash
 golangci-lint run

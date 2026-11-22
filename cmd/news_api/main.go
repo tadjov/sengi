@@ -17,21 +17,25 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/tadjov/sengi/internal/api/router"
-	server2 "github.com/tadjov/sengi/internal/api/server"
+	"github.com/tadjov/sengi/internal/api/server"
 	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/env"
 )
 
 func main() {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 
-	sCfg, err := server2.LoadConfig()
+	if err := env.LoadDotEnv("cmd/news_api/.env"); err != nil {
+		slog.Warn("Continuing with the environment as it is", "error", err)
+	}
+
+	serverCfg, err := server.LoadConfig()
 	if err != nil {
-		slog.Error("Failed to load config", "error", err)
+		slog.Error("Failed to load server configuration", "error", err)
 		os.Exit(1)
 	}
 
-	appSettings := NewAppConfig()
-	cfg, err := appSettings.Load()
+	cfg, err := loadConfig()
 	if err != nil {
 		slog.Error("Failed to load app configuration", "error", err)
 		os.Exit(1)
@@ -43,7 +47,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	s, err := server2.New(sCfg, backend.health)
+	s, err := server.New(serverCfg, backend.health)
 	if err != nil {
 		backend.close()
 		slog.Error("Failed to create server", "error", err)
@@ -59,19 +63,12 @@ func main() {
 		return c.String(200, "Sengi API is running")
 	})
 
-	var routerOpts []router.SearchRouterOption
-	if backend.semantic != nil {
-		routerOpts = append(routerOpts, router.WithSemanticSearcher(backend.semantic))
-		slog.Info("Semantic search enabled")
-	} else {
-		slog.Info("Semantic search disabled")
-	}
-	if backend.hybrid != nil {
-		routerOpts = append(routerOpts, router.WithHybridSearcher(backend.hybrid))
-		slog.Info("Hybrid search enabled")
-	}
-
-	router.NewSearchRouter(s.Echo, backend.fts, routerOpts...).Bind()
+	slog.Info("Search paradigms beyond full text", "semantic", backend.semantic != nil, "hybrid", backend.hybrid != nil)
+	router.NewSearchRouter(s.Echo, router.Searchers{
+		FullText: backend.fts,
+		Semantic: backend.semantic,
+		Hybrid:   backend.hybrid,
+	}).Bind()
 
 	err = s.Start()
 	backend.close()
