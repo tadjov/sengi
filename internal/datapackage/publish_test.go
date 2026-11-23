@@ -101,7 +101,7 @@ func TestPublishKeepsTheSameBytesAtAnExistingVersion(t *testing.T) {
 		t.Fatalf("second Publish: %v", err)
 	}
 
-	if !again.Existing || again.Restored || again.Dir != published.Dir || again.Package.ProducedBy.Tool != "datapipe preprocess" {
+	if !again.Existing || again.Restored.Any() || again.Dir != published.Dir || again.Package.ProducedBy.Tool != "datapipe preprocess" {
 		t.Errorf("rerun = %s existing %v tool %q, want the existing %s from the first run",
 			again.Dir, again.Existing, again.Package.ProducedBy.Tool, published.Dir)
 	}
@@ -109,6 +109,82 @@ func TestPublishKeepsTheSameBytesAtAnExistingVersion(t *testing.T) {
 	if after := readFileBytes(t, filepath.Join(published.Dir, datapackage.DescriptorName)); !bytes.Equal(before, after) {
 		t.Errorf("the published descriptor changed:\n%s", after)
 	}
+}
+
+// overwrite leaves other bytes, as a payload from an earlier build would, in place of a published resource.
+func overwrite(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPublishReplacesAResourceThatDoesNotMatchItsDescriptor(t *testing.T) {
+	tests := map[string]string{
+		"other bytes of another size":  "hello, from an older build\n",
+		"other bytes of the same size": "jello\n",
+	}
+	for name, stale := range tests {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			parent := filepath.Join(root, "canonical")
+			ctx := context.Background()
+			first, pkg := stagedArticles(t, root, "hello\n", "datapipe preprocess")
+			published, err := datapackage.Publish(ctx, pkg, datapackage.PublishOptions{StagingDir: first, ParentDir: parent})
+			if err != nil {
+				t.Fatalf("first Publish: %v", err)
+			}
+			descriptor := readFileBytes(t, filepath.Join(published.Dir, datapackage.DescriptorName))
+			resource := filepath.Join(published.Dir, "articles.jsonl")
+			overwrite(t, resource, stale)
+
+			second, rerun := stagedArticles(t, root, "hello\n", "datapipe preprocess, rerun")
+			again, err := datapackage.Publish(ctx, rerun, datapackage.PublishOptions{StagingDir: second, ParentDir: parent})
+			if err != nil {
+				t.Fatalf("second Publish: %v", err)
+			}
+
+			if got := readFileBytes(t, resource); string(got) != "hello\n" {
+				t.Errorf("the resource is %q, want the bytes its descriptor names", got)
+			}
+			want := datapackage.Restored{Mismatched: []string{"articles.jsonl"}}
+			if !again.Existing || !slices.Equal(again.Restored.Mismatched, want.Mismatched) || len(again.Restored.Missing) != 0 {
+				t.Errorf("rerun = existing %v restored %+v, want the existing version with %+v", again.Existing, again.Restored, want)
+			}
+			if got := readFileBytes(t, filepath.Join(published.Dir, datapackage.DescriptorName)); !bytes.Equal(got, descriptor) {
+				t.Errorf("the published descriptor changed:\n%s", got)
+			}
+			absent(t, second)
+		})
+	}
+}
+
+func TestPublishRefusesARerunThatDoesNotReproduceTheDescriptorOverAStaleResource(t *testing.T) {
+	root := t.TempDir()
+	parent := filepath.Join(root, "canonical")
+	ctx := context.Background()
+	first, pkg := stagedArticles(t, root, "hello\n", "datapipe preprocess")
+	published, err := datapackage.Publish(ctx, pkg, datapackage.PublishOptions{StagingDir: first, ParentDir: parent})
+	if err != nil {
+		t.Fatalf("first Publish: %v", err)
+	}
+	resource := filepath.Join(published.Dir, "articles.jsonl")
+	overwrite(t, resource, "stale bytes\n")
+
+	second, changed := stagedArticles(t, root, "hello, again\n", "datapipe preprocess")
+	_, err = datapackage.Publish(ctx, changed, datapackage.PublishOptions{StagingDir: second, ParentDir: parent})
+
+	var conflict *datapackage.VersionConflictError
+	if !errors.As(err, &conflict) {
+		t.Fatalf("err = %v, want VersionConflictError", err)
+	}
+	if got := readFileBytes(t, resource); string(got) != "stale bytes\n" {
+		t.Errorf("the stale resource is now %q, want it left alone", got)
+	}
+	absent(t, second)
 }
 
 // A clone tracks descriptors but not their gitignored payloads.
@@ -133,8 +209,8 @@ func TestPublishRestoresTheMissingResourceOfAnExistingVersion(t *testing.T) {
 		t.Fatalf("second Publish: %v", err)
 	}
 
-	if !again.Existing || !again.Restored || again.Dir != published.Dir {
-		t.Errorf("rerun = %s existing %v restored %v, want the existing %s restored", again.Dir, again.Existing, again.Restored, published.Dir)
+	if !again.Existing || !slices.Equal(again.Restored.Missing, []string{"articles.jsonl"}) || len(again.Restored.Mismatched) != 0 || again.Dir != published.Dir {
+		t.Errorf("rerun = %s existing %v restored %+v, want the existing %s with articles.jsonl restored", again.Dir, again.Existing, again.Restored, published.Dir)
 	}
 	if got := readFileBytes(t, resource); string(got) != "hello\n" {
 		t.Errorf("the restored resource is %q", got)
