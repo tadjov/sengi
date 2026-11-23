@@ -26,7 +26,7 @@ func writeFullPackage(t *testing.T, dir string) datapackage.Package {
 
 func TestOpenReturnsTheWrittenDescriptor(t *testing.T) {
 	sparse := fullPackage()
-	sparse.Report = &datapackage.Report{Read: 3, Written: 3, Dropped: map[string]int64{}}
+	sparse.Preprocess = &datapackage.Preprocess{Counts: datapackage.Counts{Read: 3, Written: 3, Dropped: map[string]int64{}}, ID: datapackage.ArticleIDs{Kind: "random"}}
 	sparse.Sources = []datapackage.Source{}
 	packages := map[string]datapackage.Package{"every property": fullPackage(), "empty collections": sparse}
 
@@ -173,7 +173,7 @@ func TestOpenRejectsADescriptorItCannotTrust(t *testing.T) {
 		"no resources":    `{"name": "p", "resources": []}`,
 		"not json":        `{"name": "p", "resources": [{` + valid + `}]`,
 		"duplicate name":  `{"name": "p", "resources": [{` + valid + `}, {` + valid + `}]}`,
-		"unknown id kind": `{"name": "p", "identity": {"idKind": "uuidv7-typo", "algorithm": "uuidv7"}, "resources": [{` + valid + `}]}`,
+		"unknown id kind": `{"name": "p", "preprocess": {"id": {"kind": "uuidv7-typo", "algorithm": "uuidv7"}}, "resources": [{` + valid + `}]}`,
 	}
 	for name, descriptor := range tests {
 		t.Run(name, func(t *testing.T) {

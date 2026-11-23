@@ -61,13 +61,13 @@ artifact. `--format parquet` writes the same columns. Slices are not data packag
 ## Preprocess and load
 
 ```bash
-go run ./cmd/datapipe preprocess datasets/cc-news/raw \
-  --mapping datasets/cc-news/mapping.yaml \
-  --output datasets/cc-news/canonical
+go run ./cmd/datapipe preprocess datasets/cc-news/preprocess.yaml --version v1
 
 ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load datasets/cc-news/canonical/<version>/datapackage.json \
   --engine native \
   --embeddings datasets/cc-news/embeddings/<tag-dir>/<version>/datapackage.json
 ```
 
-Field mapping: `datasets/cc-news/mapping.yaml`.
+`mapping.yaml` is the source's shape and `preprocess.yaml` our policy. Of 708,241 raw records, v1 drops 331 without a title and 41,665 copies of a page on the same site (same title and body), and keeps 666,245 articles. It then clears 43,599 bodies that three or more different headlines share on one site and 18,680 descriptions that five or more share: cookie banners, taglines, or one story's body scraped under unrelated headlines. 8,178 articles keep only their title. The package's `rejects.parquet` and `changes.parquet` list every record removed and every field cleared.
+
+The thresholds come from the data. From three headlines up, 85-91% of shared-body groups have unrelated headlines (mean word Jaccard under 0.2), while at two only half do. Shared descriptions are site taglines from five headlines up, and at three or four they still include real stories republished under edited headlines.

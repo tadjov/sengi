@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -20,7 +21,7 @@ type PublishOptions struct {
 }
 
 // Published is a package in its version folder; Existing means it was already there,
-// Restored that its missing resource came from this run.
+// Restored that a missing resource came from this run.
 type Published struct {
 	Dir      string
 	Package  Package
@@ -28,20 +29,22 @@ type Published struct {
 	Restored bool
 }
 
-// VersionConflictError reports a version already published with other bytes.
+// VersionConflictError reports a version already published from other inputs or with other bytes.
 type VersionConflictError struct {
-	Dir           string
-	Version       string
-	PublishedHash string
-	StagedHash    string
+	Dir     string
+	Version string
+	// Differences lists each resource or lock entry that differs, published value first.
+	Differences []string
 }
 
 func (e *VersionConflictError) Error() string {
-	return fmt.Sprintf("version %s at %s already holds %s, not the staged %s; publish under another version",
-		e.Version, e.Dir, e.PublishedHash, e.StagedHash)
+	return fmt.Sprintf("version %s at %s already holds other content (%s); publish under another version",
+		e.Version, e.Dir, strings.Join(e.Differences, "; "))
 }
 
-// Publish keeps an existing version with the same resource hash; any other is a *VersionConflictError.
+// Publish moves a staged package to ParentDir/<version>. An existing version with the
+// same resource hashes, and the same preprocess lock inputs, is kept, any missing
+// resource restored; any other is a *VersionConflictError.
 func Publish(ctx context.Context, pkg Package, opts PublishOptions) (Published, error) {
 	if opts.Version == "" {
 		opts.Version = DefaultVersion
@@ -74,48 +77,7 @@ func Publish(ctx context.Context, pkg Package, opts PublishOptions) (Published, 
 	return Published{Dir: target, Package: staged}, nil
 }
 
-// StagedPublish names where a package is published and how its files are produced.
-type StagedPublish struct {
-	ParentDir string
-	Version   string // empty means DefaultVersion
-	// Write fills the staging folder and describes the package it now holds.
-	Write func(stagingDir string) (Package, error)
-}
-
-// PublishStaged stages the package beside its version folder, so a failed or cancelled run leaves nothing behind.
-func PublishStaged(ctx context.Context, opts StagedPublish) (_ Published, err error) {
-	if err := os.MkdirAll(opts.ParentDir, 0o755); err != nil {
-		return Published{}, fmt.Errorf("create %s: %w", opts.ParentDir, err)
-	}
-	staging, err := os.MkdirTemp(opts.ParentDir, ".staging-*")
-	if err != nil {
-		return Published{}, fmt.Errorf("create staging package folder: %w", err)
-	}
-	defer func() {
-		if removeErr := os.RemoveAll(staging); removeErr != nil && err == nil {
-			err = fmt.Errorf("remove staging package folder: %w", removeErr)
-		}
-	}()
-
-	pkg, err := opts.Write(staging)
-	if err != nil {
-		return Published{}, err
-	}
-	// MkdirTemp creates the folder 0700, and Publish renames this very folder.
-	if err := os.Chmod(staging, 0o755); err != nil {
-		return Published{}, fmt.Errorf("open up staging package folder: %w", err)
-	}
-	published, err := Publish(ctx, pkg, PublishOptions{StagingDir: staging, ParentDir: opts.ParentDir, Version: opts.Version})
-	if err != nil {
-		return Published{}, fmt.Errorf("publish package %s into %s: %w", pkg.Name, opts.ParentDir, err)
-	}
-	return published, nil
-}
-
 func checkPublishable(pkg Package, opts PublishOptions) error {
-	if len(pkg.Resources) != 1 {
-		return fmt.Errorf("publish package %s: it must list one resource, it lists %d", pkg.Name, len(pkg.Resources))
-	}
 	if pkg.Version != "" {
 		return fmt.Errorf("publish package %s: version %q is set on the package; pass it in PublishOptions", pkg.Name, pkg.Version)
 	}
@@ -151,18 +113,13 @@ func openPublished(ctx context.Context, dir string) (Published, bool, error) {
 }
 
 func keepPublished(staging string, existing Published, staged Package) (Published, error) {
-	// Open guarantees at least one resource.
-	publishedHash := existing.Package.Resources[0].Hash
-	if len(existing.Package.Resources) != 1 || publishedHash != staged.Resources[0].Hash {
+	if differences := contentDifferences(existing.Package, staged); len(differences) > 0 {
 		if err := os.RemoveAll(staging); err != nil {
 			return Published{}, fmt.Errorf("remove staging %s: %w", staging, err)
 		}
-		return Published{}, &VersionConflictError{
-			Dir: existing.Dir, Version: staged.Version,
-			PublishedHash: publishedHash, StagedHash: staged.Resources[0].Hash,
-		}
+		return Published{}, &VersionConflictError{Dir: existing.Dir, Version: staged.Version, Differences: differences}
 	}
-	restored, err := restoreMissingResource(staging, existing, staged)
+	restored, err := restoreMissingResources(staging, existing, staged)
 	if err != nil {
 		return Published{}, err
 	}
@@ -173,16 +130,64 @@ func keepPublished(staging string, existing Published, staged Package) (Publishe
 	return existing, nil
 }
 
-// restoreMissingResource serves a clone that tracks descriptors but not payloads.
-func restoreMissingResource(staging string, existing Published, staged Package) (bool, error) {
-	target := filepath.Join(existing.Dir, existing.Package.Resources[0].Path)
-	if _, err := os.Stat(target); err == nil {
-		return false, nil
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return false, fmt.Errorf("check published resource %s: %w", target, err)
+// contentDifferences ignores the tool in a preprocess lock, so a newer build may rerun a version.
+func contentDifferences(published, staged Package) []string {
+	var differences []string
+	publishedHashes := make(map[string]string, len(published.Resources))
+	for _, r := range published.Resources {
+		publishedHashes[r.Name] = r.Hash
 	}
-	if err := os.Rename(filepath.Join(staging, staged.Resources[0].Path), target); err != nil {
-		return false, fmt.Errorf("restore published resource %s: %w", target, err)
+	for _, r := range staged.Resources {
+		if hash, ok := publishedHashes[r.Name]; !ok || hash != r.Hash {
+			differences = append(differences, fmt.Sprintf("resource %s: %s published, %s staged", r.Name, orNone(hash), r.Hash))
+		}
+		delete(publishedHashes, r.Name)
 	}
-	return true, nil
+	for name, hash := range publishedHashes {
+		differences = append(differences, fmt.Sprintf("resource %s: %s published, none staged", name, hash))
+	}
+	var publishedLock, stagedLock Lock
+	if published.Preprocess != nil {
+		publishedLock = published.Preprocess.Lock
+	}
+	if staged.Preprocess != nil {
+		stagedLock = staged.Preprocess.Lock
+	}
+	for _, entry := range []struct{ name, published, staged string }{
+		{"spec", publishedLock.Spec, stagedLock.Spec},
+		{"mapping", publishedLock.Mapping, stagedLock.Mapping},
+		{"input", publishedLock.Input, stagedLock.Input},
+	} {
+		if entry.published != entry.staged {
+			differences = append(differences, fmt.Sprintf("preprocess %s: %s published, %s staged", entry.name, orNone(entry.published), orNone(entry.staged)))
+		}
+	}
+	slices.Sort(differences)
+	return differences
+}
+
+func orNone(value string) string {
+	if value == "" {
+		return "none"
+	}
+	return value
+}
+
+// restoreMissingResources fills in resources whose descriptor is on disk without them,
+// as in a clone that tracks descriptors but not payloads. The hashes already match.
+func restoreMissingResources(staging string, existing Published, staged Package) (bool, error) {
+	restored := false
+	for _, r := range staged.Resources {
+		target := filepath.Join(existing.Dir, filepath.FromSlash(r.Path))
+		if _, err := os.Stat(target); err == nil {
+			continue
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			return false, fmt.Errorf("check published resource %s: %w", target, err)
+		}
+		if err := os.Rename(filepath.Join(staging, filepath.FromSlash(r.Path)), target); err != nil {
+			return false, fmt.Errorf("restore published resource %s: %w", target, err)
+		}
+		restored = true
+	}
+	return restored, nil
 }

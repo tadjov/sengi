@@ -1,38 +1,25 @@
-kind: DataMapper
+kind: Mapping
 version: v1
-metadata:
-  name: "CC-News (vblagoje/cc_news)"
-  description: "Mapping for the CC-News dataset, 708,241 English articles from 8,759 domains, 2017-01..2019-08, full body text via news-please. The source columns image_url and domain have no Article target: the publisher domain is derived from the url."
-dataset: cc_news
-identity:
-  idKind: urlHash
-dateFormat: "2006-01-02 15:04:05"
+name: cc-news
+description: "CC-News (vblagoje/cc_news), 708,241 English articles, bodies extracted by news-please"
+missingValues: [""]
 constants:
   Language: eng
-output:
-  format: parquet
-fieldMappings:
-  - source: "title"
-    sourceType: "string"
-    target: "Title"
+fields:
+  - source: title
+    target: Title
     required: true
-  - source: "text"
-    sourceType: "string"
-    target: "Content"
-    required: false
-  - source: "description"
-    sourceType: "string"
-    target: "Description"
-    required: false
-  - source: "url"
-    sourceType: "url"
-    target: "URL"
+  - source: text
+    target: Content
+  - source: description
+    target: Description
+  - source: url
+    target: URL
+    type: url
     required: true
-  - source: "url"
-    sourceType: "string"
-    target: "Metadata.ExternalID"
-    required: false
-  - source: "date"
-    sourceType: "datetime"
-    target: "PublishedAt"
-    required: false
+  - source: url
+    target: Metadata.ExternalID
+  - source: date
+    target: PublishedAt
+    type: datetime
+    format: "2006-01-02 15:04:05"

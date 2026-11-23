@@ -25,7 +25,7 @@ curl -L -o ~/Downloads/global-news-dataset.zip \
 Then map it to the canonical form and load it:
 
 ```bash
-make run-datapipe-preprocess          # dataset.csv to canonical-dataset.jsonl
+make run-datapipe-preprocess PREPROCESS_SPEC=datasets/global-news-dataset/preprocess.yaml
 make run-datapipe-articles-pg         # canonical-dataset.jsonl to postgres
 make run-datapipe-embeddings-pg       # embeddings.parquet to article_embeddings
 ```

@@ -1,0 +1,38 @@
+# Preprocess example: how the example mapping's records become a canonical package.
+
+kind: Preprocess
+version: v1
+name: example
+input: raw/datapackage.json
+mapping: ../../mapping-spec/example/mapping-example.yaml
+output:
+  path: canonical
+  format: parquet
+
+id:
+  kind: urlHash
+
+duplicates:
+  keep: first
+  keys:
+    - name: same-url
+      fields: [URL]
+    - name: same-page
+      fields: [PublisherDomain, Title, Content]
+
+signals:
+  - name: headlines-sharing-body
+    distinct: Title
+    sharing: Content
+    within: PublisherDomain
+
+rules:
+  - name: shared-body
+    when: {signal: headlines-sharing-body, atLeast: 20}
+    action: clear
+    field: Content
+
+checks:
+  dropped: {warn: 0.01, error: 0.02}
+  duplicates: {warn: 0.08, error: 0.10}
+  cleared: {warn: 0.08, error: 0.10}

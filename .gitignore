@@ -31,8 +31,6 @@ go.work.sum
 .idea/
 .vscode/
 
-**/testdata
-
 # Dataset payloads (raw, canonical, embeddings); fetched or generated, never committed
 datasets/**/*.csv
 datasets/**/*.json

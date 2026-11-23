@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tadjov/sengi/internal/ingest/datamapping"
 	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/pkg/apis/preprocess"
 )
 
 func (p Package) validate() error {
@@ -16,12 +16,12 @@ func (p Package) validate() error {
 			return fmt.Errorf("package %s: %w", p.Name, err)
 		}
 	}
-	if p.Identity != nil {
-		if _, err := datamapping.ParseIDKind(string(p.Identity.IDKind)); err != nil {
+	if p.Preprocess != nil {
+		if _, err := preprocess.ParseIDKind(string(p.Preprocess.ID.Kind)); err != nil {
 			return fmt.Errorf("package %s: %w", p.Name, err)
 		}
 	}
-	if _, listed := p.Resource(QueryVectorsResource); p.Suite != nil && !listed {
+	if p.Suite != nil && !p.hasResource(QueryVectorsResource) {
 		return fmt.Errorf("package %s: suite is set but no %s resource is listed", p.Name, QueryVectorsResource)
 	}
 	if len(p.Resources) == 0 {
@@ -64,4 +64,13 @@ func validateResourcePath(p string) error {
 		}
 	}
 	return nil
+}
+
+func (p Package) hasResource(name string) bool {
+	for _, r := range p.Resources {
+		if r.Name == name {
+			return true
+		}
+	}
+	return false
 }
