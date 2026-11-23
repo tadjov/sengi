@@ -52,7 +52,7 @@ The project follows a layered architecture pattern:
         - `reader/`: CSV/JSONL/Parquet/YAML data reading and parsing
     - `api/`: API layer for HTTP server (`router/` routes, `dto/` request and response shapes, `middleware/` request logging, `server/` Echo setup and config)
     - `env/`: `.env` loading (`ENV_PATHS`) and duration settings
-    - `testcontainer/`: Postgres and Elasticsearch for integration tests: one server per engine shared by a test run, a database per test; `PGConfig{Isolated: true}` for a test that stops or reconfigures its server
+    - `testcontainer/`: Postgres and Elasticsearch for integration tests: one server per engine for the whole `go test` run, a database per test; `PGConfig{Isolated: true}` for a test that stops or reconfigures its server
     - `storage/`: Storage abstractions and implementations
         - `factory/`: Storage config from the environment, and the corpus loader, vector store built from it
         - `pg/`: PostgreSQL storage implementation with full-text search
@@ -261,7 +261,7 @@ Tests are located alongside source files with `_test.go` suffix. Use standard Go
 - `go test ./...` - Run all tests
 - `go test -v ./internal/ingest/reader` - Run specific package tests with verbose output
 - `go test -short ./...` - Skip every test that needs Docker
-- Container-backed tests go through `internal/testcontainer` and share one server per engine; run them with `-p 1` so one package's containers are up at a time
+- Container-backed tests go through `internal/testcontainer`: one `go test` run shares a single server per engine across every package, each test gets its own Postgres database, and a test holds Elasticsearch alone until it ends. Only a test that stops or reconfigures its server asks for its own (`PGConfig{Isolated: true}`)
 
 **Type System Purity**:
 - Type definitions should represent search concepts, not implementation details

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/tadjov/sengi/internal/testcontainer"
-	"github.com/testcontainers/testcontainers-go"
 )
 
 var (
@@ -27,15 +26,11 @@ func TestMain(m *testing.M) {
 
 	testCtx = context.Background()
 
-	pg, err := testcontainer.NewPGContainer(testCtx, testcontainer.PGConfig{
-		Database: "news_test_db",
-		Username: "test",
-		Password: "test",
-	})
+	pg, dropDatabase, err := testcontainer.NewPGDatabase(testCtx, testcontainer.PGConfig{})
 	if err != nil {
 		panic(err)
 	}
-	defer testcontainers.TerminateContainer(pg.Container)
+	defer dropDatabase()
 
 	testPool, err = NewConnectionPool(testCtx, PoolConfig{ConnStr: pg.ConnString})
 	if err != nil {

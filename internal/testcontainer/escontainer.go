@@ -46,21 +46,29 @@ type ESContainer struct {
 var (
 	sharedESMu sync.Mutex
 	sharedES   *ESContainer
+	esInUse    runLock
 )
 
 // NewESContainer hands the test the Elasticsearch server shared by every test
-// of the process, and deletes the indices the test leaves behind when it ends.
+// of the go test run. Indices are cluster-wide, so the test holds the server
+// alone until it ends, across packages too, and its indices are deleted then.
 // The server is never terminated here: the testcontainers reaper removes it
-// when the test process exits.
+// when the run ends.
 func NewESContainer(ctx context.Context, tb testing.TB) *ESContainer {
 	tb.Helper()
 	if testing.Short() {
 		tb.Skip("skipping testcontainer-backed test in -short mode")
 	}
+	name := runScopedName("es", "")
+	if err := esInUse.acquire(name); err != nil {
+		tb.Fatalf("failed to take the shared elasticsearch server: %v", err)
+	}
+	tb.Cleanup(esInUse.release)
+
 	sharedESMu.Lock()
 	defer sharedESMu.Unlock()
 	if sharedES == nil {
-		container, err := startES(context.WithoutCancel(ctx))
+		container, err := startES(context.WithoutCancel(ctx), name)
 		if err != nil {
 			tb.Fatalf("failed to start elasticsearch container: %v", err)
 		}
@@ -75,12 +83,13 @@ func NewESContainer(ctx context.Context, tb testing.TB) *ESContainer {
 	return server
 }
 
-func startES(ctx context.Context) (*ESContainer, error) {
+func startES(ctx context.Context, name string) (*ESContainer, error) {
 	// Security is off because the plaintext probe below would never pass TLS.
 	// ES_JAVA_OPTS overrides the module's 2 GB heap with 512 MB.
 	esContainer, err := elasticsearch.Run(ctx,
 		elasticsearchImage,
 		testcontainers.WithImageSubstitutors(digestPin{image: elasticsearchImage, digest: elasticsearchDigest}),
+		testcontainers.WithReuseByName(name),
 		testcontainers.WithEnv(map[string]string{
 			"xpack.security.enabled":           "false",
 			"discovery.type":                   "single-node",

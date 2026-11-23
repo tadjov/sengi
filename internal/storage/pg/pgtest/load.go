@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"iter"
 	"net/url"
+	"os"
 	"sync/atomic"
 	"testing"
 
@@ -63,7 +64,7 @@ func createDatabase(ctx context.Context, tb testing.TB, serverConnString string)
 	}
 	defer conn.Close(ctx)
 
-	name := fmt.Sprintf("seeded_%d", databases.Add(1))
+	name := fmt.Sprintf("seeded_%d_%d", os.Getpid(), databases.Add(1))
 	if _, err := conn.Exec(ctx, "CREATE DATABASE "+name); err != nil {
 		tb.Fatalf("create database %s: %v", name, err)
 	}
