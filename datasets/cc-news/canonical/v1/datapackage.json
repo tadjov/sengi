@@ -17,7 +17,7 @@
       "spec": "sha256:8c931c0bcbef278688931bed07077358e9a728569e589bc8516fe35c0ff7c6b9",
       "mapping": "sha256:32a9e02647b7ccfdd51ba584b4a7adf7c3228b37b33fc98bd42d1cabe796f6ef",
       "input": "sha256:592574f3c05708a6f2050e9eb0b849b3b675c9c7a345f8211c31cf0350e4004c",
-      "tool": "datapipe (devel)"
+      "tool": "datapipe/0.0.0"
     },
     "counts": {
       "read": 708241,

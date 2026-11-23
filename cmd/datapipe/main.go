@@ -11,9 +11,11 @@ import (
 )
 
 const (
-	cliName  = "datapipe"
-	cliShort = "Sengi data pipeline: preprocess a dataset, embed it, load it into an engine"
-	cliLong  = `datapipe moves news data from a raw dataset into one search engine.
+	cliName = "datapipe"
+	// cliVersion is the release a package lock names; bump it when a stage writes something new.
+	cliVersion = "0.0.0"
+	cliShort   = "Sengi data pipeline: preprocess a dataset, embed it, load it into an engine"
+	cliLong    = `datapipe moves news data from a raw dataset into one search engine.
 
 Stages:
   preprocess           turn a raw data package into a canonical data package, as

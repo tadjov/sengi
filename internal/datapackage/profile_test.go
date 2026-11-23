@@ -110,7 +110,7 @@ func fullPreprocess() *datapackage.Preprocess {
 	warn, fail := 0.08, 0.10
 	return &datapackage.Preprocess{
 		ID:   datapackage.ArticleIDs{Kind: preprocess.IDKindURLHash, Algorithm: "uuidv5", Namespace: "6ba7b811-9dad-11d1-80b4-00c04fd430c8"},
-		Lock: datapackage.Lock{Spec: "sha256:" + zeros64, Mapping: "sha256:" + zeros64, Input: "sha256:" + zeros64, Tool: "datapipe (devel) abc1234"},
+		Lock: datapackage.Lock{Spec: "sha256:" + zeros64, Mapping: "sha256:" + zeros64, Input: "sha256:" + zeros64, Tool: "datapipe/0.0.0"},
 		Counts: datapackage.Counts{
 			Read: 10, Written: 6,
 			Dropped:    map[string]int64{"required/Title": 2},
@@ -147,7 +147,7 @@ func TestWrittenDescriptorUsesContractPropertyNames(t *testing.T) {
 		"language":                               "eng",
 		"preprocess/id/kind":                     "urlHash",
 		"preprocess/id/algorithm":                "uuidv5",
-		"preprocess/lock/tool":                   "datapipe (devel) abc1234",
+		"preprocess/lock/tool":                   "datapipe/0.0.0",
 		"producedBy/tool":                        "datapipe preprocess",
 		"preprocess/counts/read":                 10.0,
 		"preprocess/counts/written":              6.0,

@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"maps"
 	"os"
-	"runtime/debug"
 	"slices"
 	"strconv"
 	"strings"
@@ -85,7 +84,7 @@ func runPreprocess(ctx context.Context, out io.Writer, cfg preprocessConfig) err
 			OutputRoot: spec.OutputRoot,
 			Version:    cfg.Version,
 			ProducedBy: datapackage.ProducedBy{Tool: "datapipe preprocess"},
-			Tool:       toolVersion(),
+			Tool:       cliName + "/" + cliVersion,
 			Progress:   p,
 		})
 		var conflict *datapackage.VersionConflictError
@@ -97,26 +96,6 @@ func runPreprocess(ctx context.Context, out io.Writer, cfg preprocessConfig) err
 		}
 		return preprocessSummary(result), nil
 	})
-}
-
-// toolVersion names this build for a package lock, such as "datapipe (devel) e2cf35a".
-func toolVersion() string {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return cliName
-	}
-	tool := cliName + " " + info.Main.Version
-	settings := map[string]string{}
-	for _, s := range info.Settings {
-		settings[s.Key] = s.Value
-	}
-	if revision := settings["vcs.revision"]; revision != "" {
-		tool += " " + revision[:min(len(revision), 7)]
-		if settings["vcs.modified"] == "true" {
-			tool += "-dirty"
-		}
-	}
-	return tool
 }
 
 func preprocessSummary(result datapackage.Published) cli.Summary {

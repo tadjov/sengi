@@ -28,7 +28,7 @@ type PreprocessOptions struct {
 	OutputRoot string
 	Version    string
 	ProducedBy datapackage.ProducedBy
-	// Tool names the build in the lock, such as "datapipe (devel) e2cf35a".
+	// Tool names the release in the lock, such as "datapipe/0.0.0".
 	Tool string
 	// Progress counts raw records as they are read; nil counts nothing.
 	Progress progress.Counter
