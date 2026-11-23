@@ -55,13 +55,10 @@ implemented.
 ## Preprocess and load
 
 ```bash
-go run ./cmd/datapipe preprocess \
-  --input datasets/all-the-news/dataset-100k.csv \
-  --mapping datasets/all-the-news/mapping.yaml \
-  --output datasets/all-the-news/canonical-dataset.jsonl
+go run ./cmd/datapipe preprocess datasets/all-the-news/preprocess.yaml --version v1
 
 ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load --engine native \
   --canonical datasets/all-the-news/canonical/<version>/datapackage.json
 ```
 
-Field mapping: `datasets/all-the-news/mapping.yaml`.
+Field mapping: `datasets/all-the-news/mapping.yaml`; preprocess policy: `datasets/all-the-news/preprocess.yaml`.

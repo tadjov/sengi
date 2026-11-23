@@ -12,7 +12,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/tadjov/sengi/internal/datapackage"
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
+	"github.com/tadjov/sengi/pkg/apis/preprocess"
 )
 
 // The profile's path patterns use lookaheads, which Go's RE2 cannot compile.
@@ -87,18 +87,8 @@ func fullPackage() datapackage.Package {
 		Version:       "v1",
 		ArticleSchema: datapackage.ArticleSchema,
 		Language:      "eng",
-		Identity: &datapackage.Identity{
-			Unique:    []datamapping.UniqueRule{{Name: "same-page", Fields: []string{"PublisherDomain", "Title", "Content"}}},
-			IDKind:    datamapping.IDKindURLHash,
-			Algorithm: "uuidv5",
-			Namespace: "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
-		},
-		ProducedBy: &datapackage.ProducedBy{Tool: "datapipe preprocess"},
-		Report: &datapackage.Report{
-			Read: 10, Written: 7,
-			Dropped: map[string]int64{"invalid_url": 2},
-			Deduped: map[string]int64{"url": 1},
-		},
+		ProducedBy:    &datapackage.ProducedBy{Tool: "datapipe preprocess"},
+		Preprocess:    fullPreprocess(),
 		Embedding: &datapackage.Embedding{
 			Model: "qwen3-embedding:0.6b", HuggingFaceModel: "Qwen/Qwen3-Embedding-0.6B", Revision: "abc123",
 			Tag: "qwen3-embedding:0.6b@1024", Dim: 1024, Recipe: "lead-v1", Pooling: "last_token",
@@ -116,6 +106,27 @@ func fullPackage() datapackage.Package {
 	}
 }
 
+func fullPreprocess() *datapackage.Preprocess {
+	warn, fail := 0.08, 0.10
+	return &datapackage.Preprocess{
+		ID:   datapackage.ArticleIDs{Kind: preprocess.IDKindURLHash, Algorithm: "uuidv5", Namespace: "6ba7b811-9dad-11d1-80b4-00c04fd430c8"},
+		Lock: datapackage.Lock{Spec: "sha256:" + zeros64, Mapping: "sha256:" + zeros64, Input: "sha256:" + zeros64, Tool: "datapipe/0.0.0"},
+		Counts: datapackage.Counts{
+			Read: 10, Written: 6,
+			Dropped:    map[string]int64{"required/Title": 2},
+			Duplicates: map[string]int64{"same-url": 1, "same-page": 1},
+			Cleared:    map[string]int64{"shared-body": 1},
+		},
+		Signals: map[string]datapackage.SignalStats{"headlines-sharing-body": {
+			Distinct: "Title", Sharing: "Content", Within: "PublisherDomain",
+			Articles: 6, Median: 1, P90: 3, P99: 3, Max: 3,
+			AtLeast: map[string]int64{"2": 3},
+			Top:     []datapackage.SignalGroup{{Within: "example.com", Sharing: "Subscribe to read", Value: 3, Articles: 3}},
+		}},
+		Checks: map[string]datapackage.CheckResult{"duplicates": {Observed: 0.2, Warn: &warn, Error: &fail, Result: datapackage.CheckError}},
+	}
+}
+
 const zeros64 = "0000000000000000000000000000000000000000000000000000000000000000"
 
 // Python producers don't use this package, so names are checked against the contract.
@@ -129,36 +140,39 @@ func TestWrittenDescriptorUsesContractPropertyNames(t *testing.T) {
 	doc := readDescriptorJSON(t, dir)
 
 	want := map[string]any{
-		"$schema":                    "https://datapackage.org/profiles/2.0/datapackage.json",
-		"name":                       "cc-news-canonical",
-		"version":                    "v1",
-		"articleSchema":              "article/v2",
-		"language":                   "eng",
-		"identity/idKind":            "urlHash",
-		"identity/algorithm":         "uuidv5",
-		"producedBy/tool":            "datapipe preprocess",
-		"report/read":                10.0,
-		"report/written":             7.0,
-		"report/dropped/invalid_url": 2.0,
-		"report/deduped/url":         1.0,
-		"embedding/model":            "qwen3-embedding:0.6b",
-		"embedding/hfModel":          "Qwen/Qwen3-Embedding-0.6B",
-		"embedding/revision":         "abc123",
-		"embedding/tag":              "qwen3-embedding:0.6b@1024",
-		"embedding/dim":              1024.0,
-		"embedding/recipe":           "lead-v1",
-		"embedding/pooling":          "last_token",
-		"embedding/normalized":       true,
-		"embedding/maxTokens":        512.0,
-		"embedding/batchSize":        64.0,
-		"embedding/dtype":            "float16",
-		"canonical/name":             "cc-news-canonical",
-		"canonical/version":          "v1",
-		"canonical/resourceHash":     "sha256:" + zeros64,
-		"derivedFrom/name":           "cc-news-embeddings",
-		"derivedFrom/version":        "v1",
-		"derivedFrom/tag":            "qwen3-embedding:0.6b@2048",
-		"derivedFrom/resourceHash":   "sha256:" + zeros64,
+		"$schema":                                "https://datapackage.org/profiles/2.0/datapackage.json",
+		"name":                                   "cc-news-canonical",
+		"version":                                "v1",
+		"articleSchema":                          "article/v2",
+		"language":                               "eng",
+		"preprocess/id/kind":                     "urlHash",
+		"preprocess/id/algorithm":                "uuidv5",
+		"preprocess/lock/tool":                   "datapipe/0.0.0",
+		"producedBy/tool":                        "datapipe preprocess",
+		"preprocess/counts/read":                 10.0,
+		"preprocess/counts/written":              6.0,
+		"preprocess/counts/duplicates/same-page": 1.0,
+		"preprocess/counts/cleared/shared-body":  1.0,
+		"preprocess/checks/duplicates/result":    "error",
+		"preprocess/signals/headlines-sharing-body/atLeast/2": 3.0,
+		"embedding/model":          "qwen3-embedding:0.6b",
+		"embedding/hfModel":        "Qwen/Qwen3-Embedding-0.6B",
+		"embedding/revision":       "abc123",
+		"embedding/tag":            "qwen3-embedding:0.6b@1024",
+		"embedding/dim":            1024.0,
+		"embedding/recipe":         "lead-v1",
+		"embedding/pooling":        "last_token",
+		"embedding/normalized":     true,
+		"embedding/maxTokens":      512.0,
+		"embedding/batchSize":      64.0,
+		"embedding/dtype":          "float16",
+		"canonical/name":           "cc-news-canonical",
+		"canonical/version":        "v1",
+		"canonical/resourceHash":   "sha256:" + zeros64,
+		"derivedFrom/name":         "cc-news-embeddings",
+		"derivedFrom/version":      "v1",
+		"derivedFrom/tag":          "qwen3-embedding:0.6b@2048",
+		"derivedFrom/resourceHash": "sha256:" + zeros64,
 	}
 	for pointer, value := range want {
 		if got := lookup(doc, pointer); got != value {

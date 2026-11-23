@@ -113,51 +113,204 @@
       },
       "additionalProperties": false
     },
-    "identity": {
+    "language": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "preprocess": {
       "type": "object",
       "required": [
-        "idKind",
-        "algorithm"
+        "id",
+        "lock",
+        "counts"
       ],
       "properties": {
-        "algorithm": {
-          "type": "string",
-          "enum": [
-            "uuidv5",
-            "uuidv7"
-          ]
-        },
-        "idKind": {
-          "type": "string",
-          "enum": [
-            "urlHash",
-            "random"
-          ]
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "unique": {
-          "type": "array",
-          "items": {
+        "checks": {
+          "type": "object",
+          "additionalProperties": {
             "type": "object",
             "required": [
-              "name",
-              "fields"
+              "observed",
+              "result"
             ],
             "properties": {
-              "fields": {
-                "description": "Article fields whose values together no two articles share; a record with any of them empty never matches",
+              "error": {
+                "type": "number"
+              },
+              "observed": {
+                "type": "number"
+              },
+              "result": {
+                "type": "string",
+                "enum": [
+                  "pass",
+                  "warn",
+                  "error"
+                ]
+              },
+              "warn": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "counts": {
+          "type": "object",
+          "required": [
+            "read",
+            "written"
+          ],
+          "properties": {
+            "cleared": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            },
+            "dropped": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            },
+            "duplicates": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            },
+            "read": {
+              "type": "integer"
+            },
+            "written": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false
+        },
+        "id": {
+          "type": "object",
+          "required": [
+            "kind",
+            "algorithm"
+          ],
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "enum": [
+                "uuidv5",
+                "uuidv7"
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "urlHash",
+                "random"
+              ]
+            },
+            "namespace": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "lock": {
+          "type": "object",
+          "required": [
+            "spec",
+            "mapping",
+            "input",
+            "tool"
+          ],
+          "properties": {
+            "input": {
+              "type": "string"
+            },
+            "mapping": {
+              "type": "string"
+            },
+            "spec": {
+              "type": "string"
+            },
+            "tool": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "signals": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "distinct",
+              "sharing",
+              "articles",
+              "median",
+              "p90",
+              "p99",
+              "max"
+            ],
+            "properties": {
+              "articles": {
+                "type": "integer"
+              },
+              "atLeast": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer"
+                }
+              },
+              "distinct": {
+                "type": "string"
+              },
+              "max": {
+                "type": "integer"
+              },
+              "median": {
+                "type": "integer"
+              },
+              "p90": {
+                "type": "integer"
+              },
+              "p99": {
+                "type": "integer"
+              },
+              "sharing": {
+                "type": "string"
+              },
+              "top": {
                 "type": "array",
                 "items": {
-                  "type": "string"
-                },
-                "minItems": 1
+                  "type": "object",
+                  "required": [
+                    "sharing",
+                    "value",
+                    "articles"
+                  ],
+                  "properties": {
+                    "articles": {
+                      "type": "integer"
+                    },
+                    "sharing": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "integer"
+                    },
+                    "within": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
               },
-              "name": {
-                "description": "Name the preprocess report counts this rule's drops under",
-                "type": "string",
-                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+              "within": {
+                "type": "string"
               }
             },
             "additionalProperties": false
@@ -165,12 +318,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "language": {
-      "type": "string"
-    },
-    "name": {
-      "type": "string"
     },
     "producedBy": {
       "type": "object",
@@ -195,34 +342,6 @@
         },
         "version": {
           "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "report": {
-      "type": "object",
-      "required": [
-        "read",
-        "written"
-      ],
-      "properties": {
-        "deduped": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "integer"
-          }
-        },
-        "dropped": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "integer"
-          }
-        },
-        "read": {
-          "type": "integer"
-        },
-        "written": {
-          "type": "integer"
         }
       },
       "additionalProperties": false

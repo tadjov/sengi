@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.sengi.sh/preprocess-v1",
+  "title": "Preprocess",
+  "type": "object",
+  "required": [
+    "kind",
+    "version",
+    "name",
+    "input",
+    "mapping",
+    "output",
+    "id"
+  ],
+  "properties": {
+    "checks": {
+      "description": "Budgets on the whole output; an error publishes nothing",
+      "type": "object",
+      "properties": {
+        "cleared": {
+          "description": "Articles written with at least one field cleared",
+          "type": "object",
+          "properties": {
+            "error": {
+              "description": "A share over this fails the run and publishes nothing",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "warn": {
+              "description": "A share over this is recorded as a warning",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "dropped": {
+          "description": "Records dropped: missing a required field, malformed, or removed by a drop rule",
+          "type": "object",
+          "properties": {
+            "error": {
+              "description": "A share over this fails the run and publishes nothing",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "warn": {
+              "description": "A share over this is recorded as a warning",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "duplicates": {
+          "description": "Records dropped as a duplicate",
+          "type": "object",
+          "properties": {
+            "error": {
+              "description": "A share over this fails the run and publishes nothing",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "warn": {
+              "description": "A share over this is recorded as a warning",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "duplicates": {
+      "description": "Which records are one article",
+      "type": "object",
+      "properties": {
+        "keep": {
+          "description": "Which record of one article is kept: the first in raw order",
+          "type": "string",
+          "enum": [
+            "first"
+          ],
+          "default": "first"
+        },
+        "keys": {
+          "description": "Field sets no two articles share, compared with whitespace collapsed; an empty field never matches",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "fields"
+            ],
+            "properties": {
+              "fields": {
+                "description": "Article fields whose values together no two articles share",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "name": {
+                "description": "Name the counts and rejects give this key's duplicates",
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "id": {
+      "description": "How each article gets its id",
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "description": "urlHash: the uuidv5 of the url, the same id on every run; random: a new uuidv7 per article on every run",
+          "type": "string",
+          "enum": [
+            "urlHash",
+            "random"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "input": {
+      "description": "Raw data package, a datapackage.json or its folder: relative to this file, absolute, https:// or s3://",
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "description": "Resource type identifier",
+      "type": "string",
+      "enum": [
+        "Preprocess"
+      ]
+    },
+    "mapping": {
+      "description": "Mapping spec, relative to this file or absolute",
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "description": "Dataset id, lowercase kebab-case",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "output": {
+      "description": "Where the canonical package goes",
+      "type": "object",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "format": {
+          "description": "Articles file format",
+          "type": "string",
+          "enum": [
+            "parquet",
+            "jsonl"
+          ],
+          "default": "parquet"
+        },
+        "path": {
+          "description": "Folder that receives \u003cversion\u003e/, relative to this file or absolute",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "rules": {
+      "description": "A threshold on a signal plus an action, applied in order",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "when",
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "description": "clear empties field; drop removes the article",
+            "type": "string",
+            "enum": [
+              "clear",
+              "drop"
+            ]
+          },
+          "field": {
+            "description": "Field a clear empties; it must not be required",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name the counts, rejects and changes give this rule",
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "when": {
+            "description": "When the rule fires",
+            "type": "object",
+            "required": [
+              "signal",
+              "atLeast"
+            ],
+            "properties": {
+              "atLeast": {
+                "description": "Fires on an article whose signal value is at least this",
+                "type": "integer",
+                "minimum": 1
+              },
+              "signal": {
+                "description": "Signal the threshold applies to",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "signals": {
+      "description": "Numbers per kept article that only the whole corpus can give",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "distinct",
+          "sharing"
+        ],
+        "properties": {
+          "distinct": {
+            "description": "Field whose distinct values are counted",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name rules refer to",
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "sharing": {
+            "description": "Field whose value the counted articles share",
+            "type": "string"
+          },
+          "within": {
+            "description": "Field that splits the corpus into separate groups; unset counts over the whole corpus",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "version": {
+      "description": "Spec version",
+      "type": "string",
+      "enum": [
+        "v1"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

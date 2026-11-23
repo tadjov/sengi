@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 import torch
@@ -52,6 +53,35 @@ def test_refuses_a_canonical_resource_whose_bytes_do_not_match_its_hash(
     assert result.returncode != 0
     assert "hash" in result.stderr
     assert not (tmp_path / "out").exists()
+
+
+def test_embeds_the_articles_of_a_package_that_also_lists_its_rejects_and_changes(
+    tmp_path, tiny_model_args
+):
+    canonical = write_canonical_package(tmp_path / "canonical", ROWS, "parquet")
+    descriptor = json.loads(canonical.descriptor.read_text(encoding="utf-8"))
+    for name in ("rejects", "changes"):
+        audit = canonical.descriptor.parent / f"{name}.parquet"
+        pq.write_table(pa.table({"id": [ROWS[0]["id"]]}), audit)
+        descriptor["resources"].append(
+            {
+                "name": name,
+                "path": audit.name,
+                "format": "parquet",
+                "bytes": audit.stat().st_size,
+                "hash": sha256_of(audit),
+            }
+        )
+    canonical.descriptor.write_text(json.dumps(descriptor), encoding="utf-8")
+
+    result = embed(canonical.descriptor, tmp_path / "out", *tiny_model_args)
+
+    assert result.returncode == 0, result.stderr
+    package = only_package(tmp_path / "out")
+    ids, _ = read_embeddings(package)
+    assert ids == [row["id"] for row in ROWS]
+    written = json.loads(package.read_text(encoding="utf-8"))
+    assert written["canonical"]["resourceHash"] == sha256_of(canonical.resource)
 
 
 def read_embeddings(descriptor: Path) -> tuple[list[str], np.ndarray]:

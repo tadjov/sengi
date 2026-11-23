@@ -1,0 +1,35 @@
+# Mapping example: the columns of a raw news dataset, mapped onto articles.
+
+kind: Mapping
+version: v1
+name: example
+description: "Field mapping for a raw news dataset"
+missingValues: ["", "N/A"]
+constants:
+  Language: eng
+fields:
+  - source: url
+    type: url
+    target: URL
+    required: true
+  - source: title
+    target: Title
+    required: true
+  - source: summary
+    target: Description
+  - source: content
+    target: Content
+  - source: published_date
+    type: datetime
+    format: "2006-01-02 15:04:05"
+    target: PublishedAt
+  - source: publication
+    target: Metadata.PublisherName
+  - source: authors
+    target: Metadata.Authors
+    separator: ";"
+  - source: section
+    target: Metadata.Section
+  - source: word_count
+    type: integer
+    target: Metadata.Extra.wordCount

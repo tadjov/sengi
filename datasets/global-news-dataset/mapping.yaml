@@ -1,54 +1,33 @@
-kind: DataMapper
+kind: Mapping
 version: v1
-metadata:
-  name: "Kaggle Global News Dataset"
-  description: "Mapping for Kaggle Global News Dataset fields. The source column content is the truncated NewsAPI excerpt of full_content and has no Article target."
-dataset: kaggle
-identity:
-  idKind: urlHash
-dateFormat: "2006-01-02 15:04:05.000000"
+name: global-news
+description: "Kaggle Global News Dataset. The source column content is the truncated NewsAPI excerpt of full_content and has no Article target."
 constants:
   Language: eng
-output:
-  format: jsonl
-fieldMappings:
- - source: "title"
-   sourceType: "string"
-   target: "Title"
-   required: true
- - source: "author"
-   sourceType: "string"
-   target: "Metadata.Authors"
-   required: false
- - source: "description"
-   sourceType: "string"
-   target: "Description"
-   required: true
- - source: "full_content"
-   sourceType: "string"
-   target: "Content"
-   required: false
- - source: "url"
-   sourceType: "url"
-   target: "URL"
-   required: true
- - source: "article_id"
-   sourceType: "string"
-   target: "Metadata.ExternalID"
-   required: false
- - source: "published_at"
-   sourceType: "datetime"
-   target: "PublishedAt"
-   required: false
- - source: "source_id"
-   sourceType: "string"
-   target: "Metadata.Extra.sourceId"
-   required: false
- - source: "source_name"
-   sourceType: "string"
-   target: "Metadata.PublisherName"
-   required: false
- - source: "category"
-   sourceType: "string"
-   target: "Metadata.Section"
-   required: false
+fields:
+  - source: title
+    target: Title
+    required: true
+  - source: author
+    target: Metadata.Authors
+  - source: description
+    target: Description
+    required: true
+  - source: full_content
+    target: Content
+  - source: url
+    type: url
+    target: URL
+    required: true
+  - source: article_id
+    target: Metadata.ExternalID
+  - source: published_at
+    type: datetime
+    format: "2006-01-02 15:04:05.000000"
+    target: PublishedAt
+  - source: source_id
+    target: Metadata.Extra.sourceId
+  - source: source_name
+    target: Metadata.PublisherName
+  - source: category
+    target: Metadata.Section

@@ -1,0 +1,21 @@
+title,text,description,url,date,authors,words
+Budget passes,The budget passed on Monday.,Lawmakers vote,https://example.com/budget,2017-01-02 10:00:00,Ann Lee;Bo Chan,120
+Budget passes again,A different body under the same url.,,https://example.com/budget,2017-01-02 11:00:00,,
+Budget  passes, The budget passed  on Monday. ,Lawmakers vote,https://example.com/budget-copy,2017-01-02 12:00:00,,
+Tariffs rise,A tariff story at the copy's url.,,https://example.com/budget-copy,2017-01-03 09:00:00,,
+Budget passes,The budget passed on Monday.,,https://EXAMPLE.com/budget,2017-01-03 09:30:00,,
+Budget passes,A variant url with its own body.,,https://example.com/budget?ref=home,2017-01-03 09:45:00,,
+,A body without a title.,,https://example.com/untitled,2017-01-03 10:00:00,,
+No url,A body without a usable url.,,not a url,2017-01-03 10:00:00,,
+Budget passes,,Lawmakers vote,https://example.com/budget-no-body,2017-01-04 08:00:00,,
+Budget passes,The budget passed on Monday.,,https://other.org/budget,2017-01-04 08:30:00,,
+Storm hits coast,Subscribe to read the full story.,,https://junk.net/storm,2017-02-01 08:00:00,Cy Doe,40
+Markets fall,Subscribe to read the full story.,Stocks slide,https://junk.net/markets,2017-02-01 09:00:00,,
+Election called,Subscribe to read the full story.,,https://junk.net/election,2017-02-01 10:00:00,,
+Team wins final,Subscribe  to read the full story.,,https://junk.net/final,2017-02-01 11:00:00,,
+Bridge opens,Shared by two headlines.,,https://junk.net/bridge,2017-02-02 08:00:00,,
+Bridge closes,Shared by two headlines.,,https://junk.net/bridge-closes,2017-02-02 09:00:00,,
+Rain expected,Forecast body one.,News from around the web.,https://slogan.com/rain,2017-03-01 08:00:00,,
+Heat wave ends,Forecast body two.,News from around the web.,https://slogan.com/heat,2017-03-01 09:00:00,,
+Snow returns,Forecast body three.,News from around the web.,https://slogan.com/snow,2017-03-01 10:00:00,,
+Fog lifts,Forecast body four.,Fog lifts by noon.,https://slogan.com/fog,2017-03-01 11:00:00,,

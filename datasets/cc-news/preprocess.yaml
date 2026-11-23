@@ -1,0 +1,46 @@
+kind: Preprocess
+version: v1
+name: cc-news
+input: raw/datapackage.json
+mapping: mapping.yaml
+output:
+  path: canonical
+  format: parquet
+
+id:
+  kind: urlHash
+
+duplicates:
+  keep: first
+  keys:
+    - name: same-url
+      fields: [URL]
+    - name: same-page
+      fields: [PublisherDomain, Title, Content]
+
+signals:
+  - name: headlines-sharing-body
+    distinct: Title
+    sharing: Content
+    within: PublisherDomain
+  - name: headlines-sharing-description
+    distinct: Title
+    sharing: Description
+    within: PublisherDomain
+
+rules:
+  # From 3 headlines up, 85-91% of shared-body groups have unrelated headlines; at 2 only half do.
+  - name: shared-body
+    when: {signal: headlines-sharing-body, atLeast: 3}
+    action: clear
+    field: Content
+  # Shared descriptions are site taglines from 5 headlines up; at 3-4 they still include real stories.
+  - name: shared-description
+    when: {signal: headlines-sharing-description, atLeast: 5}
+    action: clear
+    field: Description
+
+checks:
+  dropped: {warn: 0.01, error: 0.02}
+  duplicates: {warn: 0.08, error: 0.10}
+  cleared: {warn: 0.10, error: 0.12}

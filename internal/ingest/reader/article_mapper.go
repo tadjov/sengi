@@ -12,24 +12,24 @@ import (
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
+	"github.com/tadjov/sengi/pkg/apis/mapping"
 	"github.com/tadjov/sengi/pkg/utils"
 )
 
 type ArticleMapper struct {
-	cfg      *datamapping.DataMapper
+	spec     mapping.Spec
 	language language.Code
 }
 
-func NewArticleMapper(cfg *datamapping.DataMapper) (*ArticleMapper, error) {
-	if err := cfg.Validate(); err != nil {
+func NewArticleMapper(spec mapping.Spec) (*ArticleMapper, error) {
+	if err := spec.Validate(); err != nil {
 		return nil, err
 	}
-	lang, err := cfg.Constants.ResolvedLanguage()
+	lang, err := spec.Constants.ResolvedLanguage()
 	if err != nil {
 		return nil, err
 	}
-	return &ArticleMapper{cfg: cfg, language: lang}, nil
+	return &ArticleMapper{spec: spec, language: lang}, nil
 }
 
 // Map returns the article without an id, or a *MappingDropError when a required value is missing or invalid.
@@ -37,38 +37,27 @@ func (m *ArticleMapper) Map(record map[string]string) (document.Article, error) 
 	article := document.Article{Language: m.language}
 	val := reflect.ValueOf(&article).Elem()
 
-	for _, fm := range m.cfg.FieldMappings {
-		raw, present := record[fm.Source]
-		if !present {
-			if fm.Required {
-				return document.Article{}, &MappingDropError{Reason: ReasonMissingColumn, Source: fm.Source, Target: fm.Target}
+	for _, field := range m.spec.Fields {
+		raw, present := record[field.Source]
+		if !present || m.spec.IsMissing(raw) {
+			if field.Required {
+				return document.Article{}, &MappingDropError{Reason: ReasonMissing, Source: field.Source, Target: field.Target}
 			}
 			continue
 		}
 
-		if strings.TrimSpace(raw) == "" {
-			if fm.Required {
-				return document.Article{}, &MappingDropError{Reason: ReasonEmptyValue, Source: fm.Source, Target: fm.Target}
-			}
-			continue
-		}
-
-		converted, err := m.convert(raw, fm)
+		converted, err := m.convert(raw, field)
 		if err == nil && isBlank(converted) {
-			err = fmt.Errorf("value %q converted to an empty %s", raw, fm.SourceType)
+			err = fmt.Errorf("value %q converted to an empty %s", raw, field.ResolvedType())
 		}
 		if err == nil {
-			err = m.assign(val, &article, fm.Target, converted)
+			err = m.assign(val, &article, field.Target, converted)
 		}
 		if err != nil {
-			if fm.Required {
-				reason := ReasonConversion
-				if errors.Is(err, errInvalidURL) {
-					reason = ReasonInvalidURL
-				}
-				return document.Article{}, &MappingDropError{Reason: reason, Source: fm.Source, Target: fm.Target, Err: err}
+			if field.Required {
+				return document.Article{}, &MappingDropError{Reason: ReasonInvalid, Source: field.Source, Target: field.Target, Err: err}
 			}
-			slog.Warn("skipping optional field", "field", fm.Target, "error", err)
+			slog.Warn("skipping optional field", "field", field.Target, "error", err)
 		}
 	}
 
@@ -78,22 +67,11 @@ func (m *ArticleMapper) Map(record map[string]string) (document.Article, error) 
 
 var errInvalidURL = errors.New("not an absolute http(s) url")
 
-func (m *ArticleMapper) convert(raw string, fm datamapping.FieldMapping) (any, error) {
-	sourceType, err := fm.ResolvedSourceType()
-	if err != nil {
-		return nil, err
+func (m *ArticleMapper) convert(raw string, field mapping.Field) (any, error) {
+	if mapping.IsListTarget(field.Target) {
+		return splitList(raw, field.Separator), nil
 	}
-	if datamapping.IsListTarget(fm.Target) {
-		return splitList(raw, fm.Separator), nil
-	}
-	if sourceType == datamapping.SourceURL {
-		normalized, ok := NormalizeURL(raw)
-		if !ok {
-			return nil, fmt.Errorf("value %q: %w", raw, errInvalidURL)
-		}
-		return normalized, nil
-	}
-	return convertValueToType(raw, string(sourceType), m.cfg.DateFormat)
+	return convertValue(raw, field.ResolvedType(), field.ResolvedFormat())
 }
 
 // splitList without a separator keeps raw as one element.
@@ -115,7 +93,7 @@ func splitList(raw, separator string) []string {
 // struct hop then a map key, which reflection cannot walk in one pass, so it is
 // matched by prefix ahead of the ordinary struct paths.
 func (m *ArticleMapper) assign(val reflect.Value, article *document.Article, target string, converted any) error {
-	if key, ok := strings.CutPrefix(target, datamapping.ExtraTargetPrefix); ok {
+	if key, ok := strings.CutPrefix(target, mapping.ExtraTargetPrefix); ok {
 		if article.Metadata.Extra == nil {
 			article.Metadata.Extra = make(map[string]any)
 		}

@@ -1,0 +1,16 @@
+kind: Preprocess
+version: v1
+name: all-the-news
+input: raw/datapackage.json
+mapping: mapping.yaml
+output:
+  path: canonical
+  format: parquet
+
+id:
+  kind: urlHash
+
+duplicates:
+  keys:
+    - name: same-url
+      fields: [URL]

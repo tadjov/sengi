@@ -8,12 +8,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -28,43 +30,51 @@ import (
 	"github.com/tadjov/sengi/internal/progress/progresstest"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
-	"github.com/tadjov/sengi/pkg/apis/datamapping"
+	"github.com/tadjov/sengi/pkg/apis/preprocess"
 )
 
-const ccNewsLikeMapping = `kind: DataMapper
+const baseMapping = `kind: Mapping
 version: v1
-metadata:
-  name: Test news
-dataset: test_news
-identity:
-  idKind: urlHash
-dateFormat: "2006-01-02 15:04:05"
+name: test-news
 constants:
   Language: eng
-output:
-  format: parquet
-fieldMappings:
+fields:
   - {source: title, target: Title, required: true}
   - {source: text, target: Content}
   - {source: description, target: Description}
-  - {source: url, sourceType: url, target: URL, required: true}
-  - {source: date, sourceType: datetime, target: PublishedAt}
+  - {source: url, type: url, target: URL, required: true}
+  - {source: date, type: datetime, format: "2006-01-02 15:04:05", target: PublishedAt}
   - {source: authors, target: Metadata.Authors, separator: ";"}
-  - {source: words, sourceType: int, target: Metadata.Extra.wordCount}
+  - {source: words, type: integer, target: Metadata.Extra.wordCount}
 `
 
-func mappingWith(t *testing.T, old, replacement string) string {
+// urlKeySpec keeps the first record of each url and nothing else.
+const urlKeySpec = `kind: Preprocess
+version: v1
+name: test-news
+input: raw
+mapping: mapping.yaml
+output:
+  path: canonical
+id:
+  kind: urlHash
+duplicates:
+  keys:
+    - {name: same-url, fields: [URL]}
+`
+
+func specWith(t *testing.T, spec, old, replacement string) string {
 	t.Helper()
-	require.Contains(t, ccNewsLikeMapping, old)
-	return strings.Replace(ccNewsLikeMapping, old, replacement, 1)
+	require.Contains(t, spec, old)
+	return strings.Replace(spec, old, replacement, 1)
 }
 
-func mappingWithIdentity(t *testing.T, idKind, lines string) string {
+func withKeys(t *testing.T, keys string) string {
 	t.Helper()
-	return mappingWith(t, "identity:\n  idKind: urlHash\n", "identity:\n  idKind: "+idKind+"\n"+lines)
+	return specWith(t, urlKeySpec, "    - {name: same-url, fields: [URL]}\n", keys)
 }
 
-const samePageRule = "  unique:\n    - {name: same-page, fields: [PublisherDomain, Title, Content]}\n"
+const samePageKeys = "    - {name: same-url, fields: [URL]}\n    - {name: same-page, fields: [PublisherDomain, Title, Content]}\n"
 
 // rawShardRow is a raw shard as the Hugging Face mirror lands it.
 type rawShardRow struct {
@@ -89,6 +99,13 @@ func csvFile(name, content string) rawFile {
 
 func jsonlFile(name, content string) rawFile {
 	return rawFile{name: name, format: "jsonl", content: []byte(content)}
+}
+
+func fixtureFile(t *testing.T, name string) rawFile {
+	t.Helper()
+	content, err := os.ReadFile(filepath.Join("testdata", "preprocess", name))
+	require.NoError(t, err)
+	return rawFile{name: name, format: "csv", content: content}
 }
 
 // Two rows per row group expose a reader that walks row groups out of order.
@@ -131,28 +148,52 @@ func writeRawPackage(t *testing.T, dir, version string, files ...rawFile) {
 	require.NoError(t, err)
 }
 
+// preprocessRun is a dataset folder: the raw package, the mapping and the spec side by side.
 type preprocessRun struct {
+	dir         string
 	rawDir      string
 	mappingPath string
+	specPath    string
 	outputRoot  string
 }
 
-func newPreprocessRun(t *testing.T, mapping string, files ...rawFile) preprocessRun {
+func newPreprocessRun(t *testing.T, spec, mapping string, files ...rawFile) preprocessRun {
 	t.Helper()
 	dir := t.TempDir()
 	run := preprocessRun{
+		dir:         dir,
 		rawDir:      filepath.Join(dir, "raw"),
 		mappingPath: filepath.Join(dir, "mapping.yaml"),
+		specPath:    filepath.Join(dir, "preprocess.yaml"),
 		outputRoot:  filepath.Join(dir, "canonical"),
 	}
 	require.NoError(t, os.WriteFile(run.mappingPath, []byte(mapping), 0o644))
+	require.NoError(t, os.WriteFile(run.specPath, []byte(spec), 0o644))
 	writeRawPackage(t, run.rawDir, rawVersion, files...)
 	return run
 }
 
+// writingTo is the same run with a copy of its spec that publishes into another folder.
+func (r preprocessRun) writingTo(t *testing.T, folder string) preprocessRun {
+	t.Helper()
+	spec, err := os.ReadFile(r.specPath)
+	require.NoError(t, err)
+	r.specPath = filepath.Join(r.dir, folder+".yaml")
+	r.outputRoot = filepath.Join(r.dir, folder)
+	require.NoError(t, os.WriteFile(r.specPath, []byte(specWith(t, string(spec), "  path: canonical\n", "  path: "+folder+"\n")), 0o644))
+	return r
+}
+
+func (r preprocessRun) rewriteSpec(t *testing.T, old, replacement string) {
+	t.Helper()
+	spec, err := os.ReadFile(r.specPath)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(r.specPath, []byte(specWith(t, string(spec), old, replacement)), 0o644))
+}
+
 func (r preprocessRun) execute(ctx context.Context, flags ...string) error {
 	cmd := newPreprocessCmd()
-	cmd.SetArgs(append([]string{"--input", r.rawDir, "--mapping", r.mappingPath, "--output", r.outputRoot}, flags...))
+	cmd.SetArgs(append([]string{r.specPath}, flags...))
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
 	return cmd.ExecuteContext(ctx)
@@ -174,25 +215,39 @@ func sha256Of(t *testing.T, path string) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
-// canonicalParquetRow reads the contract's column names, independently of the writer.
+// canonicalParquetRow reads the contract's columns independently of the writer; nil is NULL.
 type canonicalParquetRow struct {
-	ID              string `parquet:"id"`
-	URL             string `parquet:"url"`
-	Title           string `parquet:"title"`
-	Description     string `parquet:"description,optional"`
-	Content         string `parquet:"content"`
-	PublishedAt     string `parquet:"publishedAt,optional"`
-	Language        string `parquet:"language"`
-	PublisherDomain string `parquet:"publisherDomain,optional"`
-	Metadata        string `parquet:"metadata,optional"`
+	ID              string  `parquet:"id"`
+	URL             string  `parquet:"url"`
+	Title           string  `parquet:"title"`
+	Description     *string `parquet:"description,optional"`
+	Content         *string `parquet:"content,optional"`
+	PublishedAt     *string `parquet:"publishedAt,optional"`
+	Language        string  `parquet:"language"`
+	PublisherDomain *string `parquet:"publisherDomain,optional"`
+	Metadata        *string `parquet:"metadata,optional"`
 }
 
 type canonicalRows struct {
-	urls  []string
-	byURL map[string]document.Article
+	urls     []string
+	articles []document.Article
+	byURL    map[string]document.Article
+	parquet  []canonicalParquetRow
 }
 
-// readArticles opens the package as a loader would, verifying the resource hash.
+func readParquet[T any](t *testing.T, r io.ReaderAt) []T {
+	t.Helper()
+	reader := parquet.NewGenericReader[T](r)
+	defer reader.Close()
+	rows := make([]T, reader.NumRows())
+	n, err := reader.Read(rows)
+	if !errors.Is(err, io.EOF) {
+		require.NoError(t, err)
+	}
+	return rows[:n]
+}
+
+// readArticles opens the package as a loader would, verifying the resource hashes.
 func readArticles(t *testing.T, dir string) (datapackage.Package, canonicalRows) {
 	t.Helper()
 	ctx := context.Background()
@@ -205,9 +260,10 @@ func readArticles(t *testing.T, dir string) (datapackage.Package, canonicalRows)
 	rows := canonicalRows{byURL: map[string]document.Article{}}
 	add := func(a document.Article) {
 		rows.urls = append(rows.urls, a.URL)
+		rows.articles = append(rows.articles, a)
 		rows.byURL[a.URL] = a
 	}
-	switch format := opened.Package.Resources[0].Format; format {
+	switch format := resourceNamed(t, opened.Package, datapackage.ArticlesResource).Format; format {
 	case "jsonl":
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
@@ -217,14 +273,8 @@ func readArticles(t *testing.T, dir string) (datapackage.Package, canonicalRows)
 		}
 		require.NoError(t, scanner.Err())
 	case "parquet":
-		r := parquet.NewGenericReader[canonicalParquetRow](file)
-		defer r.Close()
-		buf := make([]canonicalParquetRow, r.NumRows())
-		n, err := r.Read(buf)
-		if !errors.Is(err, io.EOF) {
-			require.NoError(t, err)
-		}
-		for _, row := range buf[:n] {
+		rows.parquet = readParquet[canonicalParquetRow](t, file)
+		for _, row := range rows.parquet {
 			add(articleFromParquet(t, row))
 		}
 	default:
@@ -233,25 +283,79 @@ func readArticles(t *testing.T, dir string) (datapackage.Package, canonicalRows)
 	return opened.Package, rows
 }
 
+func resourceNamed(t *testing.T, pkg datapackage.Package, name string) datapackage.Resource {
+	t.Helper()
+	for _, r := range pkg.Resources {
+		if r.Name == name {
+			return r
+		}
+	}
+	t.Fatalf("package %s lists no %s resource", pkg.Name, name)
+	return datapackage.Resource{}
+}
+
 func articleFromParquet(t *testing.T, row canonicalParquetRow) document.Article {
 	t.Helper()
-	encoded, err := json.Marshal(map[string]any{
-		"id": row.ID, "url": row.URL, "title": row.Title, "description": row.Description,
-		"content": row.Content, "language": row.Language, "publisherDomain": row.PublisherDomain,
-		"metadata": json.RawMessage(row.Metadata),
-	})
+	text := func(v *string) string {
+		if v == nil {
+			return ""
+		}
+		return *v
+	}
+	doc := map[string]any{
+		"id": row.ID, "url": row.URL, "title": row.Title, "description": text(row.Description),
+		"content": text(row.Content), "language": row.Language, "publisherDomain": text(row.PublisherDomain),
+	}
+	if row.Metadata != nil {
+		doc["metadata"] = json.RawMessage(*row.Metadata)
+	}
+	encoded, err := json.Marshal(doc)
 	require.NoError(t, err)
 	var a document.Article
 	require.NoError(t, json.Unmarshal(encoded, &a))
-	if row.PublishedAt != "" {
-		a.PublishedAt, err = time.Parse(time.RFC3339, row.PublishedAt)
+	if row.PublishedAt != nil {
+		a.PublishedAt, err = time.Parse(time.RFC3339, *row.PublishedAt)
 		require.NoError(t, err)
 	}
 	return a
 }
 
+// rejectParquetRow and changeParquetRow read the audit resources by their contract column names.
+type rejectParquetRow struct {
+	Resource    string  `parquet:"resource"`
+	Row         int64   `parquet:"row"`
+	URL         *string `parquet:"url,optional"`
+	Stage       string  `parquet:"stage"`
+	Rule        *string `parquet:"rule,optional"`
+	Field       *string `parquet:"field,optional"`
+	Reason      *string `parquet:"reason,optional"`
+	ID          *string `parquet:"id,optional"`
+	KeptID      *string `parquet:"keptId,optional"`
+	SignalValue *int64  `parquet:"signalValue,optional"`
+}
+
+type changeParquetRow struct {
+	ID          string `parquet:"id"`
+	Field       string `parquet:"field"`
+	Rule        string `parquet:"rule"`
+	SignalValue int64  `parquet:"signalValue"`
+	Value       string `parquet:"value"`
+}
+
+func readResource[T any](t *testing.T, dir, name string) []T {
+	t.Helper()
+	opened, err := datapackage.Open(t.Context(), dir)
+	require.NoError(t, err)
+	file, err := opened.Resource(t.Context(), name)
+	require.NoError(t, err)
+	defer file.Close()
+	return readParquet[T](t, file)
+}
+
+func ptr[T any](v T) *T { return &v }
+
 func TestPreprocess_WritesACanonicalPackageInSourceOrder(t *testing.T) {
-	run := newPreprocessRun(t, ccNewsLikeMapping,
+	run := newPreprocessRun(t, urlKeySpec, baseMapping,
 		parquetFile(t, "train-0.parquet",
 			rawShardRow{Title: "Storm hits coast", Text: "Body one", Description: "Lead one", URL: "https://example.com/a/1", Date: "2019-03-04 05:06:07", Authors: "Jane Doe; John Roe", Words: "412"},
 			rawShardRow{Title: "Markets fall", Text: "Body two", URL: "https://example.com/a/2"},
@@ -262,7 +366,8 @@ func TestPreprocess_WritesACanonicalPackageInSourceOrder(t *testing.T) {
 
 	require.NoError(t, run.execute(t.Context()))
 
-	pkg, rows := readArticles(t, run.packageDir(t))
+	dir := run.packageDir(t)
+	pkg, rows := readArticles(t, dir)
 	assert.Equal(t, []string{
 		"https://example.com/a/1", "https://example.com/a/2", "https://example.com/a/3",
 		"https://example.com/b/4", "https://example.com/b/5",
@@ -276,19 +381,310 @@ func TestPreprocess_WritesACanonicalPackageInSourceOrder(t *testing.T) {
 	assert.Equal(t, language.English, first.Language)
 	assert.Equal(t, []string{"Jane Doe", "John Roe"}, first.Metadata.Authors)
 	assert.Equal(t, map[string]any{"wordCount": float64(412)}, first.Metadata.Extra)
-	assert.Equal(t, language.English, rows.byURL["https://example.com/b/5"].Language)
 
 	assert.Equal(t, "test-news-canonical", pkg.Name)
 	assert.Equal(t, "article/v2", pkg.ArticleSchema)
 	assert.Equal(t, language.English, pkg.Language)
-	resource := pkg.Resources[0]
-	assert.Equal(t, "articles", resource.Name)
-	assert.Equal(t, "articles.parquet", resource.Path)
-	assert.Equal(t, "parquet", resource.Format)
-	assert.Equal(t, sha256Of(t, filepath.Join(run.packageDir(t), "articles.parquet")), resource.Hash)
-	assert.Equal(t, &datapackage.Report{Read: 5, Written: 5}, pkg.Report)
+	for _, want := range []datapackage.Resource{
+		{Name: "articles", Path: "articles.parquet", Format: "parquet"},
+		{Name: "rejects", Path: "rejects.parquet", Format: "parquet"},
+		{Name: "changes", Path: "changes.parquet", Format: "parquet"},
+	} {
+		got := resourceNamed(t, pkg, want.Name)
+		assert.Equal(t, want.Path, got.Path)
+		assert.Equal(t, want.Format, got.Format)
+		assert.Equal(t, sha256Of(t, filepath.Join(dir, want.Path)), got.Hash)
+	}
+	assert.Equal(t, datapackage.Counts{Read: 5, Written: 5, Duplicates: map[string]int64{"same-url": 0}}, pkg.Preprocess.Counts)
 	assert.Equal(t, []datapackage.Source{{Title: "Hugging Face example/news", Path: hubSource, Version: "0123abcd"}}, pkg.Sources)
 	assert.Equal(t, "datapipe preprocess", pkg.ProducedBy.Tool)
+}
+
+func readGoldenArticles(t *testing.T, name string) []document.Article {
+	t.Helper()
+	f, err := os.Open(filepath.Join("testdata", "preprocess", name))
+	require.NoError(t, err)
+	defer f.Close()
+	var articles []document.Article
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		var a document.Article
+		require.NoError(t, json.Unmarshal(scanner.Bytes(), &a))
+		articles = append(articles, a)
+	}
+	require.NoError(t, scanner.Err())
+	return articles
+}
+
+// origin-main-articles.jsonl is what datapipe preprocess on origin/main f0072c9 wrote for
+// records.csv with the unique rule same-page, before the spec split.
+func TestPreprocess_KeepsTheArticlesAndIDsTheMappingIdentityKept(t *testing.T) {
+	run := newPreprocessRun(t, withKeys(t, samePageKeys), baseMapping, fixtureFile(t, "records.csv"))
+
+	require.NoError(t, run.execute(t.Context()))
+
+	_, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, readGoldenArticles(t, "origin-main-articles.jsonl"), rows.articles)
+}
+
+// cleaningSpec is the fixture's spec at thresholds its small groups reach.
+func cleaningSpec(t *testing.T, rules string) string {
+	t.Helper()
+	return withKeys(t, samePageKeys) + `signals:
+  - {name: headlines-sharing-body, distinct: Title, sharing: Content, within: PublisherDomain}
+  - {name: headlines-sharing-description, distinct: Title, sharing: Description, within: PublisherDomain}
+rules:
+` + rules
+}
+
+const clearSharedText = `  - {name: shared-body, when: {signal: headlines-sharing-body, atLeast: 3}, action: clear, field: Content}
+  - {name: shared-description, when: {signal: headlines-sharing-description, atLeast: 3}, action: clear, field: Description}
+`
+
+func TestPreprocess_RecordsEveryRemovedRecordWithTheStageThatRemovedIt(t *testing.T) {
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), baseMapping, fixtureFile(t, "records.csv"))
+
+	require.NoError(t, run.execute(t.Context()))
+
+	dir := run.packageDir(t)
+	_, rows := readArticles(t, dir)
+	budget := rows.byURL["https://example.com/budget"].ID.String()
+	assert.Equal(t, []rejectParquetRow{
+		{Resource: "records.csv", Row: 1, Stage: "duplicates", URL: ptr("https://example.com/budget"), Rule: ptr("same-url"), KeptID: &budget},
+		{Resource: "records.csv", Row: 2, Stage: "duplicates", URL: ptr("https://example.com/budget-copy"), Rule: ptr("same-page"), KeptID: &budget},
+		{Resource: "records.csv", Row: 3, Stage: "duplicates", URL: ptr("https://example.com/budget-copy"), Rule: ptr("same-url"), KeptID: &budget},
+		{Resource: "records.csv", Row: 4, Stage: "duplicates", URL: ptr("https://example.com/budget"), Rule: ptr("same-url"), KeptID: &budget},
+		{Resource: "records.csv", Row: 6, Stage: "required", URL: ptr("https://example.com/untitled"), Field: ptr("Title"), Reason: ptr("missing")},
+		{Resource: "records.csv", Row: 7, Stage: "required", URL: ptr("not a url"), Field: ptr("URL"), Reason: ptr("invalid")},
+	}, readResource[rejectParquetRow](t, dir, datapackage.RejectsResource))
+}
+
+func TestPreprocess_ClearsTheSharedFieldOfEveryArticleInAGroupAtTheThreshold(t *testing.T) {
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), baseMapping, fixtureFile(t, "records.csv"))
+
+	require.NoError(t, run.execute(t.Context()))
+
+	dir := run.packageDir(t)
+	pkg, rows := readArticles(t, dir)
+	id := func(url string) string { return rows.byURL[url].ID.String() }
+	assert.Equal(t, []changeParquetRow{
+		{ID: id("https://junk.net/storm"), Field: "Content", Rule: "shared-body", SignalValue: 4, Value: "Subscribe to read the full story."},
+		{ID: id("https://junk.net/markets"), Field: "Content", Rule: "shared-body", SignalValue: 4, Value: "Subscribe to read the full story."},
+		{ID: id("https://junk.net/election"), Field: "Content", Rule: "shared-body", SignalValue: 4, Value: "Subscribe to read the full story."},
+		{ID: id("https://junk.net/final"), Field: "Content", Rule: "shared-body", SignalValue: 4, Value: "Subscribe  to read the full story."},
+		{ID: id("https://slogan.com/rain"), Field: "Description", Rule: "shared-description", SignalValue: 3, Value: "News from around the web."},
+		{ID: id("https://slogan.com/heat"), Field: "Description", Rule: "shared-description", SignalValue: 3, Value: "News from around the web."},
+		{ID: id("https://slogan.com/snow"), Field: "Description", Rule: "shared-description", SignalValue: 3, Value: "News from around the web."},
+	}, readResource[changeParquetRow](t, dir, datapackage.ChangesResource))
+
+	golden := map[string]document.Article{}
+	for _, a := range readGoldenArticles(t, "origin-main-articles.jsonl") {
+		golden[a.URL] = a
+	}
+	require.Equal(t, len(golden), len(rows.articles))
+	for _, got := range rows.articles {
+		want := golden[got.URL]
+		switch got.URL {
+		case "https://junk.net/storm", "https://junk.net/markets", "https://junk.net/election", "https://junk.net/final":
+			want.Content = ""
+		case "https://slogan.com/rain", "https://slogan.com/heat", "https://slogan.com/snow":
+			want.Description = ""
+		}
+		assert.Equal(t, want, got, got.URL)
+	}
+	assert.Equal(t, "Shared by two headlines.", rows.byURL["https://junk.net/bridge"].Content, "a group under the threshold is untouched")
+	assert.Equal(t, datapackage.Counts{
+		Read:       20,
+		Dropped:    map[string]int64{"required/Title": 1, "required/URL": 1},
+		Duplicates: map[string]int64{"same-url": 3, "same-page": 1},
+		Cleared:    map[string]int64{"shared-body": 4, "shared-description": 3},
+		Written:    14,
+	}, pkg.Preprocess.Counts)
+}
+
+func TestPreprocess_DescribesEachSignalsDistribution(t *testing.T) {
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), baseMapping, fixtureFile(t, "records.csv"))
+
+	require.NoError(t, run.execute(t.Context()))
+
+	pkg, _ := readArticles(t, run.packageDir(t))
+	body := pkg.Preprocess.Signals["headlines-sharing-body"]
+	assert.Equal(t, "Title", body.Distinct)
+	assert.Equal(t, "Content", body.Sharing)
+	assert.Equal(t, "PublisherDomain", body.Within)
+	// 13 kept articles have a body: four junk.net headlines share one, two bridge headlines another, seven stand alone.
+	assert.Equal(t, int64(13), body.Articles)
+	assert.Equal(t, int64(1), body.Median)
+	assert.Equal(t, int64(4), body.Max)
+	assert.Equal(t, int64(6), body.AtLeast["2"])
+	assert.Equal(t, int64(4), body.AtLeast["3"])
+	require.Len(t, body.Top, 9)
+	assert.Equal(t, datapackage.SignalGroup{Within: "junk.net", Sharing: "Subscribe to read the full story.", Value: 4, Articles: 4}, body.Top[0])
+	assert.Equal(t, datapackage.SignalGroup{Within: "junk.net", Sharing: "Shared by two headlines.", Value: 2, Articles: 2}, body.Top[1])
+}
+
+func TestPreprocess_DropsTheArticlesADropRuleFiresOn(t *testing.T) {
+	rules := "  - {name: boilerplate-body, when: {signal: headlines-sharing-body, atLeast: 3}, action: drop}\n"
+	run := newPreprocessRun(t, cleaningSpec(t, rules), baseMapping, fixtureFile(t, "records.csv"))
+
+	require.NoError(t, run.execute(t.Context()))
+
+	dir := run.packageDir(t)
+	pkg, rows := readArticles(t, dir)
+	assert.NotContains(t, rows.urls, "https://junk.net/storm")
+	assert.Contains(t, rows.urls, "https://junk.net/bridge")
+	assert.Equal(t, int64(10), pkg.Preprocess.Counts.Written)
+	assert.Equal(t, int64(4), pkg.Preprocess.Counts.Dropped["rule/boilerplate-body"])
+
+	var dropped []rejectParquetRow
+	for _, r := range readResource[rejectParquetRow](t, dir, datapackage.RejectsResource) {
+		if r.Stage == "rule" {
+			dropped = append(dropped, r)
+		}
+	}
+	storm := document.DeriveArticleID("https://junk.net/storm").String()
+	require.Len(t, dropped, 4)
+	assert.Equal(t, rejectParquetRow{
+		Resource: "records.csv", Row: 10, Stage: "rule", URL: ptr("https://junk.net/storm"),
+		Rule: ptr("boilerplate-body"), ID: &storm, SignalValue: ptr(int64(4)),
+	}, dropped[0])
+}
+
+func TestPreprocess_WritesEveryMissingOptionalValueAsNull(t *testing.T) {
+	mapping := strings.Replace(baseMapping, "name: test-news\n", "name: test-news\nmissingValues: ['', 'N/A']\n", 1)
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), mapping,
+		csvFile("part.csv", "title,text,description,url,date\n"+
+			"Plain,Body,N/A,https://example.com/1,\n"+
+			"Spaces,  ,  ,https://example.com/2,N/A\n"),
+		fixtureFile(t, "records.csv"),
+	)
+
+	require.NoError(t, run.execute(t.Context()))
+
+	_, rows := readArticles(t, run.packageDir(t))
+	for _, row := range rows.parquet {
+		for column, value := range map[string]*string{
+			"description": row.Description, "content": row.Content, "publishedAt": row.PublishedAt,
+			"publisherDomain": row.PublisherDomain, "metadata": row.Metadata,
+		} {
+			if value != nil {
+				assert.NotEmpty(t, strings.TrimSpace(*value), "%s of %s is an empty string, not NULL", column, row.URL)
+			}
+		}
+	}
+	plain := rows.parquet[0]
+	assert.Nil(t, plain.Description, "N/A is a missing value")
+	assert.Nil(t, plain.Metadata, "an article without metadata has NULL metadata")
+	assert.Nil(t, rows.parquet[1].Content)
+	assert.Nil(t, rows.parquet[1].PublishedAt)
+}
+
+// parquet-go v0.30 and v0.32 write some runs of zero strings in an optional string column as
+// empty strings rather than NULL; this run of descriptions is one of them.
+func TestPreprocess_WritesARunOfMissingValuesAsNull(t *testing.T) {
+	descriptions := slices.Repeat([]string{strings.Repeat("d", 150)}, 124)
+	descriptions = append(descriptions, "", "", "", "", "", strings.Repeat("e", 102))
+	descriptions = append(descriptions, slices.Repeat([]string{""}, 62)...)
+	var csv strings.Builder
+	csv.WriteString("title,text,description,url\n")
+	for i, description := range descriptions {
+		fmt.Fprintf(&csv, "Title %d,Body %d,%s,https://example.com/%d\n", i, i, description, i)
+	}
+	run := newPreprocessRun(t, urlKeySpec, baseMapping, csvFile("part.csv", csv.String()))
+
+	require.NoError(t, run.execute(t.Context()))
+
+	_, rows := readArticles(t, run.packageDir(t))
+	for _, row := range rows.parquet {
+		if row.Description != nil {
+			assert.NotEmpty(t, *row.Description, "the description of %s is an empty string, not NULL", row.URL)
+		}
+	}
+}
+
+func TestPreprocess_ChecksEachBudgetAgainstTheShareObserved(t *testing.T) {
+	// The fixture drops 2 of 20 records read (0.10), finds 4 duplicates (0.20) and clears 7 of 14 articles written (0.50).
+	tests := []struct {
+		check      string
+		warn, fail string
+		want       datapackage.CheckStatus
+	}{
+		{check: "dropped", warn: "0.2", fail: "0.3", want: datapackage.CheckPass},
+		{check: "dropped", warn: "0.05", fail: "0.3", want: datapackage.CheckWarn},
+		{check: "dropped", warn: "0.05", fail: "0.08", want: datapackage.CheckError},
+		{check: "duplicates", warn: "0.3", fail: "0.4", want: datapackage.CheckPass},
+		{check: "duplicates", warn: "0.1", fail: "0.4", want: datapackage.CheckWarn},
+		{check: "duplicates", warn: "0.1", fail: "0.15", want: datapackage.CheckError},
+		{check: "cleared", warn: "0.6", fail: "0.7", want: datapackage.CheckPass},
+		{check: "cleared", warn: "0.4", fail: "0.7", want: datapackage.CheckWarn},
+		{check: "cleared", warn: "0.4", fail: "0.45", want: datapackage.CheckError},
+	}
+	observed := map[string]float64{"dropped": 0.1, "duplicates": 0.2, "cleared": 0.5}
+	for _, tt := range tests {
+		t.Run(tt.check+" "+string(tt.want), func(t *testing.T) {
+			spec := cleaningSpec(t, clearSharedText) + "checks:\n  " + tt.check + ": {warn: " + tt.warn + ", error: " + tt.fail + "}\n"
+			run := newPreprocessRun(t, spec, baseMapping, fixtureFile(t, "records.csv"))
+
+			err := run.execute(t.Context())
+
+			if tt.want == datapackage.CheckError {
+				var failed *ingest.ChecksFailedError
+				require.ErrorAs(t, err, &failed)
+				assert.Equal(t, datapackage.CheckError, failed.Preprocess.Checks[tt.check].Result)
+				entries, readErr := os.ReadDir(run.outputRoot)
+				require.NoError(t, readErr)
+				assert.Empty(t, entries, "nothing is published past an error check")
+				return
+			}
+			require.NoError(t, err)
+			pkg, _ := readArticles(t, run.packageDir(t))
+			check := pkg.Preprocess.Checks[tt.check]
+			assert.Equal(t, tt.want, check.Result)
+			assert.InDelta(t, observed[tt.check], check.Observed, 1e-9)
+		})
+	}
+}
+
+func TestPreprocess_CountsAValueOncePerDistinctValueInItsGroup(t *testing.T) {
+	spec := urlKeySpec + `signals:
+  - {name: headlines-sharing-body, distinct: Title, sharing: Content, within: PublisherDomain}
+rules:
+  - {name: shared-body, when: {signal: headlines-sharing-body, atLeast: 2}, action: clear, field: Content}
+`
+	run := newPreprocessRun(t, spec, baseMapping, csvFile("part.csv", "title,text,url\n"+
+		"Same headline,Shared body,https://example.com/1\n"+
+		"Same headline,Shared body,https://example.com/2\n"+
+		"Lone body,,https://example.com/3\n"+
+		"Lone body again,,https://example.com/4\n"+
+		"Other site,Shared body,https://other.org/1\n"))
+
+	require.NoError(t, run.execute(t.Context()))
+
+	pkg, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, "Shared body", rows.byURL["https://example.com/1"].Content, "two copies of one headline are one distinct title")
+	assert.Equal(t, "Shared body", rows.byURL["https://other.org/1"].Content)
+	stats := pkg.Preprocess.Signals["headlines-sharing-body"]
+	assert.Equal(t, int64(3), stats.Articles, "an empty body forms no group")
+	assert.Equal(t, int64(1), stats.Max)
+}
+
+func TestPreprocess_CountsOverTheWholeCorpusWithoutWithin(t *testing.T) {
+	spec := urlKeySpec + `signals:
+  - {name: sites-sharing-body, distinct: PublisherDomain, sharing: Content}
+rules:
+  - {name: syndicated-body, when: {signal: sites-sharing-body, atLeast: 2}, action: clear, field: Content}
+`
+	run := newPreprocessRun(t, spec, baseMapping, csvFile("part.csv", "title,text,url\n"+
+		"One,Wire body,https://example.com/1\n"+
+		"Two,Wire body,https://other.org/2\n"+
+		"Three,Own body,https://example.com/3\n"))
+
+	require.NoError(t, run.execute(t.Context()))
+
+	_, rows := readArticles(t, run.packageDir(t))
+	assert.Empty(t, rows.byURL["https://example.com/1"].Content)
+	assert.Empty(t, rows.byURL["https://other.org/2"].Content)
+	assert.Equal(t, "Own body", rows.byURL["https://example.com/3"].Content)
 }
 
 func TestPreprocess_PublishesUnderTheNamedVersion(t *testing.T) {
@@ -302,7 +698,7 @@ func TestPreprocess_PublishesUnderTheNamedVersion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			run := newPreprocessRun(t, ccNewsLikeMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
+			run := newPreprocessRun(t, urlKeySpec, baseMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
 
 			require.NoError(t, run.execute(t.Context(), tt.flags...))
 
@@ -315,27 +711,144 @@ func TestPreprocess_PublishesUnderTheNamedVersion(t *testing.T) {
 	}
 }
 
-func TestPreprocess_RefusesAChangedMappingRerunIntoTheSameVersion(t *testing.T) {
-	run := newPreprocessRun(t, ccNewsLikeMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
+func freeze(t *testing.T, dir string) {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	for _, e := range entries {
+		require.NoError(t, os.Chmod(filepath.Join(dir, e.Name()), 0o444))
+	}
+	require.NoError(t, os.Chmod(dir, 0o555))
+	t.Cleanup(func() {
+		_ = os.Chmod(dir, 0o755)
+		for _, e := range entries {
+			_ = os.Chmod(filepath.Join(dir, e.Name()), 0o644)
+		}
+	})
+}
+
+func TestPreprocess_RefusesAChangedSpecRerunIntoTheSameVersion(t *testing.T) {
+	tests := []struct {
+		name   string
+		change func(t *testing.T, run preprocessRun)
+		want   string
+	}{
+		{
+			name: "a budget that leaves the articles alone",
+			change: func(t *testing.T, run preprocessRun) {
+				run.rewriteSpec(t, "checks:\n", "checks:\n  duplicates: {warn: 0.9}\n")
+			},
+			want: "preprocess spec",
+		},
+		{
+			name: "a mapping that moves a field",
+			change: func(t *testing.T, run preprocessRun) {
+				require.NoError(t, os.WriteFile(run.mappingPath, []byte(strings.Replace(baseMapping, "target: Content}", "target: Metadata.Extra.body}", 1)), 0o644))
+			},
+			want: "preprocess mapping",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			run := newPreprocessRun(t, urlKeySpec+"checks:\n", baseMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
+			require.NoError(t, run.execute(t.Context()))
+			dir := run.packageDir(t)
+			descriptor, err := os.ReadFile(filepath.Join(dir, datapackage.DescriptorName))
+			require.NoError(t, err)
+			freeze(t, dir)
+			tt.change(t, run)
+
+			err = run.execute(t.Context())
+
+			var conflict *datapackage.VersionConflictError
+			require.ErrorAs(t, err, &conflict)
+			assert.Equal(t, "v1", conflict.Version)
+			assert.Contains(t, strings.Join(conflict.Differences, "; "), tt.want)
+			after, err := os.ReadFile(filepath.Join(dir, datapackage.DescriptorName))
+			require.NoError(t, err)
+			assert.Equal(t, string(descriptor), string(after))
+		})
+	}
+}
+
+func TestPreprocess_RerunOverTheSameSpecsAndInputKeepsTheExistingPackage(t *testing.T) {
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), baseMapping, fixtureFile(t, "records.csv"))
 	require.NoError(t, run.execute(t.Context()))
 	dir := run.packageDir(t)
 	resourcePath := filepath.Join(dir, "articles.parquet")
-	firstHash := sha256Of(t, resourcePath)
 	before, err := os.Stat(resourcePath)
 	require.NoError(t, err)
 	freeze(t, dir)
-	require.NoError(t, os.WriteFile(run.mappingPath, []byte(strings.Replace(ccNewsLikeMapping, "target: Content}", "target: Metadata.Extra.body}", 1)), 0o644))
 
-	err = run.execute(t.Context())
+	require.NoError(t, run.execute(t.Context()))
 
-	var conflict *datapackage.VersionConflictError
-	require.ErrorAs(t, err, &conflict)
-	assert.Equal(t, "v1", conflict.Version)
 	assert.Equal(t, dir, run.packageDir(t))
 	after, err := os.Stat(resourcePath)
 	require.NoError(t, err)
 	assert.True(t, os.SameFile(before, after), "the resource file was replaced")
-	assert.Equal(t, firstHash, sha256Of(t, resourcePath))
+}
+
+func TestPreprocess_RestoresTheResourcesOfAPackageCheckedOutWithoutThem(t *testing.T) {
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), baseMapping, fixtureFile(t, "records.csv"))
+	require.NoError(t, run.execute(t.Context()))
+	dir := run.packageDir(t)
+	hashes := map[string]string{}
+	for _, name := range []string{"articles.parquet", "rejects.parquet", "changes.parquet"} {
+		hashes[name] = sha256Of(t, filepath.Join(dir, name))
+		require.NoError(t, os.Remove(filepath.Join(dir, name)))
+	}
+	descriptor, err := os.ReadFile(filepath.Join(dir, "datapackage.json"))
+	require.NoError(t, err)
+
+	require.NoError(t, run.execute(t.Context()))
+
+	for name, hash := range hashes {
+		assert.Equal(t, hash, sha256Of(t, filepath.Join(dir, name)), name)
+	}
+	after, err := os.ReadFile(filepath.Join(dir, "datapackage.json"))
+	require.NoError(t, err)
+	assert.Equal(t, string(descriptor), string(after))
+}
+
+func TestPreprocess_TwoRunsOverOneRawPackageWriteIdenticalBytes(t *testing.T) {
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), baseMapping, fixtureFile(t, "records.csv"),
+		parquetFile(t, "train-0.parquet",
+			rawShardRow{Title: "One", Text: "Body", URL: "https://example.com/1", Date: "2019-03-04 05:06:07", Authors: "A; B", Words: "3"},
+			rawShardRow{Title: "Two", Text: "Body", URL: "https://example.com/2"},
+			rawShardRow{Title: "Three", Text: "Body", URL: "https://example.com/3"},
+		),
+	)
+	second := run.writingTo(t, "again")
+
+	require.NoError(t, run.execute(t.Context()))
+	require.NoError(t, second.execute(t.Context()))
+
+	first, other := run.packageDir(t), second.packageDir(t)
+	for _, name := range []string{"articles.parquet", "rejects.parquet", "changes.parquet", "datapackage.json"} {
+		assert.Equal(t, sha256Of(t, filepath.Join(first, name)), sha256Of(t, filepath.Join(other, name)), name)
+	}
+}
+
+func TestPreprocess_LocksTheSpecsAndInputButNotWhereTheyLie(t *testing.T) {
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), baseMapping, fixtureFile(t, "records.csv"))
+	moved := filepath.Join(t.TempDir(), "moved.yaml")
+	spec, err := os.ReadFile(run.specPath)
+	require.NoError(t, err)
+	absolute := strings.NewReplacer(
+		"input: raw\n", "input: "+run.rawDir+"\n",
+		"mapping: mapping.yaml\n", "mapping: "+run.mappingPath+"\n",
+		"  path: canonical\n", "  path: "+filepath.Join(run.dir, "elsewhere")+"\n",
+	).Replace(string(spec))
+	require.NoError(t, os.WriteFile(moved, []byte("# the same spec with absolute paths\n"+absolute), 0o644))
+
+	require.NoError(t, run.execute(t.Context()))
+	require.NoError(t, preprocessRun{specPath: moved}.execute(t.Context()))
+
+	pkg, _ := readArticles(t, run.packageDir(t))
+	elsewhere, _ := readArticles(t, filepath.Join(run.dir, "elsewhere", "v1"))
+	assert.Equal(t, sha256Of(t, filepath.Join(run.rawDir, datapackage.DescriptorName)), pkg.Preprocess.Lock.Input)
+	assert.True(t, pkg.Preprocess.Lock.SameInputs(elsewhere.Preprocess.Lock), "%+v and %+v", pkg.Preprocess.Lock, elsewhere.Preprocess.Lock)
+	assert.NotEmpty(t, pkg.Preprocess.Lock.Tool)
 }
 
 var descriptorSchemaPath = filepath.Join("..", "..", "api", "datapackage-spec", "datapackage-v1.json")
@@ -357,23 +870,18 @@ func validateAgainstDescriptorSchema(t *testing.T, descriptorPath string) error 
 }
 
 func TestPreprocess_WritesADescriptorTheCommittedSchemaAccepts(t *testing.T) {
-	everyIdentityRule := mappingWithIdentity(t, "random", samePageRule)
 	tests := []struct {
-		name       string
-		mapping    string
-		rawVersion string
+		name string
+		spec string
 	}{
-		{name: "parquet", mapping: ccNewsLikeMapping, rawVersion: rawVersion},
-		{name: "jsonl", mapping: mappingWith(t, "format: parquet", "format: jsonl"), rawVersion: rawVersion},
-		{name: "raw package without a version", mapping: ccNewsLikeMapping},
-		{name: "every identity rule", mapping: everyIdentityRule, rawVersion: rawVersion},
+		{name: "parquet", spec: urlKeySpec},
+		{name: "jsonl", spec: specWith(t, urlKeySpec, "  path: canonical\n", "  path: canonical\n  format: jsonl\n")},
+		{name: "random ids", spec: specWith(t, urlKeySpec, "kind: urlHash", "kind: random")},
+		{name: "signals, rules and checks", spec: cleaningSpec(t, clearSharedText) + "checks:\n  dropped: {warn: 0.05}\n  cleared: {error: 0.9}\n"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			part := csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\nOne,Body,https://example.com/2\n")
-			run := newPreprocessRun(t, tt.mapping, part)
-			require.NoError(t, os.RemoveAll(run.rawDir))
-			writeRawPackage(t, run.rawDir, tt.rawVersion, part)
+			run := newPreprocessRun(t, tt.spec, baseMapping, fixtureFile(t, "records.csv"))
 
 			require.NoError(t, run.execute(t.Context()))
 
@@ -382,8 +890,8 @@ func TestPreprocess_WritesADescriptorTheCommittedSchemaAccepts(t *testing.T) {
 	}
 }
 
-func TestPreprocess_CountsEveryDroppedRecordByReason(t *testing.T) {
-	run := newPreprocessRun(t, ccNewsLikeMapping,
+func TestPreprocess_CountsEveryDroppedRecordByStageAndField(t *testing.T) {
+	run := newPreprocessRun(t, urlKeySpec, baseMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"Kept,Body,https://example.com/kept\n"+
 			"   ,Blank title,https://example.com/blank-title\n"+
@@ -396,44 +904,53 @@ func TestPreprocess_CountsEveryDroppedRecordByReason(t *testing.T) {
 
 	pkg, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/kept"}, rows.urls)
-	assert.Equal(t, &datapackage.Report{
-		Read:    5,
-		Written: 1,
-		Dropped: map[string]int64{
-			"empty_required_value/Title": 1,
-			"empty_required_value/URL":   1,
-			"invalid_url/URL":            1,
-			"malformed_record":           1,
-		},
-	}, pkg.Report)
+	assert.Equal(t, map[string]int64{"required/Title": 1, "required/URL": 2, "read/malformed": 1}, pkg.Preprocess.Counts.Dropped)
 }
 
-func TestPreprocess_WritesJSONLArticlesWhenTheMappingAsksForIt(t *testing.T) {
-	run := newPreprocessRun(t, mappingWith(t, "format: parquet", "format: jsonl"),
-		jsonlFile("part.jsonl", `{"title":"One","text":"Body","url":"https://example.com/1","authors":"A;B"}`+"\n"),
+func TestPreprocess_WritesJSONLArticlesWhenTheSpecAsksForIt(t *testing.T) {
+	run := newPreprocessRun(t, specWith(t, urlKeySpec, "  path: canonical\n", "  path: canonical\n  format: jsonl\n"), baseMapping,
+		jsonlFile("part.jsonl", `{"title":"One","text":"Body","url":"https://example.com/1","authors":"A;B"}`+"\n"+
+			`{"title":"Two","url":"https://example.com/2"}`+"\n"),
 	)
 
 	require.NoError(t, run.execute(t.Context()))
 
-	pkg, rows := readArticles(t, run.packageDir(t))
-	assert.Equal(t, "jsonl", pkg.Resources[0].Format)
-	assert.Equal(t, "articles.jsonl", pkg.Resources[0].Path)
+	dir := run.packageDir(t)
+	pkg, rows := readArticles(t, dir)
+	articles := resourceNamed(t, pkg, datapackage.ArticlesResource)
+	assert.Equal(t, "jsonl", articles.Format)
+	assert.Equal(t, "articles.jsonl", articles.Path)
 	assert.Equal(t, []string{"A", "B"}, rows.byURL["https://example.com/1"].Metadata.Authors)
+	written, err := os.ReadFile(filepath.Join(dir, "articles.jsonl"))
+	require.NoError(t, err)
+	second := strings.Split(strings.TrimSpace(string(written)), "\n")[1]
+	assert.NotContains(t, second, `"content"`, "a missing value is absent in JSONL")
+	assert.NotContains(t, second, `"metadata"`)
 }
 
-func TestPreprocess_RefusesAMistypedIdentityKey(t *testing.T) {
-	run := newPreprocessRun(t, mappingWith(t, "  idKind:", "  idkind:"),
-		csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"),
-	)
+func TestPreprocess_RefusesASpecItCannotRunAndPublishesNothing(t *testing.T) {
+	tests := map[string]string{
+		"an unknown key":                    specWith(t, urlKeySpec, "duplicates:\n", "duplicate:\n"),
+		"a url hash without a url key":      specWith(t, urlKeySpec, "    - {name: same-url, fields: [URL]}\n", "    - {name: same-page, fields: [PublisherDomain, Title, Content]}\n"),
+		"a clear on a required field":       urlKeySpec + "signals:\n  - {name: s, distinct: URL, sharing: Content}\nrules:\n  - {name: r, when: {signal: s, atLeast: 2}, action: clear, field: Title}\n",
+		"a rule on an undefined signal":     urlKeySpec + "rules:\n  - {name: r, when: {signal: missing, atLeast: 2}, action: drop}\n",
+		"a signal on a field never mapped":  urlKeySpec + "signals:\n  - {name: s, distinct: Title, sharing: Metadata.Section}\n",
+		"a mapping file that is not there":  specWith(t, urlKeySpec, "mapping: mapping.yaml", "mapping: missing.yaml"),
+		"the retired mapping identity keys": urlKeySpec + "identity:\n  idKind: urlHash\n",
+	}
+	for name, spec := range tests {
+		t.Run(name, func(t *testing.T) {
+			run := newPreprocessRun(t, spec, baseMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
 
-	err := run.execute(t.Context())
+			require.Error(t, run.execute(t.Context()))
 
-	require.ErrorContains(t, err, "idkind")
-	assert.NoDirExists(t, run.outputRoot)
+			assert.NoDirExists(t, run.outputRoot)
+		})
+	}
 }
 
 func TestPreprocess_DerivesEachIDFromTheNormalisedURL(t *testing.T) {
-	run := newPreprocessRun(t, ccNewsLikeMapping,
+	run := newPreprocessRun(t, urlKeySpec, baseMapping,
 		csvFile("part.csv", "title,text,url\nSpaced,Body,  https://example.com/a b \n"),
 	)
 
@@ -441,16 +958,13 @@ func TestPreprocess_DerivesEachIDFromTheNormalisedURL(t *testing.T) {
 
 	pkg, rows := readArticles(t, run.packageDir(t))
 	require.Equal(t, []string{"https://example.com/a%20b"}, rows.urls)
-	require.NotNil(t, pkg.Identity)
-	assert.Equal(t, datamapping.IDKindURLHash, pkg.Identity.IDKind)
-	assert.Equal(t, "uuidv5", pkg.Identity.Algorithm)
-	namespace, err := uuid.Parse(pkg.Identity.Namespace)
-	require.NoError(t, err)
+	assert.Equal(t, datapackage.ArticleIDs{Kind: preprocess.IDKindURLHash, Algorithm: "uuidv5", Namespace: "697bf49f-ca14-4303-83eb-f9d05f7c7c42"}, pkg.Preprocess.ID)
+	namespace := uuid.MustParse("697bf49f-ca14-4303-83eb-f9d05f7c7c42")
 	assert.Equal(t, uuid.NewSHA1(namespace, []byte("https://example.com/a%20b")), rows.byURL["https://example.com/a%20b"].ID)
 }
 
 func TestPreprocess_KeepsTheFirstOfRecordsSharingAURL(t *testing.T) {
-	run := newPreprocessRun(t, ccNewsLikeMapping,
+	run := newPreprocessRun(t, urlKeySpec, baseMapping,
 		csvFile("a.csv", "title,text,url\nFirst,Body,https://example.com/story\nOther,Body,https://example.com/other\n"),
 		csvFile("b.csv", "title,text,url\nRepeat,Body, https://Example.COM/story\nAgain,Body,https://example.com/other\n"),
 	)
@@ -461,11 +975,11 @@ func TestPreprocess_KeepsTheFirstOfRecordsSharingAURL(t *testing.T) {
 	assert.Equal(t, []string{"https://example.com/story", "https://example.com/other"}, rows.urls)
 	assert.Equal(t, "First", rows.byURL["https://example.com/story"].Title)
 	assert.Equal(t, "Other", rows.byURL["https://example.com/other"].Title)
-	assert.Equal(t, &datapackage.Report{Read: 4, Written: 2, Deduped: map[string]int64{"url": 2}}, pkg.Report)
+	assert.Equal(t, map[string]int64{"same-url": 2}, pkg.Preprocess.Counts.Duplicates)
 }
 
 func TestPreprocess_KeepsURLVariantsApart(t *testing.T) {
-	run := newPreprocessRun(t, ccNewsLikeMapping,
+	run := newPreprocessRun(t, urlKeySpec, baseMapping,
 		csvFile("part.csv", "title,text,url\nFirst,Body,https://example.com/story\nVariant,Body,http://www.example.com/story/?utm_source=feed#top\n"),
 	)
 
@@ -473,11 +987,11 @@ func TestPreprocess_KeepsURLVariantsApart(t *testing.T) {
 
 	pkg, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/story", "http://www.example.com/story/?utm_source=feed#top"}, rows.urls)
-	assert.Equal(t, &datapackage.Report{Read: 2, Written: 2}, pkg.Report)
+	assert.Equal(t, int64(2), pkg.Preprocess.Counts.Written)
 }
 
-func TestPreprocess_KeepsTheFirstOfArticlesAUniqueRuleMatches(t *testing.T) {
-	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", samePageRule),
+func TestPreprocess_KeepsTheFirstOfArticlesAKeyMatches(t *testing.T) {
+	run := newPreprocessRun(t, withKeys(t, samePageKeys), baseMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"Storm hits coast,Wire body,https://example.com/a\n"+
 			"Storm hits coast,Wire body,https://example.com/b\n"+
@@ -489,28 +1003,27 @@ func TestPreprocess_KeepsTheFirstOfArticlesAUniqueRuleMatches(t *testing.T) {
 
 	pkg, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/a", "https://other.org/a", "https://example.com/c"}, rows.urls)
-	assert.Equal(t, &datapackage.Report{Read: 4, Written: 3, Deduped: map[string]int64{"same-page": 1}}, pkg.Report)
-	assert.Equal(t, []datamapping.UniqueRule{{Name: "same-page", Fields: []string{"PublisherDomain", "Title", "Content"}}}, pkg.Identity.Unique)
+	assert.Equal(t, map[string]int64{"same-url": 0, "same-page": 1}, pkg.Preprocess.Counts.Duplicates)
 }
 
-func TestPreprocess_ComparesUniqueFieldsWithWhitespaceCollapsed(t *testing.T) {
-	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", samePageRule),
+func TestPreprocess_ComparesKeyFieldsWithWhitespaceCollapsed(t *testing.T) {
+	run := newPreprocessRun(t, withKeys(t, samePageKeys), baseMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"Storm hits coast,Wire body,https://example.com/a\n"+
 			"\"  Storm  hits\ncoast \",\"Wire\t body\",https://example.com/b\n"+
-			"Storm\u00a0hits coast,Wire\u2003body,https://example.com/c\n"),
+			"Storm hits coast,Wire body,https://example.com/c\n"),
 	)
 
 	require.NoError(t, run.execute(t.Context()))
 
 	pkg, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/a"}, rows.urls)
-	assert.Equal(t, map[string]int64{"same-page": 2}, pkg.Report.Deduped)
+	assert.Equal(t, int64(2), pkg.Preprocess.Counts.Duplicates["same-page"])
 }
 
-func TestPreprocess_ComparesEachUniqueFieldOnItsOwn(t *testing.T) {
-	rules := "  unique:\n    - {name: same-text, fields: [Title, Content]}\n"
-	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", rules),
+func TestPreprocess_ComparesEachKeyFieldOnItsOwn(t *testing.T) {
+	keys := "    - {name: same-url, fields: [URL]}\n    - {name: same-text, fields: [Title, Content]}\n"
+	run := newPreprocessRun(t, withKeys(t, keys), baseMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"Storm hits,coast now,https://example.com/1\n"+
 			"Storm,hits coast now,https://example.com/2\n"),
@@ -518,25 +1031,23 @@ func TestPreprocess_ComparesEachUniqueFieldOnItsOwn(t *testing.T) {
 
 	require.NoError(t, run.execute(t.Context()))
 
-	pkg, rows := readArticles(t, run.packageDir(t))
+	_, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/1", "https://example.com/2"}, rows.urls)
-	assert.Empty(t, pkg.Report.Deduped)
 }
 
-func TestPreprocess_NeverMatchesAUniqueRuleOnAnEmptyField(t *testing.T) {
-	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", samePageRule),
+func TestPreprocess_NeverMatchesAKeyOnAnEmptyField(t *testing.T) {
+	run := newPreprocessRun(t, withKeys(t, samePageKeys), baseMapping,
 		csvFile("part.csv", "title,text,url\nWeather,,https://example.com/1\nWeather,,https://example.com/2\n"),
 	)
 
 	require.NoError(t, run.execute(t.Context()))
 
-	pkg, rows := readArticles(t, run.packageDir(t))
+	_, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/1", "https://example.com/2"}, rows.urls)
-	assert.Equal(t, &datapackage.Report{Read: 2, Written: 2}, pkg.Report)
 }
 
 func TestPreprocess_ADroppedRecordNeverKnocksOutALaterOne(t *testing.T) {
-	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", samePageRule),
+	run := newPreprocessRun(t, withKeys(t, samePageKeys), baseMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"Kept,Body X,https://example.com/story\n"+
 			"Copy,Body Y,https://example.com/story\n"+
@@ -547,28 +1058,39 @@ func TestPreprocess_ADroppedRecordNeverKnocksOutALaterOne(t *testing.T) {
 
 	pkg, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/story", "https://example.com/other"}, rows.urls)
-	assert.Equal(t, map[string]int64{"url": 1}, pkg.Report.Deduped)
+	assert.Equal(t, map[string]int64{"same-url": 1, "same-page": 0}, pkg.Preprocess.Counts.Duplicates)
 }
 
 func TestPreprocess_ADuplicatesURLStaysWithTheArticleItRepeats(t *testing.T) {
-	rules := "  unique:\n    - {name: same-body, fields: [Content]}\n"
-	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", rules),
-		csvFile("part.csv", "title,text,url\n"+
-			"One,Body A,https://example.com/1\n"+
-			"Two,Body A,https://example.com/2\n"+
-			"Three,Body C,https://example.com/2\n"),
-	)
+	for name, keys := range map[string]string{
+		"url key first": "    - {name: same-url, fields: [URL]}\n    - {name: same-body, fields: [Content]}\n",
+		"url key last":  "    - {name: same-body, fields: [Content]}\n    - {name: same-url, fields: [URL]}\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			run := newPreprocessRun(t, withKeys(t, keys), baseMapping,
+				csvFile("part.csv", "title,text,url\n"+
+					"One,Body A,https://example.com/1\n"+
+					"Two,Body A,https://example.com/2\n"+
+					"Three,Body C,https://example.com/2\n"),
+			)
 
-	require.NoError(t, run.execute(t.Context()))
+			require.NoError(t, run.execute(t.Context()))
 
-	pkg, rows := readArticles(t, run.packageDir(t))
-	assert.Equal(t, []string{"https://example.com/1"}, rows.urls)
-	assert.Equal(t, map[string]int64{"same-body": 1, "url": 1}, pkg.Report.Deduped)
+			dir := run.packageDir(t)
+			pkg, rows := readArticles(t, dir)
+			assert.Equal(t, []string{"https://example.com/1"}, rows.urls)
+			assert.Equal(t, map[string]int64{"same-body": 1, "same-url": 1}, pkg.Preprocess.Counts.Duplicates)
+			one := rows.byURL["https://example.com/1"].ID.String()
+			for _, r := range readResource[rejectParquetRow](t, dir, datapackage.RejectsResource) {
+				assert.Equal(t, &one, r.KeptID)
+			}
+		})
+	}
 }
 
-func TestPreprocess_ADuplicateRegistersNoKeys(t *testing.T) {
-	rules := "  unique:\n    - {name: same-title, fields: [Title]}\n    - {name: same-body, fields: [Content]}\n"
-	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", rules),
+func TestPreprocess_ADuplicateRegistersNoOtherKeys(t *testing.T) {
+	keys := "    - {name: same-url, fields: [URL]}\n    - {name: same-title, fields: [Title]}\n    - {name: same-body, fields: [Content]}\n"
+	run := newPreprocessRun(t, withKeys(t, keys), baseMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"One,Body A,https://example.com/1\n"+
 			"Two,Body A,https://example.com/2\n"+
@@ -577,14 +1099,13 @@ func TestPreprocess_ADuplicateRegistersNoKeys(t *testing.T) {
 
 	require.NoError(t, run.execute(t.Context()))
 
-	pkg, rows := readArticles(t, run.packageDir(t))
+	_, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/1", "https://example.com/3"}, rows.urls)
-	assert.Equal(t, map[string]int64{"same-body": 1}, pkg.Report.Deduped)
 }
 
-func TestPreprocess_CountsEachDropUnderTheFirstRuleThatMatches(t *testing.T) {
-	rules := "  unique:\n    - {name: same-title, fields: [Title]}\n    - {name: same-body, fields: [Content]}\n"
-	run := newPreprocessRun(t, mappingWithIdentity(t, "urlHash", rules),
+func TestPreprocess_CountsEachDuplicateUnderTheFirstKeyThatMatches(t *testing.T) {
+	keys := "    - {name: same-url, fields: [URL]}\n    - {name: same-title, fields: [Title]}\n    - {name: same-body, fields: [Content]}\n"
+	run := newPreprocessRun(t, withKeys(t, keys), baseMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"One,Body A,https://example.com/1\n"+
 			"One,Body A,https://example.com/1\n"+
@@ -596,15 +1117,14 @@ func TestPreprocess_CountsEachDropUnderTheFirstRuleThatMatches(t *testing.T) {
 
 	pkg, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/1"}, rows.urls)
-	assert.Equal(t, map[string]int64{"url": 1, "same-title": 1, "same-body": 1}, pkg.Report.Deduped)
+	assert.Equal(t, map[string]int64{"same-url": 1, "same-title": 1, "same-body": 1}, pkg.Preprocess.Counts.Duplicates)
 }
 
 func TestPreprocess_MintsRandomIDsThatDifferOnEveryRun(t *testing.T) {
-	run := newPreprocessRun(t, mappingWithIdentity(t, "random", ""),
+	run := newPreprocessRun(t, specWith(t, urlKeySpec, "kind: urlHash", "kind: random"), baseMapping,
 		csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\nTwo,Body,https://example.com/2\nAgain,Body,https://example.com/1\n"),
 	)
-	second := run
-	second.outputRoot = filepath.Join(t.TempDir(), "canonical")
+	second := run.writingTo(t, "again")
 
 	require.NoError(t, run.execute(t.Context()))
 	require.NoError(t, second.execute(t.Context()))
@@ -612,12 +1132,11 @@ func TestPreprocess_MintsRandomIDsThatDifferOnEveryRun(t *testing.T) {
 	pkg, rows := readArticles(t, run.packageDir(t))
 	_, rerun := readArticles(t, second.packageDir(t))
 	assert.Equal(t, []string{"https://example.com/1", "https://example.com/2"}, rows.urls)
-	assert.Equal(t, map[string]int64{"url": 1}, pkg.Report.Deduped)
 	one, two := rows.byURL["https://example.com/1"].ID, rows.byURL["https://example.com/2"].ID
 	assert.NotEqual(t, one, two)
 	assert.NotEqual(t, one, rerun.byURL["https://example.com/1"].ID)
 	assert.Equal(t, uuid.Version(7), one.Version())
-	assert.Equal(t, &datapackage.Identity{IDKind: datamapping.IDKindRandom, Algorithm: "uuidv7"}, pkg.Identity)
+	assert.Equal(t, datapackage.ArticleIDs{Kind: preprocess.IDKindRandom, Algorithm: "uuidv7"}, pkg.Preprocess.ID)
 }
 
 func TestPreprocess_DerivesThePublisherDomainFromTheURL(t *testing.T) {
@@ -638,7 +1157,7 @@ func TestPreprocess_DerivesThePublisherDomainFromTheURL(t *testing.T) {
 	for _, tt := range tests {
 		csv.WriteString("Title,Body," + tt.url + "\n")
 	}
-	run := newPreprocessRun(t, ccNewsLikeMapping, csvFile("part.csv", csv.String()))
+	run := newPreprocessRun(t, urlKeySpec, baseMapping, csvFile("part.csv", csv.String()))
 
 	require.NoError(t, run.execute(t.Context()))
 
@@ -652,82 +1171,6 @@ func TestPreprocess_DerivesThePublisherDomainFromTheURL(t *testing.T) {
 			assert.Equal(t, tt.want, rows.byURL[stored].PublisherDomain)
 		})
 	}
-}
-
-func freeze(t *testing.T, dir string) {
-	t.Helper()
-	entries, err := os.ReadDir(dir)
-	require.NoError(t, err)
-	for _, e := range entries {
-		require.NoError(t, os.Chmod(filepath.Join(dir, e.Name()), 0o444))
-	}
-	require.NoError(t, os.Chmod(dir, 0o555))
-	t.Cleanup(func() {
-		_ = os.Chmod(dir, 0o755)
-		for _, e := range entries {
-			_ = os.Chmod(filepath.Join(dir, e.Name()), 0o644)
-		}
-	})
-}
-
-func TestPreprocess_RerunOverTheSameInputsKeepsTheExistingPackage(t *testing.T) {
-	run := newPreprocessRun(t, ccNewsLikeMapping,
-		csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\nTwo,Body,https://example.com/2\n"),
-	)
-	require.NoError(t, run.execute(t.Context()))
-	dir := run.packageDir(t)
-	resourcePath := filepath.Join(dir, "articles.parquet")
-	firstHash := sha256Of(t, resourcePath)
-	before, err := os.Stat(resourcePath)
-	require.NoError(t, err)
-	freeze(t, dir)
-
-	require.NoError(t, run.execute(t.Context()))
-
-	assert.Equal(t, dir, run.packageDir(t))
-	after, err := os.Stat(resourcePath)
-	require.NoError(t, err)
-	assert.True(t, os.SameFile(before, after), "the resource file was replaced")
-	assert.Equal(t, firstHash, sha256Of(t, resourcePath))
-}
-
-func TestPreprocess_RestoresTheResourceOfAPackageCheckedOutWithoutIt(t *testing.T) {
-	run := newPreprocessRun(t, ccNewsLikeMapping,
-		csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\nTwo,Body,https://example.com/2\n"),
-	)
-	require.NoError(t, run.execute(t.Context()))
-	dir := run.packageDir(t)
-	resourcePath := filepath.Join(dir, "articles.parquet")
-	firstHash := sha256Of(t, resourcePath)
-	descriptor, err := os.ReadFile(filepath.Join(dir, "datapackage.json"))
-	require.NoError(t, err)
-	require.NoError(t, os.Remove(resourcePath))
-
-	require.NoError(t, run.execute(t.Context()))
-
-	assert.Equal(t, firstHash, sha256Of(t, resourcePath))
-	after, err := os.ReadFile(filepath.Join(dir, "datapackage.json"))
-	require.NoError(t, err)
-	assert.Equal(t, string(descriptor), string(after))
-}
-
-func TestPreprocess_TwoRunsOverOneRawPackageWriteIdenticalBytes(t *testing.T) {
-	run := newPreprocessRun(t, ccNewsLikeMapping,
-		parquetFile(t, "train-0.parquet",
-			rawShardRow{Title: "One", Text: "Body", URL: "https://example.com/1", Date: "2019-03-04 05:06:07", Authors: "A; B", Words: "3"},
-			rawShardRow{Title: "Two", Text: "Body", URL: "https://example.com/2"},
-			rawShardRow{Title: "Three", Text: "Body", URL: "https://example.com/3"},
-		),
-	)
-	second := run
-	second.outputRoot = filepath.Join(t.TempDir(), "canonical")
-
-	require.NoError(t, run.execute(t.Context()))
-	require.NoError(t, second.execute(t.Context()))
-
-	first, other := run.packageDir(t), second.packageDir(t)
-	assert.Equal(t, filepath.Base(first), filepath.Base(other))
-	assert.Equal(t, sha256Of(t, filepath.Join(first, "articles.parquet")), sha256Of(t, filepath.Join(other, "articles.parquet")))
 }
 
 func TestPreprocess_CancelledRunLeavesNoPackage(t *testing.T) {
@@ -746,19 +1189,18 @@ func TestPreprocess_CancelledRunLeavesNoPackage(t *testing.T) {
 		files.ServeHTTP(w, r)
 	}))
 	defer srv.Close()
-	mappingPath := filepath.Join(t.TempDir(), "mapping.yaml")
-	require.NoError(t, os.WriteFile(mappingPath, []byte(ccNewsLikeMapping), 0o644))
-	outputRoot := filepath.Join(t.TempDir(), "canonical")
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "mapping.yaml"), []byte(baseMapping), 0o644))
+	specPath := filepath.Join(dir, "preprocess.yaml")
+	require.NoError(t, os.WriteFile(specPath, []byte(specWith(t, urlKeySpec, "input: raw", "input: "+srv.URL+"/datapackage.json")), 0o644))
 
 	err := runPreprocess(ctx, io.Discard, preprocessConfig{
-		InputPath:   srv.URL + "/datapackage.json",
-		OutputPath:  outputRoot,
-		MappingPath: mappingPath,
-		Packages:    datapackage.Options{HTTPClient: srv.Client(), TempDir: t.TempDir()},
+		SpecPath: specPath,
+		Packages: datapackage.Options{HTTPClient: srv.Client(), TempDir: t.TempDir()},
 	})
 
 	require.ErrorIs(t, err, context.Canceled)
-	entries, err := os.ReadDir(outputRoot)
+	entries, err := os.ReadDir(filepath.Join(dir, "canonical"))
 	if !errors.Is(err, fs.ErrNotExist) {
 		require.NoError(t, err)
 	}
@@ -766,24 +1208,20 @@ func TestPreprocess_CancelledRunLeavesNoPackage(t *testing.T) {
 }
 
 func TestPreprocess_KeepsADatasetsOwnIDAsTheExternalID(t *testing.T) {
-	mapping := mappingWith(t, "fieldMappings:\n", "fieldMappings:\n  - {source: uid, target: Metadata.ExternalID}\n")
-	run := newPreprocessRun(t, mapping, csvFile("part.csv", "uid,title,text,url\n"+
+	mapping := strings.Replace(baseMapping, "fields:\n", "fields:\n  - {source: uid, target: Metadata.ExternalID}\n", 1)
+	run := newPreprocessRun(t, urlKeySpec, mapping, csvFile("part.csv", "uid,title,text,url\n"+
 		"89541,One,Body,https://example.com/1\n"+
 		",Two,Body,https://example.com/2\n"))
 
 	require.NoError(t, run.execute(t.Context()))
 
-	pkg, rows := readArticles(t, run.packageDir(t))
-	namespace, err := uuid.Parse(pkg.Identity.Namespace)
-	require.NoError(t, err)
-	one := rows.byURL["https://example.com/1"]
-	assert.Equal(t, uuid.NewSHA1(namespace, []byte("https://example.com/1")), one.ID)
-	assert.Equal(t, "89541", one.Metadata.ExternalID)
+	_, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, "89541", rows.byURL["https://example.com/1"].Metadata.ExternalID)
 	assert.Empty(t, rows.byURL["https://example.com/2"].Metadata.ExternalID)
 }
 
 func TestPreprocess_OmitsTheRawVersionWhenTheRawPackageHasNone(t *testing.T) {
-	run := newPreprocessRun(t, ccNewsLikeMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
+	run := newPreprocessRun(t, urlKeySpec, baseMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
 	require.NoError(t, os.RemoveAll(run.rawDir))
 	writeRawPackage(t, run.rawDir, "", csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
 
@@ -797,6 +1235,22 @@ func TestPreprocess_OmitsTheRawVersionWhenTheRawPackageHasNone(t *testing.T) {
 	require.NoError(t, json.Unmarshal(descriptor, &doc))
 	assert.Contains(t, doc.Raw, "name")
 	assert.NotContains(t, doc.Raw, "version")
+}
+
+// readingCounter keeps what was reported before the first stage after reading.
+type readingCounter struct {
+	progresstest.Recorder
+	staged    bool
+	readTotal int64
+	readCount int64
+}
+
+func (c *readingCounter) Stage(name string) {
+	if !c.staged {
+		c.staged = true
+		c.readTotal, c.readCount = c.Total(), c.Count()
+	}
+	c.Recorder.Stage(name)
 }
 
 func TestPreprocess_CountsEveryRecordRead(t *testing.T) {
@@ -831,22 +1285,20 @@ func TestPreprocess_CountsEveryRecordRead(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			run := newPreprocessRun(t, ccNewsLikeMapping, tt.files...)
-			raw, err := datapackage.Open(t.Context(), run.rawDir)
+			run := newPreprocessRun(t, urlKeySpec, baseMapping, tt.files...)
+			spec, err := preprocess.Load(run.specPath)
 			require.NoError(t, err)
-			mapping, err := loadPreprocessMapping(run.mappingPath)
+			raw, err := datapackage.Open(t.Context(), spec.Input)
 			require.NoError(t, err)
-			counter := &progresstest.Recorder{}
+			counter := &readingCounter{}
 
 			published, err := ingest.Preprocess(t.Context(), ingest.PreprocessOptions{
-				Raw: raw, Mapping: mapping, OutputRoot: run.outputRoot, Progress: counter,
+				Raw: raw, Spec: spec.Spec, Mapping: spec.Mapping, OutputRoot: spec.OutputRoot, Progress: counter,
 			})
 
 			require.NoError(t, err)
-			report := published.Package.Report
-			assert.Equal(t, tt.wantTotal, counter.Total())
-			assert.Equal(t, report.Read, counter.Count())
-			assert.Equal(t, []any{"written", report.Written, "deduped", int64(1)}, counter.LastDetail())
+			assert.Equal(t, tt.wantTotal, counter.readTotal)
+			assert.Equal(t, published.Package.Preprocess.Counts.Read, counter.readCount)
 		})
 	}
 }

@@ -239,10 +239,19 @@ def single_resource(
     return resources[0]
 
 
+def articles_resource(
+    descriptor_path: Path, descriptor: dict[str, Any]
+) -> dict[str, Any]:
+    for resource in descriptor.get("resources") or []:
+        if resource.get("name") == "articles":
+            return resource
+    raise PackageError(f"{descriptor_path}: lists no articles resource")
+
+
 def open_package(descriptor_path: Path) -> SourcePackage:
-    """Read a descriptor and verify its one resource by size and hash."""
+    """Read a descriptor and verify its articles resource by size and hash."""
     descriptor = read_descriptor(descriptor_path)
-    resource = single_resource(descriptor_path, descriptor)
+    resource = articles_resource(descriptor_path, descriptor)
     resource_format = resource.get("format")
     if resource_format not in ("parquet", "jsonl"):
         raise PackageError(

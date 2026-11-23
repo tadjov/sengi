@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/tadjov/sengi/internal/datapackage"
@@ -187,8 +188,9 @@ func TestPublishRefusesDifferentBytesAtAnExistingVersion(t *testing.T) {
 	if !errors.As(err, &conflict) {
 		t.Fatalf("err = %v, want VersionConflictError", err)
 	}
-	if conflict.Version != "v1" || conflict.PublishedHash != helloHash || conflict.StagedHash != helloAgainHash {
-		t.Errorf("conflict = %+v, want v1 published %s staged %s", conflict, helloHash, helloAgainHash)
+	want := "resource articles: " + helloHash + " published, " + helloAgainHash + " staged"
+	if conflict.Version != "v1" || !slices.Equal(conflict.Differences, []string{want}) {
+		t.Errorf("conflict = %+v, want v1 with %q", conflict, want)
 	}
 	if got := readFileBytes(t, filepath.Join(published.Dir, datapackage.DescriptorName)); !bytes.Equal(got, descriptor) {
 		t.Errorf("the published descriptor changed:\n%s", got)
@@ -202,8 +204,7 @@ func TestPublishRefusesDifferentBytesAtAnExistingVersion(t *testing.T) {
 func TestPublishRefusesWhatItCannotPublish(t *testing.T) {
 	canonical := func(staging string) string { return filepath.Join(filepath.Dir(staging), "canonical") }
 	tests := map[string]func(staging string, pkg *datapackage.Package) datapackage.PublishOptions{
-		"two resources": func(staging string, pkg *datapackage.Package) datapackage.PublishOptions {
-			writeFile(t, staging, "more.jsonl", "more\n")
+		"a listed resource that is not staged": func(staging string, pkg *datapackage.Package) datapackage.PublishOptions {
 			pkg.Resources = append(pkg.Resources, datapackage.Resource{Name: "more", Path: "more.jsonl", Format: "jsonl"})
 			return datapackage.PublishOptions{StagingDir: staging, ParentDir: canonical(staging)}
 		},

@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.sengi.sh/mapping-v1",
+  "title": "Mapping",
+  "type": "object",
+  "required": [
+    "kind",
+    "version",
+    "name",
+    "constants",
+    "fields"
+  ],
+  "properties": {
+    "constants": {
+      "description": "Values written on every article",
+      "type": "object",
+      "required": [
+        "Language"
+      ],
+      "properties": {
+        "Language": {
+          "description": "ISO 639-3 corpus language written on every article",
+          "type": "string",
+          "enum": [
+            "eng"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "description": {
+      "description": "What the source is",
+      "type": "string",
+      "maxLength": 500
+    },
+    "fields": {
+      "description": "Raw column to article field",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "target"
+        ],
+        "properties": {
+          "format": {
+            "description": "Go time layout of a date or datetime value",
+            "type": "string"
+          },
+          "required": {
+            "description": "Drop the record when this value is missing; Title and URL must set it",
+            "type": "boolean",
+            "default": false
+          },
+          "separator": {
+            "description": "Splits the value of a list target (Metadata.Authors, Metadata.Keywords)",
+            "type": "string"
+          },
+          "source": {
+            "description": "Raw column",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "target": {
+            "description": "Article field, or Metadata.Extra.\u003ckey\u003e for a dataset-specific value",
+            "type": "string",
+            "pattern": "^(URL|Title|Description|Content|PublishedAt|Metadata\\.(ExternalID|PublisherName|Authors|Section|Keywords|Image|DateModified)|Metadata\\.Extra\\.[A-Za-z][A-Za-z0-9_]*)$"
+          },
+          "type": {
+            "description": "How the raw value is parsed; url normalises it, and an invalid url counts as missing",
+            "type": "string",
+            "enum": [
+              "string",
+              "integer",
+              "number",
+              "boolean",
+              "date",
+              "datetime",
+              "url"
+            ],
+            "default": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "kind": {
+      "description": "Resource type identifier",
+      "type": "string",
+      "enum": [
+        "Mapping"
+      ]
+    },
+    "missingValues": {
+      "description": "Raw values, compared trimmed, that mean no value; default [\"\"]",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "name": {
+      "description": "Dataset id, lowercase kebab-case",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "version": {
+      "description": "Spec version",
+      "type": "string",
+      "enum": [
+        "v1"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

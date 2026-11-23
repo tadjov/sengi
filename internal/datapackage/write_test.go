@@ -147,7 +147,7 @@ func TestWriteRejectsAnUnknownIDKind(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, "hello.txt", "hello\n")
 	pkg := helloPackage()
-	pkg.Identity = &datapackage.Identity{IDKind: "uuidv7-typo", Algorithm: "uuidv7"}
+	pkg.Preprocess = &datapackage.Preprocess{ID: datapackage.ArticleIDs{Kind: "uuidv7-typo", Algorithm: "uuidv7"}}
 
 	if _, err := datapackage.Write(context.Background(), dir, pkg); err == nil {
 		t.Fatal("Write accepted id kind uuidv7-typo")

@@ -1,46 +1,28 @@
-kind: DataMapper
+kind: Mapping
 version: v1
-metadata:
-  name: "All the News 2.0"
-  description: "Mapping for the All the News 2.0 dataset (Components One, rjac HF mirror), 2,688,878 articles from 27 US outlets, 2016-01..2020-04, full article bodies. The source columns idx, article_idx, year, month and day have no Article target and are dropped at fetch time."
-dataset: all_the_news
-identity:
-  idKind: urlHash
-dateFormat: "2006-01-02 15:04:05"
+name: all-the-news
+description: "All the News 2.0 (Components One, rjac HF mirror), 2,688,878 articles from 27 US outlets, 2016-01..2020-04, full article bodies. The source columns idx, article_idx, year, month and day have no Article target and are dropped at fetch time."
 constants:
   Language: eng
-output:
-  format: parquet
-fieldMappings:
-  - source: "title"
-    sourceType: "string"
-    target: "Title"
+fields:
+  - source: title
+    target: Title
     required: true
-  - source: "article"
-    sourceType: "string"
-    target: "Content"
-    required: false
-  - source: "author"
-    sourceType: "string"
-    target: "Metadata.Authors"
-    required: false
-  - source: "url"
-    sourceType: "url"
-    target: "URL"
+  - source: article
+    target: Content
+  - source: author
+    target: Metadata.Authors
+  - source: url
+    type: url
+    target: URL
     required: true
-  - source: "url"
-    sourceType: "string"
-    target: "Metadata.ExternalID"
-    required: false
-  - source: "date"
-    sourceType: "datetime"
-    target: "PublishedAt"
-    required: false
-  - source: "publication"
-    sourceType: "string"
-    target: "Metadata.PublisherName"
-    required: false
-  - source: "section"
-    sourceType: "string"
-    target: "Metadata.Section"
-    required: false
+  - source: url
+    target: Metadata.ExternalID
+  - source: date
+    type: datetime
+    format: "2006-01-02 15:04:05"
+    target: PublishedAt
+  - source: publication
+    target: Metadata.PublisherName
+  - source: section
+    target: Metadata.Section

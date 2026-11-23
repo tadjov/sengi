@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/tadjov/sengi/pkg/apis/mapping"
 )
 
 // setFieldValue sets a reflect.Value field with the converted value
-func setFieldValue(field reflect.Value, convertedValue interface{}) error {
+func setFieldValue(field reflect.Value, convertedValue any) error {
 	if !field.CanSet() {
 		return fmt.Errorf("field cannot be set")
 	}
@@ -48,25 +48,6 @@ func setFieldValue(field reflect.Value, convertedValue interface{}) error {
 	}
 
 	return nil
-}
-
-// SetFlatField converts a raw source value and assigns it to the named field.
-func SetFlatField(obj reflect.Value, path string, value string, fieldType string, dateFormat string) error {
-	convertedValue, err := convertValueToType(value, fieldType, dateFormat)
-	if err != nil {
-		return err
-	}
-	return AssignField(obj, path, convertedValue)
-}
-
-// SetNestedField converts a raw source value and assigns it to a field reached
-// by walking a struct path.
-func SetNestedField(obj reflect.Value, path []string, value string, fieldType string, dateFormat string) error {
-	convertedValue, err := convertValueToType(value, fieldType, dateFormat)
-	if err != nil {
-		return err
-	}
-	return AssignNestedField(obj, path, convertedValue)
 }
 
 // AssignNestedField assigns an already-converted value to a field reached by
@@ -137,51 +118,44 @@ func parseDateTime(value string, primaryFormat string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("unable to parse datetime value '%s' with any known format", value)
 }
 
-// convertValueToType converts a string value to the appropriate Go type based on fieldType
-func convertValueToType(value string, fieldType string, dateFormat string) (interface{}, error) {
+// convertValue parses a raw value as fieldType; format is the layout of a date or datetime.
+func convertValue(value string, fieldType mapping.Type, format string) (any, error) {
 	switch fieldType {
-	case "string":
+	case mapping.TypeString:
 		return value, nil
-	case "int":
-		intVal, err := strconv.ParseInt(value, 10, 64)
+	case mapping.TypeInteger:
+		v, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse int value '%s': %w", value, err)
+			return nil, fmt.Errorf("parse integer %q: %w", value, err)
 		}
-		return intVal, nil
-	case "float":
-		floatVal, err := strconv.ParseFloat(value, 64)
+		return v, nil
+	case mapping.TypeNumber:
+		v, err := strconv.ParseFloat(value, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse float value '%s': %w", value, err)
+			return nil, fmt.Errorf("parse number %q: %w", value, err)
 		}
-		return floatVal, nil
-	case "bool":
-		boolVal, err := strconv.ParseBool(value)
+		return v, nil
+	case mapping.TypeBoolean:
+		v, err := strconv.ParseBool(value)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse bool value '%s': %w", value, err)
+			return nil, fmt.Errorf("parse boolean %q: %w", value, err)
 		}
-		return boolVal, nil
-	case "date":
-		t, err := time.Parse("2006-01-02", value)
+		return v, nil
+	case mapping.TypeDate:
+		t, err := time.Parse(format, value)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse date value '%s': %w", value, err)
-		}
-		return t, nil
-	case "datetime":
-		t, err := parseDateTime(value, dateFormat)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse datetime value '%s': %w", value, err)
+			return nil, fmt.Errorf("parse date %q: %w", value, err)
 		}
 		return t, nil
-	case "uuid":
-		id, err := uuid.Parse(value)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse uuid value '%s': %w", value, err)
+	case mapping.TypeDatetime:
+		return parseDateTime(value, format)
+	case mapping.TypeURL:
+		normalized, ok := NormalizeURL(value)
+		if !ok {
+			return nil, fmt.Errorf("value %q: %w", value, errInvalidURL)
 		}
-		return id, nil
-	case "url":
-		normalized, _ := NormalizeURL(value)
 		return normalized, nil
 	default:
-		return nil, fmt.Errorf("unsupported type: %s", fieldType)
+		return nil, fmt.Errorf("unsupported type %q", fieldType)
 	}
 }
