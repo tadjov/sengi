@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/tadjov/sengi/internal/bench/suite"
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 type Options struct {

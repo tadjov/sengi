@@ -16,12 +16,12 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/spf13/cobra"
 	"github.com/tadjov/sengi/internal/cli"
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 const (
@@ -297,7 +297,7 @@ func publishEmbeddings(ctx context.Context, run embeddingsRun) (datapackage.Publ
 	return publishStaged(ctx, stagedPackage{
 		Package: datapackage.Package{
 			Name:       canonical.Name + "-embeddings",
-			Language:   run.corpus.Language,
+			Language:   string(run.corpus.Language),
 			ProducedBy: &datapackage.ProducedBy{Tool: embedProducingTool},
 			Embedding:  &run.embedding,
 			Canonical:  &datapackage.Ref{Name: canonical.Name, Version: canonical.Version, ResourceHash: canonical.ResourceHash},

@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/tadjov/sengi/internal/bench/meta"
-	"github.com/tadjov/sengi/internal/resilience"
+	"github.com/tadjov/sengi/pkg/resilience"
 )
 
 // DefaultJevModel is the Jev release used when --model is omitted.

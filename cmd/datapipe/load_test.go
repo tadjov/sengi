@@ -15,13 +15,13 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/pg"
 	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 const loadFixtureModelTag = "qwen3-embedding:0.6b@1024"
@@ -209,6 +209,28 @@ func TestLoad_RefusesBeforeReachingAnEngine(t *testing.T) {
 
 		require.ErrorContains(t, err, "5 vectors for 20 articles")
 	})
+
+	t.Run("a canonical package in a language no engine analyses", func(t *testing.T) {
+		root := t.TempDir()
+		canonical := writeCanonicalPackage(t, root, loadFixtureArticles(20))
+		setDescriptorLanguage(t, canonical.location, "en")
+
+		err := execDatapipe(t, "", "load", "--engine", "es", canonical.location)
+
+		require.ErrorContains(t, err, `unsupported language "en"`)
+	})
+
+	t.Run("an embeddings package in a language no engine analyses", func(t *testing.T) {
+		root := t.TempDir()
+		articles := loadFixtureArticles(20)
+		canonical := writeCanonicalPackage(t, root, articles)
+		embeddings := writeEmbeddingsPackage(t, root, canonical, articles, nil)
+		setDescriptorLanguage(t, embeddings.location, "en")
+
+		err := execDatapipe(t, "", "load", "--engine", "es", canonical.location, "--embeddings", embeddings.location)
+
+		require.ErrorContains(t, err, `unsupported language "en"`)
+	})
 }
 
 func execDatapipe(t *testing.T, connString string, args ...string) error {
@@ -250,7 +272,7 @@ func writeCanonicalPackageAs(t *testing.T, root string, articles []document.Arti
 		Name:          "fixture-canonical",
 		Version:       "article-v2-test",
 		ArticleSchema: datapackage.ArticleSchema,
-		Language:      language.English,
+		Language:      string(language.English),
 		Resources:     []datapackage.Resource{{Name: datapackage.ArticlesResource, Path: "articles." + format, Format: format}},
 	})
 	require.NoError(t, err)
@@ -306,6 +328,18 @@ func corruptByte(t *testing.T, path string) {
 	require.NoError(t, err)
 	data[len(data)/2] ^= 0xff
 	require.NoError(t, os.WriteFile(path, data, 0o644))
+}
+
+func setDescriptorLanguage(t *testing.T, descriptor, code string) {
+	t.Helper()
+	data, err := os.ReadFile(descriptor)
+	require.NoError(t, err)
+	var doc map[string]any
+	require.NoError(t, json.Unmarshal(data, &doc))
+	doc["language"] = code
+	data, err = json.MarshalIndent(doc, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(descriptor, data, 0o644))
 }
 
 func loadFixtureArticles(n int) []document.Article {

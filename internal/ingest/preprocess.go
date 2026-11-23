@@ -13,11 +13,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/ingest/reader"
 	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/pkg/apis/mapping"
 	"github.com/tadjov/sengi/pkg/apis/preprocess"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 // PreprocessOptions with an empty Version publishes datapackage.DefaultVersion.
@@ -65,7 +65,7 @@ func Preprocess(ctx context.Context, opts PreprocessOptions) (datapackage.Publis
 	pkg := datapackage.Package{
 		Name:          canonicalName(raw.Name),
 		ArticleSchema: datapackage.ArticleSchema,
-		Language:      lang,
+		Language:      string(lang),
 		ProducedBy:    &opts.ProducedBy,
 		Raw:           &datapackage.RawRef{Name: raw.Name, Version: raw.Version},
 		Sources:       httpsSources(raw.Sources),

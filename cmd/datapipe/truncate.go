@@ -12,11 +12,12 @@ import (
 
 	"github.com/parquet-go/parquet-go"
 	"github.com/tadjov/sengi/internal/cli"
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/storage/queryvectors"
+	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 // truncation cuts one embeddings package's vectors to dim.
@@ -74,6 +75,11 @@ func runTruncate(ctx context.Context, out io.Writer, opts embedOptions) error {
 
 // planTruncation refuses the run before the source's resource is read.
 func planTruncation(pkg datapackage.Package, opts embedOptions) (truncation, error) {
+	if pkg.Language != "" {
+		if _, err := language.Parse(pkg.Language); err != nil {
+			return truncation{}, fmt.Errorf("embeddings package %s: %w", pkg.Name, err)
+		}
+	}
 	if pkg.Embedding == nil {
 		return truncation{}, fmt.Errorf("embeddings package %s records no embedding to cut", pkg.Name)
 	}

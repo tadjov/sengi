@@ -12,9 +12,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tadjov/sengi/internal/cli"
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/pkg/apis/preprocess"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 type preprocessConfig struct {

@@ -153,7 +153,7 @@ def recorded_version(raw: Path) -> str | None:
 
 
 def check_resource_path(relative: str) -> None:
-    """Refuse a path internal/datapackage rejects, or an uploaded datapackage.json."""
+    """Refuse a path pkg/datapackage rejects, or an uploaded datapackage.json."""
     if relative[0] in "./~" or ":" in relative or "\\" in relative:
         raise SystemExit(
             f"{relative}: a data package path cannot start with '.', '/' or '~' or hold ':' or"

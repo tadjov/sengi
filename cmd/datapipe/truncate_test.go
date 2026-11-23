@@ -13,10 +13,10 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/storage/queryvectors"
 	"github.com/tadjov/sengi/internal/types/document"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 const (
@@ -369,6 +369,10 @@ func TestEmbedTruncate_RefusesBeforeReadingTheSource(t *testing.T) {
 		{"an existing --out", func(t *testing.T, _ corpusTruncation, q queryVectorsTruncation) []string {
 			require.NoError(t, os.MkdirAll(q.out, 0o755))
 			return []string{"--embeddings", q.source.location, "--truncate-to", "512", "--out", q.out}
+		}},
+		{"a source in a language no engine analyses", func(t *testing.T, c corpusTruncation, _ queryVectorsTruncation) []string {
+			setDescriptorLanguage(t, c.source.location, "en")
+			return []string{"--embeddings", c.source.location, "--truncate-to", "512"}
 		}},
 	}
 	for _, tt := range tests {

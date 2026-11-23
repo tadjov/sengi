@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/bench/judgment"
-	"github.com/tadjov/sengi/internal/bench/metrics"
 	"github.com/tadjov/sengi/internal/bench/report"
+	"github.com/tadjov/sengi/pkg/irmetrics"
 )
 
 // RescoreOptions configures Rescore.
@@ -102,7 +102,7 @@ func Rescore(opts RescoreOptions) (Rescoring, error) {
 type rescoredSet struct {
 	label string
 	// scores hold each job's scored cells.
-	scores []map[cell]metrics.ScoreSet
+	scores []map[cell]irmetrics.ScoreSet
 }
 
 // reproducedMetrics keeps metrics the report's own set reproduces, so rescores stay comparable.
@@ -144,7 +144,7 @@ func (rk ranking) job(job report.JobReport, index int) JobRescoring {
 				order.Means[engine] = means[r][e]
 			}
 			if rk.reference >= 0 {
-				order.TauB = Statistic(metrics.KendallTauB(means[r], means[rk.reference]))
+				order.TauB = Statistic(irmetrics.KendallTauB(means[r], means[rk.reference]))
 			}
 			mr.Sets = append(mr.Sets, order)
 		}
@@ -187,13 +187,13 @@ type cell struct {
 	queryID, engine string
 }
 
-func (o RescoreOptions) scoreJobs(grades map[string]map[uuid.UUID]int) []map[cell]metrics.ScoreSet {
-	out := make([]map[cell]metrics.ScoreSet, len(o.Report.Jobs))
+func (o RescoreOptions) scoreJobs(grades map[string]map[uuid.UUID]int) []map[cell]irmetrics.ScoreSet {
+	out := make([]map[cell]irmetrics.ScoreSet, len(o.Report.Jobs))
 	for j, job := range o.Report.Jobs {
-		out[j] = make(map[cell]metrics.ScoreSet)
+		out[j] = make(map[cell]irmetrics.ScoreSet)
 		for _, e := range job.PerQuery {
 			if e.Judged && e.Error == "" {
-				out[j][cell{queryID: e.QueryID, engine: e.EngineName}] = metrics.ComputeAll(rankedIDs(e.Ranking), grades[e.QueryID], o.KValues, o.Threshold)
+				out[j][cell{queryID: e.QueryID, engine: e.EngineName}] = irmetrics.ComputeAll(rankedIDs(e.Ranking), grades[e.QueryID], o.KValues, o.Threshold)
 			}
 		}
 	}
@@ -235,17 +235,17 @@ func (o RescoreOptions) uncoveredTopK(grades map[string]map[uuid.UUID]int) strin
 
 type metric struct {
 	name   string
-	scored func(metrics.ScoreSet) float64
+	scored func(irmetrics.ScoreSet) float64
 	stored func(report.Entry) (float64, bool)
 }
 
 func catalogue(kValues []int) []metric {
 	var out []metric
-	atK := func(format string, scored func(metrics.ScoreSet) map[int]float64, stored func(report.Entry) map[int]float64) {
+	atK := func(format string, scored func(irmetrics.ScoreSet) map[int]float64, stored func(report.Entry) map[int]float64) {
 		for _, k := range kValues {
 			out = append(out, metric{
 				name:   fmt.Sprintf(format, k),
-				scored: func(s metrics.ScoreSet) float64 { return scored(s)[k] },
+				scored: func(s irmetrics.ScoreSet) float64 { return scored(s)[k] },
 				stored: func(e report.Entry) (float64, bool) {
 					v, ok := stored(e)[k]
 					return v, ok
@@ -253,17 +253,17 @@ func catalogue(kValues []int) []metric {
 			})
 		}
 	}
-	atK("NDCG@%d", func(s metrics.ScoreSet) map[int]float64 { return s.NDCG }, func(e report.Entry) map[int]float64 { return e.NDCG })
-	atK("NDCG@%d (gain rel)", func(s metrics.ScoreSet) map[int]float64 { return s.NDCGLinear }, func(e report.Entry) map[int]float64 { return e.NDCGLinear })
-	atK("P@%d", func(s metrics.ScoreSet) map[int]float64 { return s.Precision }, func(e report.Entry) map[int]float64 { return e.Precision })
-	atK("R@%d", func(s metrics.ScoreSet) map[int]float64 { return s.Recall }, func(e report.Entry) map[int]float64 { return e.Recall })
-	atK("F1@%d", func(s metrics.ScoreSet) map[int]float64 { return s.F1 }, func(e report.Entry) map[int]float64 { return e.F1 })
-	whole := func(name string, scored func(metrics.ScoreSet) float64, stored func(report.Entry) float64) {
+	atK("NDCG@%d", func(s irmetrics.ScoreSet) map[int]float64 { return s.NDCG }, func(e report.Entry) map[int]float64 { return e.NDCG })
+	atK("NDCG@%d (gain rel)", func(s irmetrics.ScoreSet) map[int]float64 { return s.NDCGLinear }, func(e report.Entry) map[int]float64 { return e.NDCGLinear })
+	atK("P@%d", func(s irmetrics.ScoreSet) map[int]float64 { return s.Precision }, func(e report.Entry) map[int]float64 { return e.Precision })
+	atK("R@%d", func(s irmetrics.ScoreSet) map[int]float64 { return s.Recall }, func(e report.Entry) map[int]float64 { return e.Recall })
+	atK("F1@%d", func(s irmetrics.ScoreSet) map[int]float64 { return s.F1 }, func(e report.Entry) map[int]float64 { return e.F1 })
+	whole := func(name string, scored func(irmetrics.ScoreSet) float64, stored func(report.Entry) float64) {
 		out = append(out, metric{name: name, scored: scored, stored: func(e report.Entry) (float64, bool) { return stored(e), true }})
 	}
-	whole("MAP", func(s metrics.ScoreSet) float64 { return s.AP }, func(e report.Entry) float64 { return e.AP })
-	whole("MRR", func(s metrics.ScoreSet) float64 { return s.RR }, func(e report.Entry) float64 { return e.RR })
-	whole("Bpref", func(s metrics.ScoreSet) float64 { return s.Bpref }, func(e report.Entry) float64 { return e.Bpref })
+	whole("MAP", func(s irmetrics.ScoreSet) float64 { return s.AP }, func(e report.Entry) float64 { return e.AP })
+	whole("MRR", func(s irmetrics.ScoreSet) float64 { return s.RR }, func(e report.Entry) float64 { return e.RR })
+	whole("Bpref", func(s irmetrics.ScoreSet) float64 { return s.Bpref }, func(e report.Entry) float64 { return e.Bpref })
 	return out
 }
 
@@ -313,7 +313,7 @@ type jobGrid struct {
 }
 
 // engineMeans scores a failed or missing cell 0, as the report's means do.
-func (m metric) engineMeans(grid jobGrid, scores map[cell]metrics.ScoreSet) []float64 {
+func (m metric) engineMeans(grid jobGrid, scores map[cell]irmetrics.ScoreSet) []float64 {
 	means := make([]float64, len(grid.engines))
 	for i, engine := range grid.engines {
 		var sum float64

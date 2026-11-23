@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/tadjov/sengi/internal/bench/metrics"
 	"github.com/tadjov/sengi/internal/bench/runner"
+	"github.com/tadjov/sengi/pkg/irmetrics"
 )
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-func makeJudgedScores(ndcg10 float64) metrics.ScoreSet {
-	return metrics.ScoreSet{
+func makeJudgedScores(ndcg10 float64) irmetrics.ScoreSet {
+	return irmetrics.ScoreSet{
 		Judged:    true,
 		NDCG:      map[int]float64{10: ndcg10},
 		Precision: map[int]float64{10: 0.3},
@@ -29,7 +29,7 @@ func makeJudgedScores(ndcg10 float64) metrics.ScoreSet {
 	}
 }
 
-func makeBenchmarkResult(engines []string, queryIDs []string, scores map[string]map[string]metrics.ScoreSet) *runner.BenchmarkResult {
+func makeBenchmarkResult(engines []string, queryIDs []string, scores map[string]map[string]irmetrics.ScoreSet) *runner.BenchmarkResult {
 	jr := &runner.JobResult{
 		JobName:     "test_job",
 		EngineNames: engines,
@@ -39,7 +39,7 @@ func makeBenchmarkResult(engines []string, queryIDs []string, scores map[string]
 	for _, qid := range queryIDs {
 		jr.Results[qid] = make(map[string]runner.QueryResult)
 		for _, eng := range engines {
-			sc := metrics.ScoreSet{}
+			sc := irmetrics.ScoreSet{}
 			if scores != nil {
 				if qScores, ok := scores[qid]; ok {
 					sc = qScores[eng]
@@ -95,7 +95,7 @@ func TestGenerate_JobsCount(t *testing.T) {
 func TestGenerate_AggregatedMetrics(t *testing.T) {
 	engines := []string{"pg", "es"}
 	queries := []string{"q1", "q2", "q3"}
-	scores := map[string]map[string]metrics.ScoreSet{
+	scores := map[string]map[string]irmetrics.ScoreSet{
 		"q1": {"pg": makeJudgedScores(0.8), "es": makeJudgedScores(0.6)},
 		"q2": {"pg": makeJudgedScores(0.7), "es": makeJudgedScores(0.65)},
 		"q3": {"pg": makeJudgedScores(0.9), "es": makeJudgedScores(0.7)},
@@ -154,7 +154,7 @@ func TestGenerate_PerQueryEntries(t *testing.T) {
 // ─── JSON round-trip ──────────────────────────────────────────────────────────
 
 func TestWriteReadJSON_RoundTrip(t *testing.T) {
-	br := makeBenchmarkResult([]string{"pg", "es"}, []string{"q1", "q2"}, map[string]map[string]metrics.ScoreSet{
+	br := makeBenchmarkResult([]string{"pg", "es"}, []string{"q1", "q2"}, map[string]map[string]irmetrics.ScoreSet{
 		"q1": {"pg": makeJudgedScores(0.7), "es": makeJudgedScores(0.5)},
 		"q2": {"pg": makeJudgedScores(0.6), "es": makeJudgedScores(0.55)},
 	})
@@ -237,7 +237,7 @@ func TestReadLatestReport(t *testing.T) {
 }
 
 func TestWriteTable_ContainsEngineNames(t *testing.T) {
-	br := makeBenchmarkResult([]string{"postgres", "elastic"}, []string{"q1"}, map[string]map[string]metrics.ScoreSet{
+	br := makeBenchmarkResult([]string{"postgres", "elastic"}, []string{"q1"}, map[string]map[string]irmetrics.ScoreSet{
 		"q1": {"postgres": makeJudgedScores(0.9), "elastic": makeJudgedScores(0.7)},
 	})
 	r := Generate(br, nil)
@@ -254,7 +254,7 @@ func TestWriteTable_ContainsEngineNames(t *testing.T) {
 }
 
 func TestWriteMarkdown_HasGFMTables(t *testing.T) {
-	br := makeBenchmarkResult([]string{"eng-a"}, []string{"q1"}, map[string]map[string]metrics.ScoreSet{
+	br := makeBenchmarkResult([]string{"eng-a"}, []string{"q1"}, map[string]map[string]irmetrics.ScoreSet{
 		"q1": {"eng-a": makeJudgedScores(0.75)},
 	})
 	r := Generate(br, nil)
@@ -279,13 +279,13 @@ func TestGenerate_SignificancePopulated_EnoughData(t *testing.T) {
 	engines := []string{"eng-a", "eng-b"}
 	nQueries := 10
 	queries := make([]string, nQueries)
-	scores := make(map[string]map[string]metrics.ScoreSet, nQueries)
+	scores := make(map[string]map[string]irmetrics.ScoreSet, nQueries)
 	for i := 0; i < nQueries; i++ {
 		qid := "q" + string(rune('0'+i))
 		queries[i] = qid
 		scoreA := 0.5 + float64(i)*0.03
 		scoreB := 0.4 + float64(i)*0.02
-		scores[qid] = map[string]metrics.ScoreSet{
+		scores[qid] = map[string]irmetrics.ScoreSet{
 			"eng-a": makeJudgedScores(scoreA),
 			"eng-b": makeJudgedScores(scoreB),
 		}
@@ -461,7 +461,7 @@ func withCategories(br *runner.BenchmarkResult, byQuery map[string]string) *runn
 func TestGenerate_ByCategorySplitsQueries(t *testing.T) {
 	engines := []string{"pg"}
 	queries := []string{"kw1", "kw2", "ph1"}
-	scores := map[string]map[string]metrics.ScoreSet{
+	scores := map[string]map[string]irmetrics.ScoreSet{
 		"kw1": {"pg": makeJudgedScores(0.9)},
 		"kw2": {"pg": makeJudgedScores(0.7)},
 		"ph1": {"pg": makeJudgedScores(0.2)},

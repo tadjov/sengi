@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/bench/agreement"
-	"github.com/tadjov/sengi/internal/bench/metrics"
 	"github.com/tadjov/sengi/internal/bench/suite"
+	"github.com/tadjov/sengi/pkg/irmetrics"
 )
 
 func pairs(queryID string, grades ...[]int) []agreement.Pair {
@@ -83,7 +83,7 @@ func TestSummarize_AgainstAReference(t *testing.T) {
 	require.Len(t, got.Reference.Against, 1)
 	against := got.Reference.Against[0]
 	assert.Equal(t, "other", against.Label)
-	assert.Equal(t, metrics.GradeConfusion{{1, 0, 1, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 2}}, against.Table)
+	assert.Equal(t, irmetrics.GradeConfusion{{1, 0, 1, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 2}}, against.Table)
 	assert.Equal(t, 3, against.ReferenceIrrelevant)
 	assert.Equal(t, 1, against.GradedRelevant)
 	assert.Equal(t, 3, against.ReferenceRelevant)

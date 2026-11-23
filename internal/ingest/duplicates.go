@@ -8,10 +8,10 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/pkg/apis/mapping"
 	"github.com/tadjov/sengi/pkg/apis/preprocess"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 type digest [sha256.Size]byte

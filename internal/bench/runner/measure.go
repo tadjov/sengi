@@ -13,9 +13,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/bench/engine"
-	"github.com/tadjov/sengi/internal/bench/metrics"
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/suite"
+	"github.com/tadjov/sengi/pkg/irmetrics"
 )
 
 // cell is one query on one engine.
@@ -162,9 +162,9 @@ func (r *Runner) queryResult(q *suite.Query, c *cell) QueryResult {
 	if measured.err != nil {
 		slog.Warn("query failed", "query", q.ID, "engine", c.engine, "error", measured.err)
 	}
-	var scores metrics.ScoreSet
+	var scores irmetrics.ScoreSet
 	if judgments := r.judgmentsFor(q); measured.err == nil && len(judgments) > 0 {
-		scores = metrics.ComputeAll(measured.rankedIDs, judgments, r.config.KValues, r.config.RelevanceThreshold)
+		scores = irmetrics.ComputeAll(measured.rankedIDs, judgments, r.config.KValues, r.config.RelevanceThreshold)
 	}
 	return QueryResult{
 		QueryID:            q.ID,

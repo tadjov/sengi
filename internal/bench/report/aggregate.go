@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/tadjov/sengi/internal/bench/meta"
-	"github.com/tadjov/sengi/internal/bench/metrics"
 	"github.com/tadjov/sengi/internal/bench/runner"
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/version"
+	"github.com/tadjov/sengi/pkg/irmetrics"
 )
 
 type GenerateOptions struct {
@@ -106,10 +106,10 @@ func newJobScope(jr *runner.JobResult, cfg runner.Config) jobScope {
 }
 
 // scoresOf returns zero scores for a cell that failed or was never run.
-func (s jobScope) scoresOf(qID, engName string) metrics.ScoreSet {
+func (s jobScope) scoresOf(qID, engName string) irmetrics.ScoreSet {
 	qr, ok := s.job.Results[qID][engName]
 	if !ok || qr.Error != nil {
-		return metrics.ScoreSet{}
+		return irmetrics.ScoreSet{}
 	}
 	return qr.Scores
 }
@@ -385,13 +385,13 @@ func comparePair(scores pairedScores) PairwiseSignificance {
 	}
 	seed := fnv.New64a()
 	_, _ = seed.Write([]byte(scores.engineA + "\x00" + scores.engineB + "\x00" + scores.metric))
-	meanDifference := metrics.BootstrapMean(differences, seed.Sum64())
+	meanDifference := irmetrics.BootstrapMean(differences, seed.Sum64())
 
 	result := PairwiseSignificance{
 		EngineA: scores.engineA, EngineB: scores.engineB, Metric: scores.metric,
 		MeanDifference: &meanDifference,
 	}
-	if test := metrics.Wilcoxon(scores.a, scores.b); test != nil {
+	if test := irmetrics.Wilcoxon(scores.a, scores.b); test != nil {
 		result.W, result.P = test.W, test.P
 	} else {
 		result.Untestable, result.P = true, 1
@@ -411,9 +411,9 @@ func adjustAcrossEnginePairs(results []PairwiseSignificance) {
 		for i, idx := range members {
 			raw[i] = results[idx].P
 		}
-		for i, adjusted := range metrics.Holm(raw) {
+		for i, adjusted := range irmetrics.Holm(raw) {
 			results[members[i]].AdjustedP = &adjusted
-			results[members[i]].Stars = metrics.SignificanceStars(adjusted)
+			results[members[i]].Stars = irmetrics.SignificanceStars(adjusted)
 		}
 	}
 }

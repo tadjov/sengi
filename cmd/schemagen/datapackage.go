@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/pkg/datapackage"
 	"github.com/tadjov/sengi/pkg/schema"
 )
 

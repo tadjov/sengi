@@ -17,9 +17,9 @@ import (
 	pgxvec "github.com/pgvector/pgvector-go/pgx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/testcontainer"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 const (
