@@ -1,0 +1,268 @@
+=== string, first page, statement 1
+
+		SELECT COALESCE(MAX(ts_rank(search_vector, plainto_tsquery('english'::regconfig, $1))), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1)
+	
+=== string, first page, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank(search_vector, plainto_tsquery('english'::regconfig, $1)) as rank
+			FROM articles
+			WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1)
+			ORDER BY rank DESC, id DESC
+			LIMIT $2
+		
+=== string, after a cursor, statement 1
+
+		SELECT COALESCE(MAX(ts_rank(search_vector, plainto_tsquery('english'::regconfig, $1))), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1)
+	
+=== string, after a cursor, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank(search_vector, plainto_tsquery('english'::regconfig, $1)) as rank
+			FROM articles
+			WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1)
+			  AND (ts_rank(search_vector, plainto_tsquery('english'::regconfig, $1)), id) < ($2, $3)
+			ORDER BY rank DESC, id DESC
+			LIMIT $4
+		
+=== field title, first page, statement 1
+
+		SELECT COALESCE(MAX(ts_rank('{0, 0, 0, 1}', search_vector, plainto_tsquery('english'::regconfig, $1))), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1) AND ts_filter(search_vector, '{a}') @@ plainto_tsquery('english'::regconfig, $1)
+	
+=== field title, first page, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank('{0, 0, 0, 1}', search_vector, plainto_tsquery('english'::regconfig, $1)) as rank
+			FROM articles
+			WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1) AND ts_filter(search_vector, '{a}') @@ plainto_tsquery('english'::regconfig, $1)
+			ORDER BY rank DESC, id DESC
+			LIMIT $2
+		
+=== field title, after a cursor, statement 1
+
+		SELECT COALESCE(MAX(ts_rank('{0, 0, 0, 1}', search_vector, plainto_tsquery('english'::regconfig, $1))), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1) AND ts_filter(search_vector, '{a}') @@ plainto_tsquery('english'::regconfig, $1)
+	
+=== field title, after a cursor, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank('{0, 0, 0, 1}', search_vector, plainto_tsquery('english'::regconfig, $1)) as rank
+			FROM articles
+			WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1) AND ts_filter(search_vector, '{a}') @@ plainto_tsquery('english'::regconfig, $1)
+			  AND (ts_rank('{0, 0, 0, 1}', search_vector, plainto_tsquery('english'::regconfig, $1)), id) < ($2, $3)
+			ORDER BY rank DESC, id DESC
+			LIMIT $4
+		
+=== field content or, first page, statement 1
+
+		SELECT COALESCE(MAX(ts_rank('{0, 1, 0, 0}', search_vector, replace(plainto_tsquery('english'::regconfig, $1)::text, ' & ', ' | ')::tsquery)), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ replace(plainto_tsquery('english'::regconfig, $1)::text, ' & ', ' | ')::tsquery AND ts_filter(search_vector, '{c}') @@ replace(plainto_tsquery('english'::regconfig, $1)::text, ' & ', ' | ')::tsquery
+	
+=== field content or, first page, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank('{0, 1, 0, 0}', search_vector, replace(plainto_tsquery('english'::regconfig, $1)::text, ' & ', ' | ')::tsquery) as rank
+			FROM articles
+			WHERE search_vector @@ replace(plainto_tsquery('english'::regconfig, $1)::text, ' & ', ' | ')::tsquery AND ts_filter(search_vector, '{c}') @@ replace(plainto_tsquery('english'::regconfig, $1)::text, ' & ', ' | ')::tsquery
+			ORDER BY rank DESC, id DESC
+			LIMIT $2
+		
+=== field content or, after a cursor, statement 1
+
+		SELECT COALESCE(MAX(ts_rank('{0, 1, 0, 0}', search_vector, replace(plainto_tsquery('english'::regconfig, $1)::text, ' & ', ' | ')::tsquery)), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ replace(plainto_tsquery('english'::regconfig, $1)::text, ' & ', ' | ')::tsquery AND ts_filter(search_vector, '{c}') @@ replace(plainto_tsquery('english'::regconfig, $1)::text, ' & ', ' | ')::tsquery
+	
+=== field content or, after a cursor, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank('{0, 1, 0, 0}', search_vector, replace(plainto_tsquery('english'::regconfig, $1)::text, ' & ', ' | ')::tsquery) as rank
+			FROM articles
+			WHERE search_vector @@ replace(plainto_tsquery('english'::regconfig, $1)::text, ' & ', ' | ')::tsquery AND ts_filter(search_vector, '{c}') @@ replace(plainto_tsquery('english'::regconfig, $1)::text, ' & ', ' | ')::tsquery
+			  AND (ts_rank('{0, 1, 0, 0}', search_vector, replace(plainto_tsquery('english'::regconfig, $1)::text, ' & ', ' | ')::tsquery), id) < ($2, $3)
+			ORDER BY rank DESC, id DESC
+			LIMIT $4
+		
+=== fields boosted, first page, statement 1
+
+		SELECT COALESCE(MAX(ts_rank('{0, 0.33333334, 0, 1}', search_vector, plainto_tsquery('english'::regconfig, $1))), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1) AND ts_filter(search_vector, '{a,c}') @@ plainto_tsquery('english'::regconfig, $1)
+	
+=== fields boosted, first page, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank('{0, 0.33333334, 0, 1}', search_vector, plainto_tsquery('english'::regconfig, $1)) as rank
+			FROM articles
+			WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1) AND ts_filter(search_vector, '{a,c}') @@ plainto_tsquery('english'::regconfig, $1)
+			ORDER BY rank DESC, id DESC
+			LIMIT $2
+		
+=== fields boosted, after a cursor, statement 1
+
+		SELECT COALESCE(MAX(ts_rank('{0, 0.33333334, 0, 1}', search_vector, plainto_tsquery('english'::regconfig, $1))), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1) AND ts_filter(search_vector, '{a,c}') @@ plainto_tsquery('english'::regconfig, $1)
+	
+=== fields boosted, after a cursor, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank('{0, 0.33333334, 0, 1}', search_vector, plainto_tsquery('english'::regconfig, $1)) as rank
+			FROM articles
+			WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1) AND ts_filter(search_vector, '{a,c}') @@ plainto_tsquery('english'::regconfig, $1)
+			  AND (ts_rank('{0, 0.33333334, 0, 1}', search_vector, plainto_tsquery('english'::regconfig, $1)), id) < ($2, $3)
+			ORDER BY rank DESC, id DESC
+			LIMIT $4
+		
+=== fields all, first page, statement 1
+
+		SELECT COALESCE(MAX(ts_rank('{0, 1, 1, 1}', search_vector, plainto_tsquery('english'::regconfig, $1))), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1)
+	
+=== fields all, first page, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank('{0, 1, 1, 1}', search_vector, plainto_tsquery('english'::regconfig, $1)) as rank
+			FROM articles
+			WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1)
+			ORDER BY rank DESC, id DESC
+			LIMIT $2
+		
+=== fields all, after a cursor, statement 1
+
+		SELECT COALESCE(MAX(ts_rank('{0, 1, 1, 1}', search_vector, plainto_tsquery('english'::regconfig, $1))), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1)
+	
+=== fields all, after a cursor, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank('{0, 1, 1, 1}', search_vector, plainto_tsquery('english'::regconfig, $1)) as rank
+			FROM articles
+			WHERE search_vector @@ plainto_tsquery('english'::regconfig, $1)
+			  AND (ts_rank('{0, 1, 1, 1}', search_vector, plainto_tsquery('english'::regconfig, $1)), id) < ($2, $3)
+			ORDER BY rank DESC, id DESC
+			LIMIT $4
+		
+=== phrase exact, first page, statement 1
+
+		SELECT COALESCE(MAX(ts_rank(search_vector, phraseto_tsquery('english'::regconfig, $1))), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ phraseto_tsquery('english'::regconfig, $1) AND (ts_filter(search_vector, '{a}') @@ phraseto_tsquery('english'::regconfig, $1))
+	
+=== phrase exact, first page, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank(search_vector, phraseto_tsquery('english'::regconfig, $1)) as rank
+			FROM articles
+			WHERE search_vector @@ phraseto_tsquery('english'::regconfig, $1) AND (ts_filter(search_vector, '{a}') @@ phraseto_tsquery('english'::regconfig, $1))
+			ORDER BY rank DESC, id DESC
+			LIMIT $2
+		
+=== phrase exact, after a cursor, statement 1
+
+		SELECT COALESCE(MAX(ts_rank(search_vector, phraseto_tsquery('english'::regconfig, $1))), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ phraseto_tsquery('english'::regconfig, $1) AND (ts_filter(search_vector, '{a}') @@ phraseto_tsquery('english'::regconfig, $1))
+	
+=== phrase exact, after a cursor, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank(search_vector, phraseto_tsquery('english'::regconfig, $1)) as rank
+			FROM articles
+			WHERE search_vector @@ phraseto_tsquery('english'::regconfig, $1) AND (ts_filter(search_vector, '{a}') @@ phraseto_tsquery('english'::regconfig, $1))
+			  AND (ts_rank(search_vector, phraseto_tsquery('english'::regconfig, $1)), id) < ($2, $3)
+			ORDER BY rank DESC, id DESC
+			LIMIT $4
+		
+=== phrase slop, first page, statement 1
+SELECT plainto_tsquery('english'::regconfig, $1)::text
+=== phrase slop, first page, statement 2
+
+		SELECT COALESCE(MAX(ts_rank(search_vector, $1::tsquery)), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ $1::tsquery AND (ts_filter(search_vector, '{a}') @@ $1::tsquery OR ts_filter(search_vector, '{b}') @@ $1::tsquery)
+	
+=== phrase slop, first page, statement 3
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank(search_vector, $1::tsquery) as rank
+			FROM articles
+			WHERE search_vector @@ $1::tsquery AND (ts_filter(search_vector, '{a}') @@ $1::tsquery OR ts_filter(search_vector, '{b}') @@ $1::tsquery)
+			ORDER BY rank DESC, id DESC
+			LIMIT $2
+		
+=== phrase slop, after a cursor, statement 1
+SELECT plainto_tsquery('english'::regconfig, $1)::text
+=== phrase slop, after a cursor, statement 2
+
+		SELECT COALESCE(MAX(ts_rank(search_vector, $1::tsquery)), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ $1::tsquery AND (ts_filter(search_vector, '{a}') @@ $1::tsquery OR ts_filter(search_vector, '{b}') @@ $1::tsquery)
+	
+=== phrase slop, after a cursor, statement 3
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank(search_vector, $1::tsquery) as rank
+			FROM articles
+			WHERE search_vector @@ $1::tsquery AND (ts_filter(search_vector, '{a}') @@ $1::tsquery OR ts_filter(search_vector, '{b}') @@ $1::tsquery)
+			  AND (ts_rank(search_vector, $1::tsquery), id) < ($2, $3)
+			ORDER BY rank DESC, id DESC
+			LIMIT $4
+		
+=== boolean, first page, statement 1
+
+		SELECT COALESCE(MAX(ts_rank(search_vector, to_tsquery('english'::regconfig, $1))), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ to_tsquery('english'::regconfig, $1)
+	
+=== boolean, first page, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank(search_vector, to_tsquery('english'::regconfig, $1)) as rank
+			FROM articles
+			WHERE search_vector @@ to_tsquery('english'::regconfig, $1)
+			ORDER BY rank DESC, id DESC
+			LIMIT $2
+		
+=== boolean, after a cursor, statement 1
+
+		SELECT COALESCE(MAX(ts_rank(search_vector, to_tsquery('english'::regconfig, $1))), 0.0) as max_score, COUNT(*)
+		FROM articles
+		WHERE search_vector @@ to_tsquery('english'::regconfig, $1)
+	
+=== boolean, after a cursor, statement 2
+
+			SELECT
+				id, url, title, description, content, published_at, language, publisher_domain, metadata,
+				ts_rank(search_vector, to_tsquery('english'::regconfig, $1)) as rank
+			FROM articles
+			WHERE search_vector @@ to_tsquery('english'::regconfig, $1)
+			  AND (ts_rank(search_vector, to_tsquery('english'::regconfig, $1)), id) < ($2, $3)
+			ORDER BY rank DESC, id DESC
+			LIMIT $4
+		

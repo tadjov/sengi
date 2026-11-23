@@ -6,25 +6,15 @@ import (
 	"github.com/google/uuid"
 )
 
-// VectorStore provides embedding vectors for benchmarking and semantic search.
-// It is engine-agnostic, mirroring Reader / FtsSearcher: the query is embedded
-// at runtime, while document vectors are read from whatever store already holds
-// them (Postgres today, Elasticsearch later).
+// VectorStore embeds queries with the model its stored document vectors were produced with.
 type VectorStore interface {
-	// QueryVector embeds query text into a vector using the store's configured
-	// model — the same model the stored document vectors were produced with.
 	QueryVector(ctx context.Context, text string) ([]float32, error)
 
-	// DocVectors returns the stored embedding for each of the given article ids.
-	// Ids without a stored vector are simply absent from the map — that is not
-	// an error (the caller decides how to treat un-embedded documents).
+	// DocVectors leaves out ids that have no stored vector.
 	DocVectors(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID][]float32, error)
 
-	// Model names the embedding model this store embeds queries with and filters
-	// document vectors by. Callers that reach the document vectors by some other
-	// route — a benchmark template reading article_embeddings directly — check
-	// their own model against it, since a query vector compared against another
-	// model's document vectors is valid arithmetic and meaningless ranking.
+	// Model lets a caller that reads document vectors by another route check its
+	// own model: vectors of two models compare as valid arithmetic and meaningless ranking.
 	Model() string
 }
 

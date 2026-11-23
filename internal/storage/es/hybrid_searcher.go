@@ -10,11 +10,10 @@ import (
 	"github.com/elastic/go-elasticsearch/v9"
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	"github.com/google/uuid"
-	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/document"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	"github.com/tadjov/sengi/pkg/utils"
 )
 
 // hybridCandidateDepth bounds how many candidates each leg contributes to the fusion.
@@ -41,7 +40,7 @@ func NewHybridSearcher(client *Client, embedder *embedding.Embedder, model strin
 // result is a single page (parity with the PG hybrid searcher).
 func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid, baseOpts *dquery.BaseOptions) (*storage.SearchResult, error) {
 	size := baseOpts.Size
-	k := query.GetK()
+	k := query.K
 
 	legDepth := hybridCandidateDepth
 	if size > legDepth {
@@ -50,7 +49,7 @@ func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid,
 
 	slog.Info("Executing es hybrid RRF search",
 		"query", query.Query,
-		"language", query.GetLanguage(),
+		"language", query.Language,
 		"k", k,
 		"size", size,
 		"leg_depth", legDepth)
@@ -81,16 +80,16 @@ func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid,
 	}
 
 	maxScore := fused[0].score
-	articles := make([]dto.ArticleSearchResult, 0, len(fused))
+	articles := make([]storage.Hit, 0, len(fused))
 	for _, c := range fused {
 		doc, ok := docs[c.id]
 		if !ok {
 			continue
 		}
-		articles = append(articles, dto.ArticleSearchResult{
+		articles = append(articles, storage.Hit{
 			Article:         doc,
-			Score:           utils.RoundFloat64(c.score, dquery.ScoreDecimalPlaces),
-			ScoreNormalized: utils.RoundFloat64(c.score/maxScore, dquery.ScoreDecimalPlaces),
+			Score:           dquery.RoundScore(c.score),
+			ScoreNormalized: dquery.RoundScore(c.score / maxScore),
 		})
 	}
 
@@ -107,8 +106,8 @@ func (s *HybridSearcher) SearchHybrid(ctx context.Context, query *dquery.Hybrid,
 		Hits:         articles,
 		NextCursor:   nil,
 		HasMore:      false,
-		MaxScore:     utils.RoundFloat64(maxScore, dquery.ScoreDecimalPlaces),
-		PageMaxScore: utils.RoundFloat64(maxScore, dquery.ScoreDecimalPlaces),
+		MaxScore:     dquery.RoundScore(maxScore),
+		PageMaxScore: dquery.RoundScore(maxScore),
 		TotalMatches: totalMatches,
 	}, nil
 }
@@ -213,7 +212,7 @@ func fuseRRF(lexical, vector []uuid.UUID, k int) []fusedCandidate {
 }
 
 // fetchDocs loads the full source for the fused candidates in a single query.
-func (s *HybridSearcher) fetchDocs(ctx context.Context, candidates []fusedCandidate) (map[uuid.UUID]dto.Article, error) {
+func (s *HybridSearcher) fetchDocs(ctx context.Context, candidates []fusedCandidate) (map[uuid.UUID]document.Article, error) {
 	res, err := s.client.Search().
 		Index(s.indexName).
 		SourceExcludes_("embedding").
@@ -230,7 +229,7 @@ func (s *HybridSearcher) fetchDocs(ctx context.Context, candidates []fusedCandid
 		return nil, fmt.Errorf("failed to fetch hybrid docs: %w", err)
 	}
 
-	docs := make(map[uuid.UUID]dto.Article, len(res.Hits.Hits))
+	docs := make(map[uuid.UUID]document.Article, len(res.Hits.Hits))
 	for _, hit := range res.Hits.Hits {
 		article, err := decodeArticle(hit.Source_)
 		if err != nil {

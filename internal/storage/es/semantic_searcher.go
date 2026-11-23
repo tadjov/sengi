@@ -7,9 +7,9 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v9"
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
-	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/internal/types/document"
 	dquery "github.com/tadjov/sengi/internal/types/query"
 )
 
@@ -43,10 +43,7 @@ func (s *SemanticSearcher) SearchSemantic(ctx context.Context, query *dquery.Sem
 
 	size := baseOpts.Size
 	k := size
-	numCandidates := k * 10
-	if numCandidates < minNumCandidates {
-		numCandidates = minNumCandidates
-	}
+	numCandidates := max(k*10, minNumCandidates)
 
 	threshold := query.Threshold
 	if threshold == 0 {
@@ -81,7 +78,6 @@ func (s *SemanticSearcher) SearchSemantic(ctx context.Context, query *dquery.Sem
 		Size(size).
 		Do(ctx)
 	if err != nil {
-		slog.Error("Elasticsearch kNN query failed", "error", err, "query", query.Query)
 		return nil, fmt.Errorf("failed to execute semantic search: %w", err)
 	}
 
@@ -94,16 +90,12 @@ func (s *SemanticSearcher) SearchSemantic(ctx context.Context, query *dquery.Sem
 		"total_matches", res.Hits.Total.Value,
 		"returned_count", len(hits))
 
-	// kNN returns a single page (parity with PG): no cursor follow-up.
-	return &storage.VectorSearchResult{
-		Hits:       hits,
-		NextCursor: nil,
-		HasMore:    false,
-	}, nil
+	// kNN returns a single page, as the Postgres searcher does.
+	return &storage.VectorSearchResult{Hits: hits}, nil
 }
 
-func (s *SemanticSearcher) mapToArticles(hits []types.Hit) ([]dto.Article, error) {
-	articles := make([]dto.Article, 0, len(hits))
+func (s *SemanticSearcher) mapToArticles(hits []types.Hit) ([]document.Article, error) {
+	articles := make([]document.Article, 0, len(hits))
 	for _, hit := range hits {
 		article, err := decodeArticle(hit.Source_)
 		if err != nil {

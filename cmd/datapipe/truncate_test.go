@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/storage/queryvectors"
 	"github.com/tadjov/sengi/internal/types/document"
 )
@@ -260,14 +261,14 @@ func TestEmbedTruncate_LoadTakesTheCutPackageWithItsCanonical(t *testing.T) {
 	c := newCorpusTruncation(t)
 	require.NoError(t, execDatapipe(t, "", "embed", "--embeddings", c.source.location, "--truncate-to", "512"))
 
-	inputs, err := openLoadInputs(context.Background(), loadOptions{
+	packaged, err := ingest.OpenCorpus(context.Background(), ingest.CorpusOptions{
 		Canonical:  c.canonical.location,
 		Embeddings: filepath.Join(c.tagDir(), "v1", datapackage.DescriptorName),
 	})
 	require.NoError(t, err)
-	defer inputs.Close()
+	defer packaged.Close()
 
-	corpus := inputs.corpus(context.Background())
+	corpus := packaged.Corpus(context.Background())
 	assert.Equal(t, truncatedTag, corpus.ModelTag)
 	var ids []uuid.UUID
 	for vec, err := range corpus.Vectors {
@@ -321,16 +322,16 @@ func TestEmbedTruncate_RefusesBeforeReadingTheSource(t *testing.T) {
 		args func(t *testing.T, c corpusTruncation, q queryVectorsTruncation) []string
 	}{
 		{"both inputs", func(_ *testing.T, c corpusTruncation, _ queryVectorsTruncation) []string {
-			return []string{"--canonical", c.canonical.location, "--embeddings", c.source.location, "--truncate-to", "512"}
+			return []string{c.canonical.location, "--embeddings", c.source.location, "--truncate-to", "512"}
 		}},
 		{"neither input", func(*testing.T, corpusTruncation, queryVectorsTruncation) []string {
 			return []string{"--truncate-to", "512"}
 		}},
-		{"--truncate-to with --canonical", func(_ *testing.T, c corpusTruncation, _ queryVectorsTruncation) []string {
-			return []string{"--canonical", c.canonical.location, "--truncate-to", "512"}
+		{"--truncate-to with a canonical package", func(_ *testing.T, c corpusTruncation, _ queryVectorsTruncation) []string {
+			return []string{c.canonical.location, "--truncate-to", "512"}
 		}},
-		{"--out with --canonical", func(_ *testing.T, c corpusTruncation, q queryVectorsTruncation) []string {
-			return []string{"--canonical", c.canonical.location, "--out", q.out}
+		{"--out with a canonical package", func(_ *testing.T, c corpusTruncation, q queryVectorsTruncation) []string {
+			return []string{c.canonical.location, "--out", q.out}
 		}},
 		{"--embeddings without --truncate-to", func(_ *testing.T, c corpusTruncation, _ queryVectorsTruncation) []string {
 			return []string{"--embeddings", c.source.location}

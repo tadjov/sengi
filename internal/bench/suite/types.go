@@ -36,8 +36,7 @@ type TestSuite struct {
 	Queries       []Query          `yaml:"queries"`
 }
 
-// Corpus records the dataset the suite targets. Lets a report attest "this
-// was scored against the sengi_articles index, snapshot 2026-05-10".
+// Corpus names the dataset the suite was written for; nothing reads it.
 type Corpus struct {
 	Name       string `yaml:"name"`
 	Source     string `yaml:"source,omitempty"`
@@ -220,30 +219,6 @@ type ResolvedQuery struct {
 	Params TemplateParams
 }
 
-type RelevanceJudgment struct {
-	DocID     uuid.UUID `yaml:"doc_id"`
-	Relevance int       `yaml:"relevance"`
-}
-
-func (q *Query) JudgmentMap() map[uuid.UUID]int {
-	m := make(map[uuid.UUID]int, len(q.Judgments))
-	for _, j := range q.Judgments {
-		m[j.DocID] = j.Relevance
-	}
-	return m
-}
-
-// InjectJudgments sets the per-query Judgments slice from a flat map produced
-// by the CLI layer after loading an annotations file. Replaces the loader-side
-// auto-injection of v0; keeps the suite YAML focused on queries only.
-func (ls *LoadedSuite) InjectJudgments(byQuery map[string][]RelevanceJudgment) {
-	for i := range ls.Suite.Queries {
-		if js, ok := byQuery[ls.Suite.Queries[i].ID]; ok {
-			ls.Suite.Queries[i].Judgments = js
-		}
-	}
-}
-
 // ResolveEngineQuery renders the block named by opts.Engine, or returns a nil
 // query when the suite declares none for it.
 func (q *Query) ResolveEngineQuery(opts ResolveOptions) (*ResolvedQuery, error) {
@@ -270,4 +245,28 @@ func FormatVector(vec []float32) string {
 	}
 	b.WriteByte(']')
 	return b.String()
+}
+
+type RelevanceJudgment struct {
+	DocID     uuid.UUID `yaml:"doc_id"`
+	Relevance int       `yaml:"relevance"`
+}
+
+func (q *Query) JudgmentMap() map[uuid.UUID]int {
+	m := make(map[uuid.UUID]int, len(q.Judgments))
+	for _, j := range q.Judgments {
+		m[j.DocID] = j.Relevance
+	}
+	return m
+}
+
+// InjectJudgments sets the per-query Judgments slice from a flat map produced
+// by the CLI layer after loading an annotations file. Replaces the loader-side
+// auto-injection of v0; keeps the suite YAML focused on queries only.
+func (ls *LoadedSuite) InjectJudgments(byQuery map[string][]RelevanceJudgment) {
+	for i := range ls.Suite.Queries {
+		if js, ok := byQuery[ls.Suite.Queries[i].ID]; ok {
+			ls.Suite.Queries[i].Judgments = js
+		}
+	}
 }

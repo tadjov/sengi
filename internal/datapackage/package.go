@@ -177,3 +177,13 @@ type RawRef struct {
 type Suite struct {
 	ID string `json:"id"`
 }
+
+// Resource finds a resource by name.
+func (p Package) Resource(name string) (Resource, bool) {
+	for _, r := range p.Resources {
+		if r.Name == name {
+			return r, true
+		}
+	}
+	return Resource{}, false
+}

@@ -12,7 +12,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/judgment"
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/cli"
-	"github.com/tadjov/sengi/pkg/config/env"
+	"github.com/tadjov/sengi/internal/env"
 )
 
 func init() {
@@ -44,22 +44,22 @@ Typical pipeline (pass the track path as a positional arg):
   bench clean  <track>               remove old report files (keep N newest)
 
 A track is any folder holding spec.yaml + suite.yaml + trec/ — nothing above it
-is assumed, so tracks/global-news-dataset/fts_quality and benches/b1 are both
+is assumed, so tracks/cc-news/fts and benches/b1 are both
 fine. The arg is an ordinary path: absolute, or relative to the track root.
 validate/pool/judge/run/status also take a glob — quote it:
-bench run 'tracks/global-news-dataset/*'.
+bench run 'tracks/cc-news/*'.
 
 --track-root <dir> (or BENCH_TRACK_ROOT) is where relative track paths start,
 defaulting to the current directory.
 
-  BENCH_TRACK_ROOT=tracks/global-news-dataset bench run news_fuzzy
-  BENCH_TRACK_ROOT=tracks/global-news-dataset bench run '*'
+  BENCH_TRACK_ROOT=tracks/cc-news bench run fuzzy
+  BENCH_TRACK_ROOT=tracks/cc-news bench run '*'
 `
 )
 
 func main() {
 	// Loaded before the flags are defined: --track-root defaults to BENCH_TRACK_ROOT.
-	if err := env.LoadDotEnv(os.Getenv("ENV"), "cmd/bench/.env"); err != nil {
+	if err := env.LoadDotEnv("cmd/bench/.env"); err != nil {
 		slog.Info("Skipping .env environment variables", "error", err)
 	}
 	root := &cobra.Command{
@@ -83,7 +83,6 @@ func main() {
 		newStatusCmd(),
 		newDiffCmd(),
 		newCleanCmd(),
-		newReportCmd(), // top-level alias for bench show report
 	)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

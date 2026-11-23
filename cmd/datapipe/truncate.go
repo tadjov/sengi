@@ -14,6 +14,7 @@ import (
 	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/storage/queryvectors"
 )
@@ -176,7 +177,7 @@ func (c truncation) publish(ctx context.Context, source *datapackage.ResourceFil
 		if c.queryVectors {
 			return truncateRows(ctx, rows, func(r *queryvectors.Row) *[]float32 { return &r.Embedding })
 		}
-		return truncateRows(ctx, rows, func(r *embeddingRow) *[]float32 { return &r.Embedding })
+		return truncateRows(ctx, rows, func(r *ingest.EmbeddingRow) *[]float32 { return &r.Embedding })
 	}
 	if c.queryVectors {
 		return publishQueryVectors(ctx, c, writeResource)
@@ -298,4 +299,11 @@ func refuseExistingOut(dir string) error {
 		return fmt.Errorf("check --out %s: %w", dir, err)
 	}
 	return nil
+}
+
+func describedResource(pkg datapackage.Package, name string) (datapackage.Resource, error) {
+	if resource, ok := pkg.Resource(name); ok {
+		return resource, nil
+	}
+	return datapackage.Resource{}, &datapackage.ResourceNotFoundError{Package: pkg.Name, Name: name}
 }

@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/fs"
 	"iter"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -19,10 +18,10 @@ import (
 	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/progress"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
-	"github.com/tadjov/sengi/pkg/config/env"
 )
 
 const (
@@ -51,9 +50,10 @@ type embedOptions struct {
 func newEmbedCmd() *cobra.Command {
 	var opts embedOptions
 	cmd := &cobra.Command{
-		Use:   "embed",
+		Use:   "embed [canonical-descriptor]",
 		Short: "Embed a canonical package's articles through an embedding API, or cut an embeddings package to fewer dimensions",
-		Long: `embed verifies a canonical package, embeds each article's lead-v1 text through
+		Long: `embed verifies a local canonical package (its descriptor under
+datasets/<ds>/canonical/<version>/), embeds each article's lead-v1 text through
 Ollama and publishes the vectors as an embeddings package under
 datasets/<ds>/embeddings/<tag-dir>/<version>/, one row per canonical row in order.
 
@@ -64,25 +64,25 @@ With --embeddings and --truncate-to N it embeds nothing: it verifies an embeddin
 package and keeps each vector's first N dimensions, L2-renormalised, which is a
 Matryoshka-trained model's N-dim embedding. A corpus package lands under
 datasets/<ds>/embeddings/<model>@N/<version>/, a track's query vectors in --out.`,
-		Example: "  datapipe embed --canonical datasets/cc-news/canonical/v1/datapackage.json\n" +
+		Args: cobra.MaximumNArgs(1),
+		Example: "  datapipe embed datasets/cc-news/canonical/v1/datapackage.json\n" +
 			"  datapipe embed --embeddings datasets/cc-news/embeddings/qwen3-embedding-0.6b@1024/v1/datapackage.json --truncate-to 512",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := env.LoadDotEnv(os.Getenv("ENV")); err != nil {
-				slog.Info("Skipping .env environment variables", "error", err)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				opts.Canonical = args[0]
 			}
 			return runEmbed(cmd.Context(), cmd.OutOrStdout(), opts)
 		},
 	}
 	flags := cmd.Flags()
-	flags.StringVar(&opts.Canonical, "canonical", "", "local canonical package descriptor under datasets/<ds>/canonical/<version>/")
-	flags.StringVar(&opts.Embeddings, "embeddings", "", "embeddings package descriptor to cut with --truncate-to, instead of embedding --canonical")
-	flags.IntVar(&opts.TruncateTo, "truncate-to", 0, "cut each --embeddings vector to its first N dimensions, L2-renormalised; N must be below the package's dim")
-	flags.StringVar(&opts.Out, "out", "", "folder for query vectors cut from a track's trec/query-vectors/; it must not exist yet")
-	flags.StringVar(&opts.Version, "version", datapackage.DefaultVersion, "embeddings package version, a folder under embeddings/<tag-dir>/ that must not exist yet")
-	flags.IntVar(&opts.BatchSize, "batch-size", embedding.DefaultBatchSize, "articles per embedding request; --canonical only")
-	flags.IntVar(&opts.MaxTokens, "max-tokens", defaultMaxTokens, "input tokens per article, sent to Ollama as num_ctx; a longer lead is cut; --canonical only")
+	flags.StringVar(&opts.Embeddings, "embeddings", "", "Embeddings package descriptor to cut with --truncate-to, instead of embedding a canonical package")
+	flags.IntVar(&opts.TruncateTo, "truncate-to", 0, "Cut each --embeddings vector to its first N dimensions, L2-renormalised; N must be below the package's dim")
+	flags.StringVar(&opts.Out, "out", "", "Folder for query vectors cut from a track's trec/query-vectors/; it must not exist yet")
+	flags.StringVar(&opts.Version, "version", datapackage.DefaultVersion, "Embeddings package version, a folder under embeddings/<tag-dir>/ that must not exist yet")
+	flags.IntVar(&opts.BatchSize, "batch-size", embedding.DefaultBatchSize, "Articles per embedding request; canonical packages only")
+	flags.IntVar(&opts.MaxTokens, "max-tokens", defaultMaxTokens, "Input tokens per article, sent to Ollama as num_ctx; a longer lead is cut; canonical packages only")
 	flags.StringVar(&opts.HuggingFaceModel, "hf-model", "", "Hugging Face repo the model is built from; required unless EMBEDDING_MODEL is "+embedding.DefaultModel)
-	flags.IntVar(&opts.Limit, "limit", 0, "embed only the first N rows, as a trial with its own --version; 0 embeds every row")
+	flags.IntVar(&opts.Limit, "limit", 0, "Embed only the first N rows, as a trial with its own --version; 0 embeds every row")
 	return cmd
 }
 
@@ -97,12 +97,12 @@ func runEmbed(ctx context.Context, out io.Writer, opts embedOptions) error {
 	if err != nil {
 		return err
 	}
-	inputs, err := openLoadInputs(ctx, loadOptions{Canonical: opts.Canonical})
+	packaged, err := ingest.OpenCorpus(ctx, ingest.CorpusOptions{Canonical: opts.Canonical})
 	if err != nil {
 		return err
 	}
-	defer inputs.Close()
-	run.corpus = inputs.corpus(ctx)
+	defer packaged.Close()
+	run.corpus = packaged.Corpus(ctx)
 
 	command := cli.Command{
 		Title: "sengi embed",
@@ -117,7 +117,7 @@ func runEmbed(ctx context.Context, out io.Writer, opts embedOptions) error {
 		Unit:  "articles",
 	}
 	return command.Run(out, func(p *cli.Progress) (cli.Summary, error) {
-		articles := inputs.articleCount
+		articles := packaged.ArticleCount()
 		if opts.Limit > 0 {
 			articles = min(articles, int64(opts.Limit))
 		}
@@ -163,7 +163,7 @@ func prepareEmbeddings(ctx context.Context, opts embedOptions) (embeddingsRun, e
 		return embeddingsRun{}, err
 	}
 	embedder := embedding.NewEmbedder(api.client,
-		embedding.WithExecutorModel(api.model),
+		embedding.WithModel(api.model),
 		embedding.WithDim(api.dim),
 		embedding.WithBatchSize(opts.BatchSize),
 		embedding.WithDocumentOptions(map[string]any{"num_ctx": opts.MaxTokens}),
@@ -199,16 +199,16 @@ func prepareEmbeddings(ctx context.Context, opts embedOptions) (embeddingsRun, e
 
 func (o embedOptions) validate() error {
 	if (o.Canonical == "") == (o.Embeddings == "") {
-		return errors.New("pass exactly one of --canonical, to embed its articles, and --embeddings, to cut its vectors")
+		return errors.New("pass exactly one of a canonical descriptor, to embed its articles, and --embeddings, to cut its vectors")
 	}
 	if o.Embeddings != "" {
 		return o.validateTruncation()
 	}
 	if o.TruncateTo != 0 {
-		return errors.New("--truncate-to cuts an embeddings package; pass it with --embeddings, not --canonical")
+		return errors.New("--truncate-to cuts an embeddings package; pass it with --embeddings, not a canonical descriptor")
 	}
 	if o.Out != "" {
-		return errors.New("--out takes cut query vectors; pass it with --embeddings, not --canonical")
+		return errors.New("--out takes cut query vectors; pass it with --embeddings, not a canonical descriptor")
 	}
 	if o.BatchSize < 1 {
 		return fmt.Errorf("--batch-size must be at least 1, got %d", o.BatchSize)
@@ -229,7 +229,7 @@ func (o embedOptions) validateTruncation() error {
 	case o.Limit != 0:
 		return errors.New("--limit trials an embedding run; --embeddings embeds nothing")
 	case o.HuggingFaceModel != "":
-		return errors.New("--hf-model names the model --canonical embeds with; --embeddings keeps its source's")
+		return errors.New("--hf-model names the model a canonical package is embedded with; --embeddings keeps its source's")
 	}
 	return nil
 }
@@ -370,13 +370,13 @@ func writeEmbeddings(ctx context.Context, path string, run embeddingsRun) error 
 		return fmt.Errorf("create %s: %w", path, err)
 	}
 	defer f.Close()
-	writer := parquet.NewGenericWriter[embeddingRow](f)
+	writer := parquet.NewGenericWriter[ingest.EmbeddingRow](f)
 	counter := progress.Or(run.progress)
 	for chunk, err := range articleChunks(run.corpus.Articles, run.opts.BatchSize*batchesPerChunk, run.opts.Limit) {
 		if err != nil {
 			return err
 		}
-		rows := make([]embeddingRow, 0, len(chunk))
+		rows := make([]ingest.EmbeddingRow, 0, len(chunk))
 		// One request per batch, so the count moves as each one returns rather than once per chunk.
 		for batch := range slices.Chunk(chunk, run.opts.BatchSize) {
 			vecs, err := run.embedder.EmbedDocuments(ctx, batch)
@@ -384,7 +384,7 @@ func writeEmbeddings(ctx context.Context, path string, run embeddingsRun) error 
 				return err
 			}
 			for _, vec := range vecs {
-				rows = append(rows, embeddingRow{ID: vec.ID.String(), Embedding: vec.Embedding})
+				rows = append(rows, ingest.EmbeddingRow{ID: vec.ID.String(), Embedding: vec.Embedding})
 			}
 			counter.Add(int64(len(batch)))
 		}

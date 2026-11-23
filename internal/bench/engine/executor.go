@@ -51,8 +51,6 @@ func SearchTemplateID(track, template string) string {
 
 type Executor interface {
 	Execute(ctx context.Context, req Request) (*Execution, error)
-	Name() string
-	Close() error
 }
 
 // Validator is an optional capability for executors that can syntactically

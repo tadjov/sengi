@@ -135,7 +135,7 @@ Endpoints in `internal/api/router/search.go`:
 | `GET /v1/capabilities`          | reports supported paradigms |
 
 There is no single `POST /v1/articles/search` discriminated-union endpoint. The structured
-endpoint dispatches on the `query.Base.Kind` wrapper, e.g.:
+endpoint dispatches on the one key under `query`, e.g.:
 
 ```json
 POST /v1/articles/_search

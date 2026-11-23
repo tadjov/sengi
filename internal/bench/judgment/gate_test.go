@@ -318,7 +318,7 @@ func TestTermJudges_KeepTheTokenizersValidationErrorInTheChain(t *testing.T) {
 	assert.ErrorAs(t, err, &validation)
 }
 
-func TestTermJudges_GradeTheQueryTextNeverTheDescription(t *testing.T) {
+func TestTermJudges_GradeTheQueryText(t *testing.T) {
 	perfect := GradingDoc{
 		ID:          uuid.New(),
 		Title:       "Climate change is accelerating",
@@ -326,21 +326,20 @@ func TestTermJudges_GradeTheQueryTextNeverTheDescription(t *testing.T) {
 		Content:     "Climate change reshapes weather, and climate change drives migration.",
 	}
 	docs := append([]GradingDoc{perfect}, titled("Local football results", "Markets close higher", "Weather today")...)
-	const description = "Simple keyword search for climate change articles"
 
 	for judge, grade := range termJudges {
 		t.Run(judge, func(t *testing.T) {
-			got := grade(t, GradingQuery{ID: "q1", Text: "climate change", Description: description}, docs)
+			got := grade(t, GradingQuery{ID: "q1", Text: "climate change"}, docs)
 
 			assert.Equal(t, GradeHighly, got[perfect.Title])
 		})
 	}
 
-	described := GradingQuery{ID: "q1", Description: description}
-	_, keywordErr := NewKeywordStrategy().Grade(context.Background(), described, perfect)
-	_, bm25Err := NewBM25Strategy().GradePool(context.Background(), described, docs)
+	textless := GradingQuery{ID: "q1"}
+	_, keywordErr := NewKeywordStrategy().Grade(context.Background(), textless, perfect)
+	_, bm25Err := NewBM25Strategy().GradePool(context.Background(), textless, docs)
 	for judge, err := range map[string]error{"keyword": keywordErr, "bm25": bm25Err} {
 		var noTerms *NoQueryTermsError
-		assert.True(t, errors.As(err, &noTerms), "%s graded a query with only a description: err = %v", judge, err)
+		assert.True(t, errors.As(err, &noTerms), "%s graded a query without text: err = %v", judge, err)
 	}
 }

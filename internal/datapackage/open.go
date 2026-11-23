@@ -100,7 +100,7 @@ func validateDigest(r Resource) error {
 
 // Resource returns the named resource once its bytes and hash match; Close removes a remote download.
 func (o *Opened) Resource(ctx context.Context, name string) (*ResourceFile, error) {
-	r, ok := o.lookup(name)
+	r, ok := o.Package.Resource(name)
 	if !ok {
 		return nil, &ResourceNotFoundError{Package: o.Package.Name, Name: name}
 	}
@@ -113,15 +113,6 @@ func (o *Opened) Resource(ctx context.Context, name string) (*ResourceFile, erro
 	}
 	defer body.Close()
 	return o.download(ctx, r, body)
-}
-
-func (o *Opened) lookup(name string) (Resource, bool) {
-	for _, r := range o.Package.Resources {
-		if r.Name == name {
-			return r, true
-		}
-	}
-	return Resource{}, false
 }
 
 func verifyInPlace(ctx context.Context, r Resource, f *os.File) (*ResourceFile, error) {

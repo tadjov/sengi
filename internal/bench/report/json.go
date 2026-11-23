@@ -40,31 +40,47 @@ func ReadJSON(path string) (*Report, error) {
 	return &r, nil
 }
 
-// latestPointer is the JSON envelope written by bench run to latest.json.
 type latestPointer struct {
 	Latest string `json:"latest"`
 }
 
-// ReadLatestReport follows the pointer written at latestPath (e.g.
-// tracks/global-news-dataset/fts_quality/reports/latest.json) to the actual report file and
-// returns the parsed Report. The pointer stores a path relative to its own
-// directory so it survives moves of the track folder.
-func ReadLatestReport(latestPath string) (*Report, error) {
+// WriteLatestPointer points latestPath at reportPath, relative to the pointer
+// so the track folder can move.
+func WriteLatestPointer(latestPath, reportPath string) error {
+	rel, err := filepath.Rel(filepath.Dir(latestPath), reportPath)
+	if err != nil {
+		rel = reportPath
+	}
+	data, err := json.Marshal(latestPointer{Latest: rel})
+	if err != nil {
+		return fmt.Errorf("marshal latest pointer: %w", err)
+	}
+	return os.WriteFile(latestPath, append(data, '\n'), 0644)
+}
+
+// LatestTarget is the report file latestPath points at.
+func LatestTarget(latestPath string) (string, error) {
 	data, err := os.ReadFile(latestPath)
 	if err != nil {
-		return nil, fmt.Errorf("read latest pointer %s: %w", latestPath, err)
+		return "", fmt.Errorf("read latest pointer %s: %w", latestPath, err)
 	}
-	var ptr latestPointer
-	if err := json.Unmarshal(data, &ptr); err != nil {
-		return nil, fmt.Errorf("parse latest pointer %s: %w", latestPath, err)
+	var pointer latestPointer
+	if err := json.Unmarshal(data, &pointer); err != nil {
+		return "", fmt.Errorf("parse latest pointer %s: %w", latestPath, err)
 	}
-	if ptr.Latest == "" {
-		return nil, fmt.Errorf("latest pointer %s has no 'latest' field", latestPath)
+	if pointer.Latest == "" {
+		return "", fmt.Errorf("latest pointer %s has no 'latest' field", latestPath)
 	}
-	// Resolve relative paths against the pointer file's directory.
-	reportPath := ptr.Latest
-	if !filepath.IsAbs(reportPath) {
-		reportPath = filepath.Join(filepath.Dir(latestPath), reportPath)
+	if filepath.IsAbs(pointer.Latest) {
+		return filepath.Clean(pointer.Latest), nil
+	}
+	return filepath.Join(filepath.Dir(latestPath), pointer.Latest), nil
+}
+
+func ReadLatestReport(latestPath string) (*Report, error) {
+	reportPath, err := LatestTarget(latestPath)
+	if err != nil {
+		return nil, err
 	}
 	return ReadJSON(reportPath)
 }

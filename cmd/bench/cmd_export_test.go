@@ -25,7 +25,7 @@ func gradedTrack(t *testing.T) (lineageTrack, uuid.UUID) {
 func TestExportQrels_AnnotationsPathAsStrategyWritesQrelsBesideIt(t *testing.T) {
 	tr, doc := gradedTrack(t)
 
-	_, err := execute(t, newExportCmd(), tr.dir, "--format", "qrels", "--strategy", tr.judgments)
+	_, err := execute(t, newExportCmd(), tr.dir, "--format", "qrels", "--judgments", tr.judgments)
 	require.NoError(t, err)
 
 	_, err = judgment.ReadFile(tr.judgments)
@@ -107,7 +107,7 @@ func TestExport_RunWritesTheLatestReportsRankingsUnderItsRunID(t *testing.T) {
 	rpt.Jobs[0].PerQuery[0].Ranking = []report.RankedDoc{{DocID: first, Score: 2}, {DocID: second, Score: 1}}
 	reportPath := filepath.Join(reports, rpt.Provenance.RunID+".json")
 	require.NoError(t, report.WriteJSON(rpt, reportPath))
-	require.NoError(t, updateLatestPointer(filepath.Join(reports, "latest.json"), reportPath))
+	require.NoError(t, report.WriteLatestPointer(filepath.Join(reports, "latest.json"), reportPath))
 
 	cmd := newExportCmd()
 	cmd.SetOut(&bytes.Buffer{})

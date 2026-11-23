@@ -57,7 +57,6 @@ func TestJev_DescribeNamesTheReleaseTheRubricAndTheEndpoint(t *testing.T) {
 
 	got := s.Describe()
 
-	assert.Equal(t, "jev", s.Name())
 	assert.Equal(t, "jev", got.Strategy)
 	assert.Equal(t, "jev-1.14.0", got.Model)
 	assert.NotEmpty(t, got.RubricVersion)
@@ -68,17 +67,6 @@ func TestJev_DescribeNamesTheReleaseTheRubricAndTheEndpoint(t *testing.T) {
 	assert.Empty(t, got.PromptVersion)
 	assert.Empty(t, got.Effort)
 	assert.Zero(t, got.MaxOutputTokens)
-}
-
-func TestJev_GradesOneDocPerRequest(t *testing.T) {
-	t.Setenv("TYPESAFE_API_KEY", testJevKey)
-	s, err := NewStrategy(StrategyJev, StrategyOptions{Model: "jev-1.14.0"})
-	require.NoError(t, err)
-
-	_, perDoc := s.(DocStrategy)
-	_, batches := s.(BatchStrategy)
-	assert.True(t, perDoc)
-	assert.False(t, batches)
 }
 
 func TestJev_AsksAboutTheArticleTheLLMJudgeSees(t *testing.T) {
@@ -96,18 +84,18 @@ func TestJev_AsksAboutTheArticleTheLLMJudgeSees(t *testing.T) {
 	}{
 		{
 			name:         "keyword",
-			query:        GradingQuery{ID: "q1", Text: "floods", Description: "Coverage of river floods"},
+			query:        GradingQuery{ID: "q1", Text: "floods"},
 			instructions: "Query: floods\n\n" + guidance,
 		},
 		{
 			name:  "phrase",
-			query: GradingQuery{ID: "q1", Text: "Sava floods", Description: "Coverage of river floods", Category: suite.CategoryPhrase},
+			query: GradingQuery{ID: "q1", Text: "Sava floods", Category: suite.CategoryPhrase},
 			instructions: "This is a phrase query, and the article contains the phrase. Grade how well it answers the query.\n\n" +
 				"Query: Sava floods\n\n" + guidance,
 		},
 		{
 			name:  "boolean",
-			query: GradingQuery{ID: "q1", Text: "floods AND NOT drought", Description: "Coverage of river floods", Category: suite.CategoryBoolean},
+			query: GradingQuery{ID: "q1", Text: "floods AND NOT drought", Category: suite.CategoryBoolean},
 			instructions: "This is a boolean query, and the article satisfies the whole expression, negated terms included. Grade how well it answers the query.\n\n" +
 				"Query: floods AND NOT drought\n\n" + guidance,
 		},
@@ -132,7 +120,6 @@ func TestJev_AsksAboutTheArticleTheLLMJudgeSees(t *testing.T) {
 					"The article is centrally about the query topic.",
 				},
 			}}, req.Questions)
-			assert.NotContains(t, string(fake.body(t, 0)), tt.query.Description)
 		})
 	}
 }

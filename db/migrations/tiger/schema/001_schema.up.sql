@@ -1,4 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- The timescaledb-ha image preloads pg_textsearch, so CREATE EXTENSION is enough.
 CREATE EXTENSION IF NOT EXISTS pg_textsearch;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;

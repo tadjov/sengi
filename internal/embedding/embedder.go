@@ -33,7 +33,7 @@ type Vec struct {
 	ID        uuid.UUID
 }
 
-type EmbedderOption func(executor *Embedder)
+type EmbedderOption func(embedder *Embedder)
 
 func NewEmbedder(client Client, opts ...EmbedderOption) *Embedder {
 	base := &Embedder{
@@ -50,7 +50,7 @@ func NewEmbedder(client Client, opts ...EmbedderOption) *Embedder {
 	return base
 }
 
-func WithExecutorModel(model string) EmbedderOption {
+func WithModel(model string) EmbedderOption {
 	return func(executor *Embedder) {
 		executor.model = model
 	}

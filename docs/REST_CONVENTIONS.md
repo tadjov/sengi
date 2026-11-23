@@ -1,5 +1,7 @@
 # REST Conventions & API Design Decisions
 
+> Design record. It was written while the API was being designed and keeps the reasoning behind its shape, so some sections describe alternatives and migration steps that never shipped. [API_DOCUMENTATION.md](API_DOCUMENTATION.md) describes the API as it is.
+
 ## TL;DR - Recommended API Structure
 
 ```

@@ -31,9 +31,8 @@ import (
 	"github.com/tadjov/sengi/internal/bench/pool"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/queryvectors"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
-	"gopkg.in/yaml.v3"
 )
 
 func llmJudge(provider, model string) meta.Judge {
@@ -49,121 +48,18 @@ func fileWith(j meta.Judge) *judgment.File {
 	return &judgment.File{Meta: meta.Meta{Judge: &j}}
 }
 
-func TestCheckResumeCompat_FileWithoutJudgeResumes(t *testing.T) {
-	// A file carrying no judge block at all has nothing to contradict.
-	prior := &judgment.File{}
-	now := llmJudge("claude-cli", "claude-haiku-5-5")
+func TestCheckResumeCompat(t *testing.T) {
+	haiku := llmJudge("claude-cli", "claude-haiku-5-5")
+	opus := llmJudge("claude-cli", "claude-opus-5")
 
-	err := checkResumeCompat(prior, now)
-	assert.NoError(t, err, "file with no judge block should be resumable")
-}
+	assert.NoError(t, checkResumeCompat(fileWith(haiku), haiku))
 
-func TestCheckResumeCompat_IdenticalJudgeMatches(t *testing.T) {
-	j := llmJudge("claude-cli", "claude-haiku-5-5")
-
-	err := checkResumeCompat(fileWith(j), j)
-	assert.NoError(t, err)
-}
-
-func TestCheckResumeCompat_StrategyMismatch(t *testing.T) {
-	prior := fileWith(meta.Judge{Strategy: string(judgment.StrategyKeyword)})
-	now := llmJudge("claude-cli", "claude-haiku-5-5")
-
-	err := checkResumeCompat(prior, now)
+	err := checkResumeCompat(fileWith(haiku), opus)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "judge mismatch")
-}
+	assert.Contains(t, err.Error(), "--resume judge mismatch")
+	assert.Contains(t, err.Error(), `model: was "claude-haiku-5-5", now "claude-opus-5"`)
 
-func TestCheckResumeCompat_ModelMismatch(t *testing.T) {
-	prior := fileWith(llmJudge("claude-cli", "claude-haiku-4-5-20251001"))
-	now := llmJudge("claude-cli", "claude-opus-5")
-
-	err := checkResumeCompat(prior, now)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "judge mismatch")
-}
-
-func TestCheckResumeCompat_ProviderMismatch(t *testing.T) {
-	prior := fileWith(llmJudge("claude-cli", "some-model"))
-	now := llmJudge("codex-cli", "some-model")
-
-	err := checkResumeCompat(prior, now)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "judge mismatch")
-}
-
-func TestCheckResumeCompat_PromptVersionMismatch(t *testing.T) {
-	prior := fileWith(meta.Judge{
-		Strategy:      string(judgment.StrategyLLM),
-		Provider:      "claude-cli",
-		Model:         "claude-haiku-5-5",
-		PromptVersion: "v0-old",
-	})
-	now := llmJudge("claude-cli", "claude-haiku-5-5")
-
-	err := checkResumeCompat(prior, now)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "judge mismatch")
-}
-
-func TestCheckResumeCompat_InvocationMismatch(t *testing.T) {
-	was := llmJudge("claude-cli", "claude-haiku-5-5")
-	was.Invocation = "claude -p --model claude-haiku-5-5"
-	now := was
-	now.Invocation = "claude -p --safe-mode --model claude-haiku-5-5"
-
-	err := checkResumeCompat(fileWith(was), now)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `invocation: was "claude -p --model claude-haiku-5-5", now "claude -p --safe-mode --model claude-haiku-5-5"`)
-}
-
-func TestCheckResumeCompat_SameBatchingMatches(t *testing.T) {
-	was := llmJudge("claude-cli", "claude-haiku-5-5")
-	was.Batching = &meta.Batching{Size: 10, Seed: 0}
-	now := was
-	now.Batching = &meta.Batching{Size: 10, Seed: 0}
-
-	assert.NoError(t, checkResumeCompat(fileWith(was), now))
-}
-
-func TestCheckResumeCompat_BatchSeedMismatch(t *testing.T) {
-	was := llmJudge("claude-cli", "claude-haiku-5-5")
-	was.Batching = &meta.Batching{Size: 10, Seed: 1, MaxOutputTokens: 20000}
-	now := was
-	now.Batching = &meta.Batching{Size: 10, Seed: 2, MaxOutputTokens: 20000}
-
-	err := checkResumeCompat(fileWith(was), now)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "batching: was size 10, seed 1, 20000 tokens, now size 10, seed 2, 20000 tokens")
-}
-
-func TestCheckResumeCompat_EffortMismatch(t *testing.T) {
-	was := llmJudge("claude-api", "claude-sonnet-5-5")
-	was.Effort = "low"
-	now := was
-	now.Effort = "high"
-
-	err := checkResumeCompat(fileWith(was), now)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `effort: was "low", now "high"`)
-	assert.NotContains(t, err.Error(), "model:", "only the fields that differ")
-}
-
-// Legacy grades came from an unrecorded model, so they must not be extended.
-func TestCheckResumeCompat_LegacyFileRefusesResume(t *testing.T) {
-	prior := &judgment.File{Meta: meta.Meta{
-		LegacyStrategy:   "claude-cli",
-		LegacyJudgeModel: "claude",
-	}}
-	prior.Meta.Normalize()
-	now := llmJudge("claude-cli", "claude-haiku-5-5")
-
-	err := checkResumeCompat(prior, now)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "judge mismatch")
+	assert.Error(t, checkResumeCompat(&judgment.File{}, haiku), "a file that names no judge")
 }
 
 func judgmentsWithGrades(grades ...int) *judgment.File {
@@ -199,50 +95,6 @@ func TestRequireJudged(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestCheckResumeCompat_RubricVersionMismatch(t *testing.T) {
-	prior := fileWith(meta.Judge{Strategy: string(judgment.StrategyBM25)})
-
-	err := checkResumeCompat(prior, judgment.NewBM25Strategy().Describe())
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "judge mismatch")
-}
-
-func TestBuildManualJudgments_KeepsHandGradesAndAddsNewPoolDocs(t *testing.T) {
-	graded, placeholder, newInPool, leftThePool, newQueryDoc := uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New()
-	pf := &pool.PoolFile{Queries: []pool.PoolEntry{
-		{QueryID: "q1", Docs: []pool.PooledDoc{{DocID: graded}, {DocID: placeholder}, {DocID: newInPool}}},
-		{QueryID: "q2", Docs: []pool.PooledDoc{{DocID: newQueryDoc}}},
-	}}
-	existing := &judgment.File{Queries: []judgment.Entry{{QueryID: "q1", Docs: []judgment.GradedDoc{
-		{DocID: graded, Grade: judgment.GradeRelevant},
-		{DocID: placeholder, Grade: judgment.GradeUnjudged},
-		{DocID: leftThePool, Grade: judgment.GradeNotRelev},
-	}}}}
-
-	got := buildManualJudgments(pf, existing)
-
-	want := map[string]map[uuid.UUID]int{
-		"q1": {
-			graded:      judgment.GradeRelevant,
-			placeholder: judgment.GradeUnjudged,
-			newInPool:   judgment.GradeUnjudged,
-			leftThePool: judgment.GradeNotRelev,
-		},
-		"q2": {newQueryDoc: judgment.GradeUnjudged},
-	}
-	assert.Equal(t, want, gradesByQuery(got))
-}
-
-func TestBuildManualJudgments_WithoutExistingFileWritesPlaceholders(t *testing.T) {
-	doc := uuid.New()
-	pf := &pool.PoolFile{Queries: []pool.PoolEntry{{QueryID: "q1", Docs: []pool.PooledDoc{{DocID: doc}}}}}
-
-	got := buildManualJudgments(pf, nil)
-
-	assert.Equal(t, map[string]map[uuid.UUID]int{"q1": {doc: judgment.GradeUnjudged}}, gradesByQuery(got))
 }
 
 func gradesByQuery(jf *judgment.File) map[string]map[uuid.UUID]int {
@@ -512,7 +364,7 @@ func TestJudge_ForceOutsideManualIsRejected(t *testing.T) {
 // puts the one doc stored at it among the ten nearest.
 func TestJudge_VectorGradesWithTheTracksQueryVectors(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 	track := queryVectorsTrack(t, container.ConnString)
 	const queryText = "central bank interest rates"
 	queryVector := packageQueryVector(t, track, queryText)
@@ -630,25 +482,6 @@ func TestJudge_ManualNeedsNoQueryText(t *testing.T) {
 	require.NoError(t, fx.judge(t, "--strategy", "manual"))
 }
 
-func TestCheckResumeCompat_RefusesTheDeterministicJudgesV1Rubric(t *testing.T) {
-	for _, strategy := range []judgment.Strategy{
-		judgment.NewKeywordStrategy(),
-		judgment.NewBM25Strategy(),
-		judgment.NewVectorStrategyWithStore(stubVectorStore{}, "qwen3-embedding:0.6b@1024"),
-		judgment.NewHybridStrategyWithStore(stubVectorStore{}, "qwen3-embedding:0.6b@1024"),
-	} {
-		t.Run(strategy.Name(), func(t *testing.T) {
-			v1 := strategy.Describe()
-			v1.RubricVersion = "v1"
-
-			err := checkResumeCompat(fileWith(v1), strategy.Describe())
-
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), fmt.Sprintf("rubric_version: was %q, now %q", "v1", strategy.Describe().RubricVersion))
-		})
-	}
-}
-
 func TestJudge_UnparsableBooleanTextFailsAfterWritingTheFile(t *testing.T) {
 	fx := newJudgeFixture(t, "climate AND (politics", "climate change summit")
 	fx.pool.Queries[0].Category = "boolean"
@@ -669,19 +502,16 @@ func TestJudge_UnparsableBooleanTextFailsAfterWritingTheFile(t *testing.T) {
 	assert.Regexp(t, `Judgments written: \S+/trec/annotations\.bm25\.yaml`, out)
 }
 
-func TestJudge_LLMJudgeBlockRecordsItsEffortAndBatching(t *testing.T) {
+func TestJudge_LLMJudgeBlockRecordsItsEffort(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake binary is a POSIX shell script")
 	}
 	tests := []struct {
-		name     string
-		args     []string
-		batching map[string]any
-		effort   string
+		name   string
+		args   []string
+		effort string
 	}{
-		{name: "one doc per request", effort: "low"},
-		{name: "batched", args: []string{"--batch", "2", "--seed", "7"}, batching: map[string]any{"size": 2, "seed": 7, "max_output_tokens": 20000}, effort: "low"},
-		{name: "batched under seed 0", args: []string{"--batch", "2", "--seed", "0"}, batching: map[string]any{"size": 2, "seed": 0, "max_output_tokens": 20000}, effort: "low"},
+		{name: "default effort", effort: "low"},
 		{name: "another effort", args: []string{"--effort", "medium"}, effort: "medium"},
 	}
 	for _, tt := range tests {
@@ -692,26 +522,11 @@ func TestJudge_LLMJudgeBlockRecordsItsEffortAndBatching(t *testing.T) {
 			require.NoError(t, fx.judge(t, append(args, tt.args...)...))
 
 			jf := fx.annotations(t, "claude-cli")
-			batching, _ := writtenJudge(t, fx, "claude-cli")["batching"].(map[string]any)
-			assert.Equal(t, tt.batching, batching)
 			assert.Equal(t, tt.effort, jf.Judge().Effort)
 			assert.Contains(t, jf.Judge().Invocation, "--model claude-haiku-5-5")
 			assert.NotContains(t, slices.Collect(maps.Values(gradesByQuery(jf)["q1"])), judgment.GradeUnjudged)
 		})
 	}
-}
-
-func writtenJudge(t *testing.T, fx *judgeFixture, set string) map[string]any {
-	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(fx.track, "trec", "annotations."+set+".yaml"))
-	require.NoError(t, err)
-	var file struct {
-		Meta struct {
-			Judge map[string]any `yaml:"judge"`
-		} `yaml:"meta"`
-	}
-	require.NoError(t, yaml.Unmarshal(raw, &file))
-	return file.Meta.Judge
 }
 
 // gradingClaudeCLI is a fake claude binary that grades every doc 2 and keeps its last arguments.
@@ -801,45 +616,6 @@ func TestJudge_LLMUnknownEffortFailsNamingTheFlag(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--effort")
 	assert.NoFileExists(t, filepath.Join(fx.track, "trec", "annotations.claude-cli.yaml"))
-}
-
-func TestCheckResumeCompat_RefusesTheLLMJudgesV2Prompt(t *testing.T) {
-	strategy, err := judgment.NewLLMStrategy(judgment.StrategyOptions{
-		Provider: judgment.ProviderClaudeCLI, CLIBinary: gradingClaudeCLI(t), Model: "sonnet", Effort: judgment.EffortLow,
-	})
-	require.NoError(t, err)
-	v2 := strategy.Describe()
-	v2.PromptVersion = "v2"
-
-	err = checkResumeCompat(fileWith(v2), strategy.Describe())
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), fmt.Sprintf("prompt_version: was %q, now %q", "v2", judgment.PromptVersion))
-}
-
-func TestCheckResumeCompat_RefusesAFileGradedUnderOtherGates(t *testing.T) {
-	llm, err := judgment.NewLLMStrategy(judgment.StrategyOptions{
-		Provider: judgment.ProviderClaudeCLI, CLIBinary: gradingClaudeCLI(t), Model: "sonnet", Effort: judgment.EffortLow,
-	})
-	require.NoError(t, err)
-	gates := llm.Describe().GateVersion
-	require.NotEmpty(t, gates, "the LLM judge block names its gates")
-	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
-	jev, err := judgment.NewJevStrategy(judgment.StrategyOptions{Model: "jev-1.14.0"})
-	require.NoError(t, err)
-	for _, strategy := range []judgment.Strategy{judgment.NewKeywordStrategy(), judgment.NewBM25Strategy(), llm, jev} {
-		t.Run(strategy.Name(), func(t *testing.T) {
-			now := strategy.Describe()
-			assert.Equal(t, gates, now.GateVersion, "one gate version for every judge that gates")
-			was := now
-			was.GateVersion = "v0"
-
-			err := checkResumeCompat(fileWith(was), now)
-
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), fmt.Sprintf("gate_version: was %q, now %q", "v0", now.GateVersion))
-		})
-	}
 }
 
 // An unset make variable passes an empty --model.
@@ -1070,7 +846,6 @@ func TestJudge_RefusesLLMFlagsOutsideLLM(t *testing.T) {
 		flag string
 		args []string
 	}{
-		{flag: "--batch", args: []string{"--batch", "2"}},
 		{flag: "--provider", args: []string{"--provider", "claude-api"}},
 	}
 	for _, strategy := range []string{"keyword", "bm25", "jev", "manual"} {

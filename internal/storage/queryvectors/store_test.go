@@ -13,7 +13,7 @@ import (
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/storage/pg"
 	"github.com/tadjov/sengi/internal/storage/queryvectors"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 // The fixture holds two queries at width 1024; q2 is the unit vector e0.
@@ -250,7 +250,7 @@ func TestOpen_RefusesVectorsThatNoLongerMatchTheirHash(t *testing.T) {
 
 func TestDocVectors_ServesThePackageTagsVectorsFromPostgres(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 	pool, err := pg.NewConnectionPool(ctx, pg.PoolConfig{ConnStr: container.ConnString, RegisterVecTypes: true})
 	if err != nil {
 		t.Fatalf("NewConnectionPool: %v", err)
@@ -269,12 +269,12 @@ func TestDocVectors_ServesThePackageTagsVectorsFromPostgres(t *testing.T) {
 		tagged:   {model: fixtureTag, vector: taggedVector},
 		untagged: {model: "qwen3-embedding:0.6b", vector: untaggedVector},
 	} {
-		if _, err := pool.GetConn().Exec(ctx,
+		if _, err := pool.Pool().Exec(ctx,
 			`INSERT INTO articles (id, url, title, content, language) VALUES ($1, $2, $3, $4, $5)`,
 			id, "https://example.com/"+id.String(), "title", "content", "eng"); err != nil {
 			t.Fatalf("insert article: %v", err)
 		}
-		if _, err := pool.GetConn().Exec(ctx,
+		if _, err := pool.Pool().Exec(ctx,
 			`INSERT INTO article_embeddings (article_id, model_name, embedding) VALUES ($1, $2, $3)`,
 			id, stored.model, pgvector.NewVector(stored.vector)); err != nil {
 			t.Fatalf("insert embedding: %v", err)

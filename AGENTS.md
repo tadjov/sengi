@@ -35,9 +35,9 @@ The project follows a layered architecture pattern:
 - **cmd/**: Entry points for different operations
     - `datapipe/`: Unified data-pipeline CLI. The core path is **preprocess → embed → load**; every stage after the first reads the canonical package, which is what keeps article IDs identical across engines.
         - `datapipe preprocess <preprocess.yaml> [--version v1]`: Runs a dataset's preprocess spec over the raw data package it names (`.csv`, `.jsonl`, `.parquet` resources) and publishes `<output.path>/<version>/` with `articles`, `rejects` and `changes`. A rerun of the same specs over the same input is a no-op; any other change under an existing version is refused
-        - `datapipe embed --canonical <descriptor> [--version v1] [--batch-size 64] [--max-tokens 512] [--limit N]`: Embeds each article's `lead-v1` text through Ollama (`EMBEDDING_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIM`) into an embeddings package at `datasets/<ds>/embeddings/<tag-dir>/<version>/`, the format `embed_corpus.py` writes on a GPU; `producedBy` tells the two apart, and an existing version is refused before anything is embedded
+        - `datapipe embed <canonical-descriptor> [--version v1] [--batch-size 64] [--max-tokens 512] [--limit N]`: Embeds each article's `lead-v1` text through Ollama (`EMBEDDING_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIM`) into an embeddings package at `datasets/<ds>/embeddings/<tag-dir>/<version>/`, the format `embed_corpus.py` writes on a GPU; `producedBy` tells the two apart, and an existing version is refused before anything is embedded
         - `datapipe embed --embeddings <descriptor> --truncate-to N [--version v1] [--out <dir>]`: Cuts an existing embeddings package's vectors to their first N dimensions, L2-renormalised, with no model run, into `datasets/<ds>/embeddings/<model>@N/<version>/`, or a track's query vectors into `--out`; the descriptor records the source under `derivedFrom`
-        - `datapipe load --engine <native|paradedb|tiger|es> --canonical <descriptor> [--embeddings <descriptor>]`: Verifies the canonical package and the embeddings package built from it, loads both into an empty engine, builds the indexes afterwards as timed stages, and writes the load record to the engine and to `datasets/<ds>/loads/<engine>/` — see [docs/embeddings.md](docs/embeddings.md)
+        - `datapipe load <canonical-descriptor> --engine <native|paradedb|tiger|es> [--embeddings <descriptor>]`: Verifies the canonical package and the embeddings package built from it, loads both into an empty engine, builds the indexes afterwards as timed stages, and writes the load record to the engine and to `datasets/<ds>/loads/<engine>/` — see [docs/embeddings.md](docs/embeddings.md)
     - `news_api/`: HTTP API server for search functionality
     - `schemagen/`: Schema generation utilities
     - `bench/`: IR benchmark CLI — see [docs/bench.md](docs/bench.md)
@@ -50,9 +50,11 @@ The project follows a layered architecture pattern:
         - `operator/`: Operator value object (AND/OR logic)
     - `ingest/`: Data ingestion pipeline
         - `reader/`: CSV/JSONL/Parquet/YAML data reading and parsing
-    - `api/`: API layer for HTTP server
+    - `api/`: API layer for HTTP server (`router/` routes, `dto/` request and response shapes, `middleware/` request logging, `server/` Echo setup and config)
+    - `env/`: `.env` loading (`ENV_PATHS`) and duration settings
+    - `testcontainer/`: Postgres and Elasticsearch for integration tests: one server per engine shared by a test run, a database per test; `PGConfig{Isolated: true}` for a test that stops or reconfigures its server
     - `storage/`: Storage abstractions and implementations
-        - `factory/`: Storage factory for creating storage instances
+        - `factory/`: Storage config from the environment, and the corpus loader, vector store built from it
         - `pg/`: PostgreSQL storage implementation with full-text search
         - `es/`: Elasticsearch storage implementation
     - `progress/`: The counter long-running domain code reports to (records read, rows copied, queries run); `internal/cli` draws it as one status line on stderr
@@ -71,7 +73,7 @@ The project follows a layered architecture pattern:
 - **db/**: Database-related files
     - `migrations/`: SQL migrations per Postgres engine, `<engine>/schema/` (golang-migrate) and `<engine>/indexes.sql` (the search indexes, and on native and tiger the `corpus_words` table fuzzy search expands query words against, built after the load as timed stages), embedded by the `migrations` Go package. On native and tiger, `schema/002_fuzzy_functions` holds the `fuzzy_*` functions the fuzzy templates call: `fuzzy_expansions` (each word's corpus words within Elasticsearch's AUTO budget, at most 50), `fuzzy_tsquery` on native and `fuzzy_words` on tiger
     - `query/`: SQL query files for database operations
-- **dataset/**: Sample datasets and documentation
+- **datasets/**: Per-dataset mappings, canonical packages, embeddings and load records
 - **scripts/**: Utility scripts for setup and maintenance
 
 ## Key Components
@@ -83,7 +85,7 @@ The type system is organized into bounded contexts, each with its own package:
 **Benefits of this organization**:
 - Clear separation of concerns between document and query types
 - Reduced import cycles through proper package boundaries
-- Clean namespacing (e.g., `query.QueryString`, `document.Article`)
+- Clean namespacing (e.g., `query.String`, `document.Article`)
 - Easier to understand and navigate type definitions
 - Follows DDD bounded context principles
 - Query API design follows industry standards (Elasticsearch `query_string` terminology)
@@ -118,19 +120,17 @@ rules:
 Follows idiomatic Go patterns with sub-package organization:
 - **Interfaces**: Storage contracts define clear responsibilities
     - `FullTextBackend` plus one searcher per full-text paradigm: `StringQuerySearcher`, `FieldSearcher`, `MultiFieldSearcher`, `PhraseSearcher`, `BooleanSearcher`
-    - `Indexer`: Document indexing operations
+    - `CorpusLoader`: Loads a canonical package, and its embeddings, into an empty engine; what `datapipe load` uses
+    - `Indexer`, `EmbedIndexer`: Write one article, or one article's vector, at a time; nothing in the CLIs calls them today
     - `Reader`: Document retrieval operations
-- **Factory Pattern**: `storage/factory` package provides centralized creation logic
-- **PostgreSQL**: `storage/pg` - Full-text search with tsvector, ranking, and pagination
-- **Elasticsearch**: `storage/es` - Multilingual search with advanced indexing
-- **In-memory**: Built-in implementation for development/testing
+- **PostgreSQL**: `storage/pg` holds what every Postgres engine shares (pool, corpus loader, reader, index description); `storage/pg/native` holds the searchers the API serves from the native schema
+- **Elasticsearch**: `storage/es` - corpus loader, per-document indexer and searchers
+- **In-memory**: `storage/in_mem` - a placeholder backend for development
 
 **Key Features**:
 - SearchResult with pagination metadata (total, hasMore, page info)
 - PostgreSQL uses native tsvector with ts_rank for relevance scoring
-- Factory pattern avoids import cycles while maintaining clean separation
-- Separate interfaces for search and indexing operations
-- Clean file naming without redundant prefixes
+- Separate interfaces for search and loading
 
 ### Bench CLI (`cmd/bench/`)
 
@@ -141,18 +141,20 @@ TREC-style IR evaluation pipeline. Full docs: [docs/bench.md](docs/bench.md).
 - `spec/` — `BenchSpec` YAML: engines, jobs, metrics config, `defaults.judgments`
 - `suite/` — `TestSuite` YAML: queries, per-engine templates
 - `dialect/` — the syntax each engine type reads suite params in (postgres positional, elasticsearch Mustache, api literal): load-time block checks and the request each executor receives
-- `pool/` — TREC-style candidate pooling
-- `judgment/` — strategy taxonomy (keyword / claude-cli / claude-api / manual); batched grading; incremental writer
+- `pool/` — TREC-style candidate pooling, and the pool file assembled from a pooling run
+- `judgment/` — strategy taxonomy (keyword / bm25 / vector / hybrid / llm / jev / manual); incremental writer
 - `runner/` — orchestration: warmup + measured iterations, per-query metrics
-- `report/` — aggregation, JSON output, `bench show report`
+- `rungate/` — decides whether a finished run can stand as its track's result (every cell answered, ranked stably, scored against judgments graded on the current pool)
+- `report/` — aggregation, JSON output, and one table view rendered to the terminal, Markdown and HTML
 - `metrics/` — NDCG, MAP, MRR, Bpref, P/R/F1
 - `agreement/` — how alike judgment sets grade the same pairs and rank a run's engines (`bench diff judgments`)
 - `meta/` — provenance block embedded in every artifact (run_id, tool, generated_at, sources)
 - `version/` — schema version constant + checker
+- `artifact/` — YAML reading with the schema check, and atomic writes, for pool and judgment files
 
 **Track convention**: a track is any folder holding `spec.yaml` + `suite.yaml` + `trec/` (+ `reports/`) — the layout above it is not enforced; this repo groups them as `tracks/<dataset>/<paradigm>/`. Track args are ordinary paths: absolute, relative to the track root (`--track-root` / `BENCH_TRACK_ROOT`, default cwd), a glob, or omitted to walk up from CWD.
 
-**Strategy taxonomy**: `keyword` (token-overlap), `bm25` (pool-local Okapi BM25), `vector` (embedding cosine), `hybrid` (BM25 + vector fusion), `claude-cli` / `claude-api` (LLM batched), `jev` (TypeSafe's Jev, one doc per request, a non-Anthropic cross-judge), `manual` (human placeholders). `vector`/`hybrid` read doc vectors from a storage-agnostic `storage.VectorStore` (PG `article_embeddings` now, ES stubbed; PG precedence) and take query vectors from the track's `trec/query-vectors/` package when it has one, from Ollama otherwise (`--pg` + `EMBEDDING_BASE_URL`). `validate`/`pool`/`run` fill the reserved `query_vector` arg from the same source.
+**Strategy taxonomy**: `keyword` (token-overlap), `bm25` (pool-local Okapi BM25), `vector` (embedding cosine), `hybrid` (BM25 + vector fusion), `llm` (`--provider claude-cli` or `claude-api`, which also names the judgment set; one doc per request), `jev` (TypeSafe's Jev, one doc per request, a non-Anthropic cross-judge), `manual` (human placeholders). `vector`/`hybrid` read doc vectors from a storage-agnostic `storage.VectorStore` (PG `article_embeddings` now, ES stubbed; PG precedence) and take query vectors from the track's `trec/query-vectors/` package when it has one, from Ollama otherwise (`--pg` + `EMBEDDING_BASE_URL`). `validate`/`pool`/`run` fill the reserved `query_vector` arg from the same source.
 
 **Schema v1**: every artifact has `schema_version: 1` + `meta:` block. Loading without it is a hard error — no backward-compat tolerance.
 
@@ -164,43 +166,27 @@ Built with Echo framework providing:
 - **Configuration**: Environment-based config with validation
 - **Graceful Shutdown**: Proper resource cleanup on termination
 
-**Search API Endpoints**:
+**Search API Endpoints** (`internal/api/router/search.go`; request shapes and status codes in [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)):
 
-1. **Simple Query String API** (`GET /v1/articles/search`)
-    - Simple, Google-like search experience
-    - Application determines optimal fields and weights
-    - Query parameter: `?query=climate change`
-    - Best for: End-user search boxes, simple text queries
+| Method and path | Serves |
+|---|---|
+| `GET /v1/articles/search?q=...` | free-text search box over title, description and content; takes `q`, `size`, `cursor`, `lang` |
+| `POST /v1/articles/_search` | structured search: the body holds one of `match`, `multi_match`, `phrase`, `boolean`, `hybrid` under `query` |
+| `GET /v1/articles/semantic_search?q=...` | vector similarity search; routed only when embeddings are enabled |
+| `GET /v1/capabilities` | the query types the backend serves and the full-text parameters its engine honours |
+| `GET /health` | backend connectivity |
 
-2. **Structured Match API** (`POST /v1/articles/_search/match`)
-    - Explicit single-field control
-    - User specifies field, operator (AND/OR), fuzziness
-    - Request body:
-      ```json
-      {
-        "field": "title",
-        "query": "climate change",
-        "operator": "AND",
-        "fuzziness": 1
-      }
-      ```
-    - Best for: Advanced users needing precise control
-
-**Search Features**:
-- Full-text search with relevance ranking
-- Single-field and multi-field search support
-- Cursor-based pagination with total count and hasMore indicators
-- Field-level weight control for relevance tuning
-- Operator control (AND/OR) for term combination
-- Fuzziness support for typo tolerance (Elasticsearch)
-- Query language as an ISO 639-3 code: `eng` only (the default); any other value returns 400
-- Input validation and comprehensive error handling
-- PostgreSQL: tsvector with ts_rank scoring
-- Elasticsearch: match/multi_match queries with BM25 scoring
+**Search contract**:
+- A stated parameter is honoured or the request is a 400; an unknown query parameter or JSON key is a 400 too
+- An omitted operator takes the engine's default (PostgreSQL AND, Elasticsearch OR); every response echoes the contract it ran under in `effective`
+- `Prefer: handling=lenient` drops an unsupported parameter and lists it in `ignored` instead of a 400
+- Cursor-based pagination: `next_cursor`, `has_more`, `total_matches`
+- Query language is an ISO 639-3 code: `eng` only (the default); any other value returns 400
+- PostgreSQL: tsvector with ts_rank scoring. Elasticsearch: BM25 scoring, and the only engine with fuzziness
 
 **API Design Pattern**:
-- **Simple API**: Application-optimized (QueryString)
-- **Explicit API**: User-controlled (Match, MultiMatch)
+- **Simple API**: Application-optimized (`query.String`)
+- **Explicit API**: User-controlled (`Match`, `MultiMatch`, `Phrase`, `Boolean`, `Hybrid`)
 - **DTO Layer**: Clean separation between API and domain
 - **Optional Interfaces**: A backend serves the paradigms whose searcher interfaces it implements; the API answers the rest with 404 (GET) or 400 (`_search`)
 - **Extensible**: Easy to add new query types in the future
@@ -210,7 +196,7 @@ Built with Echo framework providing:
 ### Database
 ```bash
 # Start PostgreSQL container
-docker-compose up -d
+docker compose up -d
 
 # Database runs on port 54320 with:
 # - Database: news_db
@@ -224,17 +210,17 @@ docker-compose up -d
 go build -o bin/datapipe ./cmd/datapipe
 
 # Run with environment variables (stages: preprocess, embed, load)
-ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load --engine native --canonical <descriptor>
+ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load <canonical-descriptor> --engine native
 
 # Build other commands
 go build -o bin/schemagen ./cmd/schemagen
-go build -o bin/news-search ./cmd/news_api
+go build -o bin/news-api ./cmd/news_api
 
 # Run tests
 go test ./...
 
 # Run tests for specific package
-go test ./internal/reader
+go test ./internal/ingest/reader
 
 # Format code
 go fmt ./...
@@ -246,8 +232,10 @@ go vet ./...
 ### Environment Setup
 Commands expect environment variables (typically in `.env` files):
 
-**Data Import (`cmd/data_import/.env`)**:
-- `STORAGE_TYPE`: Storage backend (`pg`, `es`, `in_mem`)
+Every command loads the files named in `ENV_PATHS` (comma-separated) and then its own default file if it exists; a variable that is already set wins.
+
+**Storage (`cmd/datapipe/*.env`, `cmd/news_api/pg.env`, `cmd/news_api/es.env`)**:
+- `STORAGE_TYPE`: Storage backend the commands accept (`pg`, `es`)
 - `PG_CONNECTION_STRING`: PostgreSQL connection string
 - `ES_ADDRESSES`: Elasticsearch cluster addresses (comma-separated)
 - `ES_INDEX_NAME`: Elasticsearch index name
@@ -260,7 +248,7 @@ Commands expect environment variables (typically in `.env` files):
 - `BENCH_TRACK_ROOT`: where relative track paths start
 - Never `ANTHROPIC_API_KEY`: `claude -p` inherits the environment and would bill the API instead of the claude.ai login
 
-**Search API (`cmd/news_search/.env`)**:
+**Search API (`cmd/news_api/.env`, loaded by default; copy `cmd/news_api/.env.example`)**:
 - `PORT`: HTTP server port (default: 8080)
 - `USE_HTTP2`: Enable HTTP/2 support (`true`/`false`)
 - `CORS_ORIGINS`: Allowed CORS origins (comma-separated)
@@ -271,7 +259,9 @@ Commands expect environment variables (typically in `.env` files):
 ## Testing
 Tests are located alongside source files with `_test.go` suffix. Use standard Go testing patterns:
 - `go test ./...` - Run all tests
-- `go test -v ./internal/reader` - Run specific package tests with verbose output
+- `go test -v ./internal/ingest/reader` - Run specific package tests with verbose output
+- `go test -short ./...` - Skip every test that needs Docker
+- Container-backed tests go through `internal/testcontainer` and share one server per engine; run them with `-p 1` so one package's containers are up at a time
 
 **Type System Purity**:
 - Type definitions should represent search concepts, not implementation details

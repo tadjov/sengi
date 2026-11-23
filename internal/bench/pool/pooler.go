@@ -1,6 +1,8 @@
 package pool
 
 import (
+	"errors"
+	"fmt"
 	"maps"
 	"slices"
 
@@ -15,6 +17,20 @@ type PoolFile struct {
 	Meta          meta.Meta   `yaml:"meta"`
 	SuiteName     string      `yaml:"suite_name,omitempty"`
 	Queries       []PoolEntry `yaml:"queries"`
+}
+
+// CheckJudgedAgainst fails unless judgments graded against judgedPoolRunID
+// belong to this pool. A regenerated pool holds docs the judgments never saw,
+// which would score as non-relevant.
+func (pf *PoolFile) CheckJudgedAgainst(judgedPoolRunID string) error {
+	if judgedPoolRunID == "" {
+		return errors.New("judgments carry no pool_run_id, so the pool they were graded against is unknown; re-judge the track (bench judge)")
+	}
+	if judgedPoolRunID != pf.Meta.RunID {
+		return fmt.Errorf("judgments were graded against pool %s, but the current pool is %s; re-judge the track (bench judge)",
+			judgedPoolRunID, pf.Meta.RunID)
+	}
+	return nil
 }
 
 type PoolEntry struct {

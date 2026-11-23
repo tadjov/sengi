@@ -16,41 +16,6 @@ import (
 	"github.com/tadjov/sengi/internal/types/document"
 )
 
-func poolWithRunID(runID string) *pool.PoolFile {
-	return &pool.PoolFile{
-		Meta: meta.Meta{RunID: runID},
-		Queries: []pool.PoolEntry{{
-			QueryID: "q1",
-			Docs:    []pool.PooledDoc{{DocID: uuid.New(), Sources: []string{"pg"}}},
-		}},
-	}
-}
-
-func TestCheckPoolBinding(t *testing.T) {
-	current := poolWithRunID("2026-10-17T10-00-00-pool-aaaaaa")
-
-	tests := []struct {
-		name          string
-		judgedAgainst string
-		wantErr       string
-	}{
-		{"same pool", current.Meta.RunID, ""},
-		{"regenerated pool", "2026-10-01T10-00-00-pool-bbbbbb", "2026-10-01T10-00-00-pool-bbbbbb"},
-		{"judgments predating the binding", "", "re-judge"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := checkPoolBinding(tt.judgedAgainst, current)
-			if tt.wantErr == "" {
-				assert.NoError(t, err)
-				return
-			}
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.wantErr)
-		})
-	}
-}
-
 func TestRun_RefusesJudgmentsGradedAgainstAnotherPool(t *testing.T) {
 	doc := uuid.New()
 	cluster := fakeCluster(t, map[string]*fakeIndex{

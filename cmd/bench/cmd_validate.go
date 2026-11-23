@@ -20,7 +20,6 @@ import (
 )
 
 type validateFlags struct {
-	trackArg string
 	specPath string
 	failFast bool
 }
@@ -40,14 +39,13 @@ func newValidateCmd() *cobra.Command {
   - api descriptors parse as {method, path, body?, params?}
 
 Returns non-zero exit if any query fails — wire it into CI.`,
-		Example: `  bench validate tracks/global-news-dataset/fts_quality
-  bench validate --track tracks/global-news-dataset/fts_quality --fail-fast`,
+		Example: `  bench validate tracks/cc-news/fts
+  bench validate tracks/cc-news/fts --fail-fast`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return executeValidate(cmd, f, args)
 		},
 	}
-	cmd.Flags().StringVar(&f.trackArg, "track", "", "Track path (relative to --track-root)")
 	cmd.Flags().StringVar(&f.specPath, "spec", "", "Override spec.yaml path")
 	cmd.Flags().BoolVar(&f.failFast, "fail-fast", false, "Stop at first failure")
 	return cmd
@@ -61,7 +59,7 @@ type validateRow struct {
 }
 
 func executeValidate(cmd *cobra.Command, f validateFlags, args []string) error {
-	in := trackInputs(f.trackArg, args)
+	in := trackInputs(args)
 	in.SpecPath = f.specPath
 	return forEachTrack(cmd.Context(), cmd.OutOrStdout(), in, func(tr *trackctx.Track) error {
 		return validateTrack(cmd, f, tr)
@@ -78,7 +76,7 @@ func validateTrack(cmd *cobra.Command, f validateFlags, tr *trackctx.Track) erro
 	// A semantic/hybrid track without an embedder can never resolve its vector
 	// queries; fail here rather than letting every row stub a fake vector and
 	// report a misleading OK.
-	vectorStore, closeVectorStore, err := buildQueryVectorStore(cmd.Context(), bs, tr)
+	vectorStore, closeVectorStore, err := openVectorStore(cmd.Context(), runVectorStoreSource(bs, tr))
 	if err != nil {
 		return fmt.Errorf("build vector store: %w", err)
 	}
@@ -93,7 +91,7 @@ func validateTrack(cmd *cobra.Command, f validateFlags, tr *trackctx.Track) erro
 		return err
 	}
 
-	executors, cleanup, err := createExecutors(cmd.Context(), bs)
+	executors, cleanup, err := engine.CreateFromSpec(cmd.Context(), bs.Engines)
 	if err != nil {
 		return fmt.Errorf("create executors: %w", err)
 	}
@@ -289,10 +287,8 @@ func colorStatus(s string) string {
 	switch s {
 	case "OK":
 		return cli.Success.Sprint(s)
-	case "INVALID", "TEMPLATE_ERR":
+	case "INVALID", "TEMPLATE_ERR", "EMBED_ERR":
 		return cli.Failure.Sprint(s)
-	case "SKIP":
-		return cli.Muted.Sprint(s)
 	case "UNSUPPORTED":
 		return cli.Caution.Sprint(s)
 	default:

@@ -7,15 +7,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/embedding"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 func newEmbedderTestEnv(t *testing.T) (ClientConfig, *Indexer, *Embedder) {
 	t.Helper()
 
-	container := pkgtesting.NewESContainer(context.Background(), t)
+	container := testcontainer.NewESContainer(context.Background(), t)
 	cfg := ClientConfig{Addresses: []string{container.Address}, IndexName: "articles_embed_test"}
 
 	indexer, err := NewIndexer(context.Background(), cfg)
@@ -27,14 +27,6 @@ func newEmbedderTestEnv(t *testing.T) (ClientConfig, *Indexer, *Embedder) {
 		t.Fatalf("NewEmbedder: %v", err)
 	}
 	return cfg, indexer, embedder
-}
-
-func vec(dim int, fill float32) []float32 {
-	v := make([]float32, dim)
-	for i := range v {
-		v[i] = fill
-	}
-	return v
 }
 
 func docEmbedding(t *testing.T, e *Embedder, id uuid.UUID) ([]float32, bool) {

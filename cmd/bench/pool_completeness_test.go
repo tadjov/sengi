@@ -90,8 +90,8 @@ func TestDroppedExecutions_OneJobsSuccessCoversAnother(t *testing.T) {
 
 	for _, jobs := range [][]*runner.JobResult{{failed, answered}, {answered, failed}} {
 		result := &runner.BenchmarkResult{Jobs: jobs}
-		assert.Empty(t, droppedExecutions(result))
-		pf := buildPoolFile(result, nil, 10)
+		assert.Empty(t, pool.DroppedExecutions(result))
+		pf := pool.FromResult(result, nil, 10)
 		require.Len(t, pf.Queries, 1)
 		require.Len(t, pf.Queries[0].Docs, 1)
 		assert.Equal(t, doc, pf.Queries[0].Docs[0].DocID)
@@ -119,7 +119,7 @@ func TestDroppedExecutions_SortedByQueryThenEngine(t *testing.T) {
 
 	for range 5 {
 		var got []string
-		for _, d := range droppedExecutions(&runner.BenchmarkResult{Jobs: []*runner.JobResult{job}}) {
+		for _, d := range pool.DroppedExecutions(&runner.BenchmarkResult{Jobs: []*runner.JobResult{job}}) {
 			got = append(got, d.QueryID+"/"+d.Engine)
 		}
 		require.Equal(t, want, got)

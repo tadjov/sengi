@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/bench/report"
 	pgstore "github.com/tadjov/sengi/internal/storage/pg"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 func latencyOnlyTrack(t *testing.T, name, engineYAML, block string) string {
@@ -61,7 +61,7 @@ func onlyReport(t *testing.T, track string) *report.Report {
 
 func TestRun_ReportRecordsWhatThePostgresServerRanWith(t *testing.T) {
 	ctx := context.Background()
-	pg := pkgtesting.NewPGContainerWithConfig(ctx, t, pkgtesting.PGConfig{ServerFlags: []string{"-c", "work_mem=7MB"}})
+	pg := testcontainer.NewPGContainerWithConfig(ctx, t, testcontainer.PGConfig{ServerFlags: []string{"-c", "work_mem=7MB"}})
 	conn, err := pgx.Connect(ctx, pg.ConnString)
 	require.NoError(t, err)
 	_, err = conn.Exec(ctx, `INSERT INTO articles (id, title, content, url, language) VALUES ($1, 'climate', 'climate', 'https://example.com/a', 'eng')`, uuid.New())
@@ -97,7 +97,7 @@ func TestRun_ReportRecordsWhatThePostgresServerRanWith(t *testing.T) {
 
 func TestRun_AServerThatCannotReadItsCgroupLimitsRecordsWhyAndRuns(t *testing.T) {
 	ctx := context.Background()
-	pg := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	pg := testcontainer.NewPGContainerWithCleanup(ctx, t)
 	conn, err := pgx.Connect(ctx, pg.ConnString)
 	require.NoError(t, err)
 	for _, stmt := range []string{
@@ -132,7 +132,7 @@ func TestRun_AServerThatCannotReadItsCgroupLimitsRecordsWhyAndRuns(t *testing.T)
 
 func TestRun_ReportRecordsWhatTheElasticsearchClusterRanWith(t *testing.T) {
 	ctx := context.Background()
-	es := pkgtesting.NewESContainer(ctx, t)
+	es := testcontainer.NewESContainer(ctx, t)
 	docID := uuid.New().String()
 	esRequest(t, http.MethodPut, es.Address+"/news", `{"settings": {"number_of_replicas": 0}}`)
 	esRequest(t, http.MethodPut, es.Address+"/news/_doc/"+docID+"?refresh=true", `{"id": "`+docID+`", "title": "climate"}`)
@@ -147,7 +147,7 @@ func TestRun_ReportRecordsWhatTheElasticsearchClusterRanWith(t *testing.T) {
 	require.NotNil(t, info.Index)
 	cluster := info.Index.Elasticsearch
 	require.NotNil(t, cluster, "index error: %s", info.Index.Error)
-	assert.Equal(t, pkgtesting.ElasticsearchVersion, info.Version)
+	assert.Equal(t, testcontainer.ElasticsearchVersion, info.Version)
 	require.NotEmpty(t, cluster.Nodes)
 	assert.Equal(t, int64(512<<20), cluster.Nodes[0].HeapMaxBytes, "the container's -Xmx512m")
 }

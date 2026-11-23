@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
+	"github.com/tadjov/sengi/internal/env"
 )
 
 const (
@@ -27,9 +28,8 @@ Stages:
 
 Typical flow:
   datapipe preprocess datasets/<name>/preprocess.yaml --version v1
-  datapipe embed --canonical datasets/<name>/canonical/<version>/datapackage.json
-  datapipe load --engine native \
-      --canonical datasets/<name>/canonical/<version>/datapackage.json \
+  datapipe embed datasets/<name>/canonical/<version>/datapackage.json
+  datapipe load datasets/<name>/canonical/<version>/datapackage.json --engine native \
       --embeddings datasets/<name>/embeddings/<tag-dir>/<version>/datapackage.json
 `
 )
@@ -51,6 +51,11 @@ func newRootCmd() *cobra.Command {
 		Long:          cliLong,
 		SilenceUsage:  true,
 		SilenceErrors: true,
+		PersistentPreRun: func(*cobra.Command, []string) {
+			if err := env.LoadDotEnv(".env"); err != nil {
+				slog.Info("Skipping .env environment variables", "error", err)
+			}
+		},
 	}
 	root.AddCommand(
 		newPreprocessCmd(),

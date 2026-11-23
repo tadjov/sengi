@@ -6,13 +6,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/pgvector/pgvector-go"
 	"github.com/tadjov/sengi/internal/embedding"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 func newEmbedTestPool(t *testing.T) *ConnectionPool {
 	t.Helper()
 
-	container := pkgtesting.NewPGContainerWithCleanup(testCtx, t)
+	container := testcontainer.NewPGContainerWithCleanup(testCtx, t)
 	pool, err := NewConnectionPool(testCtx, PoolConfig{
 		ConnStr:          container.ConnString,
 		RegisterVecTypes: true,
@@ -27,7 +27,7 @@ func newEmbedTestPool(t *testing.T) *ConnectionPool {
 func insertArticle(t *testing.T, pool *ConnectionPool, title string) uuid.UUID {
 	t.Helper()
 	var id uuid.UUID
-	err := pool.GetConn().QueryRow(testCtx, `
+	err := pool.Pool().QueryRow(testCtx, `
 		INSERT INTO articles (id, title, content, url, language)
 		VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING id
 	`, title, "content", "http://test.com/"+title, "eng").Scan(&id)
@@ -48,7 +48,7 @@ func vec(dim int, fill float32) []float32 {
 func countEmbeddings(t *testing.T, pool *ConnectionPool) int {
 	t.Helper()
 	var n int
-	if err := pool.GetConn().QueryRow(testCtx, `SELECT count(*) FROM article_embeddings`).Scan(&n); err != nil {
+	if err := pool.Pool().QueryRow(testCtx, `SELECT count(*) FROM article_embeddings`).Scan(&n); err != nil {
 		t.Fatalf("failed to count embeddings: %v", err)
 	}
 	return n
@@ -92,7 +92,7 @@ func TestEmbedder_SaveBulk_UpsertAndSkipOrphans(t *testing.T) {
 	}
 
 	var dist float64
-	err = pool.GetConn().QueryRow(testCtx, `
+	err = pool.Pool().QueryRow(testCtx, `
 		SELECT embedding <-> $1 FROM article_embeddings WHERE article_id = $2
 	`, pgvector.NewVector(vec(1024, 0.9)), a1).Scan(&dist)
 	if err != nil {

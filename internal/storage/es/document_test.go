@@ -9,7 +9,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types"
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types/enums/densevectorsimilarity"
 	"github.com/tadjov/sengi/internal/storage"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 func TestIndexBuilder_DenseVectorDeclaresHNSWBuildParams(t *testing.T) {
@@ -31,7 +31,7 @@ func TestIndexBuilder_DenseVectorDeclaresHNSWBuildParams(t *testing.T) {
 
 func TestEnsureIndex_MappingReportsHNSWBuildParams(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewESContainer(ctx, t)
+	container := testcontainer.NewESContainer(ctx, t)
 	cfg := ClientConfig{Addresses: []string{container.Address}, IndexName: "articles_hnsw_test"}
 
 	if _, err := NewIndexer(ctx, cfg); err != nil {
@@ -47,7 +47,7 @@ func TestEnsureIndex_MappingReportsHNSWBuildParams(t *testing.T) {
 
 func TestEmbedder_RejectsAnIndexBuiltAtOtherBuildParams(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewESContainer(ctx, t)
+	container := testcontainer.NewESContainer(ctx, t)
 	cfg := ClientConfig{Addresses: []string{container.Address}, IndexName: "articles_hnsw_legacy_test"}
 
 	client, err := newTypedClient(cfg)

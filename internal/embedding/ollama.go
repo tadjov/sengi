@@ -69,10 +69,10 @@ type OllamaRequest struct {
 
 func (oc *OllamaClient) Generate(ctx context.Context, req Request) (*Response, error) {
 	if req.Prompt == "" {
-		return nil, apperr.ValidationError{Err: fmt.Errorf("missing text to embed")}
+		return nil, &apperr.ValidationError{Err: fmt.Errorf("missing text to embed")}
 	}
 	if req.Model == "" {
-		return nil, apperr.ValidationError{Err: fmt.Errorf("missing model name")}
+		return nil, &apperr.ValidationError{Err: fmt.Errorf("missing model name")}
 	}
 
 	oReq := OllamaRequest{
@@ -91,10 +91,10 @@ func (oc *OllamaClient) Generate(ctx context.Context, req Request) (*Response, e
 
 func (oc *OllamaClient) GenerateBatch(ctx context.Context, req BatchRequest) (*BatchResponse, error) {
 	if len(req.Prompts) == 0 {
-		return nil, apperr.ValidationError{Err: fmt.Errorf("missing prompts to embed")}
+		return nil, &apperr.ValidationError{Err: fmt.Errorf("missing prompts to embed")}
 	}
 	if req.Model == "" {
-		return nil, apperr.ValidationError{Err: fmt.Errorf("missing model name")}
+		return nil, &apperr.ValidationError{Err: fmt.Errorf("missing model name")}
 	}
 
 	oReq := OllamaBatchRequest{

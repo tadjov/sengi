@@ -29,7 +29,7 @@ func TestRunner_InterruptedQueryIsNotSunk(t *testing.T) {
 	r := NewRunner(RunnerConfig{
 		Strategy: &interruptingStrategy{fakeStrategy: fakeStrategy{name: "fake"}, interrupt: cancel},
 		Reader:   &stubStorageReader{articles: articles},
-		Sink: func(QueryProgress, Entry) error {
+		Sink: func(Entry) error {
 			sunk++
 			return nil
 		},

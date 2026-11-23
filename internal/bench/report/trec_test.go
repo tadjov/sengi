@@ -201,5 +201,5 @@ func TestWriteTRECRuns_RefusesAReportWithoutRankings(t *testing.T) {
 
 	_, err := WriteTRECRuns(r, t.TempDir())
 
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, ErrNoRankings)
 }

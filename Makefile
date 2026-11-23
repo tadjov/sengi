@@ -22,7 +22,7 @@ ARGS ?=
 JUDGE_MODEL ?= sonnet
 
 # Build commands
-.PHONY: build build-all clean test fmt vet lint lint-fix install-lint schema-gen build-bench bench-validate bench-run bench-pool bench-judge-keyword bench-judge-cli bench-judge-api bench-qrels bench-show-spec bench-show-pool bench-show-judgments $(addprefix migrate-schema-,$(PG_ENGINES)) $(addprefix migrate-down-,$(PG_ENGINES)) migrate-schema-all migrate-down-all db-refresh-collation db-volumes run-datapipe-preprocess $(addprefix run-datapipe-load-,$(LOAD_ENGINES)) run-datapipe-load-es-text run-datapipe-load-all
+.PHONY: build-all build-datapipe build-news-api build-schemagen clean deps dev dc-up dc-down run-api run-api-pg run-api-es test fmt vet lint lint-fix install-lint schema-gen build-bench bench-validate bench-run bench-pool bench-judge-keyword bench-judge-cli bench-judge-api bench-qrels bench-show-spec bench-show-pool bench-show-judgments $(addprefix migrate-schema-,$(PG_ENGINES)) $(addprefix migrate-down-,$(PG_ENGINES)) migrate-schema-all migrate-down-all db-refresh-collation db-volumes run-datapipe-preprocess $(addprefix run-datapipe-load-,$(LOAD_ENGINES)) run-datapipe-load-es-text run-datapipe-load-all
 
 $(addprefix migrate-schema-,$(PG_ENGINES)): migrate-schema-%:
 	@echo "Migrating the schema ($*)..."
@@ -68,7 +68,7 @@ build-schemagen:
 	@mkdir -p $(BIN_DIR)
 	@go build -o $(BIN_DIR)/schemagen $(CMD_DIR)/schemagen
 
-# Generate schemas from Go structs
+# Generate the mapping and data package JSON schemas from Go structs
 schema-gen: build-schemagen
 	@echo "Generating schemas..."
 	@./$(BIN_DIR)/schemagen -output=api/mapping-spec -preprocess-output=api/preprocess-spec -datapackage-output=api/datapackage-spec
@@ -104,17 +104,16 @@ lint-fix:
 # Database commands
 dc-up:
 	@echo "Starting database..."
-	@docker-compose up -d
+	@docker compose up -d
 
 dc-down:
 	@echo "Stopping database..."
-	@docker-compose down
+	@docker compose down
 
 # Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf $(BIN_DIR)
-	@rm -rf schema/generated
 
 # Install dependencies
 deps:
@@ -149,13 +148,13 @@ LOAD_FLAGS ?=
 
 $(addprefix run-datapipe-load-,$(LOAD_ENGINES)): run-datapipe-load-%: build-datapipe
 	@echo "Running datapipe load ($*)..."
-	@ENV_PATHS="$(ENGINE_ENV_$*)" ./$(BIN_DIR)/datapipe load --engine $* --canonical "$(CANONICAL)" \
+	@ENV_PATHS="$(ENGINE_ENV_$*)" ./$(BIN_DIR)/datapipe load "$(CANONICAL)" --engine $* \
 		$(if $(EMBEDDINGS),--embeddings "$(EMBEDDINGS)") $(LOAD_FLAGS)
 
 # ES keeps each vector inside its article, so its vector cost is a full load minus this one.
 run-datapipe-load-es-text: build-datapipe
 	@echo "Running datapipe load (es, without embeddings)..."
-	@ENV_PATHS="$(ENGINE_ENV_es)" ./$(BIN_DIR)/datapipe load --engine es --canonical "$(CANONICAL)" $(LOAD_FLAGS)
+	@ENV_PATHS="$(ENGINE_ENV_es)" ./$(BIN_DIR)/datapipe load "$(CANONICAL)" --engine es $(LOAD_FLAGS)
 
 # Every engine loads the same packages, one after another, so the corpora stay
 # identical and no load competes with another for the machine.
@@ -182,10 +181,10 @@ build-bench:
 
 # BENCH_TRACK_ROOT is where bench resolves relative track paths, so targets name
 # the track alone. Override either half, e.g.
-#   make bench-run TRACK=news_semantic
-#   make bench-run BENCH_TRACK_ROOT=tracks/cc-news TRACK=fts_quality
-BENCH_TRACK_ROOT ?= tracks/global-news-dataset
-TRACK ?= fts_quality
+#   make bench-run TRACK=semantic
+#   make bench-run BENCH_TRACK_ROOT=tracks/global-news-dataset TRACK=fts_quality
+BENCH_TRACK_ROOT ?= tracks/cc-news
+TRACK ?= fts
 export BENCH_TRACK_ROOT
 
 bench-validate: build-bench
@@ -213,10 +212,10 @@ bench-show-pool: build-bench
 	@./$(BIN_DIR)/bench show pool $(TRACK)
 
 bench-show-judgments: build-bench
-	@./$(BIN_DIR)/bench show judgments $(TRACK) --strategy keyword
+	@./$(BIN_DIR)/bench show judgments $(TRACK) --judgments keyword
 
 bench-qrels: build-bench
-	@./$(BIN_DIR)/bench export $(TRACK) --format qrels --strategy keyword
+	@./$(BIN_DIR)/bench export $(TRACK) --format qrels --judgments keyword
 
 # Development workflow
 dev: fmt vet lint test build-all

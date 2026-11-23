@@ -6,10 +6,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/embedding"
-	"github.com/tadjov/sengi/internal/types/document"
-	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 const storedTag = "qwen3-embedding:0.6b@1024"
@@ -27,23 +25,14 @@ func (s staticEmbedder) GenerateBatch(_ context.Context, _ embedding.BatchReques
 	return &embedding.BatchResponse{Embeddings: [][]float32{s.vec}}, nil
 }
 
-func newSemanticTestEnv(t *testing.T, queryVec []float32) (*Indexer, *Embedder, *SemanticSearcher) {
+func newSemanticTestEnv(t *testing.T, queryVec []float32) (ClientConfig, *SemanticSearcher) {
 	t.Helper()
 
-	container := pkgtesting.NewESContainer(context.Background(), t)
+	container := testcontainer.NewESContainer(context.Background(), t)
 	cfg := ClientConfig{Addresses: []string{container.Address}, IndexName: "articles_semantic_test"}
 
-	indexer, err := NewIndexer(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
-	embIndexer, err := NewEmbedder(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("NewEmbedder: %v", err)
-	}
-
 	qEmbedder := embedding.NewEmbedder(staticEmbedder{vec: queryVec})
-	return indexer, embIndexer, NewSemanticSearcher(newTestClient(t, cfg), qEmbedder, qEmbedder.Model())
+	return cfg, NewSemanticSearcher(newTestClient(t, cfg), qEmbedder, qEmbedder.Model())
 }
 
 func TestSemanticSearcher_SearchSemantic_ReturnsNearest(t *testing.T) {
@@ -55,26 +44,14 @@ func TestSemanticSearcher_SearchSemantic_ReturnsNearest(t *testing.T) {
 	near := vec(EmbeddingDims, 0.9)
 	far := vec(EmbeddingDims, -0.9)
 
-	indexer, embIndexer, searcher := newSemanticTestEnv(t, near)
+	cfg, searcher := newSemanticTestEnv(t, near)
 
-	nearID := uuid.New()
-	farID := uuid.New()
-	if _, err := indexer.Save(ctx, document.Article{ID: nearID, Title: "near", Language: language.English}); err != nil {
-		t.Fatalf("index near article: %v", err)
-	}
-	if _, err := indexer.Save(ctx, document.Article{ID: farID, Title: "far", Language: language.English}); err != nil {
-		t.Fatalf("index far article: %v", err)
-	}
-	refresh(t, embIndexer)
-
-	batch := []*embedding.Vec{
+	articles := titledArticles("near", "far")
+	nearID, farID := articles[0].ID, articles[1].ID
+	seedIndex(t, cfg, articles, []embedding.Vec{
 		{ID: nearID, Model: storedTag, Embedding: near},
 		{ID: farID, Model: storedTag, Embedding: far},
-	}
-	if _, err := embIndexer.SaveBulk(ctx, batch); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
-	refresh(t, embIndexer)
+	})
 
 	res, err := searcher.SearchSemantic(ctx, &dquery.Semantic{Query: "anything"}, &dquery.BaseOptions{Size: 1})
 	if err != nil {
@@ -100,25 +77,15 @@ func TestSemanticSearcher_SearchSemantic_OnlySeesTheQueryModel(t *testing.T) {
 		nearQuery[i] = 0.5
 	}
 
-	indexer, embIndexer, searcher := newSemanticTestEnv(t, queryVec)
+	cfg, searcher := newSemanticTestEnv(t, queryVec)
 
-	sameModel := uuid.New()
-	otherModel := uuid.New()
-	for _, id := range []uuid.UUID{sameModel, otherModel} {
-		if _, err := indexer.Save(ctx, document.Article{ID: id, Title: id.String(), Language: language.English}); err != nil {
-			t.Fatalf("index article: %v", err)
-		}
-	}
-	refresh(t, embIndexer)
-
-	batch := []*embedding.Vec{
+	articles := titledArticles("same model", "other model")
+	sameModel, otherModel := articles[0].ID, articles[1].ID
+	seedIndex(t, cfg, articles, []embedding.Vec{
 		{ID: sameModel, Model: storedTag, Embedding: nearQuery},
-		{ID: otherModel, Model: embedding.DefaultModel, Embedding: queryVec},
-	}
-	if _, err := embIndexer.SaveBulk(ctx, batch); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
-	refresh(t, embIndexer)
+		{ID: otherModel, Model: storedTag, Embedding: queryVec},
+	})
+	retagEmbedding(t, cfg, otherModel, embedding.DefaultModel)
 
 	res, err := searcher.SearchSemantic(ctx, &dquery.Semantic{Query: "anything"}, &dquery.BaseOptions{Size: 1})
 	if err != nil {

@@ -3,25 +3,31 @@ package storage
 import (
 	"context"
 
-	"github.com/tadjov/sengi/internal/api/dto"
+	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/query"
 )
 
-// SearchResult represents search results with cursor-based pagination
-// Contains types objects - no encoding/decoding at this layer
+// Hit is an article with its relevance score.
+type Hit struct {
+	document.Article
+	Score float64
+	// ScoreNormalized is Score over the result's best score, between 0 and 1.
+	ScoreNormalized float64
+}
+
 type SearchResult struct {
-	Hits         []dto.ArticleSearchResult `json:"hits"`
-	NextCursor   *query.Cursor             `json:"-"`
-	HasMore      bool                      `json:"has_more"`
-	MaxScore     float64                   `json:"max_score"`
-	PageMaxScore float64                   `json:"page_max_score,omitempty"`
-	TotalMatches int64                     `json:"total_matches,omitempty"`
+	Hits         []Hit
+	NextCursor   *query.Cursor
+	HasMore      bool
+	MaxScore     float64
+	PageMaxScore float64
+	TotalMatches int64
 }
 
 type VectorSearchResult struct {
-	Hits       []dto.Article `json:"hits"`
-	NextCursor *query.Cursor `json:"-"`
-	HasMore    bool          `json:"has_more"`
+	Hits       []document.Article
+	NextCursor *query.Cursor
+	HasMore    bool
 }
 
 // FullTextBackend is a full-text engine. It serves each paradigm whose
@@ -55,25 +61,7 @@ type BooleanSearcher interface {
 	SearchBoolean(ctx context.Context, query *query.Boolean, baseOpts *query.BaseOptions) (*SearchResult, error)
 }
 
-// FtsSearcher serves every full-text paradigm.
-type FtsSearcher interface {
-	FullTextBackend
-	StringQuerySearcher
-	FieldSearcher
-	MultiFieldSearcher
-	PhraseSearcher
-	BooleanSearcher
-}
-
-type EmbedResult struct {
-	Hits       []dto.ArticleSearchResult `json:"hits"`
-	NextCursor *query.Cursor             `json:"-"`
-	HasMore    bool                      `json:"has_more"`
-}
-
-// SemanticSearcher is the semantic search API interface
 type SemanticSearcher interface {
-	// SearchSemantic performs semantic search using vector embeddings
 	SearchSemantic(ctx context.Context, query *query.Semantic, baseOpts *query.BaseOptions) (*VectorSearchResult, error)
 }
 

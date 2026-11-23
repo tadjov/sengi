@@ -66,11 +66,3 @@ func (r *TemplateRegistry) Get(id string) (*QueryTemplate, bool) {
 	t, ok := r.templates[id]
 	return t, ok
 }
-
-func (r *TemplateRegistry) List() []string {
-	ids := make([]string, 0, len(r.templates))
-	for id := range r.templates {
-		ids = append(ids, id)
-	}
-	return ids
-}

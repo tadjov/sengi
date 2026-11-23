@@ -75,7 +75,7 @@ own implicit transaction on whichever connection is free.
 `hnsw.ef_search` fixes the ANN operating point, which decides how many candidates a vector
 scan considers and so both its recall and its latency. Turning the planner's index access
 off gives an unindexed arm to compare against: `enable_indexscan` plus `enable_bitmapscan`
-for the GIN A/B in `fts_quality`, `enable_indexscan` alone for the exact-scan vector
+for the GIN A/B in the fts track, `enable_indexscan` alone for the exact-scan vector
 baseline in `news_semantic`.
 
 `hnsw.ef_search` is only the query-time half of that knob. The build-time half, `m` and
@@ -319,7 +319,7 @@ bench diff judgments [<name>] --judgments <set,...>
 bench clean  [<name>]              remove old report files
 ```
 
-Every command accepts a track path as a positional arg (`bench run tracks/global-news-dataset/fts_quality`), a `--track` flag, or resolves from the current directory when you `cd` into a track. Relative paths start at `--track-root` / `BENCH_TRACK_ROOT` — see [Track resolution](#track-resolution--the-track-root).
+Every command takes the track as its one positional arg (`bench run tracks/cc-news/fts`), and resolves it from the current directory when you `cd` into a track and pass none. Everything else is a flag. Relative paths start at `--track-root` / `BENCH_TRACK_ROOT` — see [Track resolution](#track-resolution--the-track-root).
 
 ## Strategy taxonomy
 
@@ -352,14 +352,10 @@ bench judge <track> --strategy llm --provider claude-cli
   refuses a file graded under other gates and a gate change needs one bump.
 - The prompt carries the query's `text` exactly as the pool stores it. `description` never
   reaches the model.
-- One doc per request by default, so what a request holds depends on the query and the doc
-  alone, never on pool order or on which engine found the doc. On `claude-api` the request
-  is byte-identical; `claude-cli` adds its own blocks, below. `--batch N` cuts a shuffle of
-  the query's whole pool, seeded by `--seed` (default 1), into batches of N. A resumed run,
-  or one that cannot read every pooled article, sends what is left of those same batches.
-  The judge block then records both under `batching` (`size`, `seed`, `max_output_tokens`),
-  seed 0 included.
-- Every request carries one rubric and shows each doc's title and description in full and
+- One doc per request, so what a request holds depends on the query and the doc alone,
+  never on pool order or on which engine found the doc. On `claude-api` the request is
+  byte-identical; `claude-cli` adds its own blocks, below.
+- Every request carries one rubric and shows the doc's title and description in full and
   its content up to 1,744 characters, the length of the median cc-news article.
 - `--model` defaults to `claude-sonnet-5-5`, the model of the final cc-news judgments, and
   takes a lowercase `claude-` model id or `haiku`, `sonnet`, `opus` or `fable` for the
@@ -367,9 +363,8 @@ bench judge <track> --strategy llm --provider claude-cli
   `--model ""` fails naming the flag. Ids the CLI would answer under another name
   (`sonnet[1m]`, `opusplan`, `Claude-Sonnet-5-5`) are refused. `--effort` sets how much the model
   thinks before it grades (`low` by default). The judge block records the resolved model,
-  the effort, the output budget (16,000 tokens a doc, room for thinking at any effort; a
-  batch's 20,000 sits under `batching`, below the ~21,333 a request may ask for without
-  streaming) and the prompt version (`v3`).
+  the effort, the output budget (16,000 tokens a doc, room for thinking at any effort and
+  below the ~21,333 a request may ask for without streaming) and the prompt version (`v3`).
 - A reply without a grade, a null grade, a refused request, or a `claude-cli` answer whose
   `modelUsage` names any model but the pinned one leaves the doc unjudged for `--resume` to
   retry. It never grades 0.
@@ -484,7 +479,7 @@ the same gate as the category's. `vector` and `hybrid` do not read them.
 searches the same model's vectors, so the question is how much of exact search's top 10 each
 engine finds. The judge grades the 10 pooled documents nearest the query by cosine 3, ties
 broken by the lower id, and every other pooled document 0; it reads the whole pool of a query
-at once and takes no `--batch`. The semantic track pools the exact pgvector arm at depth ≥ 10,
+at once. The semantic track pools the exact pgvector arm at depth ≥ 10,
 so the pool's top 10 is the exact top 10, and `R@10` in the report is recall@10 against exact
 search. A pooled document without a stored vector stays unjudged. `hybrid` keeps its graded
 fusion.
@@ -543,9 +538,9 @@ Dry-runs every query through every engine using the engine's native validation e
 
 For `semantic`/`hybrid` kinds it first requires an embedder (fails fast if `EMBEDDING_BASE_URL` is unset) and embeds each query for real, so dimension mismatches surface here. It also warns when the declared `kind` and the queries' use of `query_vector` disagree.
 
-### `bench pool [<name>] [--depth N]`
+### `bench pool [<name>] [--depth N] [--concurrency N]`
 
-Runs all queries in parallel, gathers the top-N results per engine, deduplicates by doc ID, and writes `trec/pool.yaml`. Default depth is from `spec.defaults.pool_depth`.
+Runs every query once per engine, `--concurrency` executions at a time (default 4), gathers the top-N results per engine, deduplicates by doc ID, and writes `trec/pool.yaml`. Default depth is from `spec.defaults.pool_depth`.
 
 Each pool entry records, under `request_digests`, a sha256 per engine of the request that engine was sent: the statement or body, its args, its params (the query vector included) and a stored template's source. The stored template's id is left out. Warmup, iterations, timeout and K are not part of a request, so changing them needs no re-pool.
 
@@ -558,12 +553,10 @@ Key flags:
 - `--model M`: the LLM judge's model, a full id or `haiku`, `sonnet`, `opus`, `fable` (default `claude-sonnet-5-5`; `haiku` for cheap trial runs). For `jev`, a pinned `jev-<major>.<minor>.<patch>` (default `jev-1.14.0`)
 - `--effort E`: the LLM judge's effort, `low` (default), `medium`, `high`, `xhigh` or `max`
 - `--provider P`: the LLM judge's endpoint, `claude-cli` (default) or `claude-api`. Any other strategy refuses it
-- `--batch N`: grade N LLM docs per request instead of one. Any other strategy refuses it
-- `--seed S`: seed of the shuffle that forms `--batch` batches (default 1)
-- `--concurrency N`: parallel Grade calls (per-doc mode)
+- `--concurrency N`: parallel Grade calls, for the judges that grade one doc per request
 - `--allow-unjudged`: exit 0 even when some pooled docs are left unjudged. A query with no usable terms still fails the run
 - `--force`: for `manual` only, rewrite the placeholders from scratch. Without it, `manual` keeps every existing hand grade, adds `-1` placeholders for new pool docs, and refuses a file another judge wrote
-- `--carry-over <annotations> --carry-over-pool <pool>`: after a re-pool, reuse the old grades and grade only new docs. A grade is reused when the judge and the query's text, category and filters are unchanged. A pool records the canonical package its engines had loaded under `meta.canonical`, and carry-over refuses when the two pools' hashes differ. Take the old pool from git (`git show <commit>:<track>/trec/pool.yaml`). Batched judges and `bm25`, `vector`, `hybrid` refuse it. The new file records where its grades came from under `carried_over`
+- `--carry-over <annotations> --carry-over-pool <pool>`: after a re-pool, reuse the old grades and grade only new docs. A grade is reused when the judge and the query's text, category and filters are unchanged. A pool records the canonical package its engines had loaded under `meta.canonical`, and carry-over refuses when the two pools' hashes differ. Take the old pool from git (`git show <commit>:<track>/trec/pool.yaml`). `bm25`, `vector` and `hybrid` refuse it. The new file records where its grades came from under `carried_over`
 - `--api-base URL`: the API `claude-api` or `jev` calls (defaults `https://api.anthropic.com`, `https://api.typesafe.ai`)
 
 `--strategy jev` grades with TypeSafe's Jev (`POST /v1/systemone`), a non-Anthropic cross-judge of the LLM judge, so it must grade exactly what the LLM judge graded:
@@ -598,7 +591,7 @@ The report is always written. A run fails, exits non-zero and leaves `reports/la
 - it ran a query the pool holds no entry for
 - it measured an engine the pool never saw
 - a (query, engine) cell's request differs from the one the pool recorded, or the pool records none, as after editing a template, a declared param or a query's params; the error names the cells (`q07/pg`). `--latency-only` skips this check
-- a query's `text`, `category` or `filters` differ from its pool entry, which is what the judges graded; the error names the queries. Editing only a description passes. A pool written before entries carried `query_text` fails as one that predates query text. `--latency-only` skips this check
+- a query's `text`, `category` or `filters` differ from its pool entry, which is what the judges graded; the error names the queries. Editing only a description passes. `--latency-only` skips this check
 - the judgments leave pooled docs unjudged
 - an engine ranks a doc with no grade within the pool depth (`meta.pool_depth`). With requests unchanged this happens only when the corpus changed or a rank tie broke differently; the error counts the docs and names the cells
 
@@ -636,7 +629,7 @@ runs:
   query_timeout: 30s
 ```
 
-`bench pool` runs a job's queries all at once, at most as many executions at a time as the job has engines, and they may all land on one postgres engine. Waiting for a pool connection counts against the deadline, so a postgres engine queues there only when the job has more engines than its `pool_max_conns` (pgx default: 4 or the CPU count, whichever is larger); otherwise a pool timeout means the query itself ran past `query_timeout`.
+`bench pool` keeps at most `--concurrency` executions in flight (default 4) across a job's queries and engines, and they may all land on one postgres engine. Waiting for a pool connection counts against the deadline, so a postgres engine queues there only when `--concurrency` exceeds its `pool_max_conns` (pgx default: 4 or the CPU count, whichever is larger); otherwise a pool timeout means the query itself ran past `query_timeout`.
 
 The clock covers sending the query and receiving the whole result. For postgres that means reading every row; for elasticsearch and the API it means reading the full response body. Decoding the result into document ids happens after the clock stops, on every engine.
 
@@ -691,18 +684,18 @@ A read of the server settings, cgroup limits or node stats that fails, as `pg_re
 
 | Format               | Output                  | Description                                                                          |
 |----------------------|-------------------------|--------------------------------------------------------------------------------------|
-| `qrels` (or `tsv`)   | `trec/qrels.<S>.tsv`    | TREC qrels TSV for `trec_eval`, R, pytrec_eval                                       |
+| `qrels`              | `trec/qrels.<S>.tsv`    | TREC qrels TSV for `trec_eval`, R, pytrec_eval                                       |
 | `html`               | `reports/<run_id>.html` | Self-contained HTML with sortable tables, SVG charts, significance table, provenance |
-| `markdown` (or `md`) | `reports/<run_id>.md`   | GitHub-Flavored Markdown tables for thesis writing and PRs                           |
+| `markdown`           | `reports/<run_id>.md`   | GitHub-Flavored Markdown tables for thesis writing and PRs                           |
 | `run`                | `reports/<run_id>.run/` | TREC run files, one per job and engine (`<job>.<engine>.run`), for `trec_eval`        |
 
 Examples:
 ```bash
-bench export tracks/global-news-dataset/fts_quality --format qrels
-bench export tracks/global-news-dataset/fts_quality --format qrels --strategy claude-api
-bench export tracks/global-news-dataset/fts_quality --format html
-bench export tracks/global-news-dataset/fts_quality --format markdown
-bench export tracks/global-news-dataset/fts_quality --format markdown --output /tmp/results.md
+bench export tracks/cc-news/fts --format qrels
+bench export tracks/cc-news/fts --format qrels --judgments claude-cli
+bench export tracks/cc-news/fts --format html
+bench export tracks/cc-news/fts --format markdown
+bench export tracks/cc-news/fts --format markdown --output /tmp/results.md
 ```
 
 ### `bench status [<name>]`
@@ -711,7 +704,7 @@ Prints a one-glance dashboard showing which artifacts exist, when they were last
 
 ### `bench diff runs [<name>]`
 
-Compares the report `latest.json` points at with the newest earlier complete report: judged metrics, no failed queries and nothing in `settings.incomplete`. When no earlier report qualifies, it warns and falls back to the newest earlier one. It warns when the judge, relevance threshold or judgments file differ, lists the index provenance fields that changed, then shows per-engine metric deltas (NDCG, MAP, MRR, latency) and per-query NDCG regressions sorted by magnitude. NDCG is compared at the largest K both runs computed. Pass `--a` / `--b` to compare specific run IDs.
+Compares the report `latest.json` points at with the newest earlier complete report: judged metrics, no failed queries and nothing in `settings.incomplete`. When no earlier report qualifies, it warns and falls back to the newest earlier one. It warns when the judge, relevance threshold or judgments file differ, lists the index provenance fields that changed, then shows per-engine metric deltas (NDCG, MAP, MRR, latency) and per-query NDCG regressions sorted by magnitude. NDCG is compared at the largest K both runs computed. Pass `--before` / `--after` to compare specific runs, each a run ID or a report path.
 
 `bench diff` itself takes no track: `bench diff <name>` fails and names `runs` and `judgments`.
 
@@ -757,19 +750,17 @@ Pretty-prints a one-page summary of any artifact:
 |-----------|-------|
 | `show spec` | `spec.yaml` |
 | `show pool` | `trec/pool.yaml` |
-| `show judgments [--strategy S]` | `trec/annotations.<S>.yaml` |
+| `show judgments [--judgments S]` | `trec/annotations.<S>.yaml` |
 | `show report` | `reports/latest.json` → actual report |
-
-`bench report [<name>]` is a top-level shorthand for `bench show report`.
 
 ### `bench clean [<name>] [--keep N]`
 
 Removes old JSON, HTML, and Markdown files from `reports/`, keeping the `--keep` most-recent (default 5). `latest.json` is never deleted, and neither is the JSON report it points at. Of the JSON reports, complete runs fill the remaining slots before incomplete ones (failed, partial or latency-only), so those go first. HTML and Markdown exports keep only the `--keep` newest, even the latest run's export. A deleted report takes its `reports/<run_id>.run/` run files with it.
 
 ```bash
-bench clean tracks/global-news-dataset/fts_quality            # keep 5 most recent
-bench clean tracks/global-news-dataset/fts_quality --keep 2
-bench clean tracks/global-news-dataset/fts_quality --dry-run  # show what would be deleted
+bench clean tracks/cc-news/fts            # keep 5 most recent
+bench clean tracks/cc-news/fts --keep 2
+bench clean tracks/cc-news/fts --dry-run  # show what would be deleted
 ```
 
 ## Metrics
@@ -798,7 +789,7 @@ Latency (min/p50/p75/p90/p95/p99/max/mean/stddev) covers only the queries every 
 Each report records every (query, engine) ranking, so `trec_eval` can reproduce its MAP, P@k and linear-gain NDCG:
 
 ```bash
-bench export <track> --format qrels --strategy <S>
+bench export <track> --format qrels --judgments <S>
 bench export <track> --format run
 trec_eval -c -l <relevance_threshold> -m map -m P.5,10 -m ndcg_cut.5,10 trec/qrels.<S>.tsv reports/<run_id>.run/<job>.<engine>.run
 ```
@@ -820,12 +811,11 @@ above it is enforced — `bench` never assumes a `tracks/` directory — so how 
 group tracks is your call. This repo uses one folder per dataset, one track per
 (dataset × IR paradigm):
 
-| Track                                       | Paradigm            | Engines                                 |
-|---------------------------------------------|---------------------|-----------------------------------------|
-| `tracks/global-news-dataset/fts_quality`    | Full-text search    | pg-seq, pg-gin, paradedb, elasticsearch |
-| `tracks/global-news-dataset/news_fuzzy`     | Fuzzy / approximate | pg_trgm, ES fuzziness                   |
-| `tracks/global-news-dataset/news_semantic`  | Semantic / vector   | pgvector, ES dense_vector kNN           |
-| `tracks/global-news-dataset/news_hybrid`    | Hybrid (RRF fusion) | pgvector+BM25, ES hybrid                |
+| Track                            | Paradigm                  | Engines                                   |
+|----------------------------------|---------------------------|-------------------------------------------|
+| `tracks/cc-news/fts`             | Full-text search          | native, ParadeDB, Tiger, Elasticsearch    |
+| `tracks/cc-news/fuzzy`           | Fuzzy / approximate       | native, ParadeDB, Tiger, Elasticsearch    |
+| `tracks/cc-news/semantic-hybrid` | Semantic and hybrid (RRF) | native, ParadeDB, Tiger, Elasticsearch    |
 
 This decomposition ensures that pools and judgments are paradigm-specific (different query types, different relevance criteria) and that statistical comparisons are between equivalent systems.
 
@@ -842,16 +832,16 @@ A track arg is an ordinary filesystem path:
 defaults to the current directory, so from the repo root:
 
 ```bash
-bench run tracks/global-news-dataset/fts_quality
-bench run 'tracks/global-news-dataset/*'          # the whole dataset
+bench run tracks/cc-news/fts
+bench run 'tracks/cc-news/*'          # the whole dataset
 ```
 
 Point it at a dataset folder and the same tracks get short names — it is pure
 convenience, identical to `cd`-ing there:
 
 ```bash
-export BENCH_TRACK_ROOT=tracks/global-news-dataset
-bench run fts_quality
+export BENCH_TRACK_ROOT=tracks/cc-news
+bench run fts
 bench run '*'                                     # the whole dataset
 ```
 

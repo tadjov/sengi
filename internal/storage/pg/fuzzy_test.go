@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/storage"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
+	"github.com/tadjov/sengi/internal/testcontainer"
 )
 
 func TestFuzzyExpansion(t *testing.T) {
@@ -86,7 +86,7 @@ func expansions(t *testing.T, conn *pgx.Conn, typed string) []string {
 func fuzzyCorpus(t *testing.T, engine storage.Engine, words map[string]int) *pgx.Conn {
 	t.Helper()
 	ctx := context.Background()
-	server := pkgtesting.NewPGContainerWithConfig(ctx, t, pkgtesting.PGConfig{Engine: engine})
+	server := testcontainer.NewPGContainerWithConfig(ctx, t, testcontainer.PGConfig{Engine: engine})
 	conn, err := pgx.Connect(ctx, server.ConnString)
 	require.NoError(t, err)
 	t.Cleanup(func() { conn.Close(ctx) })

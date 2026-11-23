@@ -19,8 +19,8 @@ import (
 	"github.com/tadjov/sengi/internal/storage/es"
 	"github.com/tadjov/sengi/internal/storage/factory"
 	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 func pgSearchConfig(connStr string) *NewsSearchConfig {
@@ -51,7 +51,7 @@ func healthStatus(t *testing.T, backend *searchBackend) int {
 
 func TestOpenSearchBackend_PostgresSearchersShareOnePool(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 
 	backend, err := openSearchBackend(ctx, pgSearchConfig(container.ConnString+"&pool_max_conns=1"))
 	if err != nil {
@@ -85,7 +85,8 @@ func TestOpenSearchBackend_PostgresSearchersShareOnePool(t *testing.T) {
 
 func TestOpenSearchBackend_HealthFollowsPostgres(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	// The test stops its server.
+	container := testcontainer.NewPGContainerWithConfig(ctx, t, testcontainer.PGConfig{Isolated: true})
 
 	running, err := openSearchBackend(ctx, pgSearchConfig(container.ConnString))
 	if err != nil {
@@ -225,13 +226,13 @@ func TestOpenSearchBackend_ElasticsearchSearchersShareOneClient(t *testing.T) {
 	if !backend.health.Healthy(ctx) {
 		t.Fatal("health check failed against the fake cluster")
 	}
-	if _, err := backend.fts.(storage.StringQuerySearcher).SearchStringQuery(ctx, dquery.NewQueryString("climate"), opts); err != nil {
+	if _, err := backend.fts.(storage.StringQuerySearcher).SearchStringQuery(ctx, dquery.NewString("climate", dquery.StringOptions{}), opts); err != nil {
 		t.Fatalf("full-text search: %v", err)
 	}
 	if _, err := backend.semantic.SearchSemantic(ctx, dquery.NewSemantic("climate"), opts); err != nil {
 		t.Fatalf("semantic search: %v", err)
 	}
-	if _, err := backend.hybrid.SearchHybrid(ctx, dquery.NewHybrid("climate"), opts); err != nil {
+	if _, err := backend.hybrid.SearchHybrid(ctx, dquery.NewHybrid("climate", dquery.HybridOptions{}), opts); err != nil {
 		t.Fatalf("hybrid search: %v", err)
 	}
 
@@ -242,7 +243,7 @@ func TestOpenSearchBackend_ElasticsearchSearchersShareOneClient(t *testing.T) {
 
 func TestServer_SearchPastRequestDeadlineReleasesItsConnection(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 	backend, err := openSearchBackend(ctx, pgSearchConfig(container.ConnString+"&pool_max_conns=1"))
 	if err != nil {
 		t.Fatalf("openSearchBackend: %v", err)
@@ -254,7 +255,7 @@ func TestServer_SearchPastRequestDeadlineReleasesItsConnection(t *testing.T) {
 		t.Fatalf("server.New: %v", err)
 	}
 	s.SetupMiddlewares().SetupErrorHandler().SetupHealthChecks("/health")
-	router.NewSearchRouter(s.Echo, backend.fts).Bind()
+	router.NewSearchRouter(s.Echo, router.Searchers{FullText: backend.fts}).Bind()
 
 	locker, err := pgx.Connect(ctx, container.ConnString)
 	if err != nil {

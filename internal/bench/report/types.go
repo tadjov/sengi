@@ -10,16 +10,8 @@ import (
 	"github.com/tadjov/sengi/internal/bench/runner"
 )
 
-// Report is the root artifact produced by bench run. It has exactly two
-// identity blocks:
-//
-//   - Provenance (meta.Meta) — who/what/when produced this report and which
-//     source artifacts it consumed (spec, suite, pool, judgments).
-//   - Environment (RunEnvironment) — runtime context: engines tested, corpus
-//     shape, and host platform.
-//
-// There is no legacy "meta" block — Version and Timestamp lived there but are
-// already in Provenance.Tool and Provenance.GeneratedAt.
+// Report is what bench run writes: Provenance says what produced it and from
+// which artifacts, Environment what it ran against.
 type Report struct {
 	SchemaVersion int            `json:"schema_version"`
 	Provenance    meta.Meta      `json:"provenance"`
@@ -29,9 +21,7 @@ type Report struct {
 	Settings      RunSettings    `json:"settings"`
 }
 
-// RunEnvironment captures the runtime context of a bench run — engines tested,
-// corpus shape, and host platform. Distinct from Provenance (identity/sources)
-// and from Jobs (the measured outcomes).
+// RunEnvironment is what a run ran against: engines, corpus and host.
 type RunEnvironment struct {
 	Engines  map[string]EngineInfo `json:"engines"`
 	Corpus   CorpusInfo            `json:"corpus,omitempty"`
@@ -39,11 +29,10 @@ type RunEnvironment struct {
 }
 
 type EngineInfo struct {
-	Type       string `json:"type"`
-	Connection string `json:"connection"`
-	Version    string `json:"version,omitempty"`
-	// Index is nil in reports written before index provenance was recorded.
-	Index *IndexProvenance `json:"index,omitempty"`
+	Type       string           `json:"type"`
+	Connection string           `json:"connection"`
+	Version    string           `json:"version,omitempty"`
+	Index      *IndexProvenance `json:"index,omitempty"`
 }
 
 type CorpusInfo struct {
@@ -95,12 +84,10 @@ type PairwiseSignificance struct {
 	// Untestable marks a pair with fewer than 4 non-zero differences. It keeps
 	// P = 1 so the metric's Holm family still counts it.
 	Untestable bool
-	// AdjustedP is Holm-corrected across the job's engine pairs on this
-	// metric; nil in reports written before the correction.
+	// AdjustedP is Holm-corrected across the job's engine pairs on this metric.
 	AdjustedP *float64
 	Stars     string // from AdjustedP: "**" p<0.01 | "*" p<0.05 | "" not significant
-	// MeanDifference is the mean of A − B with its 95% bootstrap interval;
-	// nil in reports written before it was recorded.
+	// MeanDifference is the mean of A − B with its 95% bootstrap interval.
 	MeanDifference *metrics.Interval
 }
 
@@ -129,8 +116,7 @@ type Entry struct {
 	// ServerLatency is nil for an engine that reports no server time.
 	ServerLatency *LatencyStats `json:",omitempty"`
 	Error         string
-	// Ranking is what the engine returned, best first; nil in reports written
-	// before rankings were recorded.
+	// Ranking is what the engine returned, best first.
 	Ranking []RankedDoc `json:",omitempty"`
 }
 
@@ -146,7 +132,6 @@ type AggregatedEntry struct {
 	EngineName string
 	NDCG       map[int]float64
 	NDCGStddev map[int]float64 // sample stddev of per-query NDCG — measures consistency
-	// NDCGLinear is nil in reports written before it was recorded.
 	NDCGLinear map[int]float64 `json:",omitempty"`
 	Precision  map[int]float64
 	Recall     map[int]float64
@@ -170,7 +155,7 @@ type AggregatedEntry struct {
 	// JudgedCoverage is the share of retrieved docs within the largest K, over
 	// the judged queries, that carry a grade. Ungraded docs score as
 	// non-relevant, so a low value means the metrics above undercount. nil when
-	// nothing was retrieved or the report predates it.
+	// nothing was retrieved.
 	JudgedCoverage *float64
 }
 
@@ -214,7 +199,7 @@ func (s LatencyStats) P99() time.Duration { return s.Percentiles[99] }
 type RunSettings struct {
 	Warmup     int `json:"warmup"`
 	Iterations int `json:"iterations"`
-	// Seed drew each query's engine order; 0 in older reports.
+	// Seed drew each query's engine order.
 	Seed uint64 `json:"seed"`
 	// QueryTimeout is the deadline each execution ran under.
 	QueryTimeout time.Duration `json:"query_timeout"`

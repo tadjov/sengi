@@ -1,25 +1,66 @@
 package judgment
 
 import (
-	"context"
+	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/bench/meta"
+	"github.com/tadjov/sengi/internal/bench/pool"
 )
 
-// ManualStrategy emits GradeUnjudged (-1) for every doc. Useful when a human
-// wants to grade from scratch — the runner writes a JudgmentFile with
-// placeholders the user can fill in by hand. Pairs with `bench show
-// judgments` to review what's still unjudged.
-type ManualStrategy struct{}
-
-func NewManualStrategy() *ManualStrategy { return &ManualStrategy{} }
-
-func (ManualStrategy) Name() string { return string(StrategyManual) }
-
-func (ManualStrategy) Describe() meta.Judge {
+// ManualJudge is the judge a hand-graded file records.
+func ManualJudge() meta.Judge {
 	return meta.Judge{Strategy: string(StrategyManual)}
 }
 
-func (ManualStrategy) Grade(_ context.Context, _ GradingQuery, _ GradingDoc) (int, error) {
-	return GradeUnjudged, nil
+// ManualFile is a hand-grading file bound to the pool it is built from.
+type ManualFile struct {
+	Pool *pool.PoolFile
+	// PoolRef is relative to the track.
+	PoolRef string
+	Path    string
+}
+
+// Write keeps every grade in existing (nil starts over), adds a -1 placeholder
+// for each pooled doc without one and writes the file.
+func (m ManualFile) Write(existing *File) (*File, error) {
+	jf := m.placeholders(existing)
+	judge := ManualJudge()
+	jf.Meta = meta.New("judge")
+	jf.Meta.Judge = &judge
+	jf.Meta.PoolRef = m.PoolRef
+	jf.Meta.PoolRunID = m.Pool.Meta.RunID
+	if err := WriteFile(jf, m.Path); err != nil {
+		return nil, fmt.Errorf("write manual judgments: %w", err)
+	}
+	return jf, nil
+}
+
+func (m ManualFile) placeholders(existing *File) *File {
+	jf := &File{}
+	if existing != nil {
+		jf.Queries = existing.Queries
+	}
+	entryIndex := make(map[string]int, len(jf.Queries))
+	for i, qe := range jf.Queries {
+		entryIndex[qe.QueryID] = i
+	}
+	for _, entry := range m.Pool.Queries {
+		i, ok := entryIndex[entry.QueryID]
+		if !ok {
+			i = len(jf.Queries)
+			entryIndex[entry.QueryID] = i
+			jf.Queries = append(jf.Queries, Entry{QueryID: entry.QueryID})
+		}
+		known := make(map[uuid.UUID]bool, len(jf.Queries[i].Docs))
+		for _, d := range jf.Queries[i].Docs {
+			known[d.DocID] = true
+		}
+		for _, d := range entry.Docs {
+			if !known[d.DocID] {
+				jf.Queries[i].Docs = append(jf.Queries[i].Docs, GradedDoc{DocID: d.DocID, Grade: GradeUnjudged})
+			}
+		}
+	}
+	return jf
 }

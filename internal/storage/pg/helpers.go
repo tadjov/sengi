@@ -7,11 +7,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/tadjov/sengi/internal/api/dto"
 	"github.com/tadjov/sengi/internal/types/document"
 )
 
-// ArticleColumns must stay in scanArticle's scan order.
+// ArticleColumns must stay in ScanArticle's scan order and insertRow's value order.
 var ArticleColumns = []string{
 	"id", "url", "title", "description", "content", "published_at",
 	"language", "publisher_domain", "metadata",
@@ -29,8 +28,8 @@ func ArticleColumnList(alias string) string {
 	return strings.Join(qualified, ", ")
 }
 
-// scanArticle scans trailing targets after the article columns.
-func scanArticle(rows pgx.Rows, trailing ...any) (document.Article, error) {
+// ScanArticle scans trailing targets after the article columns.
+func ScanArticle(rows pgx.Rows, trailing ...any) (document.Article, error) {
 	var article document.Article
 	var publishedAt *time.Time
 	var metadataJSON []byte
@@ -59,24 +58,6 @@ func scanArticle(rows pgx.Rows, trailing ...any) (document.Article, error) {
 	}
 
 	return article, nil
-}
-
-func ScanArticle(rows pgx.Rows, trailing ...any) (*dto.Article, error) {
-	article, err := scanArticle(rows, trailing...)
-	if err != nil {
-		return nil, err
-	}
-	result := dto.NewArticle(article)
-	return &result, nil
-}
-
-func MapToArticle(rows pgx.Rows) (*dto.Article, float32, error) {
-	var distance float32
-	article, err := ScanArticle(rows, &distance)
-	if err != nil {
-		return nil, 0, err
-	}
-	return article, distance, nil
 }
 
 // nullableTime maps the zero time to SQL NULL, so an article with no

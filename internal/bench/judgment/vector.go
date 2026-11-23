@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -13,38 +14,21 @@ import (
 	"github.com/tadjov/sengi/internal/storage"
 )
 
-// VectorStrategy grades a query's pool as exact search's top ten: the pool docs
-// nearest the query by cosine between the query's vector and each doc's stored
-// one. Every vector engine searches the same model's vectors, so against these
-// grades R@10 is recall@10 against exact search, provided the pool holds exact
-// search's own top ten.
-//
-// It is storage-agnostic: document vectors come from a storage.VectorStore
-// (Postgres today, ES later) and the query vector is looked up by its text. It
-// does not re-embed documents.
+// VectorStrategy grades the pool docs nearest the query by cosine as exact
+// search's top ten, so R@10 against its grades is recall@10 against exact
+// search, provided the pool holds exact search's own top ten.
 type VectorStrategy struct {
 	store storage.VectorStore
 	model string
 }
 
-// NewVectorStrategy builds the strategy from options. A VectorStore must be
-// supplied by the caller (cmd_judge wires it from the PG pool + embedder).
 func NewVectorStrategy(opts StrategyOptions) (*VectorStrategy, error) {
 	if opts.VectorStore == nil {
-		return nil, errNoVectorStore(StrategyVector)
+		return nil, errNoVectorStore
 	}
 	return &VectorStrategy{store: opts.VectorStore, model: opts.EmbeddingModel}, nil
 }
 
-// NewVectorStrategyWithStore injects a store directly (used in tests).
-func NewVectorStrategyWithStore(store storage.VectorStore, model string) *VectorStrategy {
-	return &VectorStrategy{store: store, model: model}
-}
-
-func (VectorStrategy) Name() string { return string(StrategyVector) }
-
-// Describe records the embedding model that produced the cosine scores, so a
-// vector-graded qrel set names the model it depends on.
 func (s VectorStrategy) Describe() meta.Judge {
 	return meta.Judge{Strategy: string(StrategyVector), Model: s.model, RubricVersion: vectorRubricVersion}
 }
@@ -90,12 +74,7 @@ func (s VectorStrategy) GradePool(ctx context.Context, q GradingQuery, docs []Gr
 	return out, nil
 }
 
-// vectors looks the query's vector up once and fetches all candidate doc
-// vectors from the store in one round-trip.
 func (s VectorStrategy) vectors(ctx context.Context, q GradingQuery, docs []GradingDoc) ([]float32, map[uuid.UUID][]float32, error) {
-	if s.store == nil {
-		return nil, nil, fmt.Errorf("vector strategy: no vector store configured")
-	}
 	qVec, err := s.store.QueryVector(ctx, q.Text)
 	if err != nil {
 		return nil, nil, fmt.Errorf("embed query %q: %w", q.ID, err)
@@ -115,10 +94,8 @@ func (s VectorStrategy) vectors(ctx context.Context, q GradingQuery, docs []Grad
 }
 
 // VectorWidthError reports a query vector and a stored document vector of
-// different widths. Cosine over them is meaningless, and because the widths
-// come from the models rather than the document, every remaining document
-// fails the same way — so the judge runner stops on this instead of falling
-// back per-doc and writing an annotations file in which nothing is relevant.
+// different widths. The widths come from the models, so every document fails
+// the same way and the judge runner stops on it.
 type VectorWidthError struct {
 	QueryID    string
 	DocID      uuid.UUID
@@ -153,11 +130,8 @@ func checkVectorWidths(queryID string, qVec []float32, docs []GradingDoc, vecs m
 	return nil
 }
 
-func errNoVectorStore(kind StrategyKind) error {
-	return fmt.Errorf(
-		"%s strategy requires a vector store: set --pg/PG_CONNECTION_STRING and an embedding endpoint (--embedding-base / EMBEDDING_BASE_URL)",
-		kind)
-}
+var errNoVectorStore = errors.New(
+	"vector and hybrid strategies require a vector store: set --pg/PG_CONNECTION_STRING and an embedding endpoint (--embedding-base / EMBEDDING_BASE_URL)")
 
 func cosine(a, b []float32) float64 {
 	if len(a) == 0 || len(b) == 0 || len(a) != len(b) {

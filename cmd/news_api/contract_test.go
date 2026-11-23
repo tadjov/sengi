@@ -16,10 +16,11 @@ import (
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/factory"
 	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/storage/pg/pgtest"
 	"github.com/tadjov/sengi/internal/storage/storagetest"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 // newPostgresSearchServer serves the search API from a Postgres container
@@ -27,23 +28,12 @@ import (
 func newPostgresSearchServer(t *testing.T) *server.Server {
 	t.Helper()
 	ctx := context.Background()
-	container := pkgtesting.NewPGContainerWithCleanup(ctx, t)
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 
-	loader, err := pg.NewConnectionPool(ctx, pg.PoolConfig{ConnStr: container.ConnString})
-	if err != nil {
-		t.Fatalf("NewConnectionPool: %v", err)
-	}
-	defer loader.Close()
-	indexer, err := pg.NewIndexer(loader)
-	if err != nil {
-		t.Fatalf("NewIndexer: %v", err)
-	}
-	if err := indexer.SaveBulk(ctx, storagetest.ParityCorpus()); err != nil {
-		t.Fatalf("SaveBulk: %v", err)
-	}
+	connString := pgtest.Load(t, container.ConnString, pgtest.Corpus{Articles: storagetest.ParityCorpus()})
 
 	backend, err := openSearchBackend(ctx, &NewsSearchConfig{
-		StorageConfig:   factory.StorageConfig{Type: storage.PG, Pg: &pg.PoolConfig{ConnStr: container.ConnString}},
+		StorageConfig:   factory.StorageConfig{Type: storage.PG, Pg: &pg.PoolConfig{ConnStr: connString}},
 		EmbeddingConfig: embedding.Config{Enabled: false},
 	})
 	if err != nil {
@@ -56,7 +46,7 @@ func newPostgresSearchServer(t *testing.T) *server.Server {
 		t.Fatalf("server.New: %v", err)
 	}
 	s.SetupValidator().SetupErrorHandler()
-	router.NewSearchRouter(s.Echo, backend.fts).Bind()
+	router.NewSearchRouter(s.Echo, router.Searchers{FullText: backend.fts}).Bind()
 	return s
 }
 

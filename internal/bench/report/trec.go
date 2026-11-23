@@ -43,7 +43,7 @@ func WriteTRECRun(w io.Writer, job *JobReport, engineName string) error {
 	return nil
 }
 
-// ErrNoRankings is returned for a report written before rankings were recorded.
+// ErrNoRankings is returned for a report none of whose executions ranked anything.
 var ErrNoRankings = errors.New("report records no rankings; re-run bench run to export a TREC run")
 
 // WriteTRECRuns writes one run file per job and engine into dir, named

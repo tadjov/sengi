@@ -20,9 +20,8 @@ type initFlags struct {
 }
 
 type initContext struct {
-	Name           string
-	SuiteRel       string
-	AnnotationsRel string
+	Name     string
+	SuiteRel string
 }
 
 func newInitCmd() *cobra.Command {
@@ -65,7 +64,7 @@ func executeInit(cmd *cobra.Command, f initFlags, name string) error {
 	// track root (default: cwd). No parent layout is invented.
 	root := name
 	if !filepath.IsAbs(name) {
-		root = filepath.Join(trackRootOrCwd(), name)
+		root = filepath.Join(trackRoot, name)
 	}
 
 	if info, err := os.Stat(root); err == nil && info.IsDir() && !f.force {
@@ -81,9 +80,8 @@ func executeInit(cmd *cobra.Command, f initFlags, name string) error {
 	}
 
 	ctx := initContext{
-		Name:           filepath.Base(root),
-		SuiteRel:       "suite.yaml",
-		AnnotationsRel: filepath.Join("trec", "annotations.keyword.yaml"),
+		Name:     filepath.Base(root),
+		SuiteRel: "suite.yaml",
 	}
 
 	files := []struct {

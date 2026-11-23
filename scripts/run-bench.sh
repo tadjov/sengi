@@ -37,14 +37,14 @@ make build-bench
 #     Claude subscription), on the model JUDGE_MODEL names.
 ./bin/bench judge "$TRACK" --strategy llm --provider claude-cli --model "$JUDGE_MODEL" --resume
 
-# 4c. ... OR with the Anthropic API in batches (set ANTHROPIC_API_KEY).
-./bin/bench judge "$TRACK" --strategy llm --provider claude-api --model "$JUDGE_MODEL" --batch 20 --resume
+# 4c. ... OR with the Anthropic API (set ANTHROPIC_API_KEY).
+./bin/bench judge "$TRACK" --strategy llm --provider claude-api --model "$JUDGE_MODEL" --resume
 
 # 4d. ... OR write -1 placeholders for hand grading.
 ./bin/bench judge "$TRACK" --strategy manual
 
 # 5. Inspect grades before running the benchmark.
-./bin/bench show judgments "$TRACK" --strategy keyword
+./bin/bench show judgments "$TRACK" --judgments keyword
 
 # 6. Run the benchmark. Defaults to spec.defaults.judgments; override with
 #    --judgments <name> to swap which judgment set scores this run.
@@ -53,4 +53,4 @@ make build-bench
 
 # 7. (Optional) Export TREC qrels for trec_eval / external tooling.
 #    Judgment sets are addressed by name: keyword, claude-cli, claude-api, ...
-./bin/bench export "$TRACK" --format qrels --strategy claude-cli
+./bin/bench export "$TRACK" --format qrels --judgments claude-cli

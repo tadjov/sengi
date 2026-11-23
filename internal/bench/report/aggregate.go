@@ -333,7 +333,6 @@ func computeSignificance(scope jobScope) []PairwiseSignificance {
 		for j := i + 1; j < len(engNames); j++ {
 			engA, engB := engNames[i], engNames[j]
 
-			// Collect paired per-query scores for all metrics at once.
 			var mapA, mapB, mrrA, mrrB []float64
 			ndcgA := make(map[int][]float64, len(kValues))
 			ndcgB := make(map[int][]float64, len(kValues))

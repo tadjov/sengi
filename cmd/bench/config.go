@@ -12,7 +12,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/tadjov/sengi/internal/bench/engine"
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/suite"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
@@ -33,28 +32,42 @@ const trackRootEnv = "BENCH_TRACK_ROOT"
 // like any other path; pointing it at a folder of tracks is pure convenience.
 var trackRoot string
 
-func createExecutors(ctx context.Context, bs *spec.BenchSpec) (map[string]engine.Executor, func(), error) {
-	return engine.CreateFromSpec(ctx, bs.Engines)
+// vectorStoreSource is where a track's query and document vectors come from.
+type vectorStoreSource struct {
+	track *trackctx.Track
+	spec  *spec.BenchSpec
+	// postgres serves document vectors.
+	postgres       string
+	embeddingBase  string
+	embeddingModel string
 }
 
-// buildQueryVectorStore prefers the track's query-vectors package over live
-// Ollama embedding; the store is nil when neither is available.
-func buildQueryVectorStore(ctx context.Context, bs *spec.BenchSpec, tr *trackctx.Track) (storage.VectorStore, func(), error) {
+func runVectorStoreSource(bs *spec.BenchSpec, tr *trackctx.Track) vectorStoreSource {
+	return vectorStoreSource{
+		track:          tr,
+		spec:           bs,
+		postgres:       postgresConnection(bs),
+		embeddingBase:  os.Getenv("EMBEDDING_BASE_URL"),
+		embeddingModel: os.Getenv("EMBEDDING_MODEL"),
+	}
+}
+
+// openVectorStore prefers the track's query-vectors package over live Ollama
+// embedding; the store is nil when the track has no package and Ollama or
+// Postgres is not configured.
+func openVectorStore(ctx context.Context, src vectorStoreSource) (storage.VectorStore, func(), error) {
 	noop := func() {}
-	packageDir, found, err := queryVectorsPackage(tr)
+	packageDir, found, err := queryVectorsPackage(src.track)
 	if err != nil {
 		return nil, noop, err
 	}
 	if found {
-		return openQueryVectors(ctx, queryVectorsSource{spec: bs, packageDir: packageDir, postgres: postgresConnection(bs)})
+		return openQueryVectors(ctx, queryVectorsSource{spec: src.spec, packageDir: packageDir, postgres: src.postgres})
 	}
-
-	baseURL := os.Getenv("EMBEDDING_BASE_URL")
-	pgConn := postgresConnection(bs)
-	if baseURL == "" || pgConn == "" {
+	if src.embeddingBase == "" || src.postgres == "" {
 		return nil, noop, nil
 	}
-	client, err := embedding.NewOllamaClient(baseURL)
+	client, err := embedding.NewOllamaClient(src.embeddingBase)
 	if err != nil {
 		return nil, noop, fmt.Errorf("embedding client: %w", err)
 	}
@@ -63,12 +76,15 @@ func buildQueryVectorStore(ctx context.Context, bs *spec.BenchSpec, tr *trackctx
 		return nil, noop, err
 	}
 	store, err := factory.NewVectorStore(ctx, factory.VectorStoreConfig{
-		PgConnStr:       pgConn,
+		PgConnStr:       src.postgres,
 		EmbeddingClient: client,
-		Model:           os.Getenv("EMBEDDING_MODEL"),
+		Model:           src.embeddingModel,
 		Dim:             dim,
 	})
-	return store, noop, err
+	if err != nil {
+		return nil, noop, err
+	}
+	return store, noop, nil
 }
 
 func queryVectorsPackage(tr *trackctx.Track) (string, bool, error) {
@@ -198,32 +214,15 @@ func envOrFlag(envKey, flagVal string) string {
 	return os.Getenv(envKey)
 }
 
-// trackInputs builds the resolution inputs shared by every subcommand: the
-// track from a flag or positional arg, resolved against the active track root.
-// Callers layer their own --spec/--pool/--output overrides on top.
-func trackInputs(flag string, args []string) trackctx.Inputs {
-	return trackctx.Inputs{TrackArg: trackArg(flag, args), TrackRoot: trackRoot}
-}
-
-// trackRootOrCwd is the track root with its default applied, for commands that
-// build paths themselves instead of going through trackctx.
-func trackRootOrCwd() string {
-	if trackRoot == "" {
-		return "."
-	}
-	return trackRoot
-}
-
-// trackArg picks up the track from a flag or first positional arg. The CLI
-// allows either form: `bench pool tracks/news/fts` or `bench pool --track tracks/news/fts`.
-func trackArg(flag string, args []string) string {
-	if flag != "" {
-		return flag
-	}
+// trackInputs reads the track from the command's one positional arg, against
+// the active track root; without an arg the track is found from the current
+// directory.
+func trackInputs(args []string) trackctx.Inputs {
+	in := trackctx.Inputs{TrackRoot: trackRoot}
 	if len(args) > 0 {
-		return args[0]
+		in.TrackArg = args[0]
 	}
-	return ""
+	return in
 }
 
 // forEachTrack runs fn once per track. A glob arg (news/*) fans out across every

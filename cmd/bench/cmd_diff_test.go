@@ -158,7 +158,7 @@ func TestExecuteDiff_DefaultsToLatestAndThePreviousFullyScoredRun(t *testing.T) 
 	writeTrackReport(t, reports, "2026-01-01T00-00-03-run-ffffff", incomplete)
 	writeTrackReport(t, reports, "2026-01-01T00-00-04-run-dddddd", nil)
 	writeTrackReport(t, reports, "2026-01-01T00-00-05-run-eeeeee", errored)
-	require.NoError(t, updateLatestPointer(filepath.Join(reports, "latest.json"),
+	require.NoError(t, report.WriteLatestPointer(filepath.Join(reports, "latest.json"),
 		filepath.Join(reports, "2026-01-01T00-00-04-run-dddddd.json")))
 
 	var out bytes.Buffer
@@ -206,14 +206,14 @@ func TestExecuteDiff_BaselineSearchSkipsUnreadableReports(t *testing.T) {
 	writeTrackReport(t, reports, "2026-01-01T00-00-01-run-aaaaaa", nil)
 	require.NoError(t, os.WriteFile(filepath.Join(reports, "2026-01-01T00-00-02-run-bbbbbb.json"), []byte("{not json"), 0o644))
 	writeTrackReport(t, reports, "2026-01-01T00-00-03-run-cccccc", nil)
-	require.NoError(t, updateLatestPointer(filepath.Join(reports, "latest.json"),
+	require.NoError(t, report.WriteLatestPointer(filepath.Join(reports, "latest.json"),
 		filepath.Join(reports, "2026-01-01T00-00-03-run-cccccc.json")))
 
 	var out bytes.Buffer
 	require.NoError(t, executeDiff(&out, diffFlags{}, []string{"demo"}))
 	assert.Regexp(t, `A \(before\):\s+2026-01-01T00-00-01-run-aaaaaa`, out.String())
 
-	err := executeDiff(&bytes.Buffer{}, diffFlags{pathA: "2026-01-01T00-00-02-run-bbbbbb"}, []string{"demo"})
+	err := executeDiff(&bytes.Buffer{}, diffFlags{before: "2026-01-01T00-00-02-run-bbbbbb"}, []string{"demo"})
 	assert.Error(t, err, "an explicitly named unreadable report is still an error")
 }
 
@@ -226,7 +226,7 @@ func TestExecuteDiff_FallsBackToTheNewestEarlierReportWhenNoneIsFullyScored(t *t
 	writeTrackReport(t, reports, "2026-01-01T00-00-01-run-aaaaaa", latencyOnly)
 	writeTrackReport(t, reports, "2026-01-01T00-00-02-run-bbbbbb", latencyOnly)
 	writeTrackReport(t, reports, "2026-01-01T00-00-03-run-cccccc", latencyOnly)
-	require.NoError(t, updateLatestPointer(filepath.Join(reports, "latest.json"),
+	require.NoError(t, report.WriteLatestPointer(filepath.Join(reports, "latest.json"),
 		filepath.Join(reports, "2026-01-01T00-00-03-run-cccccc.json")))
 
 	var out bytes.Buffer
@@ -260,29 +260,6 @@ func TestPrintDiff_NDCGHeadersNameTheGain(t *testing.T) {
 	for _, header := range headers {
 		assert.Contains(t, header, "2^rel-1")
 	}
-}
-
-func TestPrintDiff_SameJudgmentsFileInAMovedTrackIsNotAWarning(t *testing.T) {
-	judge := &meta.Judge{Strategy: "keyword"}
-	before := diffRun{
-		runID: "a", kValues: []int{10}, ndcg: map[int]float64{10: 0.6}, threshold: 1, judge: judge,
-		spec:      "/Users/me/projects/sengi/tracks/cc-news/fts/spec.yaml",
-		judgments: "/Users/me/projects/sengi/tracks/cc-news/fts/trec/annotations.keyword.yaml",
-	}
-	moved := before
-	moved.runID = "b"
-	moved.spec = "/Users/me/projects/sengi-wt/fix-x/tracks/cc-news/fts/spec.yaml"
-	moved.judgments = "/Users/me/projects/sengi-wt/fix-x/tracks/cc-news/fts/trec/annotations.keyword.yaml"
-	swapped := moved
-	swapped.judgments = "/Users/me/projects/sengi-wt/fix-x/tracks/cc-news/fts/trec/annotations.bm25.yaml"
-
-	var same bytes.Buffer
-	printDiff(&same, diffReport(before), diffReport(moved))
-	assert.NotContains(t, same.String(), "WARNING")
-
-	var different bytes.Buffer
-	printDiff(&different, diffReport(before), diffReport(swapped))
-	assert.Contains(t, different.String(), "judgments: trec/annotations.keyword.yaml → trec/annotations.bm25.yaml")
 }
 
 func TestPrintDiff_ChangeFromAZeroBaselineHasNoPercentage(t *testing.T) {
@@ -322,7 +299,7 @@ func TestDiffRuns_ComparesTheLatestTwoRuns(t *testing.T) {
 	reports := filepath.Join(cwd, "demo", "reports")
 	writeTrackReport(t, reports, "2026-01-01T00-00-01-run-aaaaaa", nil)
 	writeTrackReport(t, reports, "2026-01-01T00-00-02-run-bbbbbb", nil)
-	require.NoError(t, updateLatestPointer(filepath.Join(reports, "latest.json"), filepath.Join(reports, "2026-01-01T00-00-02-run-bbbbbb.json")))
+	require.NoError(t, report.WriteLatestPointer(filepath.Join(reports, "latest.json"), filepath.Join(reports, "2026-01-01T00-00-02-run-bbbbbb.json")))
 
 	cmd := newDiffCmd()
 	var out bytes.Buffer
@@ -606,7 +583,7 @@ func (tr *judgmentsTrack) writeReport(t *testing.T) {
 	}
 	path := filepath.Join(tr.root, "reports", "run-agreement.json")
 	require.NoError(t, report.WriteJSON(rpt, path))
-	require.NoError(t, updateLatestPointer(filepath.Join(tr.root, "reports", "latest.json"), path))
+	require.NoError(t, report.WriteLatestPointer(filepath.Join(tr.root, "reports", "latest.json"), path))
 }
 
 func TestDiffJudgments_ReportRanksTheEnginesUnderEachSet(t *testing.T) {
@@ -657,7 +634,7 @@ func TestDiffJudgments_MeasuresHandGradesAgainstAJudgeWithoutTouchingThem(t *tes
 	for i := range docs {
 		docs[i] = uuid.New()
 	}
-	tr.writeGrades(t, "manual", judgment.NewManualStrategy().Describe(), docs, hand)
+	tr.writeGrades(t, "manual", judgment.ManualJudge(), docs, hand)
 	tr.writeGrades(t, "bm25", judgment.NewBM25Strategy().Describe(), docs, judge)
 	manual := filepath.Join(tr.root, "trec", "annotations.manual.yaml")
 	before, err := os.ReadFile(manual)

@@ -153,7 +153,7 @@ func decodeBody(res *http.Response, into any) error {
 }
 
 func decodeLoadRecord(meta types.Metadata) (*storage.LoadRecord, error) {
-	raw, ok := meta["load"]
+	raw, ok := meta[loadMetaKey]
 	if !ok {
 		return nil, nil
 	}
@@ -171,16 +171,6 @@ func readAnalysis(ctx context.Context, client *elasticsearch.TypedClient, name s
 	if err != nil {
 		return "", nil, fmt.Errorf("read settings of %s: %w", name, err)
 	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return "", nil, fmt.Errorf("read settings of %s: %w", name, err)
-	}
-	if res.StatusCode != http.StatusOK {
-		return "", nil, fmt.Errorf("read settings of %s: status %d: %s", name, res.StatusCode, body)
-	}
-
 	var byIndex map[string]struct {
 		Settings struct {
 			Index struct {
@@ -188,8 +178,8 @@ func readAnalysis(ctx context.Context, client *elasticsearch.TypedClient, name s
 			} `json:"index"`
 		} `json:"settings"`
 	}
-	if err := json.Unmarshal(body, &byIndex); err != nil {
-		return "", nil, fmt.Errorf("parse settings of %s: %w", name, err)
+	if err := decodeBody(res, &byIndex); err != nil {
+		return "", nil, fmt.Errorf("read settings of %s: %w", name, err)
 	}
 	if len(byIndex) != 1 {
 		return "", nil, fmt.Errorf("read settings of %s: resolves to %d indices, want 1", name, len(byIndex))

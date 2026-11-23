@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/bench/pool"
+	"github.com/tadjov/sengi/internal/bench/report"
 	"github.com/tadjov/sengi/internal/bench/spec"
 )
 
@@ -44,7 +45,7 @@ func judgedTrackDocs(t *testing.T, failing map[string]bool) (tr lineageTrack, re
 // against them.
 func seedLatest(t *testing.T, tr lineageTrack) []byte {
 	t.Helper()
-	require.NoError(t, updateLatestPointer(tr.latestPath(), writeCleanReport(t, tr, "2026-01-01T00-00-00-seed-prior")))
+	require.NoError(t, report.WriteLatestPointer(tr.latestPath(), writeCleanReport(t, tr, "2026-01-01T00-00-00-seed-prior")))
 	pointer, err := os.ReadFile(tr.latestPath())
 	require.NoError(t, err)
 	return pointer

@@ -20,10 +20,7 @@ type Meta struct {
 	Tool        string    `yaml:"tool" json:"tool"`
 	GeneratedAt time.Time `yaml:"generated_at" json:"generated_at"`
 
-	// Identity of the track/spec/suite that produced this artifact.
-	SpecID       string `yaml:"spec_id,omitempty" json:"spec_id,omitempty"`
-	SuiteID      string `yaml:"suite_id,omitempty" json:"suite_id,omitempty"`
-	SuiteVersion string `yaml:"suite_version,omitempty" json:"suite_version,omitempty"`
+	SpecID string `yaml:"spec_id,omitempty" json:"spec_id,omitempty"`
 
 	// Pool-only fields.
 	PoolDepth         int                `yaml:"pool_depth,omitempty" json:"pool_depth,omitempty"`
@@ -41,11 +38,6 @@ type Meta struct {
 	RelevanceScale []int  `yaml:"relevance_scale,omitempty" json:"relevance_scale,omitempty"`
 	// CarriedOver is set when grades were reused from older judgments.
 	CarriedOver *CarriedOver `yaml:"carried_over,omitempty" json:"carried_over,omitempty"`
-
-	// Legacy flat judgment fields, read but never written; Normalize folds them into Judge.
-	LegacyStrategy      string `yaml:"strategy,omitempty" json:"strategy,omitempty"`
-	LegacyJudgeModel    string `yaml:"judge_model,omitempty" json:"judge_model,omitempty"`
-	LegacyPromptVersion string `yaml:"judge_prompt_version,omitempty" json:"judge_prompt_version,omitempty"`
 
 	// Report-only fields.
 	JudgmentsRunID string   `yaml:"judgments_run_id,omitempty" json:"judgments_run_id,omitempty"`
@@ -75,27 +67,14 @@ type Judge struct {
 	PromptVersion string `yaml:"prompt_version,omitempty" json:"prompt_version,omitempty"`
 	// Effort is the effort level an LLM judge's model graded at.
 	Effort string `yaml:"effort,omitempty" json:"effort,omitempty"`
-	// MaxOutputTokens is an LLM judge's output budget per single-doc request.
+	// MaxOutputTokens is an LLM judge's output budget per request.
 	MaxOutputTokens int `yaml:"max_output_tokens,omitempty" json:"max_output_tokens,omitempty"`
 	// Invocation is how an LLM judge reached its model: a command line or API version.
 	Invocation string `yaml:"invocation,omitempty" json:"invocation,omitempty"`
-	// Batching is set when an LLM judge grades several docs per request.
-	Batching *Batching `yaml:"batching,omitempty" json:"batching,omitempty"`
 	// GateVersion names the phrase, boolean and filter gates behind a judge's zeros.
 	GateVersion string `yaml:"gate_version,omitempty" json:"gate_version,omitempty"`
 	// RubricVersion names the grading rules of a judge without a prompt.
 	RubricVersion string `yaml:"rubric_version,omitempty" json:"rubric_version,omitempty"`
-}
-
-// Batching is an LLM judge's batch size, shuffle seed and per-batch output budget.
-type Batching struct {
-	Size            int    `yaml:"size" json:"size"`
-	Seed            uint64 `yaml:"seed" json:"seed"`
-	MaxOutputTokens int    `yaml:"max_output_tokens,omitempty" json:"max_output_tokens,omitempty"`
-}
-
-func (b Batching) String() string {
-	return fmt.Sprintf("size %d, seed %d, %d tokens", b.Size, b.Seed, b.MaxOutputTokens)
 }
 
 // Equal reports whether two judges grade alike; the resume guard refuses a mismatch.
@@ -140,28 +119,12 @@ func (j Judge) String() string {
 	return s
 }
 
-// Normalize folds the legacy flat fields into Judge; calling it twice is safe.
-func (m *Meta) Normalize() {
-	if m.Judge != nil {
-		return
-	}
-	if m.LegacyStrategy == "" && m.LegacyJudgeModel == "" {
-		return
-	}
-	m.Judge = &Judge{
-		Strategy:      m.LegacyStrategy,
-		Model:         m.LegacyJudgeModel,
-		PromptVersion: m.LegacyPromptVersion,
-	}
-}
-
 // Sources names the artifacts a report's metrics were computed from.
 type Sources struct {
-	Spec       string   `yaml:"spec,omitempty" json:"spec,omitempty"`
-	Suites     []string `yaml:"suites,omitempty" json:"suites,omitempty"`
-	Pool       string   `yaml:"pool,omitempty" json:"pool,omitempty"`
-	Judgments  string   `yaml:"judgments,omitempty" json:"judgments,omitempty"`
-	JudgesPath string   `yaml:"judgments_path,omitempty" json:"judgments_path,omitempty"`
+	Spec      string   `yaml:"spec,omitempty" json:"spec,omitempty"`
+	Suites    []string `yaml:"suites,omitempty" json:"suites,omitempty"`
+	Pool      string   `yaml:"pool,omitempty" json:"pool,omitempty"`
+	Judgments string   `yaml:"judgments,omitempty" json:"judgments,omitempty"`
 }
 
 // New stamps a Meta with the tool, the time and a run id carrying kind.

@@ -8,16 +8,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/sengi/internal/api/dto"
+	"github.com/tadjov/sengi/internal/testcontainer"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	pkgtesting "github.com/tadjov/sengi/pkg/testing"
 )
 
 func TestIndexer(t *testing.T) {
 	ctx := context.Background()
-	container := pkgtesting.NewESContainer(ctx, t)
+	container := testcontainer.NewESContainer(ctx, t)
 	cfg := ClientConfig{Addresses: []string{container.Address}, IndexName: "articles_indexer_test"}
 
 	indexer, err := NewIndexer(ctx, cfg)
@@ -90,27 +89,8 @@ func savedArticleRoundTrips(t *testing.T, cfg ClientConfig, indexer *Indexer) {
 
 	_, err = client.Indices.Refresh().Index(cfg.IndexName).Do(ctx)
 	require.NoError(t, err)
-	res, err := NewSearcher(newTestClient(t, cfg)).SearchStringQuery(ctx, &dquery.String{Query: "storm"}, &dquery.BaseOptions{Size: 10})
+	res, err := NewSearcher(newTestClient(t, cfg)).SearchStringQuery(ctx, dquery.NewString("storm", dquery.StringOptions{}), &dquery.BaseOptions{Size: 10})
 	require.NoError(t, err)
 	require.Len(t, res.Hits, 1)
-	assert.Equal(t, dto.Article{
-		ID:              full.ID,
-		URL:             full.URL,
-		Title:           full.Title,
-		Description:     full.Description,
-		Content:         full.Content,
-		PublishedAt:     &published,
-		Language:        "eng",
-		PublisherDomain: "reuters.com",
-		Metadata: dto.Metadata{
-			ExternalID:    "reuters-0412",
-			PublisherName: "Reuters",
-			Authors:       []string{"Jane Doe", "John Roe"},
-			Section:       "World",
-			Keywords:      []string{"storm", "coast"},
-			Image:         "https://uk.reuters.com/storm.jpg",
-			DateModified:  &modified,
-			Extra:         map[string]any{"wordCount": "412"},
-		},
-	}, res.Hits[0].Article)
+	assert.Equal(t, full, res.Hits[0].Article)
 }

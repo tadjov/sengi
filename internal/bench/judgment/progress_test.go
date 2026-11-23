@@ -14,35 +14,22 @@ import (
 	"github.com/tadjov/sengi/internal/types/document"
 )
 
-// countWatchingBatches records how many docs the counter called done when each batch starts.
-type countWatchingBatches struct {
-	fakeBatchStrategy
-	counter *progresstest.Recorder
-	doneAt  []int64
-}
-
-func (s *countWatchingBatches) GradeBatch(ctx context.Context, q GradingQuery, docs []GradingDoc) ([]GradedDoc, error) {
-	s.doneAt = append(s.doneAt, s.counter.Count())
-	return s.fakeBatchStrategy.GradeBatch(ctx, q, docs)
-}
-
 func TestRunner_CountsEveryPooledDocAgainstThePoolTotal(t *testing.T) {
 	tests := []struct {
 		name     string
 		strategy Strategy
-		batch    int
 		// stored is how many of the pool's docs the store can read.
 		stored int
 		// prior is how many docs an earlier run already graded.
 		prior int
 	}{
-		{name: "batched", strategy: &fakeBatchStrategy{name: "batch"}, batch: 10},
-		{name: "partial batch retried per doc", strategy: &fakeBatchStrategy{name: "batch", dropFirstN: 2, perDocGrade: 1}, batch: 10},
-		{name: "failed batch retried per doc", strategy: &fakeBatchStrategy{name: "batch", batchErr: errors.New("kaboom"), perDocGrade: 3}, batch: 10},
 		{name: "one doc per request", strategy: &fakeStrategy{name: "doc", grade: 2}},
 		{name: "failing grades left unjudged", strategy: &fakeStrategy{name: "doc", err: errors.New("rate limited")}},
-		{name: "resumed", strategy: &fakeBatchStrategy{name: "batch"}, batch: 10, prior: 9},
-		{name: "articles missing from the store", strategy: &fakeBatchStrategy{name: "batch"}, batch: 10, stored: 15},
+		{name: "resumed", strategy: &fakeStrategy{name: "doc", grade: 2}, prior: 9},
+		{name: "articles missing from the store", strategy: &fakeStrategy{name: "doc", grade: 2}, stored: 15},
+		{name: "whole pool", strategy: NewBM25Strategy()},
+		{name: "whole pool resumed", strategy: NewBM25Strategy(), prior: 9},
+		{name: "whole pool with articles missing from the store", strategy: NewBM25Strategy(), stored: 15},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -53,11 +40,10 @@ func TestRunner_CountsEveryPooledDocAgainstThePoolTotal(t *testing.T) {
 			counter := &progresstest.Recorder{}
 
 			_, err := NewRunner(RunnerConfig{
-				Strategy:  tt.strategy,
-				BatchSize: tt.batch,
-				Reader:    &stubStorageReader{articles: articles},
-				Existing:  priorGrades(pf, tt.prior),
-				Progress:  counter,
+				Strategy: tt.strategy,
+				Reader:   &stubStorageReader{articles: articles},
+				Existing: priorGrades(pf, tt.prior),
+				Progress: counter,
 			}).Run(context.Background(), pf)
 
 			require.NoError(t, err)
@@ -65,22 +51,6 @@ func TestRunner_CountsEveryPooledDocAgainstThePoolTotal(t *testing.T) {
 			assert.Equal(t, counter.Total(), counter.Count())
 		})
 	}
-}
-
-func TestRunner_CountsEachBatchAsItFinishes(t *testing.T) {
-	pf, articles := twoQueryPool(t, 25, 0)
-	counter := &progresstest.Recorder{}
-	strategy := &countWatchingBatches{fakeBatchStrategy: fakeBatchStrategy{name: "batch"}, counter: counter}
-
-	_, err := NewRunner(RunnerConfig{
-		Strategy:  strategy,
-		BatchSize: 10,
-		Reader:    &stubStorageReader{articles: articles},
-		Progress:  counter,
-	}).Run(context.Background(), pf)
-
-	require.NoError(t, err)
-	assert.Equal(t, []int64{0, 10, 20}, strategy.doneAt)
 }
 
 func TestRunner_CountsAQueryWithNoUsableTermsInFull(t *testing.T) {
@@ -137,5 +107,5 @@ func priorGrades(pf *pool.PoolFile, n int) *File {
 	for _, doc := range pf.Queries[0].Docs[:n] {
 		entry.Docs = append(entry.Docs, GradedDoc{DocID: doc.DocID, Grade: 2})
 	}
-	return &File{Meta: meta.Meta{Judge: &meta.Judge{Strategy: "batch"}}, Queries: []Entry{entry}}
+	return &File{Meta: meta.Meta{Judge: &meta.Judge{Strategy: "doc"}}, Queries: []Entry{entry}}
 }

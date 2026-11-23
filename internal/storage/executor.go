@@ -4,18 +4,11 @@ import (
 	"context"
 )
 
-type ExecOptions struct {
-	TimeoutSeconds int
-}
-
 type ExecuteResult struct {
-	RowCount int
-	Hits     []map[string]interface{}
+	Hits []map[string]any
 }
 
-// RawExecutor defines the interface for executing db queries.
+// RawExecutor runs SQL as written; args follow the order of its placeholders.
 type RawExecutor interface {
-	// Exec executes a query with the given parameters and options
-	// Order of params must match the order of placeholders in the query.
-	Exec(ctx context.Context, query string, params []interface{}, baseOpts *ExecOptions) (*ExecuteResult, error)
+	Exec(ctx context.Context, sql string, args []any) (*ExecuteResult, error)
 }

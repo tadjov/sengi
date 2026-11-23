@@ -47,7 +47,7 @@ func Gate(ctx context.Context, opts GateOptions) (Gated, error) {
 			return Gated{}, fmt.Errorf("article %s of query %q is not in the store", p.DocID, p.QueryID)
 		}
 		gated.Titles[p.DocID] = article.Title
-		admitted, err := judgment.GateAdmits(gradingQuery(entry), gradingDoc(article))
+		admitted, err := judgment.GateAdmits(judgment.NewGradingQuery(entry), judgment.NewGradingDoc(article))
 		if err != nil {
 			return Gated{}, fmt.Errorf("gate query %q: %w", p.QueryID, err)
 		}
@@ -78,25 +78,4 @@ func (o GateOptions) readArticles(ctx context.Context) (map[uuid.UUID]document.A
 		articles[a.ID] = a
 	}
 	return articles, nil
-}
-
-func gradingQuery(entry pool.PoolEntry) judgment.GradingQuery {
-	return judgment.GradingQuery{
-		ID:          entry.QueryID,
-		Text:        entry.QueryText,
-		Description: entry.QueryDesc,
-		Category:    entry.Category,
-		Filters:     entry.Filters,
-	}
-}
-
-func gradingDoc(a document.Article) judgment.GradingDoc {
-	return judgment.GradingDoc{
-		ID:              a.ID,
-		Title:           a.Title,
-		Description:     a.Description,
-		Content:         a.Content,
-		PublishedAt:     a.PublishedAt,
-		PublisherDomain: a.PublisherDomain,
-	}
 }

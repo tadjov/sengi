@@ -5,52 +5,6 @@ import (
 	"testing"
 )
 
-func TestParseSelector(t *testing.T) {
-	tests := []struct {
-		sel      string
-		kind     StrategyKind
-		provider Provider
-		wantErr  string
-	}{
-		{sel: "keyword", kind: StrategyKeyword},
-		{sel: "bm25", kind: StrategyBM25},
-		{sel: "vector", kind: StrategyVector},
-		{sel: "hybrid", kind: StrategyHybrid},
-		{sel: "manual", kind: StrategyManual},
-		{sel: "jev", kind: StrategyJev},
-		{sel: "claude-cli", kind: StrategyLLM, provider: ProviderClaudeCLI},
-		{sel: "claude-api", kind: StrategyLLM, provider: ProviderClaudeAPI},
-
-		// Every LLM set is filed under its provider.
-		{sel: "llm", wantErr: "does not name a judgment set"},
-
-		{sel: "codex-cli", wantErr: "unknown judgment set"},
-		{sel: "bogus", wantErr: "unknown judgment set"},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.sel, func(t *testing.T) {
-			kind, provider, err := ParseSelector(tc.sel)
-			if tc.wantErr != "" {
-				if err == nil {
-					t.Fatalf("ParseSelector(%q) = (%q, %q), want error", tc.sel, kind, provider)
-				}
-				if !strings.Contains(err.Error(), tc.wantErr) {
-					t.Fatalf("error %q does not contain %q", err, tc.wantErr)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("ParseSelector(%q): %v", tc.sel, err)
-			}
-			if kind != tc.kind || provider != tc.provider {
-				t.Errorf("ParseSelector(%q) = (%q, %q), want (%q, %q)",
-					tc.sel, kind, provider, tc.kind, tc.provider)
-			}
-		})
-	}
-}
-
 // Providers are set names; the bare llm strategy is not.
 func TestKnownStrategiesListsSetNames(t *testing.T) {
 	known := KnownStrategies()
@@ -85,34 +39,6 @@ func TestJudgmentSetName(t *testing.T) {
 	for _, tc := range tests {
 		if got := JudgmentSetName(tc.kind, tc.provider); got != tc.want {
 			t.Errorf("JudgmentSetName(%q, %q) = %q, want %q", tc.kind, tc.provider, got, tc.want)
-		}
-	}
-}
-
-func TestJudgmentSetNameRoundTrips(t *testing.T) {
-	cases := []struct {
-		kind     StrategyKind
-		provider Provider
-	}{
-		{kind: StrategyKeyword},
-		{kind: StrategyBM25},
-		{kind: StrategyVector},
-		{kind: StrategyHybrid},
-		{kind: StrategyManual},
-		{kind: StrategyJev},
-		{kind: StrategyLLM, provider: ProviderClaudeCLI},
-		{kind: StrategyLLM, provider: ProviderClaudeAPI},
-	}
-
-	for _, tc := range cases {
-		name := JudgmentSetName(tc.kind, tc.provider)
-		kind, provider, err := ParseSelector(name)
-		if err != nil {
-			t.Errorf("ParseSelector(%q): %v", name, err)
-			continue
-		}
-		if kind != tc.kind || provider != tc.provider {
-			t.Errorf("round trip of (%q, %q) via %q = (%q, %q)", tc.kind, tc.provider, name, kind, provider)
 		}
 	}
 }

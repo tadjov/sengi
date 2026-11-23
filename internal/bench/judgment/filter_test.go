@@ -108,7 +108,7 @@ func TestRunner_FiltersReachTheJudge(t *testing.T) {
 	}}}
 
 	for _, strategy := range []Strategy{NewKeywordStrategy(), NewBM25Strategy()} {
-		t.Run(strategy.Name(), func(t *testing.T) {
+		t.Run(strategy.Describe().Strategy, func(t *testing.T) {
 			grades := runGrades(t, RunnerConfig{Strategy: strategy, Reader: reader}, pf)
 
 			assert.Greater(t, grades[reuters], GradeNotRelev)

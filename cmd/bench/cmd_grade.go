@@ -80,7 +80,7 @@ func (g gradeCommand) execute(cmd *cobra.Command, args []string) error {
 	if g.flags.sample < 0 {
 		return fmt.Errorf("--sample must be 0 or more, got %d", g.flags.sample)
 	}
-	tr, err := trackctx.Resolve(trackInputs("", args))
+	tr, err := trackctx.Resolve(trackInputs(args))
 	if err != nil {
 		return err
 	}
@@ -93,12 +93,12 @@ func (g gradeCommand) execute(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("read --against judgments: %w", err)
 	}
-	if err := checkPoolBinding(against.Meta.PoolRunID, pf); err != nil {
+	if err := pf.CheckJudgedAgainst(against.Meta.PoolRunID); err != nil {
 		return fmt.Errorf("--against %s: %w", againstPath, err)
 	}
 
 	manualPath := tr.JudgmentsPath(judgment.JudgmentSetName(judgment.StrategyManual, ""))
-	manual, err := mergeManualJudgments(manualJudgments{pool: pf, poolRef: tr.Relative(tr.Pool), path: manualPath})
+	manual, err := mergeManualJudgments(judgment.ManualFile{Pool: pf, PoolRef: tr.Relative(tr.Pool), Path: manualPath})
 	if err != nil {
 		return err
 	}
@@ -130,16 +130,16 @@ func (g gradeCommand) execute(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func mergeManualJudgments(m manualJudgments) (*judgment.File, error) {
-	existing, err := judgment.ReadFileIfExists(m.path)
+func mergeManualJudgments(m judgment.ManualFile) (*judgment.File, error) {
+	existing, err := judgment.ReadFileIfExists(m.Path)
 	if err != nil {
 		return nil, fmt.Errorf("read existing manual judgments: %w", err)
 	}
 	if existing != nil && existing.Judge().Strategy != string(judgment.StrategyManual) {
 		return nil, fmt.Errorf("%s was graded by %q, not by hand: merging would relabel its grades as manual",
-			m.path, existing.Judge())
+			m.Path, existing.Judge())
 	}
-	return m.write(existing)
+	return m.Write(existing)
 }
 
 type pairKey struct {

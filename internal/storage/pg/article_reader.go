@@ -15,7 +15,7 @@ type ArticleReader struct {
 }
 
 func NewArticleReader(pool *ConnectionPool) *ArticleReader {
-	return &ArticleReader{db: pool.GetConn()}
+	return &ArticleReader{db: pool.Pool()}
 }
 
 func (r *ArticleReader) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]document.Article, error) {
@@ -37,7 +37,7 @@ func (r *ArticleReader) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]docume
 
 	var articles []document.Article
 	for rows.Next() {
-		a, err := scanArticle(rows)
+		a, err := ScanArticle(rows)
 		if err != nil {
 			return nil, err
 		}

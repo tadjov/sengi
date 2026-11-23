@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/bench/metrics"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 // fakeVectorStore returns canned vectors so the scoring logic can be tested
@@ -57,7 +58,7 @@ func angledDocs(n int) ([]GradingDoc, fakeVectorStore) {
 
 func vectorGrades(t *testing.T, store fakeVectorStore, docs []GradingDoc) map[uuid.UUID]int {
 	t.Helper()
-	got, err := NewVectorStrategyWithStore(store, "fake-model").GradePool(context.Background(), GradingQuery{ID: "q", Text: "q"}, docs)
+	got, err := vectorStrategy(t, store, "fake-model").GradePool(context.Background(), GradingQuery{ID: "q", Text: "q"}, docs)
 	if err != nil {
 		t.Fatalf("GradePool: %v", err)
 	}
@@ -116,26 +117,8 @@ func TestVectorGradePool_LeavesDocsWithoutAVectorUnjudged(t *testing.T) {
 	assert.Equal(t, GradeHighly, got[docs[2].ID])
 }
 
-// A batch sees only part of the pool, so its ten nearest are not the pool's.
-func TestVector_RejectsBatchSize(t *testing.T) {
-	pf, articles := buildPool(t, 15)
-	ids := make(map[uuid.UUID]struct{}, len(articles))
-	for id := range articles {
-		ids[id] = struct{}{}
-	}
-	store := widthMismatchStore(t, ids, 2, 2)
-
-	_, err := NewRunner(RunnerConfig{
-		Strategy:  NewVectorStrategyWithStore(store, "fake-model"),
-		Reader:    &stubStorageReader{articles: articles},
-		BatchSize: 5,
-	}).Run(context.Background(), pf)
-
-	assert.ErrorContains(t, err, "vector grades each query's whole pool at once and takes no batch size")
-}
-
 func TestVectorDescribe(t *testing.T) {
-	s := NewVectorStrategyWithStore(fakeVectorStore{}, "qwen3")
+	s := vectorStrategy(t, fakeVectorStore{}, "qwen3")
 
 	got := s.Describe()
 	if got.Strategy != string(StrategyVector) {
@@ -166,4 +149,18 @@ func TestCosine(t *testing.T) {
 			}
 		})
 	}
+}
+
+func vectorStrategy(t *testing.T, store storage.VectorStore, model string) *VectorStrategy {
+	t.Helper()
+	s, err := NewVectorStrategy(StrategyOptions{VectorStore: store, EmbeddingModel: model})
+	require.NoError(t, err)
+	return s
+}
+
+func hybridStrategy(t *testing.T, store storage.VectorStore, model string) *HybridStrategy {
+	t.Helper()
+	s, err := NewHybridStrategy(StrategyOptions{VectorStore: store, EmbeddingModel: model})
+	require.NoError(t, err)
+	return s
 }

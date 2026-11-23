@@ -4,18 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
+	"github.com/tadjov/sengi/internal/bench/artifact"
 	"github.com/tadjov/sengi/internal/bench/meta"
 	"github.com/tadjov/sengi/internal/bench/pool"
 	"github.com/tadjov/sengi/internal/bench/version"
 	"gopkg.in/yaml.v3"
 )
 
-// WriteFile writes a JudgmentFile atomically: marshals to a tmp file in the
-// same directory, fsyncs, then renames. Prevents readers from seeing a
-// half-written YAML if the process is killed mid-write. Stamps schema_version
-// and the grade counts on every write so reloads always see a current artifact.
+// WriteFile stamps schema_version and the grade counts and replaces path atomically.
 func WriteFile(jf *File, path string) error {
 	jf.SchemaVersion = version.SchemaVersion
 	graded, unjudged := jf.GradeCounts()
@@ -24,29 +21,14 @@ func WriteFile(jf *File, path string) error {
 	if err != nil {
 		return fmt.Errorf("marshal judgment file: %w", err)
 	}
-	return writeAtomic(path, data)
+	return artifact.WriteAtomic(path, data)
 }
 
 func ReadFile(path string) (*File, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read judgment file: %w", err)
-	}
-	var jf File
-	if err := yaml.Unmarshal(data, &jf); err != nil {
-		return nil, fmt.Errorf("parse judgment file: %w", err)
-	}
-	if err := version.CheckSchema(jf.SchemaVersion, "annotations"); err != nil {
-		return nil, err
-	}
-	// Fold pre-judge-block artifacts into the current shape so callers only
-	// ever read Meta.Judge.
-	jf.Meta.Normalize()
-	return &jf, nil
+	return artifact.ReadYAML(path, "annotations", func(jf File) int { return jf.SchemaVersion })
 }
 
-// ReadFileIfExists is like ReadFile but returns (nil, nil) when the file is
-// missing — useful for resume flows where the prior output may not exist yet.
+// ReadFileIfExists returns (nil, nil) when the file is missing.
 func ReadFileIfExists(path string) (*File, error) {
 	jf, err := ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -55,51 +37,16 @@ func ReadFileIfExists(path string) (*File, error) {
 	return jf, err
 }
 
-func writeAtomic(path string, data []byte) error {
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("mkdir %s: %w", dir, err)
-	}
-	tmp, err := os.CreateTemp(dir, ".bench-*.tmp")
-	if err != nil {
-		return fmt.Errorf("create temp: %w", err)
-	}
-	tmpPath := tmp.Name()
-	cleanup := func() { _ = os.Remove(tmpPath) }
-
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
-		cleanup()
-		return fmt.Errorf("write temp: %w", err)
-	}
-	if err := tmp.Sync(); err != nil {
-		_ = tmp.Close()
-		cleanup()
-		return fmt.Errorf("fsync temp: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		cleanup()
-		return fmt.Errorf("close temp: %w", err)
-	}
-	if err := os.Rename(tmpPath, path); err != nil {
-		cleanup()
-		return fmt.Errorf("rename temp: %w", err)
-	}
-	return nil
-}
-
-// IncrementalWriter persists a JudgmentFile after every query so the user can
-// resume after a crash, Ctrl-C, or rate-limit interrupt. Pass Append on the
-// Runner's Sink.
+// IncrementalWriter rewrites the file after every query, so an interrupted run
+// can be resumed. Pass Append as the Runner's Sink.
 type IncrementalWriter struct {
 	Path    string
 	stamp   meta.Meta
 	current File
 }
 
-// NewIncrementalWriter writes stamp as the meta block of every flush, so a run
-// interrupted mid-grade still leaves an artifact that names its grader and
-// whatever else the caller set, which is what the resume guard reads back.
+// NewIncrementalWriter writes stamp as the meta block of every flush, so an
+// interrupted run's file names its grader for the resume guard.
 func NewIncrementalWriter(path string, stamp meta.Meta) *IncrementalWriter {
 	return &IncrementalWriter{
 		Path:    path,
@@ -126,8 +73,8 @@ func (w *IncrementalWriter) Seed(prior *File, pf *pool.PoolFile) {
 	}
 }
 
-// Append adds (or updates) a query's judgments and flushes to disk atomically.
-func (w *IncrementalWriter) Append(_ QueryProgress, entry Entry) error {
+// Append adds or replaces a query's entry and rewrites the file.
+func (w *IncrementalWriter) Append(entry Entry) error {
 	for i, qe := range w.current.Queries {
 		if qe.QueryID == entry.QueryID {
 			w.current.Queries[i] = entry

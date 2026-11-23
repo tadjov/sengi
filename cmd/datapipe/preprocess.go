@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"maps"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -17,7 +15,6 @@ import (
 	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/pkg/apis/preprocess"
-	"github.com/tadjov/sengi/pkg/config/env"
 )
 
 type preprocessConfig struct {
@@ -42,9 +39,6 @@ A check over its error budget publishes nothing. A rerun of the same specs over
 the same input keeps the published version; any other change needs a new --version.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := env.LoadDotEnv(os.Getenv("ENV")); err != nil {
-				slog.Info("Skipping .env environment variables...", "error", err)
-			}
 			cfg.SpecPath = args[0]
 			cfg.Packages = datapackage.Options{S3: datapackage.S3ConfigFromEnv()}
 			return runPreprocess(cmd.Context(), cmd.OutOrStdout(), cfg)

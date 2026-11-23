@@ -28,10 +28,10 @@ bench pool fts
 
 # 3. Grade. Pick a strategy:
 #    lexical     — fast deterministic baseline
-#    claude-api  — Anthropic Messages API in batches (set ANTHROPIC_API_KEY)
-#    claude-cli  — `claude -p` per batch (no API key needed)
+#    --provider claude-api  — Anthropic Messages API (set ANTHROPIC_API_KEY)
+#    --provider claude-cli  — `claude -p` (no API key needed)
 #    manual      — write -1 placeholders for hand grading
-bench judge fts --strategy claude-api
+bench judge fts --strategy llm --provider claude-api
 
 # 4. Run the benchmark.
 bench run fts                              # uses spec.defaults.judgments
@@ -39,7 +39,7 @@ bench run fts --judgments claude-api       # explicit override
 bench run fts --judgments lexical          # compare against the baseline
 
 # 5. (Optional) Export TREC qrels.
-bench qrels fts --strategy claude-api
+bench export fts --format qrels --judgments claude-api
 ```
 
 ## Inspecting state
@@ -47,7 +47,7 @@ bench qrels fts --strategy claude-api
 ```bash
 bench show spec fts
 bench show pool fts
-bench show judgments fts --strategy claude-api
+bench show judgments fts --judgments claude-api
 ```
 
 ## Resumable judging

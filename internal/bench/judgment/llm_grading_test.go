@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -18,28 +16,17 @@ import (
 	"github.com/tadjov/sengi/internal/types/document"
 )
 
-// The model grades the query a user would type, exactly as stored; the suite
-// author's description of it never reaches the model.
-func TestLLMJudge_PromptCarriesTheQueryTextAndNeverItsDescription(t *testing.T) {
-	q := GradingQuery{ID: "q1", Text: `"climate change" summit`, Description: "Coverage of the yearly UN climate conference"}
-	docs := []GradingDoc{
-		{ID: uuid.New(), Title: "Climate change summit opens"},
-		{ID: uuid.New(), Title: "Summit delegates arrive"},
-	}
+// The model grades the query a user would type, exactly as stored.
+func TestLLMJudge_PromptCarriesTheQueryText(t *testing.T) {
+	q := GradingQuery{ID: "q1", Text: `"climate change" summit`}
 	provider := &fakeLLMProvider{grade: func(uuid.UUID) int { return 2 }}
 	s := &LLMStrategy{provider: provider}
 
-	_, err := s.Grade(context.Background(), q, docs[0])
-	require.NoError(t, err)
-	_, err = s.GradeBatch(context.Background(), q, docs)
+	_, err := s.Grade(context.Background(), q, GradingDoc{ID: uuid.New(), Title: "Climate change summit opens"})
 	require.NoError(t, err)
 
-	require.Len(t, provider.requests(), 2)
-	for _, req := range provider.requests() {
-		assert.Contains(t, req.User, "Query: "+q.Text)
-		assert.NotContains(t, req.User, q.Description)
-		assert.NotContains(t, req.System, q.Description)
-	}
+	require.Len(t, provider.requests(), 1)
+	assert.Contains(t, provider.requests()[0].User, "Query: "+q.Text)
 }
 
 // Phrase, boolean and filter constraints are decided in code: a doc that
@@ -72,52 +59,45 @@ func TestLLMJudge_GradesADocBreakingTheQuerysConstraintZeroWithoutAsking(t *test
 		},
 	}
 	for _, tt := range tests {
-		for _, batch := range []int{0, 2} {
-			t.Run(fmt.Sprintf("%s/batch %d", tt.name, batch), func(t *testing.T) {
-				entry := tt.entry
-				entry.QueryID = "q1"
-				entry.Docs = []pool.PooledDoc{{DocID: tt.broken.ID}, {DocID: tt.admitted.ID}}
-				provider := &fakeLLMProvider{grade: func(uuid.UUID) int { return GradeHighly }}
+		t.Run(tt.name, func(t *testing.T) {
+			entry := tt.entry
+			entry.QueryID = "q1"
+			entry.Docs = []pool.PooledDoc{{DocID: tt.broken.ID}, {DocID: tt.admitted.ID}}
+			provider := &fakeLLMProvider{grade: func(uuid.UUID) int { return GradeHighly }}
 
-				jf, err := llmRunner(provider, []document.Article{tt.admitted, tt.broken}, RunnerConfig{BatchSize: batch}).
-					Run(context.Background(), &pool.PoolFile{Queries: []pool.PoolEntry{entry}})
+			jf, err := llmRunner(provider, []document.Article{tt.admitted, tt.broken}, RunnerConfig{}).
+				Run(context.Background(), &pool.PoolFile{Queries: []pool.PoolEntry{entry}})
 
-				require.NoError(t, err)
-				grades := gradesOf(jf)
-				assert.Equal(t, GradeNotRelev, grades[tt.broken.ID])
-				assert.Equal(t, GradeHighly, grades[tt.admitted.ID])
-				for _, req := range provider.requests() {
-					assert.NotContains(t, req.User, tt.broken.ID.String(), "no request for a doc the constraint refuses")
-				}
-			})
-		}
+			require.NoError(t, err)
+			grades := gradesOf(jf)
+			assert.Equal(t, GradeNotRelev, grades[tt.broken.ID])
+			assert.Equal(t, GradeHighly, grades[tt.admitted.ID])
+			for _, req := range provider.requests() {
+				assert.NotContains(t, req.User, tt.broken.ID.String(), "no request for a doc the constraint refuses")
+			}
+		})
 	}
 }
 
 // A boolean text that does not parse leaves its constraint undecided, so the
 // query stays unjudged rather than graded by the model alone.
 func TestLLMJudge_LeavesAQueryWithAnUnparsableBooleanUnjudged(t *testing.T) {
-	for _, batch := range []int{0, 2} {
-		t.Run(fmt.Sprintf("batch %d", batch), func(t *testing.T) {
-			doc := llmArticle("Climate politics heats up", "reuters.com")
-			entry := pool.PoolEntry{QueryID: "q1", QueryText: "climate AND (politics", Category: suite.CategoryBoolean, Docs: []pool.PooledDoc{{DocID: doc.ID}}}
-			provider := &fakeLLMProvider{grade: func(uuid.UUID) int { return GradeHighly }}
+	doc := llmArticle("Climate politics heats up", "reuters.com")
+	entry := pool.PoolEntry{QueryID: "q1", QueryText: "climate AND (politics", Category: suite.CategoryBoolean, Docs: []pool.PooledDoc{{DocID: doc.ID}}}
+	provider := &fakeLLMProvider{grade: func(uuid.UUID) int { return GradeHighly }}
 
-			jf, err := llmRunner(provider, []document.Article{doc}, RunnerConfig{BatchSize: batch}).
-				Run(context.Background(), &pool.PoolFile{Queries: []pool.PoolEntry{entry}})
+	jf, err := llmRunner(provider, []document.Article{doc}, RunnerConfig{}).
+		Run(context.Background(), &pool.PoolFile{Queries: []pool.PoolEntry{entry}})
 
-			var unparsed *BooleanTextError
-			require.ErrorAs(t, err, &unparsed)
-			assert.Equal(t, GradeUnjudged, gradesOf(jf)[doc.ID])
-			assert.Empty(t, provider.requests())
-		})
-	}
+	var unparsed *BooleanTextError
+	require.ErrorAs(t, err, &unparsed)
+	assert.Equal(t, GradeUnjudged, gradesOf(jf)[doc.ID])
+	assert.Empty(t, provider.requests())
 }
 
-// A doc is shown the same way whether it is graded alone or in a batch: the
-// same rubric, its title and description in full, and its content up to the
-// same cut, which sends a median cc-news article (1,744 characters) whole.
-func TestLLMJudge_GradesOneDocAndABatchUnderTheSameRubricAndContentCut(t *testing.T) {
+// A doc is shown with its title and description in full and its content up to
+// a cut that sends a median cc-news article (1,744 characters) whole.
+func TestLLMJudge_ShowsTitleAndDescriptionInFullAndContentUpToTheCut(t *testing.T) {
 	const medianArticleChars = 1744
 	median := GradingDoc{
 		ID:          uuid.New(),
@@ -134,20 +114,13 @@ func TestLLMJudge_GradesOneDocAndABatchUnderTheSameRubricAndContentCut(t *testin
 		_, err := s.Grade(context.Background(), q, doc)
 		require.NoError(t, err)
 	}
-	_, err := s.GradeBatch(context.Background(), q, []GradingDoc{median, long})
-	require.NoError(t, err)
 
 	reqs := provider.requests()
-	require.Len(t, reqs, 3)
-	alone, batched := reqs[:2], reqs[2]
-	for i, doc := range []GradingDoc{median, long} {
-		assert.Equal(t, batched.System, alone[i].System, "one rubric")
-		assert.Equal(t, contentShown(t, batched.User, doc), contentShown(t, alone[i].User, doc), "one content cut")
-	}
-	assert.Contains(t, batched.User, median.Title)
-	assert.Contains(t, batched.User, median.Description)
-	assert.Equal(t, median.Content, contentShown(t, batched.User, median))
-	assert.NotContains(t, batched.User, long.Content)
+	require.Len(t, reqs, 2)
+	assert.Contains(t, reqs[0].User, median.Title)
+	assert.Contains(t, reqs[0].User, median.Description)
+	assert.Equal(t, median.Content, contentShown(t, reqs[0].User, median))
+	assert.Equal(t, strings.Repeat("Đ", medianArticleChars), contentShown(t, reqs[1].User, long))
 }
 
 // contentShown is the content line a prompt shows for doc, the doc's block
@@ -162,7 +135,7 @@ func contentShown(t *testing.T, prompt string, doc GradingDoc) string {
 	return strings.TrimSuffix(content, "...")
 }
 
-// By default each request holds one query and one doc, so its bytes are the
+// Each request holds one query and one doc, so its bytes are the
 // same wherever the pool lists the doc and whichever engine found it.
 func TestLLMJudge_RequestForADocIsTheSameWhereverThePoolListsIt(t *testing.T) {
 	articles := llmArticles("Floods reach Belgrade", "Sava rises", "Danube rises")
@@ -195,102 +168,26 @@ func TestLLMJudge_RequestForADocIsTheSameWhereverThePoolListsIt(t *testing.T) {
 	assert.Equal(t, requests[0], requests[1])
 }
 
-// --batch groups docs by a seeded shuffle of the query's pool: the same pool
-// and seed give the same batches in any pool order, and another seed others.
-func TestLLMJudge_BatchesComeFromASeededShuffleOfThePool(t *testing.T) {
-	articles := floodReports(20)
-	byEngine := pool.PoolEntry{QueryID: "q1", QueryText: "flood"}
-	for i, a := range articles {
-		engine := "pg"
-		if i >= len(articles)/2 {
-			engine = "es"
-		}
-		byEngine.Docs = append(byEngine.Docs, pool.PooledDoc{DocID: a.ID, Sources: []string{engine}})
-	}
-	reordered := byEngine
-	reordered.Docs = append(slices.Clone(byEngine.Docs[3:]), byEngine.Docs[:3]...)
-
-	seeded := llmBatches(t, articles, &pool.PoolFile{Queries: []pool.PoolEntry{byEngine}}, RunnerConfig{BatchSize: 5, BatchSeed: 1})
-	require.Len(t, seeded, 4)
-	assert.Equal(t, seeded, llmBatches(t, articles, &pool.PoolFile{Queries: []pool.PoolEntry{byEngine}}, RunnerConfig{BatchSize: 5, BatchSeed: 1}), "same pool and seed")
-	assert.Equal(t, seeded, llmBatches(t, articles, &pool.PoolFile{Queries: []pool.PoolEntry{reordered}}, RunnerConfig{BatchSize: 5, BatchSeed: 1}), "pool order and engines play no part")
-	assert.NotEqual(t, seeded, llmBatches(t, articles, &pool.PoolFile{Queries: []pool.PoolEntry{byEngine}}, RunnerConfig{BatchSize: 5, BatchSeed: 2}), "another seed")
-}
-
-// A resumed run, or one that cannot read every pooled article, grades each
-// remaining doc in what is left of the batch a fresh run puts it in, so it
-// never pairs docs a fresh run would not.
-func TestLLMJudge_ResumedBatchesAreWhatIsLeftOfTheFreshOnes(t *testing.T) {
-	articles := floodReports(20)
-	entry := pool.PoolEntry{QueryID: "q1", QueryText: "flood"}
-	for _, a := range articles {
-		entry.Docs = append(entry.Docs, pool.PooledDoc{DocID: a.ID})
-	}
-	pf := &pool.PoolFile{Queries: []pool.PoolEntry{entry}}
-	cfg := RunnerConfig{BatchSize: 5, BatchSeed: 1}
-	fresh := llmBatches(t, articles, pf, cfg)
-
-	prior := Entry{QueryID: "q1"}
-	for _, a := range articles[:7] {
-		prior.Docs = append(prior.Docs, GradedDoc{DocID: a.ID, Grade: GradeRelevant})
-	}
-	cfg.Existing = &File{Queries: []Entry{prior}}
-	readable := slices.Delete(slices.Clone(articles), 12, 13)
-	resumed := llmBatches(t, readable, pf, cfg)
-
-	require.NotEmpty(t, resumed)
-	assert.True(t, slices.ContainsFunc(resumed, func(batch []uuid.UUID) bool { return len(batch) == 1 }),
-		"the resume leaves a one-doc batch, still sent as a batch")
-	for _, batch := range resumed {
-		assert.True(t, slices.ContainsFunc(fresh, func(whole []uuid.UUID) bool {
-			return !slices.ContainsFunc(batch, func(id uuid.UUID) bool { return !slices.Contains(whole, id) })
-		}), "resumed batch %v is part of no fresh batch", batch)
-	}
-}
-
-// The judge block names the batch size and seed a batched run graded with,
-// and neither for one doc per request.
-func TestRunnerConfig_JudgeRecordsBatching(t *testing.T) {
-	llm := &LLMStrategy{provider: &fakeLLMProvider{}}
-
-	perDoc := RunnerConfig{Strategy: llm, BatchSeed: 7}.Judge()
-	batched := RunnerConfig{Strategy: llm, BatchSize: 5, BatchSeed: 7}.Judge()
-
-	assert.Nil(t, perDoc.Batching)
-	assert.Equal(t, 5, batched.Batching.Size)
-	assert.Equal(t, uint64(7), batched.Batching.Seed)
-	assert.Equal(t, llm.Describe().Model, batched.Model)
-}
-
 // An answer without a grade, or with a null one, leaves the doc unjudged for
 // a retry, never graded 0.
 func TestLLMJudge_LeavesADocWithoutAGradeUnjudged(t *testing.T) {
-	tests := []struct {
-		name  string
-		batch int
-		reply func(missing, graded uuid.UUID, req CompletionRequest) string
-	}{
-		{name: "relevance instead of grade", batch: 2, reply: func(missing, graded uuid.UUID, req CompletionRequest) string {
-			if isBatchRequest(req) {
-				return `[{"doc_id":"` + missing.String() + `","relevance":3},{"doc_id":"` + graded.String() + `","grade":2}]`
-			}
-			return `{"doc_id":"` + missing.String() + `","relevance":3}`
-		}},
-		{name: "null grade, one doc per request", reply: func(missing, graded uuid.UUID, req CompletionRequest) string {
-			if strings.Contains(req.User, missing.String()) {
-				return `{"doc_id":"` + missing.String() + `","grade":null}`
-			}
-			return `{"doc_id":"` + graded.String() + `","grade":2}`
-		}},
+	tests := map[string]string{
+		"relevance instead of grade": `"relevance":3`,
+		"null grade":                 `"grade":null`,
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, ungraded := range tests {
+		t.Run(name, func(t *testing.T) {
 			articles := llmArticles("Floods reach Belgrade", "Sava rises")
 			missing, graded := articles[0].ID, articles[1].ID
 			entry := pool.PoolEntry{QueryID: "q1", QueryText: "floods", Docs: []pool.PooledDoc{{DocID: missing}, {DocID: graded}}}
-			provider := &fakeLLMProvider{reply: func(req CompletionRequest) string { return tt.reply(missing, graded, req) }}
+			provider := &fakeLLMProvider{reply: func(req CompletionRequest) string {
+				if strings.Contains(req.User, missing.String()) {
+					return `{"doc_id":"` + missing.String() + `",` + ungraded + `}`
+				}
+				return `{"doc_id":"` + graded.String() + `","grade":2}`
+			}}
 
-			jf, err := llmRunner(provider, articles, RunnerConfig{BatchSize: tt.batch}).
+			jf, err := llmRunner(provider, articles, RunnerConfig{}).
 				Run(context.Background(), &pool.PoolFile{Queries: []pool.PoolEntry{entry}})
 
 			require.NoError(t, err)
@@ -323,9 +220,8 @@ func TestLLMJudge_GradeReportsAFailedGradeAsUnjudged(t *testing.T) {
 	}
 }
 
-// fakeLLMProvider grades every doc a request names with grade(doc), answering
-// a batch request with an array, however few docs it holds, and a single-doc
-// request with an object. A set err fails every request.
+// fakeLLMProvider grades the doc a request names with grade(doc). A set err
+// fails every request.
 type fakeLLMProvider struct {
 	grade func(uuid.UUID) int
 	reply func(CompletionRequest) string
@@ -350,23 +246,10 @@ func (f *fakeLLMProvider) Complete(_ context.Context, req CompletionRequest) (st
 	if f.reply != nil {
 		return f.reply(req), nil
 	}
-	var entries []gradeEntry
-	for _, id := range docIDsIn(req.User) {
-		entries = append(entries, gradeEntry{DocID: id.String(), Grade: f.grade(id)})
-	}
-	var out []byte
-	var err error
-	if isBatchRequest(req) {
-		out, err = json.Marshal(entries)
-	} else {
-		out, err = json.Marshal(entries[0])
-	}
+	id := docIDsIn(req.User)[0]
+	out, err := json.Marshal(gradeEntry{DocID: id.String(), Grade: f.grade(id)})
 	return string(out), err
 }
-
-// isBatchRequest reports whether GradeBatch built req: only it asks for the
-// batch budget.
-func isBatchRequest(req CompletionRequest) bool { return req.MaxTokens == llmBatchMaxOutputTokens }
 
 func (f *fakeLLMProvider) requests() []CompletionRequest {
 	f.mu.Lock()
@@ -406,8 +289,6 @@ func llmArticle(title, publisherDomain string) document.Article {
 	return document.Article{ID: uuid.New(), Title: title, PublisherDomain: publisherDomain}
 }
 
-// llmRunner grades articles through an LLM judge on provider, batched as cfg
-// says.
 func llmRunner(provider LLMProvider, articles []document.Article, cfg RunnerConfig) *Runner {
 	store := map[uuid.UUID]document.Article{}
 	for _, a := range articles {
@@ -425,34 +306,5 @@ func gradesOf(jf *File) map[uuid.UUID]int {
 			out[d.DocID] = d.Grade
 		}
 	}
-	return out
-}
-
-// floodReports are n articles with fixed ids, so a seeded shuffle of them
-// comes out the same on every run.
-func floodReports(n int) []document.Article {
-	out := make([]document.Article, n)
-	for i := range out {
-		title := fmt.Sprintf("Flood report %d", i)
-		out[i] = document.Article{ID: uuid.NewSHA1(uuid.NameSpaceURL, []byte(title)), Title: title}
-	}
-	return out
-}
-
-// llmBatches grades pf through an LLM judge and returns the doc ids of each
-// request, each sorted, the requests ordered by their first id.
-func llmBatches(t *testing.T, articles []document.Article, pf *pool.PoolFile, cfg RunnerConfig) [][]uuid.UUID {
-	t.Helper()
-	provider := &fakeLLMProvider{grade: func(uuid.UUID) int { return GradeRelevant }}
-	_, err := llmRunner(provider, articles, cfg).Run(context.Background(), pf)
-	require.NoError(t, err)
-	var out [][]uuid.UUID
-	for _, req := range provider.requests() {
-		require.Equal(t, llmBatchMaxOutputTokens, req.MaxTokens, "every request is a batch, none a per-doc fallback")
-		ids := docIDsIn(req.User)
-		slices.SortFunc(ids, func(a, b uuid.UUID) int { return strings.Compare(a.String(), b.String()) })
-		out = append(out, ids)
-	}
-	slices.SortFunc(out, func(a, b []uuid.UUID) int { return strings.Compare(a[0].String(), b[0].String()) })
 	return out
 }

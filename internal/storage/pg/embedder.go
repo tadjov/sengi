@@ -18,7 +18,7 @@ type Embedder struct {
 }
 
 func NewEmbedder(pool *ConnectionPool) *Embedder {
-	return &Embedder{db: pool.GetConn()}
+	return &Embedder{db: pool.Pool()}
 }
 
 func (e *Embedder) Save(ctx context.Context, article *embedding.Vec) (uuid.UUID, error) {

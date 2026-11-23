@@ -11,12 +11,7 @@ import (
 	"github.com/tadjov/sengi/internal/embedding"
 )
 
-// VectorStore is the Elasticsearch implementation of storage.VectorStore.
-// Unlike Postgres (a separate article_embeddings table), the document vector
-// lives as a dense_vector field on the article document itself, keyed by
-// _id == article UUID and written by Embedder. Queries are embedded at runtime
-// with the same model the stored vectors were produced with, so query and
-// document vectors stay comparable.
+// VectorStore reads document vectors from the embedding field of the article documents.
 type VectorStore struct {
 	client    *elasticsearch.TypedClient
 	indexName string

@@ -8,18 +8,13 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 )
 
 //go:embed report.gohtml
 var htmlTemplate string
 
-// WriteHTML renders r as a self-contained HTML file at path, creating parent
-// directories as needed. The file contains inline CSS, inline SVG charts, and
-// ~60 lines of vanilla JS for sortable tables and per-query filtering — no
-// external dependencies, opens offline.
+// WriteHTML writes r as one self-contained HTML file that opens offline.
 func WriteHTML(r *Report, path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return fmt.Errorf("create report dir: %w", err)
@@ -31,10 +26,9 @@ func WriteHTML(r *Report, path string) error {
 	return os.WriteFile(path, buf, 0644)
 }
 
-// RenderHTML returns the fully rendered HTML bytes for a report.
 func RenderHTML(r *Report) ([]byte, error) {
 	vm := buildViewModel(r)
-	tmpl, err := template.New("report").Funcs(htmlFuncs()).Parse(htmlTemplate)
+	tmpl, err := template.New("report").Parse(htmlTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("parse html template: %w", err)
 	}
@@ -44,41 +38,6 @@ func RenderHTML(r *Report) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
-
-// ─── git-relative path helper ────────────────────────────────────────────────
-
-// repoRelPath shortens an older report's absolute path to the repo root, or to its basename.
-func repoRelPath(path string) string {
-	if path == "" || !filepath.IsAbs(path) {
-		return path
-	}
-	root := findGitRoot(filepath.Dir(path))
-	if root == "" {
-		return filepath.Base(path)
-	}
-	rel, err := filepath.Rel(root, path)
-	if err != nil {
-		return path
-	}
-	return rel
-}
-
-func findGitRoot(start string) string {
-	dir := start
-	for i := 0; i < 20; i++ {
-		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return ""
-		}
-		dir = parent
-	}
-	return ""
-}
-
-// ─── view model ─────────────────────────────────────────────────────────────
 
 type htmlReport struct {
 	NDCGGain       string
@@ -103,102 +62,30 @@ type htmlLegendItem struct {
 
 type htmlJob struct {
 	Name         string
-	Aggregated   []htmlAggRow
-	Latency      []htmlLatRow
-	ServerTime   []htmlServerTimeRow
-	Significance []htmlSigRow
-	PerQuery     []htmlQueryRow
+	Metrics      htmlTable
+	Latency      htmlTable
+	ServerTime   htmlTable
+	Significance htmlTable
+	PerQuery     htmlTable
 	NDCGChart    template.HTML
 	LatencyChart template.HTML
 	EngineLegend []htmlLegendItem
-	KValues      []int
-	CoverageK    int
-	FilterID     string // unique ID for per-query filter input
 }
 
-type htmlAggRow struct {
-	Engine     string
-	NDCG       []htmlCell
-	NDCGLinear []string
-	MAP        htmlCell
-	MRR        htmlCell
-	Bpref      htmlCell
-	Coverage   string
-	Judged     string
-	Errors     string
+type htmlTable struct {
+	// ID is set on the table the per-query filter input targets.
+	ID       string
+	Sortable bool
+	Columns  []string
+	Rows     [][]htmlCell
 }
 
+// htmlCell styles its text with Class on the cell or SpanClass on a span inside it.
 type htmlCell struct {
-	Val    string
-	Stddev string
-}
-
-type htmlLatRow struct {
-	Engine                                          string
-	Min, P50, P75, P90, P95, P99, Max, Mean, Stddev string
-	Samples                                         int
-	ExcludedQueries                                 int
-}
-
-type htmlServerTimeRow struct {
-	Engine              string
-	P50, P95, P99, Mean string
-	Samples             int
-}
-
-type htmlSigRow struct {
-	EngineA, EngineB, Metric string
-	MeanDifference           string
-	W, P, AdjustedP          string
-	Stars                    string
-	NS                       bool
-	Untestable               bool
-}
-
-type htmlQueryRow struct {
-	Query, Engine, NDCG, Precision, AP, RR, Bpref string
-	ReturnedCount                                 int
-	CorpusMatches                                 string
-	P50, P95                                      string
-	Status                                        string
-	IsErr                                         bool
-}
-
-// htmlQualityCells reads N/A for an engine with no judged query, which has no
-// scores to average.
-func htmlQualityCells(agg AggregatedEntry, kVals []int) htmlAggRow {
-	var row htmlAggRow
-	if agg.JudgedCount == 0 {
-		notApplicable := htmlCell{Val: "N/A"}
-		for range kVals {
-			row.NDCG = append(row.NDCG, notApplicable)
-			row.NDCGLinear = append(row.NDCGLinear, notApplicable.Val)
-		}
-		row.MAP, row.MRR, row.Bpref, row.Coverage = notApplicable, notApplicable, notApplicable, notApplicable.Val
-		return row
-	}
-	for _, k := range kVals {
-		c := htmlCell{Val: fmt.Sprintf("%.4f", agg.NDCG[k])}
-		if sd := agg.NDCGStddev[k]; sd > 0 {
-			c.Stddev = fmt.Sprintf("%.4f", sd)
-		}
-		row.NDCG = append(row.NDCG, c)
-	}
-	for _, k := range kVals {
-		row.NDCGLinear = append(row.NDCGLinear, fmtLinearNDCG(agg.NDCGLinear, k))
-	}
-	row.MAP = htmlCell{Val: fmt.Sprintf("%.4f", agg.MAP)}
-	row.MRR = htmlCell{Val: fmt.Sprintf("%.4f", agg.MRR)}
-	row.Bpref = htmlCell{Val: fmt.Sprintf("%.4f", agg.MBpref)}
-	row.Coverage = fmtRecorded(agg.JudgedCoverage)
-	return row
-}
-
-func htmlCorpusMatches(v *int64) string {
-	if v == nil {
-		return "—"
-	}
-	return strconv.FormatInt(*v, 10)
+	Text      string
+	Class     string
+	SpanClass string
+	Spread    string
 }
 
 func buildViewModel(r *Report) htmlReport {
@@ -217,112 +104,96 @@ func buildViewModel(r *Report) htmlReport {
 	}
 	if s := r.Provenance.Sources; s != nil {
 		vm.Sources = &htmlSources{
-			Spec:      repoRelPath(s.Spec),
-			Suites:    repoRelPaths(s.Suites),
-			Pool:      repoRelPath(s.Pool),
-			Judgments: repoRelPath(s.Judgments),
+			Spec:      s.Spec,
+			Suites:    strings.Join(s.Suites, ", "),
+			Pool:      s.Pool,
+			Judgments: s.Judgments,
 		}
 	}
 
-	kVals := r.Config.KValues
-
-	for ji, jr := range r.Jobs {
+	for i, view := range jobViews(r) {
+		aggregated := r.Jobs[i].Aggregated
 		job := htmlJob{
-			Name:      jr.JobName,
-			KValues:   kVals,
-			CoverageK: largestK(kVals),
-			FilterID:  fmt.Sprintf("pq-filter-%d", ji),
+			Name:         view.Name,
+			Metrics:      htmlMetricsTable(view.Metrics),
+			Latency:      newHTMLTable(view.Latency),
+			ServerTime:   newHTMLTable(view.ServerTime),
+			Significance: newHTMLTable(view.Significance),
+			PerQuery:     newHTMLTable(view.PerQuery),
+			NDCGChart:    buildNDCGChart(aggregated, r.Config.KValues),
+			LatencyChart: buildLatencyChart(aggregated),
 		}
-
-		for i, agg := range jr.Aggregated {
-			color := engineColors[i%len(engineColors)]
-			job.EngineLegend = append(job.EngineLegend, htmlLegendItem{Name: agg.EngineName, Color: color})
-
-			row := htmlQualityCells(agg, kVals)
-			row.Engine = agg.EngineName
-			row.Judged = fmt.Sprintf("%d/%d", agg.JudgedCount, agg.QueryCount)
-			row.Errors = fmt.Sprintf("%d/%d", agg.ErrorCount, agg.QueryCount)
-			job.Aggregated = append(job.Aggregated, row)
+		job.Significance.Sortable = false
+		job.PerQuery.ID = fmt.Sprintf("pq-filter-%d", i)
+		for e, agg := range aggregated {
+			job.EngineLegend = append(job.EngineLegend, htmlLegendItem{Name: agg.EngineName, Color: engineColors[e%len(engineColors)]})
 		}
-
-		for _, agg := range jr.Aggregated {
-			s := agg.Latency
-			job.Latency = append(job.Latency, htmlLatRow{
-				Engine:          agg.EngineName,
-				Min:             fmtDuration(s.Min),
-				P50:             fmtDuration(s.P50()),
-				P75:             fmtDuration(s.P75()),
-				P90:             fmtDuration(s.P90()),
-				P95:             fmtDuration(s.P95()),
-				P99:             fmtDuration(s.P99()),
-				Max:             fmtDuration(s.Max),
-				Mean:            fmtDuration(s.Mean),
-				Stddev:          fmtDuration(s.Stddev),
-				Samples:         s.SampleCount,
-				ExcludedQueries: agg.LatencyExcludedQueries,
-			})
-		}
-
-		for _, agg := range serverTimed(jr.Aggregated) {
-			s := agg.ServerLatency
-			job.ServerTime = append(job.ServerTime, htmlServerTimeRow{
-				Engine:  agg.EngineName,
-				P50:     fmtServerTime(s.P50()),
-				P95:     fmtServerTime(s.P95()),
-				P99:     fmtServerTime(s.P99()),
-				Mean:    fmtServerTime(s.Mean),
-				Samples: s.SampleCount,
-			})
-		}
-
-		for _, sig := range jr.Significance {
-			w, p, adjusted := testCells(sig)
-			job.Significance = append(job.Significance, htmlSigRow{
-				EngineA: sig.EngineA, EngineB: sig.EngineB, Metric: sig.Metric,
-				MeanDifference: fmtMeanDifference(sig.MeanDifference),
-				W:              w, P: p, AdjustedP: adjusted,
-				Stars: sig.Stars, NS: sig.Stars == "" && !sig.Untestable, Untestable: sig.Untestable,
-			})
-		}
-
-		k := largestK(kVals)
-		for _, e := range jr.PerQuery {
-			status, isErr := "OK", false
-			if e.Error != "" {
-				status, isErr = "ERR", true
-			}
-			ap, rr, bp := "—", "—", "—"
-			if e.Judged {
-				ap = fmt.Sprintf("%.4f", e.AP)
-				rr = fmt.Sprintf("%.4f", e.RR)
-				bp = fmt.Sprintf("%.4f", e.Bpref)
-			}
-			job.PerQuery = append(job.PerQuery, htmlQueryRow{
-				Query: e.QueryID, Engine: e.EngineName,
-				NDCG: fmtScore(e.NDCG, k), Precision: fmtScore(e.Precision, k),
-				AP: ap, RR: rr, Bpref: bp,
-				ReturnedCount: e.ReturnedCount, CorpusMatches: htmlCorpusMatches(e.CorpusMatches),
-				P50: fmtDuration(e.Latency.P50()), P95: fmtDuration(e.Latency.P95()),
-				Status: status, IsErr: isErr,
-			})
-		}
-
-		job.NDCGChart = buildNDCGChart(jr.Aggregated, kVals)
-		job.LatencyChart = buildLatencyChart(jr.Aggregated)
 		vm.Jobs = append(vm.Jobs, job)
 	}
 	return vm
 }
 
-// ─── SVG charts ──────────────────────────────────────────────────────────────
+func newHTMLTable(view tableView) htmlTable {
+	t := htmlTable{Sortable: true}
+	for _, c := range view.Columns {
+		t.Columns = append(t.Columns, c.Title)
+	}
+	for _, cells := range view.Rows {
+		row := make([]htmlCell, len(cells))
+		for i, c := range cells {
+			row[i] = htmlCell{Text: c.Text, SpanClass: markClass(c.Mark)}
+		}
+		t.Rows = append(t.Rows, row)
+	}
+	return t
+}
+
+func markClass(m mark) string {
+	switch m {
+	case markSignificant, markWeaklySignificant:
+		return "sig-sig"
+	case markNotSignificant:
+		return "sig-ns"
+	case markSucceeded:
+		return "status-ok"
+	case markFailed:
+		return "status-err"
+	default:
+		return ""
+	}
+}
+
+// htmlMetricsTable leaves P@K out and shows each NDCG mean with its spread.
+func htmlMetricsTable(view tableView) htmlTable {
+	t := htmlTable{Sortable: true}
+	for _, c := range view.Columns {
+		if c.Group != precisionColumns {
+			t.Columns = append(t.Columns, c.Title)
+		}
+	}
+	for _, cells := range view.Rows {
+		var row []htmlCell
+		for i, c := range cells {
+			switch column := view.Columns[i]; {
+			case column.Group == precisionColumns:
+			case column.Group == ndcgColumns:
+				row = append(row, htmlCell{Text: c.Text, SpanClass: "val-main", Spread: c.Spread})
+			case column.Align == alignLeft:
+				row = append(row, htmlCell{Text: c.Text})
+			default:
+				row = append(row, htmlCell{Text: c.Text, Class: "val-main"})
+			}
+		}
+		t.Rows = append(t.Rows, row)
+	}
+	return t
+}
 
 var engineColors = []string{
 	"#4C8EDA", "#E05C5C", "#52C878", "#F5A623", "#9B59B6", "#1ABC9C",
 }
 
-// buildNDCGChart renders a grouped bar chart of NDCG@K scores per engine.
-// The engine legend is NOT included in the SVG; it is rendered in HTML below
-// the chart using job.EngineLegend — this avoids text overflow for long names.
+// buildNDCGChart leaves the engine legend to the page, where long names cannot overflow.
 func buildNDCGChart(aggregated []AggregatedEntry, kVals []int) template.HTML {
 	if len(aggregated) == 0 || len(kVals) == 0 {
 		return ""
@@ -333,7 +204,7 @@ func buildNDCGChart(aggregated []AggregatedEntry, kVals []int) template.HTML {
 		padLeft   = 46
 		padRight  = 16
 		padTop    = 20
-		padBottom = 30 // only K-value labels, no legend
+		padBottom = 30
 	)
 	plotW := svgW - padLeft - padRight
 	plotH := svgH - padTop - padBottom
@@ -344,12 +215,10 @@ func buildNDCGChart(aggregated []AggregatedEntry, kVals []int) template.HTML {
 	barW := groupW / float64(nEngines+1)
 
 	var sb strings.Builder
-	// viewBox makes the chart responsive; width=100% fills the container.
 	sb.WriteString(fmt.Sprintf(
 		`<svg viewBox="0 0 %d %d" width="100%%" xmlns="http://www.w3.org/2000/svg">`,
 		svgW, svgH))
 
-	// Gridlines + Y-axis labels.
 	for _, tick := range []float64{0, 0.25, 0.5, 0.75, 1.0} {
 		y := padTop + plotH - int(tick*float64(plotH))
 		sb.WriteString(fmt.Sprintf(
@@ -360,7 +229,6 @@ func buildNDCGChart(aggregated []AggregatedEntry, kVals []int) template.HTML {
 			padLeft-4, y+4, tick))
 	}
 
-	// Bars + value labels.
 	for gi, k := range kVals {
 		groupX := padLeft + int(float64(gi)*groupW)
 		for ei, agg := range aggregated {
@@ -378,7 +246,6 @@ func buildNDCGChart(aggregated []AggregatedEntry, kVals []int) template.HTML {
 					x+max(int(barW*0.75), 1)/2, y+12, val))
 			}
 		}
-		// K-value label below group.
 		labelX := groupX + int(groupW/2)
 		sb.WriteString(fmt.Sprintf(
 			`<text x="%d" y="%d" text-anchor="middle" font-size="12" fill="#374151">@%d</text>`,
@@ -389,8 +256,7 @@ func buildNDCGChart(aggregated []AggregatedEntry, kVals []int) template.HTML {
 	return template.HTML(sb.String())
 }
 
-// buildLatencyChart renders a horizontal bar chart of p50 latency per engine
-// on a logarithmic scale, making order-of-magnitude differences visible.
+// buildLatencyChart scales p50 logarithmically so order-of-magnitude gaps stay visible.
 func buildLatencyChart(aggregated []AggregatedEntry) template.HTML {
 	if len(aggregated) == 0 {
 		return ""
@@ -411,7 +277,7 @@ func buildLatencyChart(aggregated []AggregatedEntry) template.HTML {
 		entries = append(entries, latEntry{
 			name:   agg.EngineName,
 			us:     us,
-			valStr: fmtDuration(agg.Latency.P50()),
+			valStr: FormatDuration(agg.Latency.P50()),
 			color:  engineColors[i%len(engineColors)],
 		})
 	}
@@ -428,7 +294,6 @@ func buildLatencyChart(aggregated []AggregatedEntry) template.HTML {
 	n := len(entries)
 	svgH := padV*2 + n*(barH+barGap) - barGap
 
-	// Log-scale range.
 	minLog := math.Log10(entries[0].us)
 	maxLog := minLog
 	for _, e := range entries {
@@ -457,15 +322,12 @@ func buildLatencyChart(aggregated []AggregatedEntry) template.HTML {
 		frac := (math.Log10(e.us) - minLog) / logRange
 		bw := int(frac*float64(plotW)) + 6 // +6 minimum so fastest engine is visible
 
-		// Engine name.
 		sb.WriteString(fmt.Sprintf(
 			`<text x="%d" y="%d" text-anchor="end" font-size="12" fill="#374151" dominant-baseline="middle">%s</text>`,
 			padL-8, cy, template.HTMLEscapeString(e.name)))
-		// Bar.
 		sb.WriteString(fmt.Sprintf(
 			`<rect x="%d" y="%d" width="%d" height="%d" fill="%s" rx="3" opacity="0.85"/>`,
 			padL, y, bw, barH, e.color))
-		// Value label.
 		sb.WriteString(fmt.Sprintf(
 			`<text x="%d" y="%d" font-size="11" fill="#374151" dominant-baseline="middle">%s</text>`,
 			padL+bw+6, cy, e.valStr))
@@ -473,12 +335,4 @@ func buildLatencyChart(aggregated []AggregatedEntry) template.HTML {
 
 	sb.WriteString(`</svg>`)
 	return template.HTML(sb.String())
-}
-
-// ─── template helpers ────────────────────────────────────────────────────────
-
-func htmlFuncs() template.FuncMap {
-	return template.FuncMap{
-		"fmtTime": func(t time.Time) string { return t.Format("2006-01-02 15:04:05 UTC") },
-	}
 }

@@ -44,6 +44,16 @@ var (
 	phraseInDescription    = uuid.MustParse("00000000-0000-0000-0000-00000000c013")
 )
 
+// FtsSearcher serves every full-text paradigm.
+type FtsSearcher interface {
+	storage.FullTextBackend
+	storage.StringQuerySearcher
+	storage.FieldSearcher
+	storage.MultiFieldSearcher
+	storage.PhraseSearcher
+	storage.BooleanSearcher
+}
+
 // ParityCorpus returns the articles every ParityCase searches.
 func ParityCorpus() []document.Article {
 	articles := []document.Article{
@@ -73,7 +83,7 @@ func ParityCorpus() []document.Article {
 // as the operator, to the engine.
 type ParityCase struct {
 	Name         string
-	Search       func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error)
+	Search       func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error)
 	Want         []uuid.UUID
 	WantByEngine map[Engine][]uuid.UUID
 }
@@ -101,77 +111,77 @@ func ParityCases() []ParityCase {
 	return []ParityCase{
 		{
 			Name: "query string under the engine default operator",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return s.SearchStringQuery(ctx, query.NewQueryString("budget tariff"), page())
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return s.SearchStringQuery(ctx, query.NewString("budget tariff", query.StringOptions{}), page())
 			},
 			WantByEngine: map[Engine][]uuid.UUID{Postgres: contractEveryTerm, Elasticsearch: contractAnyTerm},
 		},
 		{
 			Name: "match with AND",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return searchField(ctx, s, query.FieldTitle, "budget tariff", query.WithMatchOperator(operator.And))
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return searchField(ctx, s, query.FieldTitle, "budget tariff", query.MatchOptions{Operator: operator.Explicit(operator.And)})
 			},
 			Want: titleEveryTerm,
 		},
 		{
 			Name: "match with OR",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return searchField(ctx, s, query.FieldTitle, "budget tariff", query.WithMatchOperator(operator.Or))
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return searchField(ctx, s, query.FieldTitle, "budget tariff", query.MatchOptions{Operator: operator.Explicit(operator.Or)})
 			},
 			Want: titleAnyTerm,
 		},
 		{
 			Name: "match with OR reads a leading minus as text",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return searchField(ctx, s, query.FieldTitle, "budget -tariff", query.WithMatchOperator(operator.Or))
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return searchField(ctx, s, query.FieldTitle, "budget -tariff", query.MatchOptions{Operator: operator.Explicit(operator.Or)})
 			},
 			Want: titleAnyTerm,
 		},
 		{
 			Name: "match with OR of words no article holds",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return searchField(ctx, s, query.FieldTitle, "the of", query.WithMatchOperator(operator.Or))
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return searchField(ctx, s, query.FieldTitle, "the of", query.MatchOptions{Operator: operator.Explicit(operator.Or)})
 			},
 			Want: nil,
 		},
 		{
 			Name: "match under the engine default operator",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return searchField(ctx, s, query.FieldTitle, "budget tariff")
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return searchField(ctx, s, query.FieldTitle, "budget tariff", query.MatchOptions{})
 			},
 			WantByEngine: map[Engine][]uuid.UUID{Postgres: titleEveryTerm, Elasticsearch: titleAnyTerm},
 		},
 		{
 			Name: "multi_match with AND matches terms across the fields",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return searchFields(ctx, s, []string{"title", "content"}, query.WithMultiMatchOperator(operator.And))
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return searchFields(ctx, s, []string{"title", "content"}, query.MultiMatchOptions{Operator: operator.Explicit(operator.And)})
 			},
 			Want: titleOrContentEveryTerm,
 		},
 		{
 			Name: "multi_match boosts leave the recall alone",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return searchFields(ctx, s, []string{"description^2.5", "content"}, query.WithMultiMatchOperator(operator.And))
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return searchFields(ctx, s, []string{"description^2.5", "content"}, query.MultiMatchOptions{Operator: operator.Explicit(operator.And)})
 			},
 			Want: []uuid.UUID{descriptionAndContent, descriptionThenContent, phraseInDescription},
 		},
 		{
 			Name: "multi_match with OR",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return searchFields(ctx, s, []string{"title", "content"}, query.WithMultiMatchOperator(operator.Or))
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return searchFields(ctx, s, []string{"title", "content"}, query.MultiMatchOptions{Operator: operator.Explicit(operator.Or)})
 			},
 			Want: titleOrContentAnyTerm,
 		},
 		{
 			Name: "multi_match under the engine default operator",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return searchFields(ctx, s, []string{"title", "content"})
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return searchFields(ctx, s, []string{"title", "content"}, query.MultiMatchOptions{})
 			},
 			WantByEngine: map[Engine][]uuid.UUID{Postgres: titleOrContentEveryTerm, Elasticsearch: titleOrContentAnyTerm},
 		},
 		{
 			Name: "phrase in one field",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
 				return searchPhrase(ctx, s, "budget tariff", []query.Field{query.FieldTitle}, 0)
 			},
 			Want: []uuid.UUID{bothInTitle},
@@ -180,14 +190,14 @@ func ParityCases() []ParityCase {
 			// descriptionThenContent ends its description with budget and opens
 			// its content with tariff.
 			Name: "phrase restricts every term to the field",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
 				return searchPhrase(ctx, s, "budget tariff", []query.Field{query.FieldContent}, 0)
 			},
 			Want: nil,
 		},
 		{
 			Name: "phrase with slop restricts every term to the field",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
 				return searchPhrase(ctx, s, "budget tariff", []query.Field{query.FieldContent}, 1)
 			},
 			Want: nil,
@@ -196,58 +206,58 @@ func ParityCases() []ParityCase {
 			// descriptionThenContent's phrase spans the end of one field and
 			// the start of the next; only phraseInDescription holds it in one.
 			Name: "phrase over several fields matches within each field",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
 				return searchPhrase(ctx, s, "budget tariff", []query.Field{query.FieldDescription, query.FieldContent}, 0)
 			},
 			Want: []uuid.UUID{phraseInDescription},
 		},
 		{
 			Name: "phrase with slop over several fields matches within each field",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
 				return searchPhrase(ctx, s, "budget tariff", []query.Field{query.FieldDescription, query.FieldContent}, 1)
 			},
 			Want: []uuid.UUID{phraseInDescription},
 		},
 		{
 			Name: "phrase with slop allows a word between the terms",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
 				return searchPhrase(ctx, s, "budget tariff", []query.Field{query.FieldTitle}, 1)
 			},
 			Want: []uuid.UUID{bothInTitle, termsApartInTitle},
 		},
 		{
 			Name: "phrase with slop stems each term once",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
 				return searchPhrase(ctx, s, "harbor agreed", []query.Field{query.FieldTitle}, 1)
 			},
 			Want: []uuid.UUID{agreedOneWordApart},
 		},
 		{
 			Name: "boolean AND across the contract fields",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return s.SearchBoolean(ctx, &query.Boolean{Expression: "budget AND tariff"}, page())
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return s.SearchBoolean(ctx, query.NewBoolean("budget AND tariff", query.BooleanOptions{}), page())
 			},
 			Want: contractEveryTerm,
 		},
 		{
 			Name: "boolean OR across the contract fields",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return s.SearchBoolean(ctx, &query.Boolean{Expression: "budget OR tariff"}, page())
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return s.SearchBoolean(ctx, query.NewBoolean("budget OR tariff", query.BooleanOptions{}), page())
 			},
 			Want: contractAnyTerm,
 		},
 		{
 			// A tariff outside the contract fields does not exclude an article.
 			Name: "boolean NOT across the contract fields",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return s.SearchBoolean(ctx, &query.Boolean{Expression: "budget AND NOT tariff"}, page())
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return s.SearchBoolean(ctx, query.NewBoolean("budget AND NOT tariff", query.BooleanOptions{}), page())
 			},
 			Want: []uuid.UUID{budgetTitleOnly, budgetTitleSection},
 		},
 		{
 			Name: "boolean adjacent words under the engine default operator",
-			Search: func(ctx context.Context, s storage.FtsSearcher) (*storage.SearchResult, error) {
-				return s.SearchBoolean(ctx, &query.Boolean{Expression: "budget tariff"}, page())
+			Search: func(ctx context.Context, s FtsSearcher) (*storage.SearchResult, error) {
+				return s.SearchBoolean(ctx, query.NewBoolean("budget tariff", query.BooleanOptions{}), page())
 			},
 			WantByEngine: map[Engine][]uuid.UUID{Postgres: contractEveryTerm, Elasticsearch: contractAnyTerm},
 		},
@@ -258,24 +268,24 @@ func page() *query.BaseOptions {
 	return &query.BaseOptions{Size: 100}
 }
 
-func searchFields(ctx context.Context, s storage.FtsSearcher, fields []string, opts ...query.MultiMatchQueryOption) (*storage.SearchResult, error) {
-	q, err := query.NewMultiMatchQuery("budget tariff", fields, opts...)
+func searchFields(ctx context.Context, s FtsSearcher, fields []string, opts query.MultiMatchOptions) (*storage.SearchResult, error) {
+	q, err := query.NewMultiMatch("budget tariff", fields, opts)
 	if err != nil {
 		return nil, err
 	}
 	return s.SearchFields(ctx, q, page())
 }
 
-func searchField(ctx context.Context, s storage.FtsSearcher, field query.Field, text string, opts ...query.MatchQueryOption) (*storage.SearchResult, error) {
-	q, err := query.NewMatch(field, text, opts...)
+func searchField(ctx context.Context, s FtsSearcher, field query.Field, text string, opts query.MatchOptions) (*storage.SearchResult, error) {
+	q, err := query.NewMatch(field, text, opts)
 	if err != nil {
 		return nil, err
 	}
 	return s.SearchField(ctx, q, page())
 }
 
-func searchPhrase(ctx context.Context, s storage.FtsSearcher, text string, fields []query.Field, slop int) (*storage.SearchResult, error) {
-	q, err := query.NewPhrase(text, fields, query.WithPhraseSlop(slop))
+func searchPhrase(ctx context.Context, s FtsSearcher, text string, fields []query.Field, slop int) (*storage.SearchResult, error) {
+	q, err := query.NewPhrase(text, fields, query.PhraseOptions{Slop: slop})
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +294,7 @@ func searchPhrase(ctx context.Context, s storage.FtsSearcher, text string, field
 
 // RunParity runs every ParityCase on a searcher whose engine holds exactly
 // ParityCorpus.
-func RunParity(t *testing.T, engine Engine, searcher storage.FtsSearcher) {
+func RunParity(t *testing.T, engine Engine, searcher FtsSearcher) {
 	t.Helper()
 	for _, c := range ParityCases() {
 		t.Run(c.Name, func(t *testing.T) {
@@ -312,7 +322,7 @@ func RunParity(t *testing.T, engine Engine, searcher storage.FtsSearcher) {
 
 // RunFieldIsolation checks every field the searcher claims to isolate: a match
 // on it returns exactly the articles whose own text in that field holds the term.
-func RunFieldIsolation(t *testing.T, searcher storage.FtsSearcher) {
+func RunFieldIsolation(t *testing.T, searcher FtsSearcher) {
 	t.Helper()
 	const term = "budget"
 	for _, field := range searcher.Capabilities().Fields {
@@ -323,7 +333,7 @@ func RunFieldIsolation(t *testing.T, searcher storage.FtsSearcher) {
 					want = append(want, article.ID)
 				}
 			}
-			res, err := searchField(t.Context(), searcher, field, term)
+			res, err := searchField(t.Context(), searcher, field, term, query.MatchOptions{})
 			if err != nil {
 				t.Fatalf("search: %v", err)
 			}

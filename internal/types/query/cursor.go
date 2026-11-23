@@ -56,13 +56,3 @@ func DecodeCursor(s string) (*Cursor, error) {
 
 	return &c, nil
 }
-
-// MustEncodeCursor is like EncodeCursor but panics on error
-// Use only when you're certain the inputs are valid
-func MustEncodeCursor(score float64, id uuid.UUID) string {
-	cursor, err := EncodeCursor(score, id)
-	if err != nil {
-		panic(err)
-	}
-	return cursor
-}

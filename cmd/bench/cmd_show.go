@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"io"
-	"sort"
+	"maps"
+	"os"
+	"slices"
 	"strings"
 	"text/tabwriter"
 
@@ -15,48 +17,12 @@ import (
 	"github.com/tadjov/sengi/internal/bench/trackctx"
 )
 
-// newReportCmd exposes "bench report" as a top-level shortcut for the common
-// case of "bench show report". Same RunE, different Use/Short.
-func newReportCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "report [track|path]",
-		Short: "Show the latest report for a track (alias: bench show report)",
-		Long: `Shortcut for bench show report. Prints provenance + aggregated metrics +
-latency + significance table for the most-recent run of the given track.`,
-		Args:    cobra.MaximumNArgs(1),
-		Example: "  bench report tracks/global-news-dataset/fts_quality\n  bench report /path/to/report.json",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var rpt *report.Report
-			var err error
-			if len(args) == 1 && looksLikePath(args[0]) {
-				rpt, err = report.ReadJSON(args[0])
-			} else {
-				in := trackctx.Inputs{TrackRoot: trackRoot}
-				if len(args) == 1 {
-					in.TrackArg = args[0]
-				}
-				tr, rerr := trackctx.Resolve(in)
-				if rerr != nil {
-					return rerr
-				}
-				rpt, err = report.ReadLatestReport(tr.LatestReportPath())
-			}
-			if err != nil {
-				return err
-			}
-			showReport(cmd.OutOrStdout(), rpt)
-			return nil
-		},
-	}
-}
-
 func newShowCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show",
-		Short: "Inspect bench artifacts (pool, judgments, spec)",
+		Short: "Inspect bench artifacts (pool, judgments, spec, report)",
 		Long: `Pretty-prints a one-page summary of a bench artifact: query counts, grade
-histograms, engine coverage, dedup ratios. The single best way to sanity-check
-intermediates without grepping YAML.`,
+histograms, engine coverage, dedup ratios.`,
 	}
 	cmd.AddCommand(newShowPoolCmd(), newShowJudgmentsCmd(), newShowSpecCmd(), newShowReportCmd())
 	return cmd
@@ -64,12 +30,12 @@ intermediates without grepping YAML.`,
 
 func newShowPoolCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "pool [track|path]",
+		Use:     "pool [track|file]",
 		Short:   "Summarise a pool file",
 		Args:    cobra.MaximumNArgs(1),
-		Example: "  bench show pool tracks/global-news-dataset/fts_quality\n  bench show pool /path/to/pool.yaml",
+		Example: "  bench show pool tracks/cc-news/fts\n  bench show pool /path/to/pool.yaml",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, err := resolveArtifactPath(args, "pool", "")
+			path, err := artifactPath(args, func(tr *trackctx.Track) string { return tr.Pool })
 			if err != nil {
 				return err
 			}
@@ -84,18 +50,14 @@ func newShowPoolCmd() *cobra.Command {
 }
 
 func newShowJudgmentsCmd() *cobra.Command {
-	var strategy string
+	var judgments string
 	cmd := &cobra.Command{
-		Use:     "judgments [track|path]",
+		Use:     "judgments [track|file]",
 		Short:   "Summarise a judgments file",
 		Args:    cobra.MaximumNArgs(1),
-		Example: "  bench show judgments tracks/global-news-dataset/fts_quality --strategy claude-api\n  bench show judgments /path/to/ann.yaml",
+		Example: "  bench show judgments tracks/cc-news/fts --judgments claude-cli\n  bench show judgments /path/to/annotations.yaml",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s := strategy
-			if s == "" {
-				s = string(judgment.StrategyKeyword)
-			}
-			path, err := resolveArtifactPath(args, "judgments", s)
+			path, err := artifactPath(args, func(tr *trackctx.Track) string { return tr.JudgmentsPath(judgments) })
 			if err != nil {
 				return err
 			}
@@ -107,18 +69,18 @@ func newShowJudgmentsCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&strategy, "strategy", "", "Strategy name when summarising by track (default: keyword)")
+	cmd.Flags().StringVar(&judgments, "judgments", string(judgment.StrategyKeyword), "Judgment set to summarise when the arg is a track")
 	return cmd
 }
 
 func newShowSpecCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "spec [track|path]",
+		Use:     "spec [track|file]",
 		Short:   "Summarise a bench spec",
 		Args:    cobra.MaximumNArgs(1),
-		Example: "  bench show spec tracks/global-news-dataset/fts_quality\n  bench show spec /path/to/spec.yaml",
+		Example: "  bench show spec tracks/cc-news/fts\n  bench show spec /path/to/spec.yaml",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, err := resolveArtifactPath(args, "spec", "")
+			path, err := artifactPath(args, func(tr *trackctx.Track) string { return tr.Spec })
 			if err != nil {
 				return err
 			}
@@ -134,33 +96,15 @@ func newShowSpecCmd() *cobra.Command {
 
 func newShowReportCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "report [track|path]",
+		Use:   "report [track|file]",
 		Short: "Summarise the latest (or given) report",
-		Long: `Pretty-prints a one-page summary of a report JSON file: provenance block
-(run_id, tool, spec_id, sources) followed by the aggregated metrics and latency
-tables for each job.
-
-With a track name or path, follows reports/latest.json to the actual report.
-With a direct .json path, reads that file.`,
+		Long: `Prints a report's provenance followed by the metrics, latency and
+significance tables of each job. A track shows the report reports/latest.json
+points at; a file is read as the report itself.`,
 		Args:    cobra.MaximumNArgs(1),
-		Example: "  bench show report tracks/global-news-dataset/fts_quality\n  bench show report /path/to/report.json",
+		Example: "  bench show report tracks/cc-news/fts\n  bench show report /path/to/report.json",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var rpt *report.Report
-			var err error
-
-			if len(args) == 1 && looksLikePath(args[0]) {
-				rpt, err = report.ReadJSON(args[0])
-			} else {
-				in := trackctx.Inputs{TrackRoot: trackRoot}
-				if len(args) == 1 {
-					in.TrackArg = args[0]
-				}
-				tr, rerr := trackctx.Resolve(in)
-				if rerr != nil {
-					return rerr
-				}
-				rpt, err = report.ReadLatestReport(tr.LatestReportPath())
-			}
+			rpt, err := readReportArg(args)
 			if err != nil {
 				return err
 			}
@@ -170,60 +114,36 @@ With a direct .json path, reads that file.`,
 	}
 }
 
-// resolveArtifactPath turns the positional arg (track name OR direct path)
-// into the on-disk artifact path. If args is empty, walk-up CWD detection
-// decides. kind is one of: spec, pool, judgments. strategy applies only to
-// judgments.
-func resolveArtifactPath(args []string, kind, strategy string) (string, error) {
-	if len(args) == 1 && looksLikePath(args[0]) {
-		// Treat any path-shaped arg as a direct path. trackctx.Resolve would
-		// reject it as non-track-shaped, but for `show` we don't care — the
-		// caller just wants to read whatever file the user pointed at.
-		return args[0], nil
+func readReportArg(args []string) (*report.Report, error) {
+	if file, ok := fileArg(args); ok {
+		return report.ReadJSON(file)
 	}
-	in := trackctx.Inputs{TrackRoot: trackRoot}
-	if len(args) == 1 {
-		in.TrackArg = args[0]
+	tr, err := trackctx.Resolve(trackInputs(args))
+	if err != nil {
+		return nil, err
 	}
-	tr, err := trackctx.Resolve(in)
+	return report.ReadLatestReport(tr.LatestReportPath())
+}
+
+// artifactPath is the arg itself when it names a file, else the artifact
+// inTrack picks from the track the arg resolves to.
+func artifactPath(args []string, inTrack func(*trackctx.Track) string) (string, error) {
+	if file, ok := fileArg(args); ok {
+		return file, nil
+	}
+	tr, err := trackctx.Resolve(trackInputs(args))
 	if err != nil {
 		return "", err
 	}
-	switch kind {
-	case "spec":
-		return tr.Spec, nil
-	case "pool":
-		return tr.Pool, nil
-	case "judgments":
-		return tr.JudgmentsPath(strategy), nil
-	default:
-		return "", fmt.Errorf("unknown artifact kind %q", kind)
-	}
+	return inTrack(tr), nil
 }
 
-func looksLikePath(s string) bool {
-	if s == "" {
-		return false
+func fileArg(args []string) (string, bool) {
+	if len(args) == 0 {
+		return "", false
 	}
-	if len(s) > 0 && (s[0] == '/' || s[0] == '.') {
-		return true
-	}
-	for _, r := range s {
-		if r == '/' {
-			return true
-		}
-	}
-	// Treat anything with a recognised extension as a path.
-	for _, ext := range []string{".yaml", ".yml", ".tsv", ".json"} {
-		if hasSuffix(s, ext) {
-			return true
-		}
-	}
-	return false
-}
-
-func hasSuffix(s, suffix string) bool {
-	return len(s) >= len(suffix) && s[len(s)-len(suffix):] == suffix
+	info, err := os.Stat(args[0])
+	return args[0], err == nil && info.Mode().IsRegular()
 }
 
 func showPool(w io.Writer, pf *pool.PoolFile) {
@@ -261,7 +181,7 @@ func showPool(w io.Writer, pf *pool.PoolFile) {
 	fmt.Fprintf(w, "\nTotal unique docs: %d\n", totalDocs)
 	fmt.Fprintf(w, "Total engine hits: %d\n", totalSourceHits)
 	fmt.Fprintln(w, "\nPer-engine contribution:")
-	for _, e := range sortedKeys(engineCounts) {
+	for _, e := range slices.Sorted(maps.Keys(engineCounts)) {
 		fmt.Fprintf(w, "  %s: %d docs\n", e, engineCounts[e])
 	}
 }
@@ -306,7 +226,7 @@ func showSpec(w io.Writer, bs *spec.BenchSpec) {
 	fmt.Fprintln(w, "Engines:")
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "  NAME\tTYPE\tCONNECTION\tINDEX\tQUERIES FROM\tPARAMS")
-	for _, name := range sortedSpecKeys(bs.Engines) {
+	for _, name := range slices.Sorted(maps.Keys(bs.Engines)) {
 		e := bs.Engines[name]
 		fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\t%s\t%s\n",
 			name, e.Type, maskConn(e.Connection), e.Index, e.QueriesFrom, formatEngineParams(e.Params))
@@ -355,15 +275,9 @@ func showEngineIndexes(w io.Writer, engines map[string]report.EngineInfo) {
 	if len(engines) == 0 {
 		return
 	}
-	names := make([]string, 0, len(engines))
-	for name := range engines {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-
 	fmt.Fprintln(w, "\nEngines:")
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-	for _, name := range names {
+	for _, name := range slices.Sorted(maps.Keys(engines)) {
 		info := engines[name]
 		summary := "index provenance not recorded"
 		if info.Index != nil {
@@ -378,33 +292,12 @@ func formatSources(sources map[string]int) string {
 	if len(sources) == 0 {
 		return "—"
 	}
-	keys := sortedKeys(sources)
-	out := ""
+	keys := slices.Sorted(maps.Keys(sources))
+	pairs := make([]string, len(keys))
 	for i, k := range keys {
-		if i > 0 {
-			out += " "
-		}
-		out += fmt.Sprintf("%s:%d", k, sources[k])
+		pairs[i] = fmt.Sprintf("%s:%d", k, sources[k])
 	}
-	return out
-}
-
-func sortedKeys(m map[string]int) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
-func sortedSpecKeys(m map[string]spec.Engine) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
+	return strings.Join(pairs, " ")
 }
 
 // formatEngineParams renders engine params key-sorted so two arms of an A/B can
@@ -413,11 +306,7 @@ func formatEngineParams(params map[string]any) string {
 	if len(params) == 0 {
 		return ""
 	}
-	keys := make([]string, 0, len(params))
-	for k := range params {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+	keys := slices.Sorted(maps.Keys(params))
 	pairs := make([]string, len(keys))
 	for i, k := range keys {
 		pairs[i] = fmt.Sprintf("%s=%v", k, params[k])

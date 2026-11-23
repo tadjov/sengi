@@ -1,29 +1,21 @@
 package reader
 
 import (
-	"context"
 	"errors"
 	"io"
 	"iter"
 	"strings"
-	"sync"
 
 	"github.com/parquet-go/parquet-go"
 )
 
 const parquetRowBatchSize = 256
 
-var (
-	_ RawParallelReader = (*ParquetReader)(nil)
-)
-
 type ParquetReader struct {
 	file    *parquet.File
 	columns []string
 }
 
-// NumRows reports the row count recorded in the file footer, without reading
-// any data.
 func (p *ParquetReader) NumRows() int64 {
 	var n int64
 	for _, rg := range p.file.RowGroups() {
@@ -72,63 +64,7 @@ func (p *ParquetReader) Records() iter.Seq2[map[string]string, error] {
 	}
 }
 
-func (p *ParquetReader) ReadParallel(ctx context.Context, workerCount int) (<-chan ParallelReaderResult, error) {
-	rowGroups := p.file.RowGroups()
-	out := make(chan ParallelReaderResult)
-
-	if workerCount < 1 {
-		workerCount = 1
-	}
-	if workerCount > len(rowGroups) {
-		workerCount = len(rowGroups)
-	}
-
-	jobs := make(chan int, len(rowGroups))
-	for i := range rowGroups {
-		jobs <- i
-	}
-	close(jobs)
-
-	var wg sync.WaitGroup
-	wg.Add(workerCount)
-	for w := 0; w < workerCount; w++ {
-		go func() {
-			defer wg.Done()
-			for i := range jobs {
-				err := p.eachRecord(rowGroups[i], func(record map[string]string) error {
-					select {
-					case out <- ParallelReaderResult{Record: record}:
-						return nil
-					case <-ctx.Done():
-						return ctx.Err()
-					}
-				})
-				if err == nil {
-					continue
-				}
-				if ctx.Err() != nil {
-					return
-				}
-				select {
-				case out <- ParallelReaderResult{Err: err}:
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
-	}
-
-	go func() {
-		wg.Wait()
-		close(out)
-	}()
-
-	return out, nil
-}
-
-// eachRecord decodes a row group in batches, converting every row to a record
-// before the next ReadRows call: byte array values point into page buffers the
-// reader recycles as it advances.
+// eachRecord converts each batch before the next ReadRows call, which recycles the buffers byte arrays point into.
 func (p *ParquetReader) eachRecord(rg parquet.RowGroup, fn func(map[string]string) error) (err error) {
 	rows := rg.Rows()
 	defer func() {
@@ -141,8 +77,7 @@ func (p *ParquetReader) eachRecord(rg parquet.RowGroup, fn func(map[string]strin
 	for {
 		n, readErr := rows.ReadRows(buf)
 
-		// ReadRows may return rows together with io.EOF, so the batch is
-		// consumed before the error is inspected.
+		// ReadRows may return rows together with io.EOF.
 		for _, row := range buf[:n] {
 			if fnErr := fn(rowToRecord(row, p.columns)); fnErr != nil {
 				return fnErr
@@ -161,7 +96,6 @@ func (p *ParquetReader) eachRecord(rg parquet.RowGroup, fn func(map[string]strin
 	}
 }
 
-// rowToRecord flattens a parquet row onto its column names
 func rowToRecord(row parquet.Row, columns []string) map[string]string {
 	record := make(map[string]string, len(columns))
 	for _, v := range row {

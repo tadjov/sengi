@@ -57,8 +57,8 @@ implemented.
 ```bash
 go run ./cmd/datapipe preprocess datasets/all-the-news/preprocess.yaml --version v1
 
-ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load --engine native \
-  --canonical datasets/all-the-news/canonical/<version>/datapackage.json
+ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load datasets/all-the-news/canonical/<version>/datapackage.json \
+  --engine native
 ```
 
 Field mapping: `datasets/all-the-news/mapping.yaml`; preprocess policy: `datasets/all-the-news/preprocess.yaml`.
