@@ -379,7 +379,7 @@ func (r *preprocessRun) isFilled(k int, field string) bool {
 // judge computes the signals, decides the rules and runs the checks; it publishes
 // nothing past an error check.
 func (r *preprocessRun) judge() (judged, error) {
-	r.counter.Stage("signals")
+	end := r.counter.Stage("signals")
 	values := map[string]signalValues{}
 	for _, signal := range r.signals {
 		values[signal.spec.Name] = signal.values()
@@ -420,6 +420,7 @@ func (r *preprocessRun) judge() (judged, error) {
 			return judged{}, &ChecksFailedError{Preprocess: r.record}
 		}
 	}
+	end()
 	return judged{values: values, outcome: outcome}, nil
 }
 
@@ -457,7 +458,7 @@ func (r *preprocessRun) write(ctx context.Context, decided judged) error {
 	}
 	defer kept.Close()
 
-	r.counter.Stage("write")
+	end := r.counter.Stage("write")
 	r.counter.SetTotal(int64(len(r.origins)))
 	k := 0
 	err = readRows(kept, func(batch []canonicalRow) error {
@@ -509,7 +510,11 @@ func (r *preprocessRun) write(ctx context.Context, decided judged) error {
 	if err := articles.finish(); err != nil {
 		return err
 	}
-	return changes.finish()
+	if err := changes.finish(); err != nil {
+		return err
+	}
+	end()
+	return nil
 }
 
 // articleEditor applies the rules' clears to a kept article and captures any signal sample it holds.
