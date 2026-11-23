@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/pkg/apis/mapping"
 	"github.com/tadjov/sengi/pkg/apis/preprocess"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 // groupCounter records, for each kept article, the group a condition puts it in and the

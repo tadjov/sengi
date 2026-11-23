@@ -10,12 +10,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/ingest/reader"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 // CorpusOptions locates the packages a corpus is read from; Embeddings is optional.
@@ -29,6 +29,7 @@ type CorpusOptions struct {
 // PackagedCorpus is a verified canonical package, with the embeddings package built from it.
 type PackagedCorpus struct {
 	canonical    datapackage.Package
+	language     language.Code
 	articles     *datapackage.ResourceFile
 	articlesHash string
 	records      reader.RecordReader
@@ -58,7 +59,7 @@ func (c *PackagedCorpus) open(ctx context.Context, opts CorpusOptions) error {
 	if c.canonical.ArticleSchema != datapackage.ArticleSchema {
 		return fmt.Errorf("canonical package %s has article schema %q, want %q", c.canonical.Name, c.canonical.ArticleSchema, datapackage.ArticleSchema)
 	}
-	if _, err := language.Parse(string(c.canonical.Language)); err != nil {
+	if c.language, err = language.Parse(c.canonical.Language); err != nil {
 		return fmt.Errorf("canonical package %s: %w", c.canonical.Name, err)
 	}
 	articles, listed := c.canonical.Resource(datapackage.ArticlesResource)
@@ -113,8 +114,13 @@ func (c *PackagedCorpus) open(ctx context.Context, opts CorpusOptions) error {
 	return nil
 }
 
-// checkEmbeddings refuses vectors from another canonical resource, and an unrequested trial.
+// checkEmbeddings refuses a language no engine analyses, vectors from another canonical resource, and an unrequested trial.
 func checkEmbeddings(pkg datapackage.Package, canonicalHash string, trial bool) error {
+	if pkg.Language != "" {
+		if _, err := language.Parse(pkg.Language); err != nil {
+			return fmt.Errorf("embeddings package %s: %w", pkg.Name, err)
+		}
+	}
 	if pkg.Embedding == nil || pkg.Embedding.Tag == "" {
 		return fmt.Errorf("embeddings package %s does not record its model tag", pkg.Name)
 	}
@@ -162,7 +168,7 @@ func (c *PackagedCorpus) Corpus(ctx context.Context) storage.Corpus {
 	corpus := storage.Corpus{
 		Articles:     c.readArticles(ctx),
 		ArticleCount: c.articleCount,
-		Language:     c.canonical.Language,
+		Language:     c.language,
 		Canonical:    storage.PackageRef{Name: c.canonical.Name, Version: c.canonical.Version, ResourceHash: c.articlesHash},
 	}
 	if c.embeddings != nil {

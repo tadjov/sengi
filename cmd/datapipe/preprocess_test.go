@@ -25,12 +25,12 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/ingest"
 	"github.com/tadjov/sengi/internal/progress/progresstest"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
 	"github.com/tadjov/sengi/pkg/apis/preprocess"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 const baseMapping = `kind: Mapping
@@ -384,7 +384,7 @@ func TestPreprocess_WritesACanonicalPackageInSourceOrder(t *testing.T) {
 
 	assert.Equal(t, "test-news-canonical", pkg.Name)
 	assert.Equal(t, "article/v2", pkg.ArticleSchema)
-	assert.Equal(t, language.English, pkg.Language)
+	assert.Equal(t, string(language.English), pkg.Language)
 	for _, want := range []datapackage.Resource{
 		{Name: "articles", Path: "articles.parquet", Format: "parquet"},
 		{Name: "rejects", Path: "rejects.parquet", Format: "parquet"},

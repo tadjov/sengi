@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/pkg/apis/preprocess"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 // ChecksFailedError reports a run over an error budget; nothing was published.

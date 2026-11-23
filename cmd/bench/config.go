@@ -16,12 +16,12 @@ import (
 	"github.com/tadjov/sengi/internal/bench/suite"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
 	"github.com/tadjov/sengi/internal/cli"
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/factory"
 	"github.com/tadjov/sengi/internal/storage/pg"
 	"github.com/tadjov/sengi/internal/storage/queryvectors"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 // trackRootEnv names the environment variable behind the --track-root flag.

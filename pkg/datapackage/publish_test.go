@@ -10,7 +10,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/tadjov/sengi/internal/datapackage"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 const (

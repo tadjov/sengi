@@ -11,8 +11,8 @@ import (
 	"github.com/dlclark/regexp2"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
-	"github.com/tadjov/sengi/internal/datapackage"
 	"github.com/tadjov/sengi/pkg/apis/preprocess"
+	"github.com/tadjov/sengi/pkg/datapackage"
 )
 
 // The profile's path patterns use lookaheads, which Go's RE2 cannot compile.

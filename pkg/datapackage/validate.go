@@ -5,17 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tadjov/sengi/internal/types/language"
 	"github.com/tadjov/sengi/pkg/apis/preprocess"
 )
 
 func (p Package) validate() error {
-	// Embeddings and raw packages carry no corpus language.
-	if p.Language != "" {
-		if _, err := language.Parse(string(p.Language)); err != nil {
-			return fmt.Errorf("package %s: %w", p.Name, err)
-		}
-	}
 	if p.Preprocess != nil {
 		if _, err := preprocess.ParseIDKind(string(p.Preprocess.ID.Kind)); err != nil {
 			return fmt.Errorf("package %s: %w", p.Name, err)
