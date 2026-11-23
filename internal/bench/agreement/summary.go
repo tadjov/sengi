@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/tadjov/sengi/internal/bench/metrics"
 	"github.com/tadjov/sengi/internal/bench/suite"
+	"github.com/tadjov/sengi/pkg/irmetrics"
 )
 
 // Statistic is a value that is NaN when undefined, and null in JSON.
@@ -78,8 +78,8 @@ type Reference struct {
 
 // Confusion is one set's grades against the reference's, rows being the reference's.
 type Confusion struct {
-	Label string                 `json:"label"`
-	Table metrics.GradeConfusion `json:"table"`
+	Label string                   `json:"label"`
+	Table irmetrics.GradeConfusion `json:"table"`
 	// GradedRelevant counts reference-irrelevant pairs graded relevant; GradedIrrelevant the reverse.
 	ReferenceIrrelevant int `json:"reference_irrelevant"`
 	GradedRelevant      int `json:"graded_relevant"`
@@ -145,15 +145,15 @@ func (o SummaryOptions) compareAll(pairs []Pair) []Comparison {
 }
 
 func (o SummaryOptions) compare(byQuery [][]Pair, sets setPair) Comparison {
-	tables := make([]metrics.GradeConfusion, len(byQuery))
-	var all metrics.GradeConfusion
+	tables := make([]irmetrics.GradeConfusion, len(byQuery))
+	var all irmetrics.GradeConfusion
 	for q, queryPairs := range byQuery {
 		for _, p := range queryPairs {
 			tables[q][p.Grades[sets.first]][p.Grades[sets.second]]++
 			all[p.Grades[sets.first]][p.Grades[sets.second]]++
 		}
 	}
-	binary := func(c metrics.GradeConfusion) float64 { return c.BinaryKappa(o.Threshold) }
+	binary := func(c irmetrics.GradeConfusion) float64 { return c.BinaryKappa(o.Threshold) }
 	return Comparison{
 		First:          o.Labels[sets.first],
 		Second:         o.Labels[sets.second],
@@ -161,12 +161,12 @@ func (o SummaryOptions) compare(byQuery [][]Pair, sets setPair) Comparison {
 		Exact:          all.ExactAgreement(),
 		WithinOne:      all.WithinOneAgreement(),
 		Relevant:       all.RelevantAgreement(o.Threshold),
-		QuadraticKappa: kappa(metrics.BootstrapKappa(metrics.KappaBootstrap{ByQuery: tables, Kappa: metrics.GradeConfusion.QuadraticKappa, Seed: o.Seed})),
-		BinaryKappa:    kappa(metrics.BootstrapKappa(metrics.KappaBootstrap{ByQuery: tables, Kappa: binary, Seed: o.Seed})),
+		QuadraticKappa: kappa(irmetrics.BootstrapKappa(irmetrics.KappaBootstrap{ByQuery: tables, Kappa: irmetrics.GradeConfusion.QuadraticKappa, Seed: o.Seed})),
+		BinaryKappa:    kappa(irmetrics.BootstrapKappa(irmetrics.KappaBootstrap{ByQuery: tables, Kappa: binary, Seed: o.Seed})),
 	}
 }
 
-func kappa(interval metrics.KappaInterval) Kappa {
+func kappa(interval irmetrics.KappaInterval) Kappa {
 	return Kappa{Value: Statistic(interval.Kappa), Low: Statistic(interval.Low), High: Statistic(interval.High)}
 }
 

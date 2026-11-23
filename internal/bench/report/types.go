@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tadjov/sengi/internal/bench/meta"
-	"github.com/tadjov/sengi/internal/bench/metrics"
 	"github.com/tadjov/sengi/internal/bench/runner"
+	"github.com/tadjov/sengi/pkg/irmetrics"
 )
 
 // Report is what bench run writes: Provenance says what produced it and from
@@ -88,7 +88,7 @@ type PairwiseSignificance struct {
 	AdjustedP *float64
 	Stars     string // from AdjustedP: "**" p<0.01 | "*" p<0.05 | "" not significant
 	// MeanDifference is the mean of A − B with its 95% bootstrap interval.
-	MeanDifference *metrics.Interval
+	MeanDifference *irmetrics.Interval
 }
 
 type ReportConfig struct {

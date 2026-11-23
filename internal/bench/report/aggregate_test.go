@@ -17,15 +17,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/sengi/internal/bench/metrics"
 	"github.com/tadjov/sengi/internal/bench/runner"
+	"github.com/tadjov/sengi/pkg/irmetrics"
 )
 
 func answered(qid, engine string, ap float64, latency time.Duration) runner.QueryResult {
 	return runner.QueryResult{
 		QueryID:    qid,
 		EngineName: engine,
-		Scores: metrics.ScoreSet{
+		Scores: irmetrics.ScoreSet{
 			Judged:     true,
 			NDCG:       map[int]float64{10: ap},
 			NDCGLinear: map[int]float64{10: ap / 2},
@@ -637,9 +637,9 @@ func TestWriters_ShowTheMeanDifferenceAndUntestablePairs(t *testing.T) {
 			Aggregated: []AggregatedEntry{{EngineName: "a", JudgedCount: 1, QueryCount: 1}},
 			Significance: []PairwiseSignificance{
 				{EngineA: "a", EngineB: "b", Metric: "MAP", W: 2, P: 0.0123, AdjustedP: ptr(0.0369), Stars: "*",
-					MeanDifference: &metrics.Interval{Mean: 0.0627, Low: -0.0137, High: 0.1097}},
+					MeanDifference: &irmetrics.Interval{Mean: 0.0627, Low: -0.0137, High: 0.1097}},
 				{EngineA: "a", EngineB: "twin", Metric: "MAP", P: 1, AdjustedP: ptr(1), Untestable: true,
-					MeanDifference: &metrics.Interval{Mean: 0, Low: 0, High: 0}},
+					MeanDifference: &irmetrics.Interval{Mean: 0, Low: 0, High: 0}},
 			},
 		}},
 	}

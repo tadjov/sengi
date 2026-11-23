@@ -11,8 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tadjov/sengi/internal/bench/metrics"
 	"github.com/tadjov/sengi/internal/storage"
+	"github.com/tadjov/sengi/pkg/irmetrics"
 )
 
 // fakeVectorStore returns canned vectors so the scoring logic can be tested
@@ -91,9 +91,9 @@ func TestVectorGradePool_GradesTheTenNearestDocsRelevantAndTheRestNot(t *testing
 	for i := range nearest {
 		nearest[i] = docs[9-i].ID
 	}
-	assert.Equal(t, 1.0, metrics.RecallAtK(nearest, got, 10, 1), "the exact top ten in reverse order")
+	assert.Equal(t, 1.0, irmetrics.RecallAtK(nearest, got, 10, 1), "the exact top ten in reverse order")
 	nineAndAFar := append(slices.Clone(nearest[:9]), docs[14].ID)
-	assert.InDelta(t, 0.9, metrics.RecallAtK(nineAndAFar, got, 10, 1), 1e-12)
+	assert.InDelta(t, 0.9, irmetrics.RecallAtK(nineAndAFar, got, 10, 1), 1e-12)
 }
 
 func TestVectorGradePool_BreaksATieAtTheTenthDocByID(t *testing.T) {

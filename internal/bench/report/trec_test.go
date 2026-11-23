@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/bench/judgment"
-	"github.com/tadjov/sengi/internal/bench/metrics"
 	"github.com/tadjov/sengi/internal/bench/runner"
+	"github.com/tadjov/sengi/pkg/irmetrics"
 )
 
 func fixtureDoc(n int) uuid.UUID {
@@ -67,7 +67,7 @@ func trecFixture() *runner.BenchmarkResult {
 			jr.Results[qid][engine] = runner.QueryResult{
 				QueryID:       qid,
 				EngineName:    engine,
-				Scores:        metrics.ComputeAll(ranked, trecFixtureGrades[qid], kValues, cfg.RelevanceThreshold),
+				Scores:        irmetrics.ComputeAll(ranked, trecFixtureGrades[qid], kValues, cfg.RelevanceThreshold),
 				RankedDocIDs:  ranked,
 				ReturnedCount: len(ranked),
 			}

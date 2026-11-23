@@ -2,7 +2,7 @@ package runner
 
 import (
 	"github.com/google/uuid"
-	"github.com/tadjov/sengi/internal/bench/metrics"
+	"github.com/tadjov/sengi/pkg/irmetrics"
 )
 
 type QueryResult struct {
@@ -10,7 +10,7 @@ type QueryResult struct {
 	Category      string
 	EngineName    string
 	RequestDigest string
-	Scores        metrics.ScoreSet
+	Scores        irmetrics.ScoreSet
 	RankedDocIDs  []uuid.UUID
 	ReturnedCount int
 	CorpusMatches *int64

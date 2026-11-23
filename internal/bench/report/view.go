@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tadjov/sengi/internal/bench/metrics"
+	"github.com/tadjov/sengi/pkg/irmetrics"
 )
 
 // jobView is one job's tables, built once for every renderer. Each renderer
@@ -374,7 +374,7 @@ func verdict(s PairwiseSignificance) cell {
 	}
 }
 
-func fmtMeanDifference(d *metrics.Interval) string {
+func fmtMeanDifference(d *irmetrics.Interval) string {
 	if d == nil {
 		return "—"
 	}

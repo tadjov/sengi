@@ -7,15 +7,15 @@ import (
 	"testing"
 
 	"github.com/tadjov/sengi/internal/bench/engine"
-	"github.com/tadjov/sengi/internal/bench/metrics"
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/storage/es"
 	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/pkg/irmetrics"
 )
 
 func TestGenerate_RecordsIndexProvenanceThroughTheWrittenReport(t *testing.T) {
-	br := makeBenchmarkResult([]string{"pg", "es"}, []string{"q1"}, map[string]map[string]metrics.ScoreSet{
+	br := makeBenchmarkResult([]string{"pg", "es"}, []string{"q1"}, map[string]map[string]irmetrics.ScoreSet{
 		"q1": {"pg": makeJudgedScores(0.7), "es": makeJudgedScores(0.5)},
 	})
 	rpt := Generate(br, &GenerateOptions{
