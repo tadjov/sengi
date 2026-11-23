@@ -58,11 +58,13 @@ The project follows a layered architecture pattern:
         - `pg/`: PostgreSQL storage implementation with full-text search
         - `es/`: Elasticsearch storage implementation
     - `progress/`: The counter long-running domain code reports to (records read, rows copied, queries run); `internal/cli` draws it as one status line on stderr
-    - `resilience/`: Retry policy for HTTP calls: 408, 429 and 5xx or a dropped connection, honouring `Retry-After`, else backing off with jitter; only the `jev` judge uses it today
 
-- **pkg/**: Shared packages and APIs
+- **pkg/**: Shared packages and APIs another project could import; only `apis/mapping` imports `internal/`, and a test keeps it that way
     - `apis/mapping/`: The mapping spec, a source's shape (`mapping.Spec`)
     - `apis/preprocess/`: The preprocess spec, our policy for a corpus (`preprocess.Spec`)
+    - `datapackage/`: Frictionless Data Package v2 descriptors: hashing, writing and publishing a package, and opening one from a local path, `https://` or `s3://`
+    - `irmetrics/`: NDCG, MAP, MRR, Bpref, P/R/F1, and the statistics over them (Wilcoxon, kappa, Kendall's tau, bootstrap)
+    - `resilience/`: Retry policy for HTTP calls: 408, 429 and 5xx or a dropped connection, honouring `Retry-After`, else backing off with jitter; only the `jev` judge uses it today
     - `schema/`: Schema generation utilities
 
 - **api/**: API schemas and examples
@@ -148,7 +150,6 @@ TREC-style IR evaluation pipeline. Full docs: [docs/bench.md](docs/bench.md).
 - `runner/` — orchestration: warmup + measured iterations, per-query metrics
 - `rungate/` — decides whether a finished run can stand as its track's result (every cell answered, ranked stably, scored against judgments graded on the current pool)
 - `report/` — aggregation, JSON output, and one table view rendered to the terminal, Markdown and HTML
-- `metrics/` — NDCG, MAP, MRR, Bpref, P/R/F1
 - `agreement/` — how alike judgment sets grade the same pairs and rank a run's engines (`bench diff judgments`)
 - `meta/` — provenance block embedded in every artifact (run_id, tool, generated_at, sources)
 - `version/` — schema version constant + checker

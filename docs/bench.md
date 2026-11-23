@@ -566,7 +566,7 @@ Key flags:
 - Jev sees what the LLM judge sees. The phrase, boolean and filter gates run first, and a doc they refuse grades 0 without a request. The request's `state` is the article as the LLM prompt shows it, content cut at 1,744 characters, and its one `score` question carries the query text, the constraint note and the four levels 0 to 3.
 - The grade is the most probable level, a tie going to the lower grade, as the instructions ask; never the rounded `score`. Probabilities that are not one per level 0 to 3, each between 0 and 1 and summing to 1 within 0.05, leave the doc unjudged.
 - The judge block records `model`, `rubric_version` (the question's wording and the grade rule), `gate_version` and, in `invocation`, the endpoint and model.
-- A 408, 429 or 5xx, or a request that got no response, is retried through `internal/resilience`: 5 attempts, waiting what `Retry-After` asks (seconds or an HTTP date), else 0.5 s doubling up to 5 s less up to 25% jitter. Each attempt times out after 30 s. Any other status fails the doc with its status, body and `x-typesafe-request-id`, and `--resume` retries it.
+- A 408, 429 or 5xx, or a request that got no response, is retried through `pkg/resilience`: 5 attempts, waiting what `Retry-After` asks (seconds or an HTTP date), else 0.5 s doubling up to 5 s less up to 25% jitter. Each attempt times out after 30 s. Any other status fails the doc with its status, body and `x-typesafe-request-id`, and `--resume` retries it.
 - Jev is not deterministic: the same request can return other probabilities, so a rerun may grade a borderline doc differently. The same doc always sends the same bytes.
 
 ### `bench grade [<name>] --against <S|path> [--sample N] [--seed S] [--pg <dsn>]`
