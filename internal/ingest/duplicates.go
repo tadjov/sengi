@@ -105,7 +105,7 @@ func newDuplicateFinder(spec preprocess.Spec, digests *fieldDigests) *duplicateF
 		keyHash: sha256.New(),
 		ids:     map[uuid.UUID]struct{}{},
 	}
-	for i, key := range spec.Duplicates.Keys {
+	for i, key := range spec.Unique.Keys {
 		compared := duplicateKey{name: key.Name, kept: map[digest]uuid.UUID{}}
 		for _, field := range key.Fields {
 			compared.fields = append(compared.fields, digests.index(field))

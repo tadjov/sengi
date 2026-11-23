@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../api/preprocess-spec/preprocess-v1.json
 kind: Preprocess
 version: v1
 name: cc-news
@@ -10,7 +11,7 @@ output:
 id:
   kind: urlHash
 
-duplicates:
+unique:
   keep: first
   keys:
     - name: same-url
@@ -18,29 +19,17 @@ duplicates:
     - name: same-page
       fields: [PublisherDomain, Title, Content]
 
-signals:
-  - name: headlines-sharing-body
-    distinct: Title
-    sharing: Content
-    within: PublisherDomain
-  - name: headlines-sharing-description
-    distinct: Title
-    sharing: Description
-    within: PublisherDomain
-
 rules:
   # From 3 headlines up, 85-91% of shared-body groups have unrelated headlines; at 2 only half do.
   - name: shared-body
-    when: {signal: headlines-sharing-body, atLeast: 3}
-    action: clear
-    field: Content
+    clear: Content
+    when: {countDistinct: Title, groupBy: [PublisherDomain, Content], atLeast: 3}
   # Shared descriptions are site taglines from 5 headlines up; at 3-4 they still include real stories.
   - name: shared-description
-    when: {signal: headlines-sharing-description, atLeast: 5}
-    action: clear
-    field: Description
+    clear: Description
+    when: {countDistinct: Title, groupBy: [PublisherDomain, Description], atLeast: 5}
 
 checks:
-  dropped: {warn: 0.01, error: 0.02}
-  duplicates: {warn: 0.08, error: 0.10}
-  cleared: {warn: 0.10, error: 0.12}
+  droppedOfRead: {warn: 1%, error: 2%}
+  duplicatesOfRead: {warn: 8%, error: 10%}
+  clearedOfWritten: {warn: 10%, error: 12%}

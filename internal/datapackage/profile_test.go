@@ -107,7 +107,7 @@ func fullPackage() datapackage.Package {
 }
 
 func fullPreprocess() *datapackage.Preprocess {
-	warn, fail := 0.08, 0.10
+	warn, fail := preprocess.MustParseThreshold("8%"), preprocess.MustParseThreshold("2")
 	return &datapackage.Preprocess{
 		ID:   datapackage.ArticleIDs{Kind: preprocess.IDKindURLHash, Algorithm: "uuidv5", Namespace: "6ba7b811-9dad-11d1-80b4-00c04fd430c8"},
 		Lock: datapackage.Lock{Spec: "sha256:" + zeros64, Mapping: "sha256:" + zeros64, Input: "sha256:" + zeros64, Tool: "datapipe/0.0.0"},
@@ -117,13 +117,13 @@ func fullPreprocess() *datapackage.Preprocess {
 			Duplicates: map[string]int64{"same-url": 1, "same-page": 1},
 			Cleared:    map[string]int64{"shared-body": 1},
 		},
-		Signals: map[string]datapackage.SignalStats{"headlines-sharing-body": {
-			Distinct: "Title", Sharing: "Content", Within: "PublisherDomain",
+		Rules: map[string]datapackage.RuleStats{"shared-body": {
+			CountDistinct: "Title", GroupBy: []string{"PublisherDomain", "Content"},
 			Articles: 6, Median: 1, P90: 3, P99: 3, Max: 3,
 			AtLeast: map[string]int64{"2": 3},
-			Top:     []datapackage.SignalGroup{{Within: "example.com", Sharing: "Subscribe to read", Value: 3, Articles: 3}},
+			Top:     []datapackage.Group{{Values: []string{"example.com", "Subscribe to read"}, CountDistinct: 3, Articles: 3}},
 		}},
-		Checks: map[string]datapackage.CheckResult{"duplicates": {Observed: 0.2, Warn: &warn, Error: &fail, Result: datapackage.CheckError}},
+		Checks: map[string]datapackage.CheckResult{"duplicatesOfRead": {Count: 2, Share: 0.2, Warn: &warn, Error: &fail, Result: datapackage.CheckError}},
 	}
 }
 
@@ -140,39 +140,41 @@ func TestWrittenDescriptorUsesContractPropertyNames(t *testing.T) {
 	doc := readDescriptorJSON(t, dir)
 
 	want := map[string]any{
-		"$schema":                                "https://datapackage.org/profiles/2.0/datapackage.json",
-		"name":                                   "cc-news-canonical",
-		"version":                                "v1",
-		"articleSchema":                          "article/v2",
-		"language":                               "eng",
-		"preprocess/id/kind":                     "urlHash",
-		"preprocess/id/algorithm":                "uuidv5",
-		"preprocess/lock/tool":                   "datapipe/0.0.0",
-		"producedBy/tool":                        "datapipe preprocess",
-		"preprocess/counts/read":                 10.0,
-		"preprocess/counts/written":              6.0,
-		"preprocess/counts/duplicates/same-page": 1.0,
-		"preprocess/counts/cleared/shared-body":  1.0,
-		"preprocess/checks/duplicates/result":    "error",
-		"preprocess/signals/headlines-sharing-body/atLeast/2": 3.0,
-		"embedding/model":          "qwen3-embedding:0.6b",
-		"embedding/hfModel":        "Qwen/Qwen3-Embedding-0.6B",
-		"embedding/revision":       "abc123",
-		"embedding/tag":            "qwen3-embedding:0.6b@1024",
-		"embedding/dim":            1024.0,
-		"embedding/recipe":         "lead-v1",
-		"embedding/pooling":        "last_token",
-		"embedding/normalized":     true,
-		"embedding/maxTokens":      512.0,
-		"embedding/batchSize":      64.0,
-		"embedding/dtype":          "float16",
-		"canonical/name":           "cc-news-canonical",
-		"canonical/version":        "v1",
-		"canonical/resourceHash":   "sha256:" + zeros64,
-		"derivedFrom/name":         "cc-news-embeddings",
-		"derivedFrom/version":      "v1",
-		"derivedFrom/tag":          "qwen3-embedding:0.6b@2048",
-		"derivedFrom/resourceHash": "sha256:" + zeros64,
+		"$schema":                                   "https://datapackage.org/profiles/2.0/datapackage.json",
+		"name":                                      "cc-news-canonical",
+		"version":                                   "v1",
+		"articleSchema":                             "article/v2",
+		"language":                                  "eng",
+		"preprocess/id/kind":                        "urlHash",
+		"preprocess/id/algorithm":                   "uuidv5",
+		"preprocess/lock/tool":                      "datapipe/0.0.0",
+		"producedBy/tool":                           "datapipe preprocess",
+		"preprocess/counts/read":                    10.0,
+		"preprocess/counts/written":                 6.0,
+		"preprocess/counts/duplicates/same-page":    1.0,
+		"preprocess/counts/cleared/shared-body":     1.0,
+		"preprocess/checks/duplicatesOfRead/result": "error",
+		"preprocess/checks/duplicatesOfRead/warn":   "8%",
+		"preprocess/checks/duplicatesOfRead/error":  2.0,
+		"preprocess/rules/shared-body/atLeast/2":    3.0,
+		"embedding/model":                           "qwen3-embedding:0.6b",
+		"embedding/hfModel":                         "Qwen/Qwen3-Embedding-0.6B",
+		"embedding/revision":                        "abc123",
+		"embedding/tag":                             "qwen3-embedding:0.6b@1024",
+		"embedding/dim":                             1024.0,
+		"embedding/recipe":                          "lead-v1",
+		"embedding/pooling":                         "last_token",
+		"embedding/normalized":                      true,
+		"embedding/maxTokens":                       512.0,
+		"embedding/batchSize":                       64.0,
+		"embedding/dtype":                           "float16",
+		"canonical/name":                            "cc-news-canonical",
+		"canonical/version":                         "v1",
+		"canonical/resourceHash":                    "sha256:" + zeros64,
+		"derivedFrom/name":                          "cc-news-embeddings",
+		"derivedFrom/version":                       "v1",
+		"derivedFrom/tag":                           "qwen3-embedding:0.6b@2048",
+		"derivedFrom/resourceHash":                  "sha256:" + zeros64,
 	}
 	for pointer, value := range want {
 		if got := lookup(doc, pointer); got != value {

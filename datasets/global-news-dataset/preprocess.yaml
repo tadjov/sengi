@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../api/preprocess-spec/preprocess-v1.json
 kind: Preprocess
 version: v1
 name: global-news
@@ -10,7 +11,7 @@ output:
 id:
   kind: urlHash
 
-duplicates:
+unique:
   keys:
     - name: same-url
       fields: [URL]

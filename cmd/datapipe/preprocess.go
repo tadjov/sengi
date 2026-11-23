@@ -121,15 +121,28 @@ func preprocessSummary(result datapackage.Published) cli.Summary {
 	for _, name := range slices.Sorted(maps.Keys(record.Checks)) {
 		check := record.Checks[name]
 		if check.Result == datapackage.CheckWarn {
-			summary.Notes = append(summary.Notes, cli.Note{Text: fmt.Sprintf("check %s: %.4f is over its warn budget %.4f", name, check.Observed, *check.Warn), Warning: true})
+			summary.Notes = append(summary.Notes, cli.Note{Text: fmt.Sprintf("check %s: %d (%.2f%%) is over its warn budget %s", name, check.Count, 100*check.Share, check.Warn), Warning: true})
 		}
 	}
-	if result.Restored {
-		summary.Notes = append(summary.Notes, cli.Note{Text: "version " + result.Package.Version + " was published without some resources; restored them from this run"})
+	if result.Restored.Any() {
+		summary.Notes = append(summary.Notes, cli.Note{Text: restoredNote(result.Package.Version, result.Restored), Warning: len(result.Restored.Mismatched) > 0})
 	} else if result.Existing {
 		summary.Notes = append(summary.Notes, cli.Note{Text: "version " + result.Package.Version + " was already published; kept it and discarded this run's copy"})
 	}
 	return summary
+}
+
+// restoredNote says what a rerun wrote into an existing version, such as
+// "version v1: replaced articles.parquet, which did not match its descriptor; restored rejects.parquet".
+func restoredNote(version string, restored datapackage.Restored) string {
+	var parts []string
+	if len(restored.Mismatched) > 0 {
+		parts = append(parts, "replaced "+strings.Join(restored.Mismatched, ", ")+", which did not match its descriptor")
+	}
+	if len(restored.Missing) > 0 {
+		parts = append(parts, "restored "+strings.Join(restored.Missing, ", "))
+	}
+	return "version " + version + ": " + strings.Join(parts, "; ")
 }
 
 func total(counts map[string]int64) int64 {

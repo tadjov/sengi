@@ -14,7 +14,7 @@
       "namespace": "697bf49f-ca14-4303-83eb-f9d05f7c7c42"
     },
     "lock": {
-      "spec": "sha256:8c931c0bcbef278688931bed07077358e9a728569e589bc8516fe35c0ff7c6b9",
+      "spec": "sha256:ee528920b14c4c665e29f80d1e98152d2df21cb6ab7dd127c1fbe3b6475fd1da",
       "mapping": "sha256:32a9e02647b7ccfdd51ba584b4a7adf7c3228b37b33fc98bd42d1cabe796f6ef",
       "input": "sha256:592574f3c05708a6f2050e9eb0b849b3b675c9c7a345f8211c31cf0350e4004c",
       "tool": "datapipe/0.0.0"
@@ -34,11 +34,13 @@
       },
       "written": 666245
     },
-    "signals": {
-      "headlines-sharing-body": {
-        "distinct": "Title",
-        "sharing": "Content",
-        "within": "PublisherDomain",
+    "rules": {
+      "shared-body": {
+        "countDistinct": "Title",
+        "groupBy": [
+          "PublisherDomain",
+          "Content"
+        ],
         "articles": 666245,
         "median": 1,
         "p90": 1,
@@ -56,71 +58,93 @@
         },
         "top": [
           {
-            "within": "amarujala.com",
-            "sharing": "Read the latest and breaking Hindi news on amarujala.com. Get live Hindi news about India and the World from politics, sports, bollywood, business, cities, life…",
-            "value": 2228,
+            "values": [
+              "amarujala.com",
+              "Read the latest and breaking Hindi news on amarujala.com. Get live Hindi news about India and the World from politics, sports, bollywood, business, cities, life…"
+            ],
+            "countDistinct": 2228,
             "articles": 2228
           },
           {
-            "within": "which.co.uk",
-            "sharing": "Cookies at Which? We use cookies to help improve our sites. If you continue, we'll assume that you're happy to accept our cookies. Find out more about cookies O…",
-            "value": 2076,
+            "values": [
+              "which.co.uk",
+              "Cookies at Which? We use cookies to help improve our sites. If you continue, we'll assume that you're happy to accept our cookies. Find out more about cookies O…"
+            ],
+            "countDistinct": 2076,
             "articles": 2076
           },
           {
-            "within": "which.co.uk",
-            "sharing": "We always recommend that before selecting or making any important decisions about a care home you take the time to check that it is right for your or your relat…",
-            "value": 1883,
+            "values": [
+              "which.co.uk",
+              "We always recommend that before selecting or making any important decisions about a care home you take the time to check that it is right for your or your relat…"
+            ],
+            "countDistinct": 1883,
             "articles": 1883
           },
           {
-            "within": "reuters.com",
-            "sharing": "UPDATE 3-Nestle takes food price rises in its stride ZURICH, Aug 9 Nestle expects pressure from the rising price of ingredients for its products such as chocola…",
-            "value": 1841,
+            "values": [
+              "reuters.com",
+              "UPDATE 3-Nestle takes food price rises in its stride ZURICH, Aug 9 Nestle expects pressure from the rising price of ingredients for its products such as chocola…"
+            ],
+            "countDistinct": 1841,
             "articles": 1841
           },
           {
-            "within": "amarujala.com",
-            "sharing": "Read the latest and breaking news on amarujala.com. Get live Hindi news about India and the World from politics, sports, bollywood, business, cities, lifestyle,…",
-            "value": 1119,
+            "values": [
+              "amarujala.com",
+              "Read the latest and breaking news on amarujala.com. Get live Hindi news about India and the World from politics, sports, bollywood, business, cities, lifestyle,…"
+            ],
+            "countDistinct": 1119,
             "articles": 1119
           },
           {
-            "within": "saucey.com",
-            "sharing": "Thank you for submitting a review! Your input is very much appreciated. Share it with your friends so they can enjoy it too!",
-            "value": 949,
+            "values": [
+              "saucey.com",
+              "Thank you for submitting a review! Your input is very much appreciated. Share it with your friends so they can enjoy it too!"
+            ],
+            "countDistinct": 949,
             "articles": 949
           },
           {
-            "within": "fox.com",
-            "sharing": "Get the new app Now including FX, National Geographic, and hundreds of movies on all your devices",
-            "value": 555,
+            "values": [
+              "fox.com",
+              "Get the new app Now including FX, National Geographic, and hundreds of movies on all your devices"
+            ],
+            "countDistinct": 555,
             "articles": 555
           },
           {
-            "within": "slideshare.net",
-            "sharing": "We use your LinkedIn profile and activity data to personalize ads and to show you more relevant ads. You can change your ad preferences anytime.",
-            "value": 535,
+            "values": [
+              "slideshare.net",
+              "We use your LinkedIn profile and activity data to personalize ads and to show you more relevant ads. You can change your ad preferences anytime."
+            ],
+            "countDistinct": 535,
             "articles": 535
           },
           {
-            "within": "iwanna.com",
-            "sharing": "Welcome to IWANNA.com! Please enter your zipcode so we can show you ads closest to your location. GO Please enter correct zip code. You can change this at any t…",
-            "value": 427,
+            "values": [
+              "iwanna.com",
+              "Welcome to IWANNA.com! Please enter your zipcode so we can show you ads closest to your location. GO Please enter correct zip code. You can change this at any t…"
+            ],
+            "countDistinct": 427,
             "articles": 427
           },
           {
-            "within": "cnn.com",
-            "sharing": "Chat with us in Facebook Messenger. Find out what's happening in the world as it unfolds.",
-            "value": 322,
+            "values": [
+              "cnn.com",
+              "Chat with us in Facebook Messenger. Find out what's happening in the world as it unfolds."
+            ],
+            "countDistinct": 322,
             "articles": 322
           }
         ]
       },
-      "headlines-sharing-description": {
-        "distinct": "Title",
-        "sharing": "Description",
-        "within": "PublisherDomain",
+      "shared-description": {
+        "countDistinct": "Title",
+        "groupBy": [
+          "PublisherDomain",
+          "Description"
+        ],
         "articles": 494929,
         "median": 1,
         "p90": 1,
@@ -137,85 +161,108 @@
         },
         "top": [
           {
-            "within": "si.com",
-            "sharing": "News from around the web.",
-            "value": 603,
+            "values": [
+              "si.com",
+              "News from around the web."
+            ],
+            "countDistinct": 603,
             "articles": 603
           },
           {
-            "within": "nigeriatoday.ng",
-            "sharing": "Latest and breaking as it happens in Nigeria Today",
-            "value": 448,
+            "values": [
+              "nigeriatoday.ng",
+              "Latest and breaking as it happens in Nigeria Today"
+            ],
+            "countDistinct": 448,
             "articles": 457
           },
           {
-            "within": "noozhawk.com",
-            "sharing": "Noozhawk.com delivers local breaking news, local sports, schools, nonprofits, obituaries, business, arts and entertainment, calendar, local opinions and more.",
-            "value": 409,
+            "values": [
+              "noozhawk.com",
+              "Noozhawk.com delivers local breaking news, local sports, schools, nonprofits, obituaries, business, arts and entertainment, calendar, local opinions and more."
+            ],
+            "countDistinct": 409,
             "articles": 409
           },
           {
-            "within": "go.com",
-            "sharing": "Get breaking national and world news, broadcast video coverage, and exclusive interviews. Find the top news online at ABC news.",
-            "value": 304,
+            "values": [
+              "go.com",
+              "Get breaking national and world news, broadcast video coverage, and exclusive interviews. Find the top news online at ABC news."
+            ],
+            "countDistinct": 304,
             "articles": 311
           },
           {
-            "within": "lfpress.com",
-            "sharing": "News, Local, Provincial, Canada, World, Sports, High School Sports, Local Hockey, Hockey, Basketball, Baseball, Football, Soccer, Lacrosse, Curling, Other Sport…",
-            "value": 300,
+            "values": [
+              "lfpress.com",
+              "News, Local, Provincial, Canada, World, Sports, High School Sports, Local Hockey, Hockey, Basketball, Baseball, Football, Soccer, Lacrosse, Curling, Other Sport…"
+            ],
+            "countDistinct": 300,
             "articles": 301
           },
           {
-            "within": "wjhl.com",
-            "sharing": "WJHL-TV is the source for breaking local news, weather, and sports in the Tri-Cities. We ask the questions when you can't with our investigative and community w…",
-            "value": 295,
+            "values": [
+              "wjhl.com",
+              "WJHL-TV is the source for breaking local news, weather, and sports in the Tri-Cities. We ask the questions when you can't with our investigative and community w…"
+            ],
+            "countDistinct": 295,
             "articles": 295
           },
           {
-            "within": "wpri.com",
-            "sharing": "WPRI 12 Eyewitness News on WPRI.com is Providence, New Bedford, Fall River news and weather. We're coverage you can count on in Rhode Island and Southeastern Ma…",
-            "value": 289,
+            "values": [
+              "wpri.com",
+              "WPRI 12 Eyewitness News on WPRI.com is Providence, New Bedford, Fall River news and weather. We're coverage you can count on in Rhode Island and Southeastern Ma…"
+            ],
+            "countDistinct": 289,
             "articles": 289
           },
           {
-            "within": "wivb.com",
-            "sharing": "Buffalo News, Buffalo Weather | WIVB-TV News 4 Buffalo, NY | WIVB.com",
-            "value": 249,
+            "values": [
+              "wivb.com",
+              "Buffalo News, Buffalo Weather | WIVB-TV News 4 Buffalo, NY | WIVB.com"
+            ],
+            "countDistinct": 249,
             "articles": 249
           },
           {
-            "within": "wnd.com",
-            "sharing": "A Free Press For A Free People Since 1997",
-            "value": 246,
+            "values": [
+              "wnd.com",
+              "A Free Press For A Free People Since 1997"
+            ],
+            "countDistinct": 246,
             "articles": 247
           },
           {
-            "within": "tv3.ie",
-            "sharing": "Catch-up TV, Entertainment, News, Sport, Soaps and all your favourite Irish and International shows from TV3",
-            "value": 221,
+            "values": [
+              "tv3.ie",
+              "Catch-up TV, Entertainment, News, Sport, Soaps and all your favourite Irish and International shows from TV3"
+            ],
+            "countDistinct": 221,
             "articles": 222
           }
         ]
       }
     },
     "checks": {
-      "cleared": {
-        "observed": 0.09073839203296084,
-        "warn": 0.1,
-        "error": 0.12,
+      "clearedOfWritten": {
+        "count": 60454,
+        "share": 0.09073839203296084,
+        "warn": "10%",
+        "error": "12%",
         "result": "pass"
       },
-      "dropped": {
-        "observed": 0.00046735503875093364,
-        "warn": 0.01,
-        "error": 0.02,
+      "droppedOfRead": {
+        "count": 331,
+        "share": 0.00046735503875093364,
+        "warn": "1%",
+        "error": "2%",
         "result": "pass"
       },
-      "duplicates": {
-        "observed": 0.05882884498355786,
-        "warn": 0.08,
-        "error": 0.1,
+      "duplicatesOfRead": {
+        "count": 41665,
+        "share": 0.05882884498355786,
+        "warn": "8%",
+        "error": "10%",
         "result": "pass"
       }
     }
@@ -243,15 +290,15 @@
       "name": "rejects",
       "path": "rejects.parquet",
       "format": "parquet",
-      "bytes": 9113480,
-      "hash": "sha256:f9157b427550319c0a0bf59172e5485441099427decc492dfada4b33df03d984"
+      "bytes": 9113492,
+      "hash": "sha256:e8684896bd8faffacc3921b49d5e30a944dd74ff55e8dd5288857d2bd7b44e90"
     },
     {
       "name": "changes",
       "path": "changes.parquet",
       "format": "parquet",
-      "bytes": 34451912,
-      "hash": "sha256:9938e35d03687503fb7af60aa837bb0b2494a4a62f0308244ae3bf75eab4fc14"
+      "bytes": 34451928,
+      "hash": "sha256:287f2e51d9f98c2b4a1ca1e055eab13f1d03bd3a91d7ae11273d282ad1c83817"
     }
   ]
 }

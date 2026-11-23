@@ -4,11 +4,11 @@ import (
 	"github.com/tadjov/sengi/pkg/apis/preprocess"
 )
 
-// ruleHit is a rule firing on one article at its signal's value.
+// ruleHit is a rule matching one article at its group's distinct count.
 type ruleHit struct {
-	rule  string
-	field string
-	value int64
+	rule          string
+	field         string
+	countDistinct int64
 }
 
 // ruleOutcome is what the rules decided for each kept article, by its position among them.
@@ -19,28 +19,28 @@ type ruleOutcome struct {
 
 // applyRules runs the rules in order. A drop wins over any clear, the first rule to drop
 // or to clear a field names the edit, and clearing a field that is already empty changes nothing.
-func (r *preprocessRun) applyRules(signals map[string]signalValues) ruleOutcome {
+func (r *preprocessRun) applyRules(counted map[string]groupCounts) ruleOutcome {
 	outcome := ruleOutcome{drops: map[int]ruleHit{}, clears: map[int][]ruleHit{}}
 	cleared := map[int]map[string]bool{}
 	for _, rule := range r.spec.Rules {
-		for k, value := range signals[rule.When.Signal].values {
-			if value < rule.When.AtLeast {
+		for k, count := range counted[countKey(rule.When)].counts {
+			if count < rule.When.AtLeast {
 				continue
 			}
-			hit := ruleHit{rule: rule.Name, field: rule.Field, value: value}
-			switch rule.Action {
+			hit := ruleHit{rule: rule.Name, field: rule.Clear, countDistinct: count}
+			switch rule.Action() {
 			case preprocess.ActionDrop:
 				if _, dropped := outcome.drops[k]; !dropped {
 					outcome.drops[k] = hit
 				}
 			case preprocess.ActionClear:
-				if cleared[k][rule.Field] || !r.isFilled(k, rule.Field) {
+				if cleared[k][rule.Clear] || !r.isFilled(k, rule.Clear) {
 					continue
 				}
 				if cleared[k] == nil {
 					cleared[k] = map[string]bool{}
 				}
-				cleared[k][rule.Field] = true
+				cleared[k][rule.Clear] = true
 				outcome.clears[k] = append(outcome.clears[k], hit)
 			}
 		}
@@ -54,7 +54,7 @@ func (r *preprocessRun) applyRules(signals map[string]signalValues) ruleOutcome 
 func (o ruleOutcome) counts(rules []preprocess.Rule) (dropped, cleared map[string]int64) {
 	dropped, cleared = map[string]int64{}, map[string]int64{}
 	for _, rule := range rules {
-		switch rule.Action {
+		switch rule.Action() {
 		case preprocess.ActionDrop:
 			dropped[ruleDropKey(rule.Name)] = 0
 		case preprocess.ActionClear:

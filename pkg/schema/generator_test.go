@@ -179,3 +179,31 @@ func TestAFieldErrorNamesTheField(t *testing.T) {
 		t.Errorf("err = %v, want it to name field ByYear", err)
 	}
 }
+
+// countOrPercent marshals itself, so only the schema it gives describes it.
+type countOrPercent struct{ text string }
+
+func (c countOrPercent) MarshalJSON() ([]byte, error) { return []byte(c.text), nil }
+
+func (countOrPercent) JSONSchema() *schema.JSONSchema {
+	return &schema.JSONSchema{OneOf: []*schema.JSONSchema{{Type: "integer"}, {Type: "string", Pattern: "%$"}}}
+}
+
+type providedProbe struct {
+	Budget  countOrPercent  `json:"budget" description:"How much may go"`
+	Pointer *countOrPercent `json:"pointer,omitempty"`
+}
+
+func TestATypeThatDescribesItselfKeepsItsSchemaAndTheFieldDescription(t *testing.T) {
+	generated := generate[providedProbe](t, strictGenerator())
+
+	for _, name := range []string{"budget", "pointer"} {
+		property := generated.Properties[name]
+		if len(property.OneOf) != 2 || property.OneOf[0].Type != "integer" || property.OneOf[1].Type != "string" {
+			t.Errorf("%s = %+v, want the schema the type gives", name, property)
+		}
+	}
+	if got := generated.Properties["budget"].Description; got != "How much may go" {
+		t.Errorf("budget description = %q, want the field's", got)
+	}
+}

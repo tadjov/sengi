@@ -132,15 +132,25 @@
           "additionalProperties": {
             "type": "object",
             "required": [
-              "observed",
+              "count",
+              "share",
               "result"
             ],
             "properties": {
-              "error": {
-                "type": "number"
+              "count": {
+                "type": "integer"
               },
-              "observed": {
-                "type": "number"
+              "error": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^(100(\\.0+)?|[0-9]{1,2}(\\.[0-9]+)?)%$"
+                  }
+                ]
               },
               "result": {
                 "type": "string",
@@ -150,8 +160,20 @@
                   "error"
                 ]
               },
-              "warn": {
+              "share": {
                 "type": "number"
+              },
+              "warn": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^(100(\\.0+)?|[0-9]{1,2}(\\.[0-9]+)?)%$"
+                  }
+                ]
               }
             },
             "additionalProperties": false
@@ -242,13 +264,13 @@
           },
           "additionalProperties": false
         },
-        "signals": {
+        "rules": {
           "type": "object",
           "additionalProperties": {
             "type": "object",
             "required": [
-              "distinct",
-              "sharing",
+              "countDistinct",
+              "groupBy",
               "articles",
               "median",
               "p90",
@@ -265,8 +287,14 @@
                   "type": "integer"
                 }
               },
-              "distinct": {
+              "countDistinct": {
                 "type": "string"
+              },
+              "groupBy": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               },
               "max": {
                 "type": "integer"
@@ -280,37 +308,31 @@
               "p99": {
                 "type": "integer"
               },
-              "sharing": {
-                "type": "string"
-              },
               "top": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "required": [
-                    "sharing",
-                    "value",
+                    "values",
+                    "countDistinct",
                     "articles"
                   ],
                   "properties": {
                     "articles": {
                       "type": "integer"
                     },
-                    "sharing": {
-                      "type": "string"
-                    },
-                    "value": {
+                    "countDistinct": {
                       "type": "integer"
                     },
-                    "within": {
-                      "type": "string"
+                    "values": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
                     }
                   },
                   "additionalProperties": false
                 }
-              },
-              "within": {
-                "type": "string"
               }
             },
             "additionalProperties": false

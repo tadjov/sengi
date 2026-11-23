@@ -133,6 +133,9 @@ func (g *Generator) generateSchemaForType(t reflect.Type, isRoot bool) (*JSONSch
 		t = t.Elem()
 	}
 
+	if provider, ok := reflect.New(t).Interface().(Provider); ok {
+		return provider.JSONSchema(), nil
+	}
 	if g.config.ClosedObjects && marshalsItself(t) {
 		return nil, fmt.Errorf("%s implements json.Marshaler or encoding.TextMarshaler, so its JSON shape is not its Go shape", t)
 	}
@@ -472,6 +475,11 @@ var (
 	jsonMarshalerType = reflect.TypeFor[json.Marshaler]()
 	textMarshalerType = reflect.TypeFor[encoding.TextMarshaler]()
 )
+
+// Provider is a type whose JSON differs from its Go fields and so gives its own schema.
+type Provider interface {
+	JSONSchema() *JSONSchema
+}
 
 func marshalsItself(t reflect.Type) bool {
 	for _, candidate := range []reflect.Type{t, reflect.PointerTo(t)} {

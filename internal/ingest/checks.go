@@ -20,36 +20,40 @@ func (e *ChecksFailedError) Error() string {
 	for _, name := range slices.Sorted(maps.Keys(e.Preprocess.Checks)) {
 		check := e.Preprocess.Checks[name]
 		if check.Result == datapackage.CheckError {
-			failed = append(failed, fmt.Sprintf("%s %.4f is over %.4f", name, check.Observed, *check.Error))
+			failed = append(failed, fmt.Sprintf("%s %d (%.2f%%) is over %s", name, check.Count, 100*check.Share, check.Error))
 		}
 	}
 	return "checks failed, nothing published: " + strings.Join(failed, "; ")
 }
 
-// observedShares are dropped and duplicates out of the records read, cleared out of the articles written.
-type observedShares struct {
-	dropped, duplicates, cleared float64
+// checkCounts are what the checks measure and the bases they share them of.
+type checkCounts struct {
+	read, dropped, duplicates int64
+	written, cleared          int64
 }
 
-func evaluateChecks(checks preprocess.Checks, observed observedShares) map[string]datapackage.CheckResult {
+func evaluateChecks(checks preprocess.Checks, observed checkCounts) map[string]datapackage.CheckResult {
 	results := map[string]datapackage.CheckResult{}
 	for _, check := range []struct {
-		name     string
-		budget   *preprocess.Budget
-		observed float64
+		name         string
+		budget       *preprocess.Budget
+		count, total int64
 	}{
-		{"dropped", checks.Dropped, observed.dropped},
-		{"duplicates", checks.Duplicates, observed.duplicates},
-		{"cleared", checks.Cleared, observed.cleared},
+		{"droppedOfRead", checks.DroppedOfRead, observed.dropped, observed.read},
+		{"duplicatesOfRead", checks.DuplicatesOfRead, observed.duplicates, observed.read},
+		{"clearedOfWritten", checks.ClearedOfWritten, observed.cleared, observed.written},
 	} {
 		if check.budget == nil {
 			continue
 		}
-		result := datapackage.CheckResult{Observed: check.observed, Warn: check.budget.Warn, Error: check.budget.Error, Result: datapackage.CheckPass}
+		result := datapackage.CheckResult{
+			Count: check.count, Share: share(check.count, check.total),
+			Warn: check.budget.Warn, Error: check.budget.Error, Result: datapackage.CheckPass,
+		}
 		switch {
-		case check.budget.Error != nil && check.observed > *check.budget.Error:
+		case check.budget.Error != nil && check.budget.Error.Exceeded(check.count, check.total):
 			result.Result = datapackage.CheckError
-		case check.budget.Warn != nil && check.observed > *check.budget.Warn:
+		case check.budget.Warn != nil && check.budget.Warn.Exceeded(check.count, check.total):
 			result.Result = datapackage.CheckWarn
 		}
 		results[check.name] = result

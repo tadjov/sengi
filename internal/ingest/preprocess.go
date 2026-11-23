@@ -34,7 +34,7 @@ type PreprocessOptions struct {
 	Progress progress.Counter
 }
 
-// Preprocess runs read, map, id, duplicates, signals, rules and checks, then publishes
+// Preprocess runs read, map, id, unique, rules and checks, then publishes
 // articles, rejects and changes to OutputRoot/<version>, keeping a version already there.
 // A check over its error budget publishes nothing and returns a *ChecksFailedError.
 func Preprocess(ctx context.Context, opts PreprocessOptions) (datapackage.Published, error) {
@@ -127,7 +127,8 @@ type preprocessRun struct {
 	urlSource string
 	digests   *fieldDigests
 	finder    *duplicateFinder
-	signals   []*signalAccumulator
+	// counters holds one group counter per distinct condition the rules count, in rule order.
+	counters []*groupCounter
 	// clearBits gives each field a clear rule names its bit in filled.
 	clearBits map[string]uint
 	filled    []uint8
@@ -166,13 +167,15 @@ func newPreprocessRun(opts PreprocessOptions, mapper *reader.ArticleMapper) *pre
 	if field, ok := opts.Mapping.Field(mapping.TargetURL); ok {
 		run.urlSource = field.Source
 	}
-	for _, signal := range opts.Spec.Signals {
-		run.signals = append(run.signals, newSignalAccumulator(signal, digests))
-	}
+	counted := map[string]bool{}
 	for _, rule := range opts.Spec.Rules {
-		if _, seen := run.clearBits[rule.Field]; rule.Action == preprocess.ActionClear && !seen {
-			digests.index(rule.Field)
-			run.clearBits[rule.Field] = uint(len(run.clearBits))
+		if key := countKey(rule.When); !counted[key] {
+			counted[key] = true
+			run.counters = append(run.counters, newGroupCounter(rule.When, digests))
+		}
+		if _, seen := run.clearBits[rule.Clear]; rule.Clear != "" && !seen {
+			digests.index(rule.Clear)
+			run.clearBits[rule.Clear] = uint(len(run.clearBits))
 		}
 	}
 	return run
@@ -254,7 +257,7 @@ func (r *preprocessRun) readAndDeduplicate(ctx context.Context) error {
 	keptRows := newParquetRowWriter[canonicalRow](kept.buffered)
 
 	r.record.Counts = datapackage.Counts{Dropped: map[string]int64{}, Duplicates: map[string]int64{}}
-	for _, key := range r.spec.Duplicates.Keys {
+	for _, key := range r.spec.Unique.Keys {
 		r.record.Counts.Duplicates[key.Name] = 0
 	}
 
@@ -360,8 +363,8 @@ func (r *preprocessRun) eachRecord(ctx context.Context, source rawSource, keep f
 
 func (r *preprocessRun) keep(origin recordOrigin) {
 	r.origins = append(r.origins, origin)
-	for _, signal := range r.signals {
-		signal.add(r.digests)
+	for _, counter := range r.counters {
+		counter.add(r.digests)
 	}
 	var filled uint8
 	for field, bit := range r.clearBits {
@@ -376,23 +379,25 @@ func (r *preprocessRun) isFilled(k int, field string) bool {
 	return r.filled[k]&(1<<r.clearBits[field]) != 0
 }
 
-// judge computes the signals, decides the rules and runs the checks; it publishes
+// judge counts the groups, decides the rules and runs the checks; it publishes
 // nothing past an error check.
 func (r *preprocessRun) judge() (judged, error) {
-	end := r.counter.Stage("signals")
-	values := map[string]signalValues{}
-	for _, signal := range r.signals {
-		values[signal.spec.Name] = signal.values()
-		signal.members = nil
+	end := r.counter.Stage("groups")
+	decided := judged{counted: map[string]groupCounts{}, stats: map[string]datapackage.RuleStats{}}
+	for _, counter := range r.counters {
+		key := countKey(counter.condition)
+		decided.counted[key] = counter.count()
+		decided.stats[key] = decided.counted[key].stats()
+		counter.members = nil
 	}
-	if len(values) > 0 {
-		r.record.Signals = map[string]datapackage.SignalStats{}
-		for name, v := range values {
-			r.record.Signals[name] = v.stats()
+	if len(r.spec.Rules) > 0 {
+		r.record.Rules = map[string]datapackage.RuleStats{}
+		for _, rule := range r.spec.Rules {
+			r.record.Rules[rule.Name] = decided.stats[countKey(rule.When)]
 		}
 	}
 
-	outcome := r.applyRules(values)
+	outcome := r.applyRules(decided.counted)
 	counts := &r.record.Counts
 	dropped, cleared := outcome.counts(r.spec.Rules)
 	for key, n := range dropped {
@@ -409,10 +414,12 @@ func (r *preprocessRun) judge() (judged, error) {
 		return judged{}, fmt.Errorf("counts do not reconcile: read %d, written plus dropped plus duplicates %d", counts.Read, accounted)
 	}
 
-	observed := observedShares{
-		dropped:    share(sum(counts.Dropped), counts.Read),
-		duplicates: share(sum(counts.Duplicates), counts.Read),
-		cleared:    share(int64(len(outcome.clears)), counts.Written),
+	observed := checkCounts{
+		read:       counts.Read,
+		dropped:    sum(counts.Dropped),
+		duplicates: sum(counts.Duplicates),
+		written:    counts.Written,
+		cleared:    int64(len(outcome.clears)),
 	}
 	if checks := evaluateChecks(r.spec.Checks, observed); len(checks) > 0 {
 		r.record.Checks = checks
@@ -421,11 +428,15 @@ func (r *preprocessRun) judge() (judged, error) {
 		}
 	}
 	end()
-	return judged{values: values, outcome: outcome}, nil
+	decided.outcome = outcome
+	return decided, nil
 }
 
+// judged holds each counted condition, by countKey, and what the rules decided.
 type judged struct {
-	values  map[string]signalValues
+	counted map[string]groupCounts
+	// stats share their Top slices with the record's rules, so groupSamples fills both.
+	stats   map[string]datapackage.RuleStats
 	outcome ruleOutcome
 }
 
@@ -448,8 +459,8 @@ func (r *preprocessRun) write(ctx context.Context, decided judged) error {
 	changeRows := newParquetRowWriter[changeRow](changes.buffered)
 
 	editor := articleEditor{outcome: decided.outcome}
-	for _, signal := range r.spec.Signals {
-		editor.samples = append(editor.samples, newSignalSamples(decided.values[signal.Name], r.record.Signals[signal.Name].Top))
+	for key, counted := range decided.counted {
+		editor.samples = append(editor.samples, newGroupSamples(counted, decided.stats[key].Top))
 	}
 
 	kept, err := os.Open(r.keptPath())
@@ -477,7 +488,7 @@ func (r *preprocessRun) write(ctx context.Context, decided judged) error {
 				origin := r.origins[k]
 				dropped = append(dropped, rejectRow{
 					Resource: r.raw.Package.Resources[origin.resource].Name, Row: origin.row, URL: optional(row.URL),
-					Stage: string(stageRule), Rule: optional(hit.rule), ID: optional(row.ID), SignalValue: &hit.value,
+					Stage: string(stageRule), Rule: optional(hit.rule), ID: optional(row.ID), CountDistinct: &hit.countDistinct,
 				})
 			} else {
 				out = append(out, edited)
@@ -517,17 +528,17 @@ func (r *preprocessRun) write(ctx context.Context, decided judged) error {
 	return nil
 }
 
-// articleEditor applies the rules' clears to a kept article and captures any signal sample it holds.
+// articleEditor applies the rules' clears to a kept article and captures any group sample it holds.
 type articleEditor struct {
 	outcome ruleOutcome
-	samples []signalSamples
+	samples []groupSamples
 }
 
 func (e articleEditor) edit(k int, row canonicalRow) (canonicalRow, []changeRow, error) {
 	hits := e.outcome.clears[k]
 	sampled := false
 	for _, s := range e.samples {
-		_, holds := s.byKey[k]
+		_, holds := s.byArticle[k]
 		sampled = sampled || holds
 	}
 	if len(hits) == 0 && !sampled {
@@ -545,7 +556,7 @@ func (e articleEditor) edit(k int, row canonicalRow) (canonicalRow, []changeRow,
 	}
 	changes := make([]changeRow, 0, len(hits))
 	for _, hit := range hits {
-		changes = append(changes, changeRow{ID: row.ID, Field: hit.field, Rule: hit.rule, SignalValue: hit.value, Value: mapping.TextValue(article, hit.field)})
+		changes = append(changes, changeRow{ID: row.ID, Field: hit.field, Rule: hit.rule, CountDistinct: hit.countDistinct, Value: mapping.TextValue(article, hit.field)})
 		mapping.ClearText(&article, hit.field)
 	}
 	edited, err := toCanonicalRow(article)

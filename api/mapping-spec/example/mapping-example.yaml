@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../mapping-v1.json
 # Mapping example: the columns of a raw news dataset, mapped onto articles.
 
 kind: Mapping

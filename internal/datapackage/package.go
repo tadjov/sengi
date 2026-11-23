@@ -61,11 +61,11 @@ type ProducedBy struct {
 
 // Preprocess records how a canonical package was made from its raw package.
 type Preprocess struct {
-	ID      ArticleIDs             `json:"id"`
-	Lock    Lock                   `json:"lock"`
-	Counts  Counts                 `json:"counts"`
-	Signals map[string]SignalStats `json:"signals,omitempty"`
-	Checks  map[string]CheckResult `json:"checks,omitempty"`
+	ID     ArticleIDs             `json:"id"`
+	Lock   Lock                   `json:"lock"`
+	Counts Counts                 `json:"counts"`
+	Rules  map[string]RuleStats   `json:"rules,omitempty"`
+	Checks map[string]CheckResult `json:"checks,omitempty"`
 }
 
 // ArticleIDs says how ids were minted; Namespace is set only for urlHash ids.
@@ -98,34 +98,34 @@ type Counts struct {
 	Written    int64            `json:"written"`
 }
 
-// SignalStats is the distribution of one signal over the kept articles it gives a value.
-type SignalStats struct {
-	Distinct string `json:"distinct"`
-	Sharing  string `json:"sharing"`
-	Within   string `json:"within,omitempty"`
-	Articles int64  `json:"articles"`
-	Median   int64  `json:"median"`
-	P90      int64  `json:"p90"`
-	P99      int64  `json:"p99"`
-	Max      int64  `json:"max"`
-	// AtLeast counts the articles whose value is at least each key, for choosing a threshold.
+// RuleStats is the distribution of a rule's distinct count over the kept articles in a group.
+type RuleStats struct {
+	CountDistinct string   `json:"countDistinct"`
+	GroupBy       []string `json:"groupBy" schema:"required"`
+	Articles      int64    `json:"articles"`
+	Median        int64    `json:"median"`
+	P90           int64    `json:"p90"`
+	P99           int64    `json:"p99"`
+	Max           int64    `json:"max"`
+	// AtLeast counts the articles whose distinct count is at least each key, for choosing a threshold.
 	AtLeast map[string]int64 `json:"atLeast,omitempty"`
-	Top     []SignalGroup    `json:"top,omitempty"`
+	Top     []Group          `json:"top,omitempty"`
 }
 
-// SignalGroup is one group of articles sharing a value, with the shared value cut short.
-type SignalGroup struct {
-	Within   string `json:"within,omitempty"`
-	Sharing  string `json:"sharing"`
-	Value    int64  `json:"value"`
-	Articles int64  `json:"articles"`
+// Group is one group of kept articles; Values are its groupBy values, each cut short.
+type Group struct {
+	Values        []string `json:"values" schema:"required"`
+	CountDistinct int64    `json:"countDistinct"`
+	Articles      int64    `json:"articles"`
 }
 
+// CheckResult is what a check observed, as a count and as a share of its base, against its thresholds as written.
 type CheckResult struct {
-	Observed float64     `json:"observed"`
-	Warn     *float64    `json:"warn,omitempty"`
-	Error    *float64    `json:"error,omitempty"`
-	Result   CheckStatus `json:"result" schema:"enum=pass|warn|error"`
+	Count  int64                 `json:"count"`
+	Share  float64               `json:"share"`
+	Warn   *preprocess.Threshold `json:"warn,omitempty"`
+	Error  *preprocess.Threshold `json:"error,omitempty"`
+	Result CheckStatus           `json:"result" schema:"enum=pass|warn|error"`
 }
 
 type CheckStatus string
