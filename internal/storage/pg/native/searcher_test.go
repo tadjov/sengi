@@ -20,7 +20,6 @@ import (
 	"github.com/tadjov/sengi/internal/types/language"
 	"github.com/tadjov/sengi/internal/types/operator"
 	dquery "github.com/tadjov/sengi/internal/types/query"
-	"github.com/testcontainers/testcontainers-go"
 )
 
 var (
@@ -39,15 +38,11 @@ func TestMain(m *testing.M) {
 
 func runWithContainer(m *testing.M) int {
 	testCtx = context.Background()
-	container, err := testcontainer.NewPGContainer(testCtx, testcontainer.PGConfig{
-		Database: "news_test_db",
-		Username: "test",
-		Password: "test",
-	})
+	container, dropDatabase, err := testcontainer.NewPGDatabase(testCtx, testcontainer.PGConfig{})
 	if err != nil {
 		panic(err)
 	}
-	defer func() { _ = testcontainers.TerminateContainer(container.Container) }()
+	defer dropDatabase()
 
 	testPool, err = pg.NewConnectionPool(testCtx, pg.PoolConfig{ConnStr: container.ConnString})
 	if err != nil {

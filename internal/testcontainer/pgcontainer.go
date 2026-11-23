@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -26,7 +27,6 @@ type PGContainer struct {
 
 // PGConfig defaults Engine to storage.PostgresNative and migrates unless Unmigrated is set.
 type PGConfig struct {
-	// Database, Username and Password apply to NewPGContainer only.
 	Database   string
 	Username   string
 	Password   string
@@ -35,6 +35,8 @@ type PGConfig struct {
 	// Isolated starts a server for this test alone, for a test that stops or
 	// reconfigures it.
 	Isolated bool
+	// reuseName names the container every package of the run shares.
+	reuseName string
 	// ServerFlags follow the engine's own server-start flags, e.g. "-c", "work_mem=8MB".
 	ServerFlags []string
 }
@@ -63,9 +65,22 @@ var engineServerFlags = map[storage.Engine][]string{
 		"-c", "pg_textsearch.memory_limit=2GB"),
 }
 
-// NewPGContainer starts a server of its own, which the caller terminates.
-func NewPGContainer(ctx context.Context, cfg PGConfig) (*PGContainer, error) {
-	return createPGContainer(ctx, cfg)
+// NewPGDatabase is NewPGContainerWithConfig for a TestMain, which has no test
+// to clean up after: the caller drops the database with the returned func.
+func NewPGDatabase(ctx context.Context, cfg PGConfig) (*PGContainer, func(), error) {
+	if cfg.Engine == "" {
+		cfg.Engine = storage.PostgresNative
+	}
+	server, err := sharedPGServer(ctx, cfg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("start the shared %s server: %w", cfg.Engine, err)
+	}
+	database, err := server.createDatabase(ctx, cfg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create a test database on %s: %w", cfg.Engine, err)
+	}
+	drop := func() { _ = server.dropDatabase(context.WithoutCancel(ctx), database) }
+	return &PGContainer{Container: server.container.Container, ConnString: server.connString(database)}, drop, nil
 }
 
 func NewPGContainerWithCleanup(ctx context.Context, tb testing.TB) *PGContainer {
@@ -74,8 +89,9 @@ func NewPGContainerWithCleanup(ctx context.Context, tb testing.TB) *PGContainer 
 }
 
 // NewPGContainerWithConfig gives the test a database of its own, dropped when
-// the test ends. The server is shared by every test of the process that asks
-// for the same engine and flags, unless cfg.Isolated starts one for this test.
+// the test ends. The server is shared by every test of the go test run that
+// asks for the same engine and flags, unless cfg.Isolated starts one for this
+// test.
 func NewPGContainerWithConfig(ctx context.Context, tb testing.TB, cfg PGConfig) *PGContainer {
 	tb.Helper()
 	if testing.Short() {
@@ -126,7 +142,7 @@ const (
 
 // sharedServer is one container the tests of a process create databases on.
 // It is never terminated here: the testcontainers reaper removes it when the
-// test process exits.
+// go test run ends.
 type sharedServer struct {
 	container *PGContainer
 	databases atomic.Int64
@@ -147,6 +163,7 @@ func sharedPGServer(ctx context.Context, cfg PGConfig) (*sharedServer, error) {
 	container, err := createPGContainer(context.WithoutCancel(ctx), PGConfig{
 		Database: adminDatabase, Username: testUser, Password: testUser,
 		Engine: cfg.Engine, ServerFlags: cfg.ServerFlags, Unmigrated: true,
+		reuseName: runScopedName("pg", key),
 	})
 	if err != nil {
 		return nil, err
@@ -166,7 +183,8 @@ func (s *sharedServer) connString(database string) string {
 }
 
 func (s *sharedServer) createDatabase(ctx context.Context, cfg PGConfig) (string, error) {
-	database := fmt.Sprintf("test_%d", s.databases.Add(1))
+	// The process id keeps the name free across the packages sharing the server.
+	database := fmt.Sprintf("test_%d_%d", os.Getpid(), s.databases.Add(1))
 	admin, err := pgx.Connect(ctx, s.container.ConnString)
 	if err != nil {
 		return "", fmt.Errorf("connect to create %s: %w", database, err)
@@ -200,8 +218,7 @@ func createPGContainer(ctx context.Context, cfg PGConfig) (*PGContainer, error) 
 		return nil, fmt.Errorf("no postgres image for engine %q", cfg.Engine)
 	}
 
-	pgContainer, err := postgres.Run(ctx,
-		image,
+	options := []testcontainers.ContainerCustomizer{
 		postgres.WithDatabase(cfg.Database),
 		postgres.WithUsername(cfg.Username),
 		postgres.WithPassword(cfg.Password),
@@ -209,9 +226,13 @@ func createPGContainer(ctx context.Context, cfg PGConfig) (*PGContainer, error) 
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
-				WithStartupTimeout(2*time.Minute),
+				WithStartupTimeout(2 * time.Minute),
 		),
-	)
+	}
+	if cfg.reuseName != "" {
+		options = append(options, testcontainers.WithReuseByName(cfg.reuseName))
+	}
+	pgContainer, err := postgres.Run(ctx, image, options...)
 	if err != nil {
 		_ = testcontainers.TerminateContainer(pgContainer)
 		return nil, fmt.Errorf("failed to start %s container: %w", cfg.Engine, err)
