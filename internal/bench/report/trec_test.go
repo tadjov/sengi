@@ -192,3 +192,14 @@ func TestWriteTRECRuns_WritesOneFilePerJobAndEngine(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, want.String(), string(got))
 }
+
+func TestWriteTRECRuns_RefusesAReportWithoutRankings(t *testing.T) {
+	r := Generate(trecFixture(), nil)
+	for i := range r.Jobs[0].PerQuery {
+		r.Jobs[0].PerQuery[i].Ranking = nil
+	}
+
+	_, err := WriteTRECRuns(r, t.TempDir())
+
+	assert.ErrorIs(t, err, ErrNoRankings)
+}

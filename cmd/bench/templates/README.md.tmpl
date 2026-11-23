@@ -28,10 +28,10 @@ bench pool {{.Name}}
 
 # 3. Grade. Pick a strategy:
 #    keyword     — fast deterministic baseline
-#    claude-api  — Anthropic Messages API in batches (set ANTHROPIC_API_KEY)
-#    claude-cli  — `claude -p` per batch (no API key needed)
+#    --provider claude-api  — Anthropic Messages API (set ANTHROPIC_API_KEY)
+#    --provider claude-cli  — `claude -p` (no API key needed)
 #    manual      — write -1 placeholders for hand grading
-bench judge {{.Name}} --strategy claude-api
+bench judge {{.Name}} --strategy llm --provider claude-api
 
 # 4. Run the benchmark.
 bench run {{.Name}}                              # uses spec.defaults.judgments

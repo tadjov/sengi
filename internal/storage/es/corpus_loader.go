@@ -91,7 +91,7 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	}
 
 	opts.Progress = progress.Or(opts.Progress)
-	load := storage.StartLoad(opts.Progress, "index", index)
+	load := storage.StartLoad(opts.Progress)
 	info, err := l.client.typed.Info().Do(ctx)
 	if err != nil {
 		return storage.LoadRecord{}, fmt.Errorf("read elasticsearch version: %w", err)
@@ -404,6 +404,7 @@ type writeCounts struct {
 // writeDocuments tries every article before failing on the rejected ones.
 func (l *CorpusLoader) writeDocuments(ctx context.Context, c storage.Corpus, opts storage.LoadOptions) (writeCounts, error) {
 	tally := &bulkTally{counter: opts.Progress, failures: &DocumentsFailedError{Index: l.client.indexName}}
+	tally.counter.SetTotal(c.ArticleCount)
 	group, ctx := errgroup.WithContext(ctx)
 	batches := make(chan documentBatch, opts.Concurrency)
 	group.Go(func() error {

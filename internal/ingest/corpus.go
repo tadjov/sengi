@@ -35,6 +35,8 @@ type PackagedCorpus struct {
 	embeddings   *datapackage.Package
 	vectors      *datapackage.ResourceFile
 	vectorsHash  string
+	articleCount int64
+	vectorCount  int64
 }
 
 // OpenCorpus checks both descriptors before it reads either resource.
@@ -90,13 +92,23 @@ func (c *PackagedCorpus) open(ctx context.Context, opts CorpusOptions) error {
 	if c.records, err = reader.Open(articles.Format, c.articles); err != nil {
 		return fmt.Errorf("canonical package %s: %w", c.canonical.Name, err)
 	}
-	if embeddings != nil {
-		if c.vectors, err = embeddings.Resource(ctx, datapackage.EmbeddingsResource); err != nil {
-			return fmt.Errorf("verify embeddings package %s: %w", embeddings.Package.Name, err)
-		}
-		if !opts.Trial {
-			return c.refusePartialVectors(ctx)
-		}
+	if c.articleCount, err = c.countArticles(ctx); err != nil {
+		return err
+	}
+	if embeddings == nil {
+		return nil
+	}
+	if c.vectors, err = embeddings.Resource(ctx, datapackage.EmbeddingsResource); err != nil {
+		return fmt.Errorf("verify embeddings package %s: %w", embeddings.Package.Name, err)
+	}
+	vectors, err := parquet.OpenFile(c.vectors, c.vectors.Size())
+	if err != nil {
+		return fmt.Errorf("read embeddings package %s: %w", c.embeddings.Name, err)
+	}
+	c.vectorCount = vectors.NumRows()
+	if !opts.Trial && c.vectorCount < c.articleCount {
+		return fmt.Errorf("embeddings package %s holds %d vectors for %d articles; pass --trial to load a partial package",
+			c.embeddings.Name, c.vectorCount, c.articleCount)
 	}
 	return nil
 }
@@ -119,24 +131,12 @@ func checkEmbeddings(pkg datapackage.Package, canonicalHash string, trial bool) 
 	return nil
 }
 
-func (c *PackagedCorpus) refusePartialVectors(ctx context.Context) error {
-	vectors, err := parquet.OpenFile(c.vectors, c.vectors.Size())
-	if err != nil {
-		return fmt.Errorf("read embeddings package %s: %w", c.embeddings.Name, err)
-	}
-	articles, err := c.ArticleCount(ctx)
-	if err != nil {
-		return err
-	}
-	if vectors.NumRows() < articles {
-		return fmt.Errorf("embeddings package %s holds %d vectors for %d articles; pass --trial to load a partial package",
-			c.embeddings.Name, vectors.NumRows(), articles)
-	}
-	return nil
+func (c *PackagedCorpus) ArticleCount() int64 {
+	return c.articleCount
 }
 
-// ArticleCount leaves the articles unread, so Corpus still yields them from the first.
-func (c *PackagedCorpus) ArticleCount(ctx context.Context) (int64, error) {
+// countArticles leaves the articles unread, so Corpus still yields them from the first.
+func (c *PackagedCorpus) countArticles(ctx context.Context) (int64, error) {
 	if counter, ok := c.records.(reader.RowCounter); ok {
 		return counter.NumRows(), nil
 	}
@@ -160,13 +160,15 @@ func (c *PackagedCorpus) ArticleCount(ctx context.Context) (int64, error) {
 // Corpus reads the articles and vectors once, in file order.
 func (c *PackagedCorpus) Corpus(ctx context.Context) storage.Corpus {
 	corpus := storage.Corpus{
-		Articles:  c.readArticles(ctx),
-		Language:  c.canonical.Language,
-		Canonical: storage.PackageRef{Name: c.canonical.Name, Version: c.canonical.Version, ResourceHash: c.articlesHash},
+		Articles:     c.readArticles(ctx),
+		ArticleCount: c.articleCount,
+		Language:     c.canonical.Language,
+		Canonical:    storage.PackageRef{Name: c.canonical.Name, Version: c.canonical.Version, ResourceHash: c.articlesHash},
 	}
 	if c.embeddings != nil {
 		corpus.ModelTag = c.embeddings.Embedding.Tag
 		corpus.Vectors = readVectors(ctx, c.vectors, corpus.ModelTag)
+		corpus.VectorCount = c.vectorCount
 		corpus.Embeddings = &storage.PackageRef{Name: c.embeddings.Name, Version: c.embeddings.Version, ResourceHash: c.vectorsHash}
 	}
 	return corpus

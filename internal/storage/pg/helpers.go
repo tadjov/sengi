@@ -10,7 +10,7 @@ import (
 	"github.com/tadjov/sengi/internal/types/document"
 )
 
-// ArticleColumns must stay in ScanArticle's scan order and articleRow's value order.
+// ArticleColumns must stay in ScanArticle's scan order and insertRow's value order.
 var ArticleColumns = []string{
 	"id", "url", "title", "description", "content", "published_at",
 	"language", "publisher_domain", "metadata",

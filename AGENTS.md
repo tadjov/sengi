@@ -54,7 +54,7 @@ The project follows a layered architecture pattern:
     - `env/`: `.env` loading (`ENV_PATHS`) and duration settings
     - `testcontainer/`: Postgres and Elasticsearch for integration tests: one server per engine shared by a test run, a database per test; `PGConfig{Isolated: true}` for a test that stops or reconfigures its server
     - `storage/`: Storage abstractions and implementations
-        - `factory/`: Storage config from the environment, and the corpus loader, article reader and vector store built from it
+        - `factory/`: Storage config from the environment, and the corpus loader, vector store built from it
         - `pg/`: PostgreSQL storage implementation with full-text search
         - `es/`: Elasticsearch storage implementation
     - `progress/`: The counter long-running domain code reports to (records read, rows copied, queries run); `internal/cli` draws it as one status line on stderr
@@ -142,7 +142,7 @@ TREC-style IR evaluation pipeline. Full docs: [docs/bench.md](docs/bench.md).
 - `suite/` — `TestSuite` YAML: queries, per-engine templates
 - `dialect/` — the syntax each engine type reads suite params in (postgres positional, elasticsearch Mustache, api literal): load-time block checks and the request each executor receives
 - `pool/` — TREC-style candidate pooling, and the pool file assembled from a pooling run
-- `judgment/` — strategy taxonomy (keyword / claude-cli / claude-api / manual); incremental writer
+- `judgment/` — strategy taxonomy (keyword / bm25 / vector / hybrid / llm / jev / manual); incremental writer
 - `runner/` — orchestration: warmup + measured iterations, per-query metrics
 - `rungate/` — decides whether a finished run can stand as its track's result (every cell answered, ranked stably, scored against judgments graded on the current pool)
 - `report/` — aggregation, JSON output, and one table view rendered to the terminal, Markdown and HTML
@@ -154,7 +154,7 @@ TREC-style IR evaluation pipeline. Full docs: [docs/bench.md](docs/bench.md).
 
 **Track convention**: a track is any folder holding `spec.yaml` + `suite.yaml` + `trec/` (+ `reports/`) — the layout above it is not enforced; this repo groups them as `tracks/<dataset>/<paradigm>/`. Track args are ordinary paths: absolute, relative to the track root (`--track-root` / `BENCH_TRACK_ROOT`, default cwd), a glob, or omitted to walk up from CWD.
 
-**Strategy taxonomy**: `keyword` (token-overlap), `bm25` (pool-local Okapi BM25), `vector` (embedding cosine), `hybrid` (BM25 + vector fusion), `claude-cli` / `claude-api` (LLM, one doc per request), `jev` (TypeSafe's Jev, one doc per request, a non-Anthropic cross-judge), `manual` (human placeholders). `vector`/`hybrid` read doc vectors from a storage-agnostic `storage.VectorStore` (PG `article_embeddings` now, ES stubbed; PG precedence) and take query vectors from the track's `trec/query-vectors/` package when it has one, from Ollama otherwise (`--pg` + `EMBEDDING_BASE_URL`). `validate`/`pool`/`run` fill the reserved `query_vector` arg from the same source.
+**Strategy taxonomy**: `keyword` (token-overlap), `bm25` (pool-local Okapi BM25), `vector` (embedding cosine), `hybrid` (BM25 + vector fusion), `llm` (`--provider claude-cli` or `claude-api`, which also names the judgment set; one doc per request), `jev` (TypeSafe's Jev, one doc per request, a non-Anthropic cross-judge), `manual` (human placeholders). `vector`/`hybrid` read doc vectors from a storage-agnostic `storage.VectorStore` (PG `article_embeddings` now, ES stubbed; PG precedence) and take query vectors from the track's `trec/query-vectors/` package when it has one, from Ollama otherwise (`--pg` + `EMBEDDING_BASE_URL`). `validate`/`pool`/`run` fill the reserved `query_vector` arg from the same source.
 
 **Schema v1**: every artifact has `schema_version: 1` + `meta:` block. Loading without it is a hard error — no backward-compat tolerance.
 

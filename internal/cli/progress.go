@@ -18,6 +18,7 @@ const (
 	redrawInterval   = 100 * time.Millisecond
 	plainInterval    = 10 * time.Second
 	plainPoll        = time.Second
+	barCells         = 20
 )
 
 var spinFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
@@ -25,17 +26,22 @@ var spinFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"
 var _ progress.Counter = (*Progress)(nil)
 
 // Progress is a status line redrawn in place on a terminal, or written plainly every ten seconds elsewhere.
+// Each stage that ends leaves a line of its own above it.
 type Progress struct {
 	console
 	label   string
 	unit    string
 	started time.Time
 
-	mu     sync.Mutex
-	stage  string
-	total  int64
-	count  int64
-	detail []any
+	mu           sync.Mutex
+	stage        string
+	stageID      int
+	stageStarted time.Time
+	total        int64
+	count        int64
+	detail       []any
+	// ended holds the lines of stages that ended since the last draw.
+	ended []string
 
 	// output orders writes to the console; counting never waits on it, so a stalled reader cannot slow the work.
 	output   sync.Mutex
@@ -77,7 +83,7 @@ func isTerminal(f *os.File) bool {
 
 func newProgress(c console, label, unit string) *Progress {
 	now := c.now()
-	return &Progress{console: c, label: label, unit: unit, started: now, lastLine: now}
+	return &Progress{console: c, label: label, unit: unit, started: now, stageStarted: now, lastLine: now}
 }
 
 func (p *Progress) SetTotal(n int64) {
@@ -92,10 +98,26 @@ func (p *Progress) Add(n int64) {
 	p.count += n
 }
 
-func (p *Progress) Stage(name string) {
+func (p *Progress) Stage(name string) (end func()) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.stage, p.total, p.count, p.detail = name, 0, 0, nil
+	p.stageID++
+	p.stage, p.stageStarted = name, p.now()
+	p.total, p.count, p.detail = 0, 0, nil
+	id := p.stageID
+	return func() { p.endStage(id) }
+}
+
+func (p *Progress) endStage(id int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if id != p.stageID || p.stage == "" {
+		return
+	}
+	now := p.now()
+	p.ended = append(p.ended, p.endedLine(now))
+	p.stage, p.stageStarted = "", now
+	p.total, p.count, p.detail = 0, 0, nil
 }
 
 func (p *Progress) Detail(attrs ...any) {
@@ -121,7 +143,7 @@ func (a aboveWriter) Write(b []byte) (int, error) {
 	return a.w.Write(b)
 }
 
-// Done stops the line and clears it from the terminal; later calls do nothing.
+// Done stops the line, writes the lines of stages that ended and clears the line from the terminal; later calls do nothing.
 func (p *Progress) Done() {
 	p.once.Do(func() {
 		if p.stopLoop != nil {
@@ -130,6 +152,7 @@ func (p *Progress) Done() {
 		p.output.Lock()
 		defer p.output.Unlock()
 		p.clear()
+		p.writeEnded(p.takeEnded())
 		p.finished = true
 	})
 }
@@ -165,21 +188,40 @@ func (p *Progress) tick() {
 	if p.finished {
 		return
 	}
+	if ended := p.takeEnded(); len(ended) > 0 {
+		p.clear()
+		p.writeEnded(ended)
+	}
 	now := p.now()
 	if !p.terminal {
 		if now.Sub(p.lastLine) < plainInterval {
 			return
 		}
 		p.lastLine = now
-		fmt.Fprintln(p.out, p.line(now))
+		fmt.Fprintln(p.out, p.line(now, false))
 		return
 	}
 	frame := spinFrames[p.frame%len(spinFrames)]
 	p.frame++
 	// Two columns go to the spinner, and the last one is left empty so the line never wraps.
-	text := truncate(p.line(now), p.width()-3)
+	text := truncate(p.line(now, true), p.width()-3)
 	fmt.Fprintf(p.out, "%s%s %s", clearToLineStart, Accent.Sprint(frame), text)
 	p.drawn = true
+}
+
+func (p *Progress) takeEnded() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	ended := p.ended
+	p.ended = nil
+	return ended
+}
+
+// writeEnded needs p.output held.
+func (p *Progress) writeEnded(lines []string) {
+	for _, line := range lines {
+		fmt.Fprintf(p.out, "%s %s\n", Success.Sprint("✓"), line)
+	}
 }
 
 // clear needs p.output held.
@@ -190,26 +232,65 @@ func (p *Progress) clear() {
 	}
 }
 
-func (p *Progress) line(now time.Time) string {
+func (p *Progress) line(now time.Time, withBar bool) string {
 	p.mu.Lock()
-	stage, total, count, detail := p.stage, p.total, p.count, p.detail
+	stage, started, total, count, detail := p.stage, p.stageStarted, p.total, p.count, p.detail
 	p.mu.Unlock()
 
-	parts := []string{p.label}
+	name, elapsed := p.label, now.Sub(p.started)
 	if stage != "" {
-		parts = append(parts, stage)
+		name, elapsed = stage, now.Sub(started)
 	}
+	parts := []string{name}
 	switch {
 	case total > 0:
+		if withBar {
+			parts = append(parts, bar(count, total))
+		}
+		width := len(groupThousands(total))
 		parts = append(parts,
-			withUnit(groupThousands(count)+" / "+groupThousands(total), p.unit),
-			strconv.FormatInt(min(count*100/total, 100), 10)+"%")
+			fmt.Sprintf("%3d%%", min(count*100/total, 100)),
+			withUnit(fmt.Sprintf("%*s / %s", width, groupThousands(count), groupThousands(total)), p.unit))
 	case count > 0:
 		parts = append(parts, withUnit(groupThousands(count), p.unit))
 	}
+	rate, measured := ratePerSecond(count, elapsed)
+	if measured {
+		parts = append(parts, formatRate(rate))
+	}
+	parts = append(parts, formatElapsed(elapsed))
+	if measured && total > count {
+		parts = append(parts, "eta "+formatElapsed(time.Duration(float64(total-count)/rate*float64(time.Second))))
+	}
 	parts = append(parts, detailPairs(detail)...)
-	parts = append(parts, formatElapsed(now.Sub(p.started)))
 	return strings.Join(parts, "  ")
+}
+
+// endedLine needs p.mu held.
+func (p *Progress) endedLine(now time.Time) string {
+	took := now.Sub(p.stageStarted)
+	parts := []string{p.stage}
+	if p.count > 0 {
+		parts = append(parts, withUnit(groupThousands(p.count), p.unit))
+	}
+	parts = append(parts, formatTook(took))
+	if rate, measured := ratePerSecond(p.count, took); measured {
+		parts = append(parts, formatRate(rate))
+	}
+	return strings.Join(parts, "  ")
+}
+
+// ratePerSecond waits for a second of work, so the first few items cannot claim a wild rate.
+func ratePerSecond(count int64, elapsed time.Duration) (float64, bool) {
+	if count == 0 || elapsed < time.Second {
+		return 0, false
+	}
+	return float64(count) / elapsed.Seconds(), true
+}
+
+func bar(count, total int64) string {
+	filled := int(min(count*barCells/total, barCells))
+	return strings.Repeat("█", filled) + strings.Repeat("░", barCells-filled)
 }
 
 func withUnit(count, unit string) string {
@@ -257,6 +338,18 @@ func groupThousands(n int64) string {
 	return sign + b.String()
 }
 
+func formatRate(perSecond float64) string {
+	switch {
+	case perSecond >= 1e6:
+		return fmt.Sprintf("%.1fM/s", perSecond/1e6)
+	case perSecond >= 1e3:
+		return fmt.Sprintf("%.1fk/s", perSecond/1e3)
+	case perSecond >= 10:
+		return fmt.Sprintf("%.0f/s", perSecond)
+	}
+	return fmt.Sprintf("%.1f/s", perSecond)
+}
+
 func formatElapsed(d time.Duration) string {
 	d = d.Truncate(time.Second)
 	hours, minutes, seconds := int(d/time.Hour), int(d%time.Hour/time.Minute), int(d%time.Minute/time.Second)
@@ -267,6 +360,14 @@ func formatElapsed(d time.Duration) string {
 		return fmt.Sprintf("%dm%02ds", minutes, seconds)
 	}
 	return fmt.Sprintf("%ds", seconds)
+}
+
+// formatTook keeps a tenth of a second for short stages, as the load summary does.
+func formatTook(d time.Duration) string {
+	if d < time.Minute {
+		return fmt.Sprintf("%.1fs", d.Seconds())
+	}
+	return formatElapsed(d)
 }
 
 // truncate leaves text alone when width is unknown or too small to matter.
