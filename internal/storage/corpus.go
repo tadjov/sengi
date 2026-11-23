@@ -19,11 +19,14 @@ type CorpusLoader interface {
 type Corpus struct {
 	Articles iter.Seq2[document.Article, error]
 	// Vectors is nil without embeddings, else one per article in Articles order, a prefix of them only for a --trial load.
-	Vectors    iter.Seq2[embedding.Vec, error]
-	Language   language.Code
-	ModelTag   string
-	Canonical  PackageRef
-	Embeddings *PackageRef
+	Vectors iter.Seq2[embedding.Vec, error]
+	// ArticleCount and VectorCount are how many items Articles and Vectors yield, 0 when unknown; only progress reads them.
+	ArticleCount int64
+	VectorCount  int64
+	Language     language.Code
+	ModelTag     string
+	Canonical    PackageRef
+	Embeddings   *PackageRef
 }
 
 type PackageRef struct {

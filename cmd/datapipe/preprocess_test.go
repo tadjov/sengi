@@ -1245,12 +1245,12 @@ type readingCounter struct {
 	readCount int64
 }
 
-func (c *readingCounter) Stage(name string) {
+func (c *readingCounter) Stage(name string) func() {
 	if !c.staged {
 		c.staged = true
 		c.readTotal, c.readCount = c.Total(), c.Count()
 	}
-	c.Recorder.Stage(name)
+	return c.Recorder.Stage(name)
 }
 
 func TestPreprocess_CountsEveryRecordRead(t *testing.T) {

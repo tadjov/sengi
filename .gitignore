@@ -83,3 +83,5 @@ tracks/**/trec/qrels.*.tsv
 .issues
 .DS_Store
 .claude/agents/
+
+.playwright-mcp

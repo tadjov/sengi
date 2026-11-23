@@ -52,7 +52,7 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	if err := validateCorpus(c, opts); err != nil {
 		return storage.LoadRecord{}, err
 	}
-	load := storage.StartLoad(opts.Progress, "engine", string(l.engine))
+	load := storage.StartLoad(opts.Progress)
 	record := storage.LoadRecord{
 		Engine:      string(l.engine),
 		Canonical:   c.Canonical,
@@ -371,6 +371,7 @@ func (cp *corpusCopier) failed(err error) error {
 
 // copyArticles returns the ids in corpus order, which the vectors must follow.
 func (cp *corpusCopier) copyArticles(ctx context.Context, c storage.Corpus) ([]uuid.UUID, error) {
+	cp.counter.SetTotal(c.ArticleCount)
 	var ids []uuid.UUID
 	toRow := func(a document.Article) ([]any, error) {
 		if a.ID == uuid.Nil {
@@ -391,6 +392,7 @@ func (cp *corpusCopier) copyArticles(ctx context.Context, c storage.Corpus) ([]u
 
 // copyVectors refuses any vector out of step with the articles, orphans included.
 func (cp *corpusCopier) copyVectors(ctx context.Context, c storage.Corpus, ids []uuid.UUID) (int64, error) {
+	cp.counter.SetTotal(c.VectorCount)
 	var n int64
 	toRow := func(v embedding.Vec) ([]any, error) {
 		if n >= int64(len(ids)) {
