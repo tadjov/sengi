@@ -33,7 +33,7 @@ import (
 	"github.com/tadjov/sengi/pkg/apis/preprocess"
 )
 
-const ccNewsLikeMapping = `kind: Mapping
+const newsMapping = `kind: Mapping
 version: v1
 name: test-news
 constants:
@@ -355,7 +355,7 @@ func readResource[T any](t *testing.T, dir, name string) []T {
 func ptr[T any](v T) *T { return &v }
 
 func TestPreprocess_WritesACanonicalPackageInSourceOrder(t *testing.T) {
-	run := newPreprocessRun(t, urlKeySpec, ccNewsLikeMapping,
+	run := newPreprocessRun(t, urlKeySpec, newsMapping,
 		parquetFile(t, "train-0.parquet",
 			rawShardRow{Title: "Storm hits coast", Text: "Body one", Description: "Lead one", URL: "https://example.com/a/1", Date: "2019-03-04 05:06:07", Authors: "Jane Doe; John Roe", Words: "412"},
 			rawShardRow{Title: "Markets fall", Text: "Body two", URL: "https://example.com/a/2"},
@@ -419,7 +419,7 @@ func readGoldenArticles(t *testing.T, name string) []document.Article {
 // origin-main-articles.jsonl is what datapipe preprocess on origin/main f0072c9 wrote for
 // records.csv with the unique rule same-page, before the spec split.
 func TestPreprocess_KeepsTheArticlesAndIDsTheMappingIdentityKept(t *testing.T) {
-	run := newPreprocessRun(t, withKeys(t, samePageKeys), ccNewsLikeMapping, fixtureFile(t, "records.csv"))
+	run := newPreprocessRun(t, withKeys(t, samePageKeys), newsMapping, fixtureFile(t, "records.csv"))
 
 	require.NoError(t, run.execute(t.Context()))
 
@@ -442,7 +442,7 @@ const clearSharedText = `  - {name: shared-body, when: {signal: headlines-sharin
 `
 
 func TestPreprocess_RecordsEveryRemovedRecordWithTheStageThatRemovedIt(t *testing.T) {
-	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), ccNewsLikeMapping, fixtureFile(t, "records.csv"))
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), newsMapping, fixtureFile(t, "records.csv"))
 
 	require.NoError(t, run.execute(t.Context()))
 
@@ -460,7 +460,7 @@ func TestPreprocess_RecordsEveryRemovedRecordWithTheStageThatRemovedIt(t *testin
 }
 
 func TestPreprocess_ClearsTheSharedFieldOfEveryArticleInAGroupAtTheThreshold(t *testing.T) {
-	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), ccNewsLikeMapping, fixtureFile(t, "records.csv"))
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), newsMapping, fixtureFile(t, "records.csv"))
 
 	require.NoError(t, run.execute(t.Context()))
 
@@ -503,7 +503,7 @@ func TestPreprocess_ClearsTheSharedFieldOfEveryArticleInAGroupAtTheThreshold(t *
 }
 
 func TestPreprocess_DescribesEachSignalsDistribution(t *testing.T) {
-	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), ccNewsLikeMapping, fixtureFile(t, "records.csv"))
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), newsMapping, fixtureFile(t, "records.csv"))
 
 	require.NoError(t, run.execute(t.Context()))
 
@@ -525,7 +525,7 @@ func TestPreprocess_DescribesEachSignalsDistribution(t *testing.T) {
 
 func TestPreprocess_DropsTheArticlesADropRuleFiresOn(t *testing.T) {
 	rules := "  - {name: boilerplate-body, when: {signal: headlines-sharing-body, atLeast: 3}, action: drop}\n"
-	run := newPreprocessRun(t, cleaningSpec(t, rules), ccNewsLikeMapping, fixtureFile(t, "records.csv"))
+	run := newPreprocessRun(t, cleaningSpec(t, rules), newsMapping, fixtureFile(t, "records.csv"))
 
 	require.NoError(t, run.execute(t.Context()))
 
@@ -551,7 +551,7 @@ func TestPreprocess_DropsTheArticlesADropRuleFiresOn(t *testing.T) {
 }
 
 func TestPreprocess_WritesEveryMissingOptionalValueAsNull(t *testing.T) {
-	mapping := strings.Replace(ccNewsLikeMapping, "name: test-news\n", "name: test-news\nmissingValues: ['', 'N/A']\n", 1)
+	mapping := strings.Replace(newsMapping, "name: test-news\n", "name: test-news\nmissingValues: ['', 'N/A']\n", 1)
 	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), mapping,
 		csvFile("part.csv", "title,text,description,url,date\n"+
 			"Plain,Body,N/A,https://example.com/1,\n"+
@@ -580,7 +580,7 @@ func TestPreprocess_WritesEveryMissingOptionalValueAsNull(t *testing.T) {
 }
 
 // parquet-go v0.30 and v0.32 write some runs of zero strings in an optional string column as
-// empty strings rather than NULL; this run of descriptions, taken from cc-news, is one of them.
+// empty strings rather than NULL; this run of descriptions is one of them.
 func TestPreprocess_WritesARunOfMissingValuesAsNull(t *testing.T) {
 	descriptions := slices.Repeat([]string{strings.Repeat("d", 150)}, 124)
 	descriptions = append(descriptions, "", "", "", "", "", strings.Repeat("e", 102))
@@ -590,7 +590,7 @@ func TestPreprocess_WritesARunOfMissingValuesAsNull(t *testing.T) {
 	for i, description := range descriptions {
 		fmt.Fprintf(&csv, "Title %d,Body %d,%s,https://example.com/%d\n", i, i, description, i)
 	}
-	run := newPreprocessRun(t, urlKeySpec, ccNewsLikeMapping, csvFile("part.csv", csv.String()))
+	run := newPreprocessRun(t, urlKeySpec, newsMapping, csvFile("part.csv", csv.String()))
 
 	require.NoError(t, run.execute(t.Context()))
 
@@ -623,7 +623,7 @@ func TestPreprocess_ChecksEachBudgetAgainstTheShareObserved(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.check+" "+string(tt.want), func(t *testing.T) {
 			spec := cleaningSpec(t, clearSharedText) + "checks:\n  " + tt.check + ": {warn: " + tt.warn + ", error: " + tt.fail + "}\n"
-			run := newPreprocessRun(t, spec, ccNewsLikeMapping, fixtureFile(t, "records.csv"))
+			run := newPreprocessRun(t, spec, newsMapping, fixtureFile(t, "records.csv"))
 
 			err := run.execute(t.Context())
 
@@ -651,7 +651,7 @@ func TestPreprocess_CountsAValueOncePerDistinctValueInItsGroup(t *testing.T) {
 rules:
   - {name: shared-body, when: {signal: headlines-sharing-body, atLeast: 2}, action: clear, field: Content}
 `
-	run := newPreprocessRun(t, spec, ccNewsLikeMapping, csvFile("part.csv", "title,text,url\n"+
+	run := newPreprocessRun(t, spec, newsMapping, csvFile("part.csv", "title,text,url\n"+
 		"Same headline,Shared body,https://example.com/1\n"+
 		"Same headline,Shared body,https://example.com/2\n"+
 		"Lone body,,https://example.com/3\n"+
@@ -674,7 +674,7 @@ func TestPreprocess_CountsOverTheWholeCorpusWithoutWithin(t *testing.T) {
 rules:
   - {name: syndicated-body, when: {signal: sites-sharing-body, atLeast: 2}, action: clear, field: Content}
 `
-	run := newPreprocessRun(t, spec, ccNewsLikeMapping, csvFile("part.csv", "title,text,url\n"+
+	run := newPreprocessRun(t, spec, newsMapping, csvFile("part.csv", "title,text,url\n"+
 		"One,Wire body,https://example.com/1\n"+
 		"Two,Wire body,https://other.org/2\n"+
 		"Three,Own body,https://example.com/3\n"))
@@ -698,7 +698,7 @@ func TestPreprocess_PublishesUnderTheNamedVersion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			run := newPreprocessRun(t, urlKeySpec, ccNewsLikeMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
+			run := newPreprocessRun(t, urlKeySpec, newsMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
 
 			require.NoError(t, run.execute(t.Context(), tt.flags...))
 
@@ -743,14 +743,14 @@ func TestPreprocess_RefusesAChangedSpecRerunIntoTheSameVersion(t *testing.T) {
 		{
 			name: "a mapping that moves a field",
 			change: func(t *testing.T, run preprocessRun) {
-				require.NoError(t, os.WriteFile(run.mappingPath, []byte(strings.Replace(ccNewsLikeMapping, "target: Content}", "target: Metadata.Extra.body}", 1)), 0o644))
+				require.NoError(t, os.WriteFile(run.mappingPath, []byte(strings.Replace(newsMapping, "target: Content}", "target: Metadata.Extra.body}", 1)), 0o644))
 			},
 			want: "preprocess mapping",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			run := newPreprocessRun(t, urlKeySpec+"checks:\n", ccNewsLikeMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
+			run := newPreprocessRun(t, urlKeySpec+"checks:\n", newsMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
 			require.NoError(t, run.execute(t.Context()))
 			dir := run.packageDir(t)
 			descriptor, err := os.ReadFile(filepath.Join(dir, datapackage.DescriptorName))
@@ -772,7 +772,7 @@ func TestPreprocess_RefusesAChangedSpecRerunIntoTheSameVersion(t *testing.T) {
 }
 
 func TestPreprocess_RerunOverTheSameSpecsAndInputKeepsTheExistingPackage(t *testing.T) {
-	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), ccNewsLikeMapping, fixtureFile(t, "records.csv"))
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), newsMapping, fixtureFile(t, "records.csv"))
 	require.NoError(t, run.execute(t.Context()))
 	dir := run.packageDir(t)
 	resourcePath := filepath.Join(dir, "articles.parquet")
@@ -789,7 +789,7 @@ func TestPreprocess_RerunOverTheSameSpecsAndInputKeepsTheExistingPackage(t *test
 }
 
 func TestPreprocess_RestoresTheResourcesOfAPackageCheckedOutWithoutThem(t *testing.T) {
-	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), ccNewsLikeMapping, fixtureFile(t, "records.csv"))
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), newsMapping, fixtureFile(t, "records.csv"))
 	require.NoError(t, run.execute(t.Context()))
 	dir := run.packageDir(t)
 	hashes := map[string]string{}
@@ -811,7 +811,7 @@ func TestPreprocess_RestoresTheResourcesOfAPackageCheckedOutWithoutThem(t *testi
 }
 
 func TestPreprocess_TwoRunsOverOneRawPackageWriteIdenticalBytes(t *testing.T) {
-	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), ccNewsLikeMapping, fixtureFile(t, "records.csv"),
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), newsMapping, fixtureFile(t, "records.csv"),
 		parquetFile(t, "train-0.parquet",
 			rawShardRow{Title: "One", Text: "Body", URL: "https://example.com/1", Date: "2019-03-04 05:06:07", Authors: "A; B", Words: "3"},
 			rawShardRow{Title: "Two", Text: "Body", URL: "https://example.com/2"},
@@ -830,7 +830,7 @@ func TestPreprocess_TwoRunsOverOneRawPackageWriteIdenticalBytes(t *testing.T) {
 }
 
 func TestPreprocess_LocksTheSpecsAndInputButNotWhereTheyLie(t *testing.T) {
-	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), ccNewsLikeMapping, fixtureFile(t, "records.csv"))
+	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), newsMapping, fixtureFile(t, "records.csv"))
 	moved := filepath.Join(t.TempDir(), "moved.yaml")
 	spec, err := os.ReadFile(run.specPath)
 	require.NoError(t, err)
@@ -881,7 +881,7 @@ func TestPreprocess_WritesADescriptorTheCommittedSchemaAccepts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			run := newPreprocessRun(t, tt.spec, ccNewsLikeMapping, fixtureFile(t, "records.csv"))
+			run := newPreprocessRun(t, tt.spec, newsMapping, fixtureFile(t, "records.csv"))
 
 			require.NoError(t, run.execute(t.Context()))
 
@@ -891,7 +891,7 @@ func TestPreprocess_WritesADescriptorTheCommittedSchemaAccepts(t *testing.T) {
 }
 
 func TestPreprocess_CountsEveryDroppedRecordByStageAndField(t *testing.T) {
-	run := newPreprocessRun(t, urlKeySpec, ccNewsLikeMapping,
+	run := newPreprocessRun(t, urlKeySpec, newsMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"Kept,Body,https://example.com/kept\n"+
 			"   ,Blank title,https://example.com/blank-title\n"+
@@ -908,7 +908,7 @@ func TestPreprocess_CountsEveryDroppedRecordByStageAndField(t *testing.T) {
 }
 
 func TestPreprocess_WritesJSONLArticlesWhenTheSpecAsksForIt(t *testing.T) {
-	run := newPreprocessRun(t, specWith(t, urlKeySpec, "  path: canonical\n", "  path: canonical\n  format: jsonl\n"), ccNewsLikeMapping,
+	run := newPreprocessRun(t, specWith(t, urlKeySpec, "  path: canonical\n", "  path: canonical\n  format: jsonl\n"), newsMapping,
 		jsonlFile("part.jsonl", `{"title":"One","text":"Body","url":"https://example.com/1","authors":"A;B"}`+"\n"+
 			`{"title":"Two","url":"https://example.com/2"}`+"\n"),
 	)
@@ -940,7 +940,7 @@ func TestPreprocess_RefusesASpecItCannotRunAndPublishesNothing(t *testing.T) {
 	}
 	for name, spec := range tests {
 		t.Run(name, func(t *testing.T) {
-			run := newPreprocessRun(t, spec, ccNewsLikeMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
+			run := newPreprocessRun(t, spec, newsMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
 
 			require.Error(t, run.execute(t.Context()))
 
@@ -950,7 +950,7 @@ func TestPreprocess_RefusesASpecItCannotRunAndPublishesNothing(t *testing.T) {
 }
 
 func TestPreprocess_DerivesEachIDFromTheNormalisedURL(t *testing.T) {
-	run := newPreprocessRun(t, urlKeySpec, ccNewsLikeMapping,
+	run := newPreprocessRun(t, urlKeySpec, newsMapping,
 		csvFile("part.csv", "title,text,url\nSpaced,Body,  https://example.com/a b \n"),
 	)
 
@@ -964,7 +964,7 @@ func TestPreprocess_DerivesEachIDFromTheNormalisedURL(t *testing.T) {
 }
 
 func TestPreprocess_KeepsTheFirstOfRecordsSharingAURL(t *testing.T) {
-	run := newPreprocessRun(t, urlKeySpec, ccNewsLikeMapping,
+	run := newPreprocessRun(t, urlKeySpec, newsMapping,
 		csvFile("a.csv", "title,text,url\nFirst,Body,https://example.com/story\nOther,Body,https://example.com/other\n"),
 		csvFile("b.csv", "title,text,url\nRepeat,Body, https://Example.COM/story\nAgain,Body,https://example.com/other\n"),
 	)
@@ -979,7 +979,7 @@ func TestPreprocess_KeepsTheFirstOfRecordsSharingAURL(t *testing.T) {
 }
 
 func TestPreprocess_KeepsURLVariantsApart(t *testing.T) {
-	run := newPreprocessRun(t, urlKeySpec, ccNewsLikeMapping,
+	run := newPreprocessRun(t, urlKeySpec, newsMapping,
 		csvFile("part.csv", "title,text,url\nFirst,Body,https://example.com/story\nVariant,Body,http://www.example.com/story/?utm_source=feed#top\n"),
 	)
 
@@ -991,7 +991,7 @@ func TestPreprocess_KeepsURLVariantsApart(t *testing.T) {
 }
 
 func TestPreprocess_KeepsTheFirstOfArticlesAKeyMatches(t *testing.T) {
-	run := newPreprocessRun(t, withKeys(t, samePageKeys), ccNewsLikeMapping,
+	run := newPreprocessRun(t, withKeys(t, samePageKeys), newsMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"Storm hits coast,Wire body,https://example.com/a\n"+
 			"Storm hits coast,Wire body,https://example.com/b\n"+
@@ -1007,7 +1007,7 @@ func TestPreprocess_KeepsTheFirstOfArticlesAKeyMatches(t *testing.T) {
 }
 
 func TestPreprocess_ComparesKeyFieldsWithWhitespaceCollapsed(t *testing.T) {
-	run := newPreprocessRun(t, withKeys(t, samePageKeys), ccNewsLikeMapping,
+	run := newPreprocessRun(t, withKeys(t, samePageKeys), newsMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"Storm hits coast,Wire body,https://example.com/a\n"+
 			"\"  Storm  hits\ncoast \",\"Wire\t body\",https://example.com/b\n"+
@@ -1023,7 +1023,7 @@ func TestPreprocess_ComparesKeyFieldsWithWhitespaceCollapsed(t *testing.T) {
 
 func TestPreprocess_ComparesEachKeyFieldOnItsOwn(t *testing.T) {
 	keys := "    - {name: same-url, fields: [URL]}\n    - {name: same-text, fields: [Title, Content]}\n"
-	run := newPreprocessRun(t, withKeys(t, keys), ccNewsLikeMapping,
+	run := newPreprocessRun(t, withKeys(t, keys), newsMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"Storm hits,coast now,https://example.com/1\n"+
 			"Storm,hits coast now,https://example.com/2\n"),
@@ -1036,7 +1036,7 @@ func TestPreprocess_ComparesEachKeyFieldOnItsOwn(t *testing.T) {
 }
 
 func TestPreprocess_NeverMatchesAKeyOnAnEmptyField(t *testing.T) {
-	run := newPreprocessRun(t, withKeys(t, samePageKeys), ccNewsLikeMapping,
+	run := newPreprocessRun(t, withKeys(t, samePageKeys), newsMapping,
 		csvFile("part.csv", "title,text,url\nWeather,,https://example.com/1\nWeather,,https://example.com/2\n"),
 	)
 
@@ -1047,7 +1047,7 @@ func TestPreprocess_NeverMatchesAKeyOnAnEmptyField(t *testing.T) {
 }
 
 func TestPreprocess_ADroppedRecordNeverKnocksOutALaterOne(t *testing.T) {
-	run := newPreprocessRun(t, withKeys(t, samePageKeys), ccNewsLikeMapping,
+	run := newPreprocessRun(t, withKeys(t, samePageKeys), newsMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"Kept,Body X,https://example.com/story\n"+
 			"Copy,Body Y,https://example.com/story\n"+
@@ -1067,7 +1067,7 @@ func TestPreprocess_ADuplicatesURLStaysWithTheArticleItRepeats(t *testing.T) {
 		"url key last":  "    - {name: same-body, fields: [Content]}\n    - {name: same-url, fields: [URL]}\n",
 	} {
 		t.Run(name, func(t *testing.T) {
-			run := newPreprocessRun(t, withKeys(t, keys), ccNewsLikeMapping,
+			run := newPreprocessRun(t, withKeys(t, keys), newsMapping,
 				csvFile("part.csv", "title,text,url\n"+
 					"One,Body A,https://example.com/1\n"+
 					"Two,Body A,https://example.com/2\n"+
@@ -1090,7 +1090,7 @@ func TestPreprocess_ADuplicatesURLStaysWithTheArticleItRepeats(t *testing.T) {
 
 func TestPreprocess_ADuplicateRegistersNoOtherKeys(t *testing.T) {
 	keys := "    - {name: same-url, fields: [URL]}\n    - {name: same-title, fields: [Title]}\n    - {name: same-body, fields: [Content]}\n"
-	run := newPreprocessRun(t, withKeys(t, keys), ccNewsLikeMapping,
+	run := newPreprocessRun(t, withKeys(t, keys), newsMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"One,Body A,https://example.com/1\n"+
 			"Two,Body A,https://example.com/2\n"+
@@ -1105,7 +1105,7 @@ func TestPreprocess_ADuplicateRegistersNoOtherKeys(t *testing.T) {
 
 func TestPreprocess_CountsEachDuplicateUnderTheFirstKeyThatMatches(t *testing.T) {
 	keys := "    - {name: same-url, fields: [URL]}\n    - {name: same-title, fields: [Title]}\n    - {name: same-body, fields: [Content]}\n"
-	run := newPreprocessRun(t, withKeys(t, keys), ccNewsLikeMapping,
+	run := newPreprocessRun(t, withKeys(t, keys), newsMapping,
 		csvFile("part.csv", "title,text,url\n"+
 			"One,Body A,https://example.com/1\n"+
 			"One,Body A,https://example.com/1\n"+
@@ -1121,7 +1121,7 @@ func TestPreprocess_CountsEachDuplicateUnderTheFirstKeyThatMatches(t *testing.T)
 }
 
 func TestPreprocess_MintsRandomIDsThatDifferOnEveryRun(t *testing.T) {
-	run := newPreprocessRun(t, specWith(t, urlKeySpec, "kind: urlHash", "kind: random"), ccNewsLikeMapping,
+	run := newPreprocessRun(t, specWith(t, urlKeySpec, "kind: urlHash", "kind: random"), newsMapping,
 		csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\nTwo,Body,https://example.com/2\nAgain,Body,https://example.com/1\n"),
 	)
 	second := run.writingTo(t, "again")
@@ -1157,7 +1157,7 @@ func TestPreprocess_DerivesThePublisherDomainFromTheURL(t *testing.T) {
 	for _, tt := range tests {
 		csv.WriteString("Title,Body," + tt.url + "\n")
 	}
-	run := newPreprocessRun(t, urlKeySpec, ccNewsLikeMapping, csvFile("part.csv", csv.String()))
+	run := newPreprocessRun(t, urlKeySpec, newsMapping, csvFile("part.csv", csv.String()))
 
 	require.NoError(t, run.execute(t.Context()))
 
@@ -1190,7 +1190,7 @@ func TestPreprocess_CancelledRunLeavesNoPackage(t *testing.T) {
 	}))
 	defer srv.Close()
 	dir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "mapping.yaml"), []byte(ccNewsLikeMapping), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "mapping.yaml"), []byte(newsMapping), 0o644))
 	specPath := filepath.Join(dir, "preprocess.yaml")
 	require.NoError(t, os.WriteFile(specPath, []byte(specWith(t, urlKeySpec, "input: raw", "input: "+srv.URL+"/datapackage.json")), 0o644))
 
@@ -1208,7 +1208,7 @@ func TestPreprocess_CancelledRunLeavesNoPackage(t *testing.T) {
 }
 
 func TestPreprocess_KeepsADatasetsOwnIDAsTheExternalID(t *testing.T) {
-	mapping := strings.Replace(ccNewsLikeMapping, "fields:\n", "fields:\n  - {source: uid, target: Metadata.ExternalID}\n", 1)
+	mapping := strings.Replace(newsMapping, "fields:\n", "fields:\n  - {source: uid, target: Metadata.ExternalID}\n", 1)
 	run := newPreprocessRun(t, urlKeySpec, mapping, csvFile("part.csv", "uid,title,text,url\n"+
 		"89541,One,Body,https://example.com/1\n"+
 		",Two,Body,https://example.com/2\n"))
@@ -1221,7 +1221,7 @@ func TestPreprocess_KeepsADatasetsOwnIDAsTheExternalID(t *testing.T) {
 }
 
 func TestPreprocess_OmitsTheRawVersionWhenTheRawPackageHasNone(t *testing.T) {
-	run := newPreprocessRun(t, urlKeySpec, ccNewsLikeMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
+	run := newPreprocessRun(t, urlKeySpec, newsMapping, csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
 	require.NoError(t, os.RemoveAll(run.rawDir))
 	writeRawPackage(t, run.rawDir, "", csvFile("part.csv", "title,text,url\nOne,Body,https://example.com/1\n"))
 
@@ -1285,7 +1285,7 @@ func TestPreprocess_CountsEveryRecordRead(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			run := newPreprocessRun(t, urlKeySpec, ccNewsLikeMapping, tt.files...)
+			run := newPreprocessRun(t, urlKeySpec, newsMapping, tt.files...)
 			spec, err := preprocess.Load(run.specPath)
 			require.NoError(t, err)
 			raw, err := datapackage.Open(t.Context(), spec.Input)

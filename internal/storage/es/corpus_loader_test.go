@@ -349,7 +349,6 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 				} `json:"hits"`
 			} `json:"hits"`
 		}
-		// The multi-field query of the cc-news fts suite.
 		postJSON(t, container.Address+"/"+index+"/_search",
 			`{"query":{"multi_match":{"query":"quokka","fields":["title^3","description^2","content"]}}}`, &found)
 		if len(found.Hits.Hits) != 1 || found.Hits.Hits[0].ID != titleOnly.ID.String() {

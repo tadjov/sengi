@@ -340,7 +340,7 @@ func newLoadDatabase(t *testing.T, serverConnString string) string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", config.User, config.Password, config.Host, config.Port, name)
 }
 
-// searchByTitleTerm runs each engine's multi-field query from the cc-news fts suite.
+// searchByTitleTerm runs each engine's multi-field query over title, description and content.
 func searchByTitleTerm(t *testing.T, connString string, engine storage.Engine, term string) []uuid.UUID {
 	t.Helper()
 	queries := map[storage.Engine]string{

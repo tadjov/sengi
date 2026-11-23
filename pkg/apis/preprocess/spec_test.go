@@ -163,7 +163,7 @@ func TestPolicy_IgnoresWhereTheFilesLieAndWhichDefaultsAreSpelledOut(t *testing.
 	implicit, err := readSpec(validSpec)
 	require.NoError(t, err)
 	explicit, err := readSpec(replaced(replaced(replaced(validSpec,
-		"input: raw/datapackage.json", "input: /data/cc-news/raw"),
+		"input: raw/datapackage.json", "input: /data/news/raw"),
 		"  path: canonical\n", "  path: /tmp/trial\n  format: parquet\n"),
 		"duplicates:\n", "duplicates:\n  keep: first\n"))
 	require.NoError(t, err)
@@ -189,12 +189,12 @@ func TestLoad_KeepsARemoteInputAsIs(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "mapping.yaml"), []byte(validMapping), 0o644))
 	spec := filepath.Join(dir, "preprocess.yaml")
-	require.NoError(t, os.WriteFile(spec, []byte(replaced(validSpec, "input: raw/datapackage.json", "input: s3://bucket/cc-news/raw")), 0o644))
+	require.NoError(t, os.WriteFile(spec, []byte(replaced(validSpec, "input: raw/datapackage.json", "input: s3://bucket/news/raw")), 0o644))
 
 	resolved, err := preprocess.Load(spec)
 
 	require.NoError(t, err)
-	assert.Equal(t, "s3://bucket/cc-news/raw", resolved.Input)
+	assert.Equal(t, "s3://bucket/news/raw", resolved.Input)
 }
 
 func compileSchema(t *testing.T) *jsonschema.Schema {

@@ -36,7 +36,7 @@ func newPreprocessCmd() *cobra.Command {
 removes duplicates, applies the rules, checks the budgets and publishes
 <output.path>/<version>/ with articles, rejects and changes.
 
-  datapipe preprocess datasets/cc-news/preprocess.yaml --version v1
+  datapipe preprocess datasets/<ds>/preprocess.yaml --version v1
 
 A check over its error budget publishes nothing. A rerun of the same specs over
 the same input keeps the published version; any other change needs a new --version.`,

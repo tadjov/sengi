@@ -126,14 +126,14 @@ run-schemagen: build-schemagen
 	@echo "Running schema generator..."
 	@./$(BIN_DIR)/schemagen -output=api/mapping-spec -preprocess-output=api/preprocess-spec
 
-# Preprocess a raw data package as its spec says, e.g.
-#   make run-datapipe-preprocess PREPROCESS_SPEC=datasets/all-the-news/preprocess.yaml PREPROCESS_VERSION=v1
-PREPROCESS_SPEC ?= datasets/cc-news/preprocess.yaml
+# Preprocess a raw data package as its spec says:
+#   make run-datapipe-preprocess PREPROCESS_SPEC=datasets/<ds>/preprocess.yaml PREPROCESS_VERSION=v1
+PREPROCESS_SPEC ?=
 PREPROCESS_VERSION ?= v1
 
 run-datapipe-preprocess: build-datapipe
 	@echo "Running datapipe preprocess ($(PREPROCESS_SPEC), $(PREPROCESS_VERSION))..."
-	@./$(BIN_DIR)/datapipe preprocess $(PREPROCESS_SPEC) --version $(PREPROCESS_VERSION)
+	@./$(BIN_DIR)/datapipe preprocess "$(PREPROCESS_SPEC)" --version $(PREPROCESS_VERSION)
 
 # Load a canonical package, and optionally its embeddings, into one engine:
 #   make run-datapipe-load-native CANONICAL=datasets/cc-news/canonical/<version>/datapackage.json \
