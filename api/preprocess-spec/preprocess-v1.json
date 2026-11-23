@@ -14,107 +14,107 @@
   ],
   "properties": {
     "checks": {
-      "description": "Budgets on the whole output; an error publishes nothing",
+      "description": "Budgets on the whole output: over a warn the run is recorded as a warning, over an error it publishes nothing",
       "type": "object",
       "properties": {
-        "cleared": {
-          "description": "Articles written with at least one field cleared",
+        "clearedOfWritten": {
+          "description": "Articles with at least one field cleared, as a count or a share of the articles written",
           "type": "object",
           "properties": {
             "error": {
-              "description": "A share over this fails the run and publishes nothing",
-              "type": "number",
-              "minimum": 0,
-              "maximum": 1
-            },
-            "warn": {
-              "description": "A share over this is recorded as a warning",
-              "type": "number",
-              "minimum": 0,
-              "maximum": 1
-            }
-          },
-          "additionalProperties": false
-        },
-        "dropped": {
-          "description": "Records dropped: missing a required field, malformed, or removed by a drop rule",
-          "type": "object",
-          "properties": {
-            "error": {
-              "description": "A share over this fails the run and publishes nothing",
-              "type": "number",
-              "minimum": 0,
-              "maximum": 1
-            },
-            "warn": {
-              "description": "A share over this is recorded as a warning",
-              "type": "number",
-              "minimum": 0,
-              "maximum": 1
-            }
-          },
-          "additionalProperties": false
-        },
-        "duplicates": {
-          "description": "Records dropped as a duplicate",
-          "type": "object",
-          "properties": {
-            "error": {
-              "description": "A share over this fails the run and publishes nothing",
-              "type": "number",
-              "minimum": 0,
-              "maximum": 1
-            },
-            "warn": {
-              "description": "A share over this is recorded as a warning",
-              "type": "number",
-              "minimum": 0,
-              "maximum": 1
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "duplicates": {
-      "description": "Which records are one article",
-      "type": "object",
-      "properties": {
-        "keep": {
-          "description": "Which record of one article is kept: the first in raw order",
-          "type": "string",
-          "enum": [
-            "first"
-          ],
-          "default": "first"
-        },
-        "keys": {
-          "description": "Field sets no two articles share, compared with whitespace collapsed; an empty field never matches",
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "name",
-              "fields"
-            ],
-            "properties": {
-              "fields": {
-                "description": "Article fields whose values together no two articles share",
-                "type": "array",
-                "items": {
-                  "type": "string"
+              "description": "Over this the run fails and publishes nothing: a whole count such as 500, or a percentage such as 2%",
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
                 },
-                "minItems": 1
-              },
-              "name": {
-                "description": "Name the counts and rejects give this key's duplicates",
-                "type": "string",
-                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
-              }
+                {
+                  "type": "string",
+                  "pattern": "^(100(\\.0+)?|[0-9]{1,2}(\\.[0-9]+)?)%$"
+                }
+              ]
             },
-            "additionalProperties": false
-          }
+            "warn": {
+              "description": "Over this the run is recorded as a warning: a whole count such as 500, or a percentage such as 2%",
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(100(\\.0+)?|[0-9]{1,2}(\\.[0-9]+)?)%$"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "droppedOfRead": {
+          "description": "Records dropped, for a missing required field, a malformed row or a drop rule, as a count or a share of the records read",
+          "type": "object",
+          "properties": {
+            "error": {
+              "description": "Over this the run fails and publishes nothing: a whole count such as 500, or a percentage such as 2%",
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(100(\\.0+)?|[0-9]{1,2}(\\.[0-9]+)?)%$"
+                }
+              ]
+            },
+            "warn": {
+              "description": "Over this the run is recorded as a warning: a whole count such as 500, or a percentage such as 2%",
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(100(\\.0+)?|[0-9]{1,2}(\\.[0-9]+)?)%$"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "duplicatesOfRead": {
+          "description": "Records dropped as duplicates under unique, as a count or a share of the records read",
+          "type": "object",
+          "properties": {
+            "error": {
+              "description": "Over this the run fails and publishes nothing: a whole count such as 500, or a percentage such as 2%",
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(100(\\.0+)?|[0-9]{1,2}(\\.[0-9]+)?)%$"
+                }
+              ]
+            },
+            "warn": {
+              "description": "Over this the run is recorded as a warning: a whole count such as 500, or a percentage such as 2%",
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(100(\\.0+)?|[0-9]{1,2}(\\.[0-9]+)?)%$"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -143,7 +143,7 @@
       "minLength": 1
     },
     "kind": {
-      "description": "Resource type identifier",
+      "description": "Spec type, always Preprocess",
       "type": "string",
       "enum": [
         "Preprocess"
@@ -168,7 +168,7 @@
       ],
       "properties": {
         "format": {
-          "description": "Articles file format",
+          "description": "File format of the articles: parquet (the default) or jsonl; rejects and changes are always parquet",
           "type": "string",
           "enum": [
             "parquet",
@@ -185,27 +185,22 @@
       "additionalProperties": false
     },
     "rules": {
-      "description": "A threshold on a signal plus an action, applied in order",
+      "description": "Edits applied in order to the articles kept after unique; each clears a field or drops the article",
       "type": "array",
       "items": {
         "type": "object",
         "required": [
           "name",
-          "when",
-          "action"
+          "when"
         ],
         "properties": {
-          "action": {
-            "description": "clear empties field; drop removes the article",
-            "type": "string",
-            "enum": [
-              "clear",
-              "drop"
-            ]
-          },
-          "field": {
-            "description": "Field a clear empties; it must not be required",
+          "clear": {
+            "description": "Field to empty on every article the rule matches; it must not be required",
             "type": "string"
+          },
+          "drop": {
+            "description": "Remove every article the rule matches",
+            "type": "boolean"
           },
           "name": {
             "description": "Name the counts, rejects and changes give this rule",
@@ -213,21 +208,30 @@
             "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
           },
           "when": {
-            "description": "When the rule fires",
+            "description": "Which articles the rule matches",
             "type": "object",
             "required": [
-              "signal",
+              "countDistinct",
+              "groupBy",
               "atLeast"
             ],
             "properties": {
               "atLeast": {
-                "description": "Fires on an article whose signal value is at least this",
+                "description": "Matches every article of a group whose distinct count is at least this",
                 "type": "integer",
                 "minimum": 1
               },
-              "signal": {
-                "description": "Signal the threshold applies to",
+              "countDistinct": {
+                "description": "Field whose distinct values are counted in each group, as in count(distinct ...)",
                 "type": "string"
+              },
+              "groupBy": {
+                "description": "Fields whose values together form a group, as in group by; an article with any of them empty is in no group",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
               }
             },
             "additionalProperties": false
@@ -236,37 +240,47 @@
         "additionalProperties": false
       }
     },
-    "signals": {
-      "description": "Numbers per kept article that only the whole corpus can give",
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "name",
-          "distinct",
-          "sharing"
-        ],
-        "properties": {
-          "distinct": {
-            "description": "Field whose distinct values are counted",
-            "type": "string"
-          },
-          "name": {
-            "description": "Name rules refer to",
-            "type": "string",
-            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
-          },
-          "sharing": {
-            "description": "Field whose value the counted articles share",
-            "type": "string"
-          },
-          "within": {
-            "description": "Field that splits the corpus into separate groups; unset counts over the whole corpus",
-            "type": "string"
-          }
+    "unique": {
+      "description": "Which records are one article: no two kept articles share the values of a key",
+      "type": "object",
+      "properties": {
+        "keep": {
+          "description": "Which record of one article is kept: first is the earliest in the raw package, by resource and then by row",
+          "type": "string",
+          "enum": [
+            "first"
+          ],
+          "default": "first"
         },
-        "additionalProperties": false
-      }
+        "keys": {
+          "description": "Field sets no two kept articles share; values compare with whitespace collapsed, an empty field never matches, and id kind urlHash needs a key on exactly [URL]",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "fields"
+            ],
+            "properties": {
+              "fields": {
+                "description": "Article fields whose values together must be unique",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "name": {
+                "description": "Name the counts and rejects give the records this key drops",
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
     },
     "version": {
       "description": "Spec version",

@@ -68,7 +68,8 @@ func writeFile(dir, name string, content []byte) (string, error) {
 	return path, nil
 }
 
-const mappingExample = `# Mapping example: the columns of a raw news dataset, mapped onto articles.
+const mappingExample = `# yaml-language-server: $schema=../mapping-v1.json
+# Mapping example: the columns of a raw news dataset, mapped onto articles.
 
 kind: Mapping
 version: v1
@@ -105,7 +106,8 @@ fields:
     target: Metadata.Extra.wordCount
 `
 
-const preprocessExample = `# Preprocess example: how the example mapping's records become a canonical package.
+const preprocessExample = `# yaml-language-server: $schema=../preprocess-v1.json
+# Preprocess example: how the example mapping's records become a canonical package.
 
 kind: Preprocess
 version: v1
@@ -119,28 +121,22 @@ output:
 id:
   kind: urlHash
 
-duplicates:
+unique:
   keep: first
   keys:
-    - name: same-url
-      fields: [URL]
-    - name: same-page
-      fields: [PublisherDomain, Title, Content]
-
-signals:
-  - name: headlines-sharing-body
-    distinct: Title
-    sharing: Content
-    within: PublisherDomain
+    - {name: same-url, fields: [URL]}
+    - {name: same-page, fields: [PublisherDomain, Title, Content]}
 
 rules:
   - name: shared-body
-    when: {signal: headlines-sharing-body, atLeast: 20}
-    action: clear
-    field: Content
+    clear: Content
+    when: {countDistinct: Title, groupBy: [PublisherDomain, Content], atLeast: 3}
+  - name: boilerplate-title
+    drop: true
+    when: {countDistinct: Content, groupBy: [PublisherDomain, Title], atLeast: 50}
 
 checks:
-  dropped: {warn: 0.01, error: 0.02}
-  duplicates: {warn: 0.08, error: 0.10}
-  cleared: {warn: 0.08, error: 0.10}
+  droppedOfRead: {warn: 1%, error: 2%}
+  duplicatesOfRead: {warn: 8%, error: 10%}
+  clearedOfWritten: {warn: 10%, error: 50000}
 `

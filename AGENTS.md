@@ -95,25 +95,27 @@ Each dataset has two YAML specs, and both refuse an unknown key.
 
 `mapping.yaml` (`kind: Mapping`, schema `api/mapping-spec/mapping-v1.json`) is the source's shape. `fields` maps a raw column (`source`) onto an article field (`target`) with a `type` (`string`, `integer`, `number`, `boolean`, `date`, `datetime`, `url`), a date `format`, `required` and a list `separator`. `missingValues` (default `[""]`) lists the raw values, compared trimmed, that mean no value. `Title` and `URL` are required, `PublisherDomain` is derived from the url, and no mapping sets the id: a dataset's own id maps to `Metadata.ExternalID`.
 
-`preprocess.yaml` (`kind: Preprocess`, schema `api/preprocess-spec/preprocess-v1.json`) is our policy, with paths relative to the spec. The stages run in a fixed order: read, map, id, duplicates, signals, rules, checks, publish.
+`preprocess.yaml` (`kind: Preprocess`, schema `api/preprocess-spec/preprocess-v1.json`) is our policy, with paths relative to the spec. Both specs start with a `yaml-language-server` line, so an editor shows each property's description on hover. The stages run in a fixed order: read, map, id, unique, rules, checks, publish.
 
 - `id.kind`: `urlHash` is the uuidv5 of the url, so a rerun gives the same ids and pools, qrels and embeddings stay valid. `random` mints a uuidv7 per article on every run.
-- `duplicates.keys`: field sets no two articles share, compared with whitespace collapsed. The first record in raw order is kept, and an empty field never matches. `urlHash` needs a key on exactly `[URL]`, which also keeps the url of a record another key drops with the article it repeats. Urls compare as normalised (trimmed, host lowercased) and no other spelling is merged, since two spellings can hold different stories.
-- `signals`: `distinct` X `sharing` Y `within` Z, the number of distinct X values among the kept articles with the same Y on the same Z. An empty Y forms no group.
-- `rules`: a threshold on a signal plus `clear` of a field that is not required, or `drop`.
-- `checks`: `dropped` and `duplicates` budgets as shares of the records read, `cleared` of the articles written, each `{warn, error}`. An error publishes nothing.
+- `unique.keys`: field sets no two kept articles share, compared with whitespace collapsed; an empty field never matches. `keep: first` keeps the earliest record in the raw package, by resource and then by row. `urlHash` needs a key on exactly `[URL]`, which also keeps the url of a record another key drops with the article it repeats. Urls compare as normalised (trimmed, host lowercased) and no other spelling is merged, since two spellings can hold different stories.
+- `rules`: each one `clear`s a field that is not required, or `drop`s the article, for every kept article whose group matches `when`: `countDistinct` X `groupBy` [Y, Z] `atLeast` N, as in `count(distinct X) ... group by Y, Z`. An article with any `groupBy` field empty is in no group. Rules that count the same groups share one count, and they run in order, a drop winning over a clear.
+- `checks`: `droppedOfRead`, `duplicatesOfRead` and `clearedOfWritten`, each `{warn, error}`. A whole number such as `500` is a count, and a percentage such as `2%` is a share of the base the key names, as in Kubernetes' `IntOrString`. An error publishes nothing.
 
-`rejects.parquet` lists every removed record with its stage, rule and kept twin, and `changes.parquet` every cleared field with the value it held. The descriptor's `preprocess` block records the id algorithm, a lock (spec, mapping and input hashes, and the tool), counts that reconcile with the records read, each signal's distribution and the check results. A missing optional value is NULL in parquet and absent in JSONL.
+`rejects.parquet` lists every removed record with its stage, rule and kept twin, and `changes.parquet` every cleared field with the value it held and its group's distinct count. The descriptor's `preprocess` block records the id algorithm, a lock (spec, mapping and input hashes, and the tool), counts that reconcile with the records read, each rule's distribution with its top groups, and each check's count, share and result. A missing optional value is NULL in parquet and absent in JSONL.
 
 ```yaml
-duplicates:
+unique:
+  keep: first
   keys:
     - {name: same-url, fields: [URL]}
     - {name: same-page, fields: [PublisherDomain, Title, Content]}
-signals:
-  - {name: headlines-sharing-body, distinct: Title, sharing: Content, within: PublisherDomain}
 rules:
-  - {name: shared-body, when: {signal: headlines-sharing-body, atLeast: 3}, action: clear, field: Content}
+  - name: shared-body
+    clear: Content
+    when: {countDistinct: Title, groupBy: [PublisherDomain, Content], atLeast: 3}
+checks:
+  clearedOfWritten: {warn: 10%, error: 12%}
 ```
 
 ### Storage Layer

@@ -6,7 +6,7 @@ Every dataset has its own folder, and every stage reads and writes a [Frictionle
 datasets/<ds>/
   README.md                          the source, its quirks, how to fetch it
   mapping.yaml                       raw columns → article fields
-  preprocess.yaml                    ids, duplicates, rules and budgets, run by datapipe preprocess
+  preprocess.yaml                    ids, unique keys, rules and checks, run by datapipe preprocess
   raw/                               the source files as published, plus datapackage.json
   canonical/<version>/               datapipe preprocess output
   embeddings/<tag-dir>/<version>/    vectors for one canonical package

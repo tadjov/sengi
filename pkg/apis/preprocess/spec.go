@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -20,24 +19,23 @@ import (
 // +schema:group=sengi.sh
 // +schema:version=v1
 type Spec struct {
-	Kind       string     `json:"kind" yaml:"kind" schema:"required,enum=Preprocess" description:"Resource type identifier"`
-	Version    string     `json:"version" yaml:"version" schema:"required,enum=v1" description:"Spec version"`
-	Name       string     `json:"name" yaml:"name" schema:"required,pattern=^[a-z0-9]+(-[a-z0-9]+)*$,maxLength=64" description:"Dataset id, lowercase kebab-case"`
-	Input      string     `json:"input" yaml:"input" schema:"required,minLength=1" description:"Raw data package, a datapackage.json or its folder: relative to this file, absolute, https:// or s3://"`
-	Mapping    string     `json:"mapping" yaml:"mapping" schema:"required,minLength=1" description:"Mapping spec, relative to this file or absolute"`
-	Output     Output     `json:"output" yaml:"output" schema:"required" description:"Where the canonical package goes"`
-	ID         ID         `json:"id" yaml:"id" schema:"required" description:"How each article gets its id"`
-	Duplicates Duplicates `json:"duplicates,omitzero" yaml:"duplicates,omitempty" description:"Which records are one article"`
-	Signals    []Signal   `json:"signals,omitempty" yaml:"signals,omitempty" description:"Numbers per kept article that only the whole corpus can give"`
-	Rules      []Rule     `json:"rules,omitempty" yaml:"rules,omitempty" description:"A threshold on a signal plus an action, applied in order"`
-	Checks     Checks     `json:"checks,omitzero" yaml:"checks,omitempty" description:"Budgets on the whole output; an error publishes nothing"`
+	Kind    string `json:"kind" yaml:"kind" schema:"required,enum=Preprocess" description:"Spec type, always Preprocess"`
+	Version string `json:"version" yaml:"version" schema:"required,enum=v1" description:"Spec version"`
+	Name    string `json:"name" yaml:"name" schema:"required,pattern=^[a-z0-9]+(-[a-z0-9]+)*$,maxLength=64" description:"Dataset id, lowercase kebab-case"`
+	Input   string `json:"input" yaml:"input" schema:"required,minLength=1" description:"Raw data package, a datapackage.json or its folder: relative to this file, absolute, https:// or s3://"`
+	Mapping string `json:"mapping" yaml:"mapping" schema:"required,minLength=1" description:"Mapping spec, relative to this file or absolute"`
+	Output  Output `json:"output" yaml:"output" schema:"required" description:"Where the canonical package goes"`
+	ID      ID     `json:"id" yaml:"id" schema:"required" description:"How each article gets its id"`
+	Unique  Unique `json:"unique,omitzero" yaml:"unique,omitempty" description:"Which records are one article: no two kept articles share the values of a key"`
+	Rules   []Rule `json:"rules,omitempty" yaml:"rules,omitempty" description:"Edits applied in order to the articles kept after unique; each clears a field or drops the article"`
+	Checks  Checks `json:"checks,omitzero" yaml:"checks,omitempty" description:"Budgets on the whole output: over a warn the run is recorded as a warning, over an error it publishes nothing"`
 }
 
 const Kind = "Preprocess"
 
 type Output struct {
 	Path   string       `json:"path" yaml:"path" schema:"required,minLength=1" description:"Folder that receives <version>/, relative to this file or absolute"`
-	Format OutputFormat `json:"format,omitempty" yaml:"format,omitempty" schema:"enum=parquet|jsonl,default=parquet" description:"Articles file format"`
+	Format OutputFormat `json:"format,omitempty" yaml:"format,omitempty" schema:"enum=parquet|jsonl,default=parquet" description:"File format of the articles: parquet (the default) or jsonl; rejects and changes are always parquet"`
 }
 
 type OutputFormat string
@@ -79,9 +77,9 @@ func ParseIDKind(v string) (IDKind, error) {
 	}
 }
 
-type Duplicates struct {
-	Keep Keep  `json:"keep,omitempty" yaml:"keep,omitempty" schema:"enum=first,default=first" description:"Which record of one article is kept: the first in raw order"`
-	Keys []Key `json:"keys,omitempty" yaml:"keys,omitempty" description:"Field sets no two articles share, compared with whitespace collapsed; an empty field never matches"`
+type Unique struct {
+	Keep Keep  `json:"keep,omitempty" yaml:"keep,omitempty" schema:"enum=first,default=first" description:"Which record of one article is kept: first is the earliest in the raw package, by resource and then by row"`
+	Keys []Key `json:"keys,omitempty" yaml:"keys,omitempty" description:"Field sets no two kept articles share; values compare with whitespace collapsed, an empty field never matches, and id kind urlHash needs a key on exactly [URL]"`
 }
 
 type Keep string
@@ -100,8 +98,8 @@ func ParseKeep(v string) (Keep, error) {
 // Key with exactly the URL field also claims the url of every record another key drops,
 // so no later record takes that url, or the id a urlHash derives from it.
 type Key struct {
-	Name   string   `json:"name" yaml:"name" schema:"required,pattern=^[a-z0-9]+(-[a-z0-9]+)*$" description:"Name the counts and rejects give this key's duplicates"`
-	Fields []string `json:"fields" yaml:"fields" schema:"required,minItems=1" description:"Article fields whose values together no two articles share"`
+	Name   string   `json:"name" yaml:"name" schema:"required,pattern=^[a-z0-9]+(-[a-z0-9]+)*$" description:"Name the counts and rejects give the records this key drops"`
+	Fields []string `json:"fields" yaml:"fields" schema:"required,minItems=1" description:"Article fields whose values together must be unique"`
 }
 
 // IsURL reports whether the key compares the url alone.
@@ -109,25 +107,28 @@ func (k Key) IsURL() bool {
 	return len(k.Fields) == 1 && k.Fields[0] == mapping.TargetURL
 }
 
-// Signal is the number of distinct Distinct values among the kept articles that share
-// their Sharing value, within one Within value when set. An empty Sharing value forms no group.
-type Signal struct {
-	Name     string `json:"name" yaml:"name" schema:"required,pattern=^[a-z0-9]+(-[a-z0-9]+)*$" description:"Name rules refer to"`
-	Distinct string `json:"distinct" yaml:"distinct" schema:"required" description:"Field whose distinct values are counted"`
-	Sharing  string `json:"sharing" yaml:"sharing" schema:"required" description:"Field whose value the counted articles share"`
-	Within   string `json:"within,omitempty" yaml:"within,omitempty" description:"Field that splits the corpus into separate groups; unset counts over the whole corpus"`
-}
-
+// Rule clears a field of, or drops, every article its condition matches.
 type Rule struct {
-	Name   string    `json:"name" yaml:"name" schema:"required,pattern=^[a-z0-9]+(-[a-z0-9]+)*$" description:"Name the counts, rejects and changes give this rule"`
-	When   Condition `json:"when" yaml:"when" schema:"required" description:"When the rule fires"`
-	Action Action    `json:"action" yaml:"action" schema:"required,enum=clear|drop" description:"clear empties field; drop removes the article"`
-	Field  string    `json:"field,omitempty" yaml:"field,omitempty" description:"Field a clear empties; it must not be required"`
+	Name  string    `json:"name" yaml:"name" schema:"required,pattern=^[a-z0-9]+(-[a-z0-9]+)*$" description:"Name the counts, rejects and changes give this rule"`
+	Clear string    `json:"clear,omitempty" yaml:"clear,omitempty" description:"Field to empty on every article the rule matches; it must not be required"`
+	Drop  bool      `json:"drop,omitempty" yaml:"drop,omitempty" description:"Remove every article the rule matches"`
+	When  Condition `json:"when" yaml:"when" schema:"required" description:"Which articles the rule matches"`
 }
 
+// Condition matches the articles of every group, as in SQL group by, whose count of
+// distinct CountDistinct values is at least AtLeast.
 type Condition struct {
-	Signal  string `json:"signal" yaml:"signal" schema:"required" description:"Signal the threshold applies to"`
-	AtLeast int64  `json:"atLeast" yaml:"atLeast" schema:"required,minimum=1" description:"Fires on an article whose signal value is at least this"`
+	CountDistinct string   `json:"countDistinct" yaml:"countDistinct" schema:"required" description:"Field whose distinct values are counted in each group, as in count(distinct ...)"`
+	GroupBy       []string `json:"groupBy" yaml:"groupBy" schema:"required,minItems=1" description:"Fields whose values together form a group, as in group by; an article with any of them empty is in no group"`
+	AtLeast       int64    `json:"atLeast" yaml:"atLeast" schema:"required,minimum=1" description:"Matches every article of a group whose distinct count is at least this"`
+}
+
+// Action is what a rule does to the articles it matches.
+func (r Rule) Action() Action {
+	if r.Drop {
+		return ActionDrop
+	}
+	return ActionClear
 }
 
 type Action string
@@ -137,27 +138,18 @@ const (
 	ActionDrop  Action = "drop"
 )
 
-func ParseAction(v string) (Action, error) {
-	switch a := Action(v); a {
-	case ActionClear, ActionDrop:
-		return a, nil
-	default:
-		return "", fmt.Errorf("unknown action %q, want %q or %q", v, ActionClear, ActionDrop)
-	}
-}
-
-// Checks are budgets on the whole output, each a share: dropped and duplicates
-// of the records read, cleared of the articles written. An unset budget is not checked.
+// Checks are budgets on the whole output; each key names what it counts and the base a percentage is a share of.
+// An unset budget is not checked.
 type Checks struct {
-	Dropped    *Budget `json:"dropped,omitempty" yaml:"dropped,omitempty" description:"Records dropped: missing a required field, malformed, or removed by a drop rule"`
-	Duplicates *Budget `json:"duplicates,omitempty" yaml:"duplicates,omitempty" description:"Records dropped as a duplicate"`
-	Cleared    *Budget `json:"cleared,omitempty" yaml:"cleared,omitempty" description:"Articles written with at least one field cleared"`
+	DroppedOfRead    *Budget `json:"droppedOfRead,omitempty" yaml:"droppedOfRead,omitempty" description:"Records dropped, for a missing required field, a malformed row or a drop rule, as a count or a share of the records read"`
+	DuplicatesOfRead *Budget `json:"duplicatesOfRead,omitempty" yaml:"duplicatesOfRead,omitempty" description:"Records dropped as duplicates under unique, as a count or a share of the records read"`
+	ClearedOfWritten *Budget `json:"clearedOfWritten,omitempty" yaml:"clearedOfWritten,omitempty" description:"Articles with at least one field cleared, as a count or a share of the articles written"`
 }
 
 // Budget fails a check over Error and records a warning over Warn.
 type Budget struct {
-	Warn  *float64 `json:"warn,omitempty" yaml:"warn,omitempty" schema:"minimum=0,maximum=1" description:"A share over this is recorded as a warning"`
-	Error *float64 `json:"error,omitempty" yaml:"error,omitempty" schema:"minimum=0,maximum=1" description:"A share over this fails the run and publishes nothing"`
+	Warn  *Threshold `json:"warn,omitempty" yaml:"warn,omitempty" description:"Over this the run is recorded as a warning: a whole count such as 500, or a percentage such as 2%"`
+	Error *Threshold `json:"error,omitempty" yaml:"error,omitempty" description:"Over this the run fails and publishes nothing: a whole count such as 500, or a percentage such as 2%"`
 }
 
 // Resolved is a spec read from disk, with the mapping it names and its locations resolved.
@@ -239,7 +231,7 @@ func Read(r io.Reader) (Spec, error) {
 func (s Spec) Policy() Spec {
 	s.Input, s.Mapping, s.Output.Path = "", "", ""
 	s.Output.Format, _ = ParseOutputFormat(string(s.Output.Format))
-	s.Duplicates.Keep = KeepFirst
+	s.Unique.Keep = KeepFirst
 	return s
 }
 
@@ -270,20 +262,16 @@ func (s Spec) Validate() error {
 	if _, err := ParseIDKind(string(s.ID.Kind)); err != nil {
 		return fmt.Errorf("id.kind: %w", err)
 	}
-	if err := s.Duplicates.validate(s.ID.Kind); err != nil {
-		return fmt.Errorf("duplicates: %w", err)
+	if err := s.Unique.validate(s.ID.Kind); err != nil {
+		return fmt.Errorf("unique: %w", err)
 	}
-	signals, err := validateSignals(s.Signals)
-	if err != nil {
-		return err
-	}
-	if err := validateRules(s.Rules, signals); err != nil {
+	if err := validateRules(s.Rules); err != nil {
 		return err
 	}
 	return s.Checks.validate()
 }
 
-func (d Duplicates) validate(idKind IDKind) error {
+func (d Unique) validate(idKind IDKind) error {
 	if _, err := ParseKeep(string(d.Keep)); err != nil {
 		return err
 	}
@@ -312,54 +300,49 @@ func (d Duplicates) validate(idKind IDKind) error {
 	return nil
 }
 
-func validateSignals(signals []Signal) (map[string]bool, error) {
-	names := map[string]bool{}
-	for i, signal := range signals {
-		if err := validateName(signal.Name, names); err != nil {
-			return nil, fmt.Errorf("signals[%d]: %w", i, err)
-		}
-		fields := []string{signal.Distinct, signal.Sharing}
-		if signal.Within != "" {
-			fields = append(fields, signal.Within)
-		}
-		for _, field := range fields {
-			if err := validateTextField(field); err != nil {
-				return nil, fmt.Errorf("signal %q: %w", signal.Name, err)
-			}
-		}
-		if signal.Distinct == signal.Sharing || signal.Distinct == signal.Within || signal.Sharing == signal.Within {
-			return nil, fmt.Errorf("signal %q: distinct, sharing and within must name different fields", signal.Name)
-		}
-	}
-	return names, nil
-}
-
-func validateRules(rules []Rule, signals map[string]bool) error {
+func validateRules(rules []Rule) error {
 	names := map[string]bool{}
 	for i, rule := range rules {
 		if err := validateName(rule.Name, names); err != nil {
 			return fmt.Errorf("rules[%d]: %w", i, err)
 		}
-		if !signals[rule.When.Signal] {
-			return fmt.Errorf("rule %q: signal %q is not defined, want one of %q", rule.Name, rule.When.Signal, slices.Sorted(maps.Keys(signals)))
+		if (rule.Clear == "") != rule.Drop {
+			return fmt.Errorf("rule %q: set either clear: <field> or drop: true", rule.Name)
 		}
-		if rule.When.AtLeast < 1 {
-			return fmt.Errorf("rule %q: atLeast must be at least 1, got %d", rule.Name, rule.When.AtLeast)
-		}
-		action, err := ParseAction(string(rule.Action))
-		if err != nil {
-			return fmt.Errorf("rule %q: %w", rule.Name, err)
-		}
-		switch {
-		case action == ActionClear && rule.Field == "":
-			return fmt.Errorf("rule %q: a clear names the field it empties", rule.Name)
-		case action == ActionDrop && rule.Field != "":
-			return fmt.Errorf("rule %q: a drop removes the whole article, so it takes no field", rule.Name)
-		case action == ActionClear:
-			if err := validateTextField(rule.Field); err != nil {
-				return fmt.Errorf("rule %q: %w", rule.Name, err)
+		if rule.Clear != "" {
+			if err := validateTextField(rule.Clear); err != nil {
+				return fmt.Errorf("rule %q: clear: %w", rule.Name, err)
 			}
 		}
+		if err := rule.When.validate(); err != nil {
+			return fmt.Errorf("rule %q: when: %w", rule.Name, err)
+		}
+	}
+	return nil
+}
+
+func (c Condition) validate() error {
+	if err := validateTextField(c.CountDistinct); err != nil {
+		return fmt.Errorf("countDistinct: %w", err)
+	}
+	if len(c.GroupBy) == 0 {
+		return errors.New("groupBy names no field")
+	}
+	seen := map[string]bool{}
+	for _, field := range c.GroupBy {
+		if err := validateTextField(field); err != nil {
+			return fmt.Errorf("groupBy: %w", err)
+		}
+		if seen[field] {
+			return fmt.Errorf("groupBy names %q twice", field)
+		}
+		seen[field] = true
+	}
+	if seen[c.CountDistinct] {
+		return fmt.Errorf("groupBy holds %q, the field countDistinct counts, so every group would count 1", c.CountDistinct)
+	}
+	if c.AtLeast < 1 {
+		return fmt.Errorf("atLeast must be at least 1, got %d", c.AtLeast)
 	}
 	return nil
 }
@@ -368,7 +351,7 @@ func (c Checks) validate() error {
 	for _, check := range []struct {
 		name   string
 		budget *Budget
-	}{{"dropped", c.Dropped}, {"duplicates", c.Duplicates}, {"cleared", c.Cleared}} {
+	}{{"droppedOfRead", c.DroppedOfRead}, {"duplicatesOfRead", c.DuplicatesOfRead}, {"clearedOfWritten", c.ClearedOfWritten}} {
 		if check.budget == nil {
 			continue
 		}
@@ -383,13 +366,8 @@ func (b Budget) validate() error {
 	if b.Warn == nil && b.Error == nil {
 		return errors.New("set warn, error or both")
 	}
-	for _, level := range []*float64{b.Warn, b.Error} {
-		if level != nil && (*level < 0 || *level > 1) {
-			return fmt.Errorf("%v is not a share between 0 and 1", *level)
-		}
-	}
-	if b.Warn != nil && b.Error != nil && *b.Warn > *b.Error {
-		return fmt.Errorf("warn %v is over error %v", *b.Warn, *b.Error)
+	if b.Warn != nil && b.Error != nil && !b.Warn.Within(*b.Error) {
+		return fmt.Errorf("warn %s is over error %s", b.Warn, b.Error)
 	}
 	return nil
 }
@@ -402,32 +380,27 @@ func (s Spec) ValidateWith(m mapping.Spec) error {
 		}
 		return fmt.Errorf("field %q is not mapped, so every article would leave it empty", field)
 	}
-	for _, key := range s.Duplicates.Keys {
+	for _, key := range s.Unique.Keys {
 		for _, field := range key.Fields {
 			if err := unfilled(field); err != nil {
-				return fmt.Errorf("duplicates key %q: %w", key.Name, err)
-			}
-		}
-	}
-	for _, signal := range s.Signals {
-		for _, field := range []string{signal.Distinct, signal.Sharing, signal.Within} {
-			if field == "" {
-				continue
-			}
-			if err := unfilled(field); err != nil {
-				return fmt.Errorf("signal %q: %w", signal.Name, err)
+				return fmt.Errorf("unique key %q: %w", key.Name, err)
 			}
 		}
 	}
 	for _, rule := range s.Rules {
-		if rule.Action != ActionClear {
+		for _, field := range append([]string{rule.When.CountDistinct}, rule.When.GroupBy...) {
+			if err := unfilled(field); err != nil {
+				return fmt.Errorf("rule %q: %w", rule.Name, err)
+			}
+		}
+		if rule.Clear == "" {
 			continue
 		}
-		if err := unfilled(rule.Field); err != nil {
+		if err := unfilled(rule.Clear); err != nil {
 			return fmt.Errorf("rule %q: %w", rule.Name, err)
 		}
-		if f, _ := m.Field(rule.Field); f.Required {
-			return fmt.Errorf("rule %q: field %q is required, so clearing it would leave an article the mapping drops", rule.Name, rule.Field)
+		if f, _ := m.Field(rule.Clear); f.Required {
+			return fmt.Errorf("rule %q: field %q is required, so clearing it would leave an article the mapping drops", rule.Name, rule.Clear)
 		}
 	}
 	return nil

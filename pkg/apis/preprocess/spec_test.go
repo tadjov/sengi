@@ -25,16 +25,16 @@ output:
   path: canonical
 id:
   kind: urlHash
-duplicates:
+unique:
   keys:
     - {name: same-url, fields: [URL]}
     - {name: same-page, fields: [PublisherDomain, Title, Content]}
-signals:
-  - {name: headlines-sharing-body, distinct: Title, sharing: Content, within: PublisherDomain}
 rules:
-  - {name: shared-body, when: {signal: headlines-sharing-body, atLeast: 20}, action: clear, field: Content}
+  - name: shared-body
+    clear: Content
+    when: {countDistinct: Title, groupBy: [PublisherDomain, Content], atLeast: 20}
 checks:
-  dropped: {warn: 0.01, error: 0.02}
+  droppedOfRead: {warn: 1%, error: 2%}
 `
 
 const validMapping = `kind: Mapping
@@ -69,10 +69,13 @@ var unknownKeySpecs = []struct {
 }{
 	{name: "top level", doc: validSpec + "rule: []\n", wantKey: "rule"},
 	{name: "the retired identity block", doc: validSpec + "identity:\n  idKind: urlHash\n", wantKey: "identity"},
+	{name: "the retired duplicates block", doc: replaced(validSpec, "unique:\n", "duplicates:\n"), wantKey: "duplicates"},
+	{name: "the retired signals block", doc: validSpec + "signals: []\n", wantKey: "signals"},
 	{name: "inside a key", doc: replaced(validSpec, "{name: same-url, fields: [URL]}", "{name: same-url, field: [URL]}"), wantKey: "field"},
 	{name: "inside a condition", doc: replaced(validSpec, "atLeast: 20", "atleast: 20"), wantKey: "atleast"},
-	{name: "inside a budget", doc: replaced(validSpec, "{warn: 0.01, error: 0.02}", "{warn: 0.01, fail: 0.02}"), wantKey: "fail"},
-	{name: "a flag action's options", doc: replaced(validSpec, "field: Content}", "field: Content, flag: true}"), wantKey: "flag"},
+	{name: "the retired action key", doc: replaced(validSpec, "    clear: Content\n", "    action: clear\n"), wantKey: "action"},
+	{name: "inside a budget", doc: replaced(validSpec, "{warn: 1%, error: 2%}", "{warn: 1%, fail: 2%}"), wantKey: "fail"},
+	{name: "the retired check names", doc: replaced(validSpec, "droppedOfRead:", "dropped:"), wantKey: "dropped"},
 }
 
 func TestRead_RejectsAnUnknownKeyByName(t *testing.T) {
@@ -99,25 +102,30 @@ var rejectedSpecs = []struct {
 	{name: "an unknown output format", doc: replaced(validSpec, "  path: canonical\n", "  path: canonical\n  format: csv\n"), wantInErr: `"csv"`},
 	{name: "no id", doc: replaced(validSpec, "id:\n  kind: urlHash\n", ""), wantInErr: "id"},
 	{name: "an unknown id kind", doc: replaced(validSpec, "kind: urlHash", "kind: uuidv5"), wantInErr: `"uuidv5"`},
-	{name: "a keep other than first", doc: replaced(validSpec, "duplicates:\n", "duplicates:\n  keep: last\n"), wantInErr: `"last"`},
+	{name: "a keep other than first", doc: replaced(validSpec, "unique:\n", "unique:\n  keep: last\n"), wantInErr: `"last"`},
 	{name: "a key name that is not kebab-case", doc: replaced(validSpec, "name: same-page", "name: Same Page"), wantInErr: "Same Page"},
 	{name: "a key without fields", doc: replaced(validSpec, "fields: [PublisherDomain, Title, Content]", "fields: []"), wantInErr: "fields"},
-	{name: "an unknown action", doc: replaced(validSpec, "action: clear", "action: flag"), wantInErr: `"flag"`},
 	{name: "a threshold under one", doc: replaced(validSpec, "atLeast: 20", "atLeast: 0"), wantInErr: "atLeast"},
-	{name: "a share over one", doc: replaced(validSpec, "error: 0.02", "error: 2"), wantInErr: "2"},
-	{name: "a negative share", doc: replaced(validSpec, "warn: 0.01", "warn: -0.01"), wantInErr: "-0.01"},
+	{name: "a rule without a condition", doc: replaced(validSpec, "    when: {countDistinct: Title, groupBy: [PublisherDomain, Content], atLeast: 20}\n", ""), wantInErr: "when"},
+	{name: "an empty groupBy", doc: replaced(validSpec, "groupBy: [PublisherDomain, Content]", "groupBy: []"), wantInErr: "groupBy"},
+	{name: "a percentage over 100", doc: replaced(validSpec, "error: 2%", "error: 120%"), wantInErr: "120%"},
+	{name: "a fraction instead of a percentage", doc: replaced(validSpec, "error: 2%", "error: 0.02"), wantInErr: "0.02"},
+	{name: "a negative count", doc: replaced(validSpec, "warn: 1%", "warn: -5"), wantInErr: "-5"},
 	{name: "a url hash without a url key", doc: replaced(validSpec, "    - {name: same-url, fields: [URL]}\n", ""), wantInErr: "[URL]", crossField: true},
 	{name: "a url hash whose url key compares more", doc: replaced(validSpec, "fields: [URL]}", "fields: [URL, Title]}"), wantInErr: "[URL]", crossField: true},
 	{name: "a key field that is no text field", doc: replaced(validSpec, "fields: [PublisherDomain, Title, Content]", "fields: [Metadata.Authors]"), wantInErr: "Metadata.Authors", crossField: true},
 	{name: "a key field named twice", doc: replaced(validSpec, "fields: [PublisherDomain, Title, Content]", "fields: [Title, Title]"), wantInErr: `"Title"`, crossField: true},
 	{name: "two keys with one name", doc: replaced(validSpec, "name: same-page", "name: same-url"), wantInErr: `"same-url"`, crossField: true},
-	{name: "a signal on an unknown field", doc: replaced(validSpec, "distinct: Title", "distinct: Headline"), wantInErr: `"Headline"`, crossField: true},
-	{name: "a signal counting the field it groups by", doc: replaced(validSpec, "distinct: Title", "distinct: Content"), wantInErr: "different fields", crossField: true},
-	{name: "a rule on an undefined signal", doc: replaced(validSpec, "{signal: headlines-sharing-body,", "{signal: shared-titles,"), wantInErr: `"shared-titles"`, crossField: true},
-	{name: "a clear without a field", doc: replaced(validSpec, ", field: Content}", "}"), wantInErr: "field", crossField: true},
-	{name: "a drop with a field", doc: replaced(validSpec, "action: clear", "action: drop"), wantInErr: "no field", crossField: true},
-	{name: "a warn over its error", doc: replaced(validSpec, "{warn: 0.01, error: 0.02}", "{warn: 0.03, error: 0.02}"), wantInErr: "warn", crossField: true},
-	{name: "a budget with no level", doc: replaced(validSpec, "{warn: 0.01, error: 0.02}", "{}"), wantInErr: "warn", crossField: true},
+	{name: "a count of an unknown field", doc: replaced(validSpec, "countDistinct: Title", "countDistinct: Headline"), wantInErr: `"Headline"`, crossField: true},
+	{name: "a group by an unknown field", doc: replaced(validSpec, "groupBy: [PublisherDomain, Content]", "groupBy: [Site, Content]"), wantInErr: `"Site"`, crossField: true},
+	{name: "a group by a field named twice", doc: replaced(validSpec, "groupBy: [PublisherDomain, Content]", "groupBy: [Content, Content]"), wantInErr: "twice", crossField: true},
+	{name: "a group by the counted field", doc: replaced(validSpec, "groupBy: [PublisherDomain, Content]", "groupBy: [Title, Content]"), wantInErr: "count 1", crossField: true},
+	{name: "a rule that neither clears nor drops", doc: replaced(validSpec, "    clear: Content\n", ""), wantInErr: "clear", crossField: true},
+	{name: "a rule that clears and drops", doc: replaced(validSpec, "    clear: Content\n", "    clear: Content\n    drop: true\n"), wantInErr: "either", crossField: true},
+	{name: "a clear of an unknown field", doc: replaced(validSpec, "clear: Content", "clear: Body"), wantInErr: `"Body"`, crossField: true},
+	{name: "a warn over its error", doc: replaced(validSpec, "{warn: 1%, error: 2%}", "{warn: 3%, error: 2%}"), wantInErr: "warn", crossField: true},
+	{name: "a warn count over its error count", doc: replaced(validSpec, "{warn: 1%, error: 2%}", "{warn: 50, error: 20}"), wantInErr: "warn", crossField: true},
+	{name: "a budget with no level", doc: replaced(validSpec, "{warn: 1%, error: 2%}", "{}"), wantInErr: "warn", crossField: true},
 }
 
 func TestRead_RejectsAnInvalidSpecPrecisely(t *testing.T) {
@@ -138,10 +146,11 @@ func TestValidateWith_RefusesFieldsTheMappingCannotFill(t *testing.T) {
 		doc       string
 		wantInErr string
 	}{
-		{name: "a clear on a required field", doc: replaced(validSpec, "field: Content}", "field: Title}"), wantInErr: "required"},
-		{name: "a clear on a field the mapping requires", doc: replaced(validSpec, "field: Content}", "field: Description}"), wantInErr: "required"},
+		{name: "a clear on a required field", doc: replaced(validSpec, "clear: Content", "clear: Title"), wantInErr: "required"},
+		{name: "a clear on a field the mapping requires", doc: replaced(validSpec, "clear: Content", "clear: Description"), wantInErr: "required"},
 		{name: "a key on an unmapped field", doc: replaced(validSpec, "fields: [PublisherDomain, Title, Content]", "fields: [Metadata.Section]"), wantInErr: "Metadata.Section"},
-		{name: "a signal on an unmapped field", doc: replaced(validSpec, "within: PublisherDomain", "within: Metadata.PublisherName"), wantInErr: "Metadata.PublisherName"},
+		{name: "a group by an unmapped field", doc: replaced(validSpec, "groupBy: [PublisherDomain, Content]", "groupBy: [Metadata.PublisherName, Content]"), wantInErr: "Metadata.PublisherName"},
+		{name: "a count of an unmapped field", doc: replaced(validSpec, "countDistinct: Title", "countDistinct: Metadata.Section"), wantInErr: "Metadata.Section"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -165,7 +174,7 @@ func TestPolicy_IgnoresWhereTheFilesLieAndWhichDefaultsAreSpelledOut(t *testing.
 	explicit, err := readSpec(replaced(replaced(replaced(validSpec,
 		"input: raw/datapackage.json", "input: /data/news/raw"),
 		"  path: canonical\n", "  path: /tmp/trial\n  format: parquet\n"),
-		"duplicates:\n", "duplicates:\n  keep: first\n"))
+		"unique:\n", "unique:\n  keep: first\n"))
 	require.NoError(t, err)
 
 	assert.Equal(t, implicit.Policy(), explicit.Policy())

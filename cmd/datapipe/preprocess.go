@@ -121,7 +121,7 @@ func preprocessSummary(result datapackage.Published) cli.Summary {
 	for _, name := range slices.Sorted(maps.Keys(record.Checks)) {
 		check := record.Checks[name]
 		if check.Result == datapackage.CheckWarn {
-			summary.Notes = append(summary.Notes, cli.Note{Text: fmt.Sprintf("check %s: %.4f is over its warn budget %.4f", name, check.Observed, *check.Warn), Warning: true})
+			summary.Notes = append(summary.Notes, cli.Note{Text: fmt.Sprintf("check %s: %d (%.2f%%) is over its warn budget %s", name, check.Count, 100*check.Share, check.Warn), Warning: true})
 		}
 	}
 	if result.Restored {

@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../api/mapping-spec/mapping-v1.json
 kind: Mapping
 version: v1
 name: cc-news

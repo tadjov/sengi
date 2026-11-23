@@ -25,16 +25,17 @@ type rejectRow struct {
 	Field  *string `parquet:"field,optional"`
 	Reason *string `parquet:"reason,optional"`
 	// ID is the article a rule dropped; KeptID the kept article a duplicate repeats.
-	ID          *string `parquet:"id,optional"`
-	KeptID      *string `parquet:"keptId,optional"`
-	SignalValue *int64  `parquet:"signalValue,optional"`
+	ID     *string `parquet:"id,optional"`
+	KeptID *string `parquet:"keptId,optional"`
+	// CountDistinct is the distinct count of the group a drop rule matched.
+	CountDistinct *int64 `parquet:"countDistinct,optional"`
 }
 
-// changeRow is one field a rule cleared, with the value it held.
+// changeRow is one field a rule cleared, with the value it held and the distinct count of the group it matched.
 type changeRow struct {
-	ID          string `parquet:"id"`
-	Field       string `parquet:"field"`
-	Rule        string `parquet:"rule"`
-	SignalValue int64  `parquet:"signalValue"`
-	Value       string `parquet:"value"`
+	ID            string `parquet:"id"`
+	Field         string `parquet:"field"`
+	Rule          string `parquet:"rule"`
+	CountDistinct int64  `parquet:"countDistinct"`
+	Value         string `parquet:"value"`
 }

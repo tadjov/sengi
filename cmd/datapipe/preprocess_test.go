@@ -58,7 +58,7 @@ output:
   path: canonical
 id:
   kind: urlHash
-duplicates:
+unique:
   keys:
     - {name: same-url, fields: [URL]}
 `
@@ -322,24 +322,24 @@ func articleFromParquet(t *testing.T, row canonicalParquetRow) document.Article 
 
 // rejectParquetRow and changeParquetRow read the audit resources by their contract column names.
 type rejectParquetRow struct {
-	Resource    string  `parquet:"resource"`
-	Row         int64   `parquet:"row"`
-	URL         *string `parquet:"url,optional"`
-	Stage       string  `parquet:"stage"`
-	Rule        *string `parquet:"rule,optional"`
-	Field       *string `parquet:"field,optional"`
-	Reason      *string `parquet:"reason,optional"`
-	ID          *string `parquet:"id,optional"`
-	KeptID      *string `parquet:"keptId,optional"`
-	SignalValue *int64  `parquet:"signalValue,optional"`
+	Resource      string  `parquet:"resource"`
+	Row           int64   `parquet:"row"`
+	URL           *string `parquet:"url,optional"`
+	Stage         string  `parquet:"stage"`
+	Rule          *string `parquet:"rule,optional"`
+	Field         *string `parquet:"field,optional"`
+	Reason        *string `parquet:"reason,optional"`
+	ID            *string `parquet:"id,optional"`
+	KeptID        *string `parquet:"keptId,optional"`
+	CountDistinct *int64  `parquet:"countDistinct,optional"`
 }
 
 type changeParquetRow struct {
-	ID          string `parquet:"id"`
-	Field       string `parquet:"field"`
-	Rule        string `parquet:"rule"`
-	SignalValue int64  `parquet:"signalValue"`
-	Value       string `parquet:"value"`
+	ID            string `parquet:"id"`
+	Field         string `parquet:"field"`
+	Rule          string `parquet:"rule"`
+	CountDistinct int64  `parquet:"countDistinct"`
+	Value         string `parquet:"value"`
 }
 
 func readResource[T any](t *testing.T, dir, name string) []T {
@@ -427,18 +427,14 @@ func TestPreprocess_KeepsTheArticlesAndIDsTheMappingIdentityKept(t *testing.T) {
 	assert.Equal(t, readGoldenArticles(t, "origin-main-articles.jsonl"), rows.articles)
 }
 
-// cleaningSpec is the fixture's spec at thresholds its small groups reach.
+// cleaningSpec is the fixture's spec with rules at thresholds its small groups reach.
 func cleaningSpec(t *testing.T, rules string) string {
 	t.Helper()
-	return withKeys(t, samePageKeys) + `signals:
-  - {name: headlines-sharing-body, distinct: Title, sharing: Content, within: PublisherDomain}
-  - {name: headlines-sharing-description, distinct: Title, sharing: Description, within: PublisherDomain}
-rules:
-` + rules
+	return withKeys(t, samePageKeys) + "rules:\n" + rules
 }
 
-const clearSharedText = `  - {name: shared-body, when: {signal: headlines-sharing-body, atLeast: 3}, action: clear, field: Content}
-  - {name: shared-description, when: {signal: headlines-sharing-description, atLeast: 3}, action: clear, field: Description}
+const clearSharedText = `  - {name: shared-body, clear: Content, when: {countDistinct: Title, groupBy: [PublisherDomain, Content], atLeast: 3}}
+  - {name: shared-description, clear: Description, when: {countDistinct: Title, groupBy: [PublisherDomain, Description], atLeast: 3}}
 `
 
 func TestPreprocess_RecordsEveryRemovedRecordWithTheStageThatRemovedIt(t *testing.T) {
@@ -468,13 +464,13 @@ func TestPreprocess_ClearsTheSharedFieldOfEveryArticleInAGroupAtTheThreshold(t *
 	pkg, rows := readArticles(t, dir)
 	id := func(url string) string { return rows.byURL[url].ID.String() }
 	assert.Equal(t, []changeParquetRow{
-		{ID: id("https://junk.net/storm"), Field: "Content", Rule: "shared-body", SignalValue: 4, Value: "Subscribe to read the full story."},
-		{ID: id("https://junk.net/markets"), Field: "Content", Rule: "shared-body", SignalValue: 4, Value: "Subscribe to read the full story."},
-		{ID: id("https://junk.net/election"), Field: "Content", Rule: "shared-body", SignalValue: 4, Value: "Subscribe to read the full story."},
-		{ID: id("https://junk.net/final"), Field: "Content", Rule: "shared-body", SignalValue: 4, Value: "Subscribe  to read the full story."},
-		{ID: id("https://slogan.com/rain"), Field: "Description", Rule: "shared-description", SignalValue: 3, Value: "News from around the web."},
-		{ID: id("https://slogan.com/heat"), Field: "Description", Rule: "shared-description", SignalValue: 3, Value: "News from around the web."},
-		{ID: id("https://slogan.com/snow"), Field: "Description", Rule: "shared-description", SignalValue: 3, Value: "News from around the web."},
+		{ID: id("https://junk.net/storm"), Field: "Content", Rule: "shared-body", CountDistinct: 4, Value: "Subscribe to read the full story."},
+		{ID: id("https://junk.net/markets"), Field: "Content", Rule: "shared-body", CountDistinct: 4, Value: "Subscribe to read the full story."},
+		{ID: id("https://junk.net/election"), Field: "Content", Rule: "shared-body", CountDistinct: 4, Value: "Subscribe to read the full story."},
+		{ID: id("https://junk.net/final"), Field: "Content", Rule: "shared-body", CountDistinct: 4, Value: "Subscribe  to read the full story."},
+		{ID: id("https://slogan.com/rain"), Field: "Description", Rule: "shared-description", CountDistinct: 3, Value: "News from around the web."},
+		{ID: id("https://slogan.com/heat"), Field: "Description", Rule: "shared-description", CountDistinct: 3, Value: "News from around the web."},
+		{ID: id("https://slogan.com/snow"), Field: "Description", Rule: "shared-description", CountDistinct: 3, Value: "News from around the web."},
 	}, readResource[changeParquetRow](t, dir, datapackage.ChangesResource))
 
 	golden := map[string]document.Article{}
@@ -502,16 +498,15 @@ func TestPreprocess_ClearsTheSharedFieldOfEveryArticleInAGroupAtTheThreshold(t *
 	}, pkg.Preprocess.Counts)
 }
 
-func TestPreprocess_DescribesEachSignalsDistribution(t *testing.T) {
+func TestPreprocess_DescribesEachRulesDistribution(t *testing.T) {
 	run := newPreprocessRun(t, cleaningSpec(t, clearSharedText), baseMapping, fixtureFile(t, "records.csv"))
 
 	require.NoError(t, run.execute(t.Context()))
 
 	pkg, _ := readArticles(t, run.packageDir(t))
-	body := pkg.Preprocess.Signals["headlines-sharing-body"]
-	assert.Equal(t, "Title", body.Distinct)
-	assert.Equal(t, "Content", body.Sharing)
-	assert.Equal(t, "PublisherDomain", body.Within)
+	body := pkg.Preprocess.Rules["shared-body"]
+	assert.Equal(t, "Title", body.CountDistinct)
+	assert.Equal(t, []string{"PublisherDomain", "Content"}, body.GroupBy)
 	// 13 kept articles have a body: four junk.net headlines share one, two bridge headlines another, seven stand alone.
 	assert.Equal(t, int64(13), body.Articles)
 	assert.Equal(t, int64(1), body.Median)
@@ -519,12 +514,26 @@ func TestPreprocess_DescribesEachSignalsDistribution(t *testing.T) {
 	assert.Equal(t, int64(6), body.AtLeast["2"])
 	assert.Equal(t, int64(4), body.AtLeast["3"])
 	require.Len(t, body.Top, 9)
-	assert.Equal(t, datapackage.SignalGroup{Within: "junk.net", Sharing: "Subscribe to read the full story.", Value: 4, Articles: 4}, body.Top[0])
-	assert.Equal(t, datapackage.SignalGroup{Within: "junk.net", Sharing: "Shared by two headlines.", Value: 2, Articles: 2}, body.Top[1])
+	assert.Equal(t, datapackage.Group{Values: []string{"junk.net", "Subscribe to read the full story."}, CountDistinct: 4, Articles: 4}, body.Top[0])
+	assert.Equal(t, datapackage.Group{Values: []string{"junk.net", "Shared by two headlines."}, CountDistinct: 2, Articles: 2}, body.Top[1])
+	assert.Equal(t, []string{"slogan.com", "News from around the web."}, pkg.Preprocess.Rules["shared-description"].Top[0].Values)
+}
+
+func TestPreprocess_RulesCountingTheSameGroupsShareTheirCount(t *testing.T) {
+	rules := clearSharedText + "  - {name: boilerplate-body, drop: true, when: {countDistinct: Title, groupBy: [PublisherDomain, Content], atLeast: 4}}\n"
+	run := newPreprocessRun(t, cleaningSpec(t, rules), baseMapping, fixtureFile(t, "records.csv"))
+
+	require.NoError(t, run.execute(t.Context()))
+
+	pkg, rows := readArticles(t, run.packageDir(t))
+	assert.Equal(t, pkg.Preprocess.Rules["shared-body"], pkg.Preprocess.Rules["boilerplate-body"])
+	assert.NotContains(t, rows.urls, "https://junk.net/storm", "the drop wins over the clear of the same article")
+	assert.Equal(t, int64(0), pkg.Preprocess.Counts.Cleared["shared-body"])
+	assert.Equal(t, int64(4), pkg.Preprocess.Counts.Dropped["rule/boilerplate-body"])
 }
 
 func TestPreprocess_DropsTheArticlesADropRuleFiresOn(t *testing.T) {
-	rules := "  - {name: boilerplate-body, when: {signal: headlines-sharing-body, atLeast: 3}, action: drop}\n"
+	rules := "  - {name: boilerplate-body, drop: true, when: {countDistinct: Title, groupBy: [PublisherDomain, Content], atLeast: 3}}\n"
 	run := newPreprocessRun(t, cleaningSpec(t, rules), baseMapping, fixtureFile(t, "records.csv"))
 
 	require.NoError(t, run.execute(t.Context()))
@@ -546,7 +555,7 @@ func TestPreprocess_DropsTheArticlesADropRuleFiresOn(t *testing.T) {
 	require.Len(t, dropped, 4)
 	assert.Equal(t, rejectParquetRow{
 		Resource: "records.csv", Row: 10, Stage: "rule", URL: ptr("https://junk.net/storm"),
-		Rule: ptr("boilerplate-body"), ID: &storm, SignalValue: ptr(int64(4)),
+		Rule: ptr("boilerplate-body"), ID: &storm, CountDistinct: ptr(int64(4)),
 	}, dropped[0])
 }
 
@@ -602,26 +611,31 @@ func TestPreprocess_WritesARunOfMissingValuesAsNull(t *testing.T) {
 	}
 }
 
-func TestPreprocess_ChecksEachBudgetAgainstTheShareObserved(t *testing.T) {
-	// The fixture drops 2 of 20 records read (0.10), finds 4 duplicates (0.20) and clears 7 of 14 articles written (0.50).
+func TestPreprocess_ChecksEachBudgetAsACountOrAShareOfItsBase(t *testing.T) {
+	// The fixture drops 2 of the 20 records read, finds 4 duplicates among them and clears 7 of the 14 articles written.
 	tests := []struct {
 		check      string
 		warn, fail string
 		want       datapackage.CheckStatus
 	}{
-		{check: "dropped", warn: "0.2", fail: "0.3", want: datapackage.CheckPass},
-		{check: "dropped", warn: "0.05", fail: "0.3", want: datapackage.CheckWarn},
-		{check: "dropped", warn: "0.05", fail: "0.08", want: datapackage.CheckError},
-		{check: "duplicates", warn: "0.3", fail: "0.4", want: datapackage.CheckPass},
-		{check: "duplicates", warn: "0.1", fail: "0.4", want: datapackage.CheckWarn},
-		{check: "duplicates", warn: "0.1", fail: "0.15", want: datapackage.CheckError},
-		{check: "cleared", warn: "0.6", fail: "0.7", want: datapackage.CheckPass},
-		{check: "cleared", warn: "0.4", fail: "0.7", want: datapackage.CheckWarn},
-		{check: "cleared", warn: "0.4", fail: "0.45", want: datapackage.CheckError},
+		{check: "droppedOfRead", warn: "20%", fail: "30%", want: datapackage.CheckPass},
+		{check: "droppedOfRead", warn: "10%", fail: "10%", want: datapackage.CheckPass},
+		{check: "droppedOfRead", warn: "5%", fail: "30%", want: datapackage.CheckWarn},
+		{check: "droppedOfRead", warn: "5%", fail: "8%", want: datapackage.CheckError},
+		{check: "droppedOfRead", warn: "1", fail: "3", want: datapackage.CheckWarn},
+		{check: "duplicatesOfRead", warn: "4", fail: "40%", want: datapackage.CheckPass},
+		{check: "duplicatesOfRead", warn: "10%", fail: "40%", want: datapackage.CheckWarn},
+		{check: "duplicatesOfRead", warn: "10%", fail: "3", want: datapackage.CheckError},
+		{check: "clearedOfWritten", warn: "60%", fail: "70%", want: datapackage.CheckPass},
+		{check: "clearedOfWritten", warn: "6", fail: "7", want: datapackage.CheckWarn},
+		{check: "clearedOfWritten", warn: "40%", fail: "45%", want: datapackage.CheckError},
 	}
-	observed := map[string]float64{"dropped": 0.1, "duplicates": 0.2, "cleared": 0.5}
+	observed := map[string]struct {
+		count int64
+		share float64
+	}{"droppedOfRead": {2, 0.1}, "duplicatesOfRead": {4, 0.2}, "clearedOfWritten": {7, 0.5}}
 	for _, tt := range tests {
-		t.Run(tt.check+" "+string(tt.want), func(t *testing.T) {
+		t.Run(tt.check+" warn "+tt.warn+" error "+tt.fail, func(t *testing.T) {
 			spec := cleaningSpec(t, clearSharedText) + "checks:\n  " + tt.check + ": {warn: " + tt.warn + ", error: " + tt.fail + "}\n"
 			run := newPreprocessRun(t, spec, baseMapping, fixtureFile(t, "records.csv"))
 
@@ -640,16 +654,17 @@ func TestPreprocess_ChecksEachBudgetAgainstTheShareObserved(t *testing.T) {
 			pkg, _ := readArticles(t, run.packageDir(t))
 			check := pkg.Preprocess.Checks[tt.check]
 			assert.Equal(t, tt.want, check.Result)
-			assert.InDelta(t, observed[tt.check], check.Observed, 1e-9)
+			assert.Equal(t, observed[tt.check].count, check.Count)
+			assert.InDelta(t, observed[tt.check].share, check.Share, 1e-9)
+			assert.Equal(t, tt.warn, check.Warn.String())
+			assert.Equal(t, tt.fail, check.Error.String())
 		})
 	}
 }
 
 func TestPreprocess_CountsAValueOncePerDistinctValueInItsGroup(t *testing.T) {
-	spec := urlKeySpec + `signals:
-  - {name: headlines-sharing-body, distinct: Title, sharing: Content, within: PublisherDomain}
-rules:
-  - {name: shared-body, when: {signal: headlines-sharing-body, atLeast: 2}, action: clear, field: Content}
+	spec := urlKeySpec + `rules:
+  - {name: shared-body, clear: Content, when: {countDistinct: Title, groupBy: [PublisherDomain, Content], atLeast: 2}}
 `
 	run := newPreprocessRun(t, spec, baseMapping, csvFile("part.csv", "title,text,url\n"+
 		"Same headline,Shared body,https://example.com/1\n"+
@@ -663,16 +678,14 @@ rules:
 	pkg, rows := readArticles(t, run.packageDir(t))
 	assert.Equal(t, "Shared body", rows.byURL["https://example.com/1"].Content, "two copies of one headline are one distinct title")
 	assert.Equal(t, "Shared body", rows.byURL["https://other.org/1"].Content)
-	stats := pkg.Preprocess.Signals["headlines-sharing-body"]
-	assert.Equal(t, int64(3), stats.Articles, "an empty body forms no group")
+	stats := pkg.Preprocess.Rules["shared-body"]
+	assert.Equal(t, int64(3), stats.Articles, "an empty body puts an article in no group")
 	assert.Equal(t, int64(1), stats.Max)
 }
 
-func TestPreprocess_CountsOverTheWholeCorpusWithoutWithin(t *testing.T) {
-	spec := urlKeySpec + `signals:
-  - {name: sites-sharing-body, distinct: PublisherDomain, sharing: Content}
-rules:
-  - {name: syndicated-body, when: {signal: sites-sharing-body, atLeast: 2}, action: clear, field: Content}
+func TestPreprocess_GroupsByTheListedFieldsOnly(t *testing.T) {
+	spec := urlKeySpec + `rules:
+  - {name: syndicated-body, clear: Content, when: {countDistinct: PublisherDomain, groupBy: [Content], atLeast: 2}}
 `
 	run := newPreprocessRun(t, spec, baseMapping, csvFile("part.csv", "title,text,url\n"+
 		"One,Wire body,https://example.com/1\n"+
@@ -736,7 +749,7 @@ func TestPreprocess_RefusesAChangedSpecRerunIntoTheSameVersion(t *testing.T) {
 		{
 			name: "a budget that leaves the articles alone",
 			change: func(t *testing.T, run preprocessRun) {
-				run.rewriteSpec(t, "checks:\n", "checks:\n  duplicates: {warn: 0.9}\n")
+				run.rewriteSpec(t, "checks:\n", "checks:\n  duplicatesOfRead: {warn: 90%}\n")
 			},
 			want: "preprocess spec",
 		},
@@ -877,7 +890,7 @@ func TestPreprocess_WritesADescriptorTheCommittedSchemaAccepts(t *testing.T) {
 		{name: "parquet", spec: urlKeySpec},
 		{name: "jsonl", spec: specWith(t, urlKeySpec, "  path: canonical\n", "  path: canonical\n  format: jsonl\n")},
 		{name: "random ids", spec: specWith(t, urlKeySpec, "kind: urlHash", "kind: random")},
-		{name: "signals, rules and checks", spec: cleaningSpec(t, clearSharedText) + "checks:\n  dropped: {warn: 0.05}\n  cleared: {error: 0.9}\n"},
+		{name: "rules and checks", spec: cleaningSpec(t, clearSharedText) + "checks:\n  droppedOfRead: {warn: 5%}\n  clearedOfWritten: {error: 9}\n"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -930,13 +943,14 @@ func TestPreprocess_WritesJSONLArticlesWhenTheSpecAsksForIt(t *testing.T) {
 
 func TestPreprocess_RefusesASpecItCannotRunAndPublishesNothing(t *testing.T) {
 	tests := map[string]string{
-		"an unknown key":                    specWith(t, urlKeySpec, "duplicates:\n", "duplicate:\n"),
-		"a url hash without a url key":      specWith(t, urlKeySpec, "    - {name: same-url, fields: [URL]}\n", "    - {name: same-page, fields: [PublisherDomain, Title, Content]}\n"),
-		"a clear on a required field":       urlKeySpec + "signals:\n  - {name: s, distinct: URL, sharing: Content}\nrules:\n  - {name: r, when: {signal: s, atLeast: 2}, action: clear, field: Title}\n",
-		"a rule on an undefined signal":     urlKeySpec + "rules:\n  - {name: r, when: {signal: missing, atLeast: 2}, action: drop}\n",
-		"a signal on a field never mapped":  urlKeySpec + "signals:\n  - {name: s, distinct: Title, sharing: Metadata.Section}\n",
-		"a mapping file that is not there":  specWith(t, urlKeySpec, "mapping: mapping.yaml", "mapping: missing.yaml"),
-		"the retired mapping identity keys": urlKeySpec + "identity:\n  idKind: urlHash\n",
+		"an unknown key":                       specWith(t, urlKeySpec, "unique:\n", "uniq:\n"),
+		"a url hash without a url key":         specWith(t, urlKeySpec, "    - {name: same-url, fields: [URL]}\n", "    - {name: same-page, fields: [PublisherDomain, Title, Content]}\n"),
+		"a clear on a required field":          urlKeySpec + "rules:\n  - {name: r, clear: Title, when: {countDistinct: URL, groupBy: [Content], atLeast: 2}}\n",
+		"a rule that neither clears nor drops": urlKeySpec + "rules:\n  - {name: r, when: {countDistinct: Title, groupBy: [Content], atLeast: 2}}\n",
+		"a group by a field never mapped":      urlKeySpec + "rules:\n  - {name: r, drop: true, when: {countDistinct: Title, groupBy: [Metadata.Section], atLeast: 2}}\n",
+		"the retired signals block":            urlKeySpec + "signals: []\n",
+		"a mapping file that is not there":     specWith(t, urlKeySpec, "mapping: mapping.yaml", "mapping: missing.yaml"),
+		"the retired mapping identity keys":    urlKeySpec + "identity:\n  idKind: urlHash\n",
 	}
 	for name, spec := range tests {
 		t.Run(name, func(t *testing.T) {
