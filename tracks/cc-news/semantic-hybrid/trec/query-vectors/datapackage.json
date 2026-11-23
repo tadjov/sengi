@@ -2,20 +2,25 @@
   "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
   "name": "cc_news_semantic_hybrid_v1-query-vectors",
   "producedBy": {
-    "tool": "embed_queries.py"
+    "tool": "datapipe embed"
   },
   "embedding": {
     "model": "qwen3-embedding:0.6b",
     "hfModel": "Qwen/Qwen3-Embedding-0.6B",
     "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
-    "tag": "qwen3-embedding:0.6b@1024",
-    "dim": 1024,
+    "tag": "qwen3-embedding:0.6b@512",
+    "dim": 512,
     "recipe": "query-instruct-v1",
     "pooling": "last_token",
     "normalized": true,
     "maxTokens": 512,
     "batchSize": 1,
     "dtype": "float32"
+  },
+  "derivedFrom": {
+    "name": "cc_news_semantic_hybrid_v1-query-vectors",
+    "tag": "qwen3-embedding:0.6b@1024",
+    "resourceHash": "sha256:60c50f8e6b3f266f9e1649dd792daa27966da7f01c5696c5f1c879d6d2f3bef2"
   },
   "suite": {
     "id": "cc_news_semantic_hybrid_v1"
@@ -26,8 +31,8 @@
       "path": "query-vectors.parquet",
       "format": "parquet",
       "mediatype": "application/vnd.apache.parquet",
-      "bytes": 174242,
-      "hash": "sha256:60c50f8e6b3f266f9e1649dd792daa27966da7f01c5696c5f1c879d6d2f3bef2"
+      "bytes": 64429,
+      "hash": "sha256:046a7a6643e848e7dff8b202e6fe12eaa6c46feaeb8344a0ce5cbe8b61630f58"
     }
   ]
 }

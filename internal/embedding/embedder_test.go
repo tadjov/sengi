@@ -57,11 +57,11 @@ func TestEmbedQuery_AsksOllamaForThePlainModelAndTagsTheVectorWithItsWidth(t *te
 	if len(*models) != 1 || (*models)[0] != "qwen3-embedding:0.6b" {
 		t.Errorf("Ollama asked for %q, want the plain model name", *models)
 	}
-	if vec.Model != "qwen3-embedding:0.6b@1024" {
-		t.Errorf("vector tagged %q, want qwen3-embedding:0.6b@1024", vec.Model)
+	if want := Tag(DefaultModel, DefaultDim); vec.Model != want {
+		t.Errorf("vector tagged %q, want %s", vec.Model, want)
 	}
-	if len(vec.Embedding) != 1024 {
-		t.Errorf("vector width = %d, want 1024", len(vec.Embedding))
+	if len(vec.Embedding) != DefaultDim {
+		t.Errorf("vector width = %d, want %d", len(vec.Embedding), DefaultDim)
 	}
 }
 

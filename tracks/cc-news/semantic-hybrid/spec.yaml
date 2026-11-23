@@ -40,7 +40,7 @@ engines:
       plan_cache_mode: force_custom_plan
       hnsw.ef_search: "200"
     params:
-      embedding_model: "qwen3-embedding:0.6b@1024"
+      embedding_model: "qwen3-embedding:0.6b@512"
   # Same query as pg-hnsw without the index: exact nearest neighbours, the
   # reference for HNSW recall.
   pg-exact:
@@ -51,7 +51,7 @@ engines:
       enable_indexscan: "off"
     queries_from: pg-hnsw
     params:
-      embedding_model: "qwen3-embedding:0.6b@1024"
+      embedding_model: "qwen3-embedding:0.6b@512"
   paradedb-hnsw:
     type: postgres
     connection: "postgresql://news_user:news_password@localhost:54321/news_db"
@@ -59,7 +59,7 @@ engines:
       plan_cache_mode: force_custom_plan
       hnsw.ef_search: "200"
     params:
-      embedding_model: "qwen3-embedding:0.6b@1024"
+      embedding_model: "qwen3-embedding:0.6b@512"
   tiger-hnsw:
     type: postgres
     connection: "postgresql://news_user:news_password@localhost:54322/news_db"
@@ -67,13 +67,13 @@ engines:
       plan_cache_mode: force_custom_plan
       hnsw.ef_search: "200"
     params:
-      embedding_model: "qwen3-embedding:0.6b@1024"
+      embedding_model: "qwen3-embedding:0.6b@512"
   es-knn:
     type: elasticsearch
     connection: "http://localhost:9200"
     index: articles
     params:
-      embedding_model: "qwen3-embedding:0.6b@1024"
+      embedding_model: "qwen3-embedding:0.6b@512"
 
   pg-rrf:
     type: postgres
@@ -83,7 +83,7 @@ engines:
       hnsw.ef_search: "200"
     params:
       rank_norm: "0"
-      embedding_model: "qwen3-embedding:0.6b@1024"
+      embedding_model: "qwen3-embedding:0.6b@512"
       window: "100"
       rank_constant: "60"
   paradedb-rrf:
@@ -93,7 +93,7 @@ engines:
       plan_cache_mode: force_custom_plan
       hnsw.ef_search: "200"
     params:
-      embedding_model: "qwen3-embedding:0.6b@1024"
+      embedding_model: "qwen3-embedding:0.6b@512"
       window: "100"
       rank_constant: "60"
   tiger-rrf:
@@ -103,7 +103,7 @@ engines:
       plan_cache_mode: force_custom_plan
       hnsw.ef_search: "200"
     params:
-      embedding_model: "qwen3-embedding:0.6b@1024"
+      embedding_model: "qwen3-embedding:0.6b@512"
       window: "100"
       rank_constant: "60"
   # Elasticsearch 8.12 refuses its own RRF on the basic licence, so the bench
@@ -116,7 +116,7 @@ engines:
     connection: "http://localhost:9200"
     index: articles
     params:
-      embedding_model: "qwen3-embedding:0.6b@1024"
+      embedding_model: "qwen3-embedding:0.6b@512"
   # pg-rrf's fusion run on the client: same ranking as pg-rrf, so only the
   # latency shows what fusing outside the engine costs.
   pg-rrf-client:

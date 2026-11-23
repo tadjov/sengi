@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types/enums/densevectorsimilarity"
 	"github.com/elastic/go-elasticsearch/v9/typedapi/types/enums/snowballlanguage"
 	"github.com/google/uuid"
+	"github.com/tadjov/sengi/internal/embedding"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
 	"github.com/tadjov/sengi/internal/types/language"
@@ -170,7 +171,7 @@ func storedOnlyObject() *types.ObjectProperty {
 // nor echoed back in _mapping.
 func (b *IndexBuilder) denseVectorProperty() *types.DenseVectorProperty {
 	p := types.NewDenseVectorProperty()
-	dims := EmbeddingDims
+	dims := embedding.DefaultDim
 	indexed := true
 	sim := densevectorsimilarity.Cosine
 	m := storage.HNSWM

@@ -14,8 +14,8 @@ func TestLoadConfigFromEnv_Dim(t *testing.T) {
 		want    int
 		wantErr bool
 	}{
-		{name: "unset is the native 1024", raw: "", want: 1024},
-		{name: "positive width", raw: "512", want: 512},
+		{name: "unset is the width the engines store", raw: "", want: DefaultDim},
+		{name: "positive width", raw: "256", want: 256},
 		{name: "zero would store empty vectors", raw: "0", wantErr: true},
 		{name: "negative would panic mid-load", raw: "-1", wantErr: true},
 		{name: "not a number", raw: "1k", wantErr: true},

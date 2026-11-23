@@ -11,8 +11,8 @@ import (
 	"github.com/tadjov/sengi/internal/types/document"
 )
 
-// DefaultDim is Qwen3-Embedding-0.6B's native width.
-const DefaultDim = 1024
+// DefaultDim is the width the engines store and search vectors at.
+const DefaultDim = 512
 
 // DefaultBatchSize is the number of documents sent in one embedding request.
 const DefaultBatchSize = 64

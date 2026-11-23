@@ -45,7 +45,7 @@ func TestHybridSearcher_LexicalLegReadsTheQueryAsFreeText(t *testing.T) {
 	t.Cleanup(pool.Close)
 	// No article has an embedding, so the vector leg is empty and the hits are
 	// exactly the lexical leg.
-	queryVector := make([]float32, 1024)
+	queryVector := make([]float32, embedding.DefaultDim)
 	for i := range queryVector {
 		queryVector[i] = 0.9
 	}

@@ -163,7 +163,7 @@ func writeQueryVectorsSource(t *testing.T, dir string, rows []queryvectors.Row) 
 		ProducedBy: &datapackage.ProducedBy{Tool: "embed_queries.py"},
 		Embedding: &datapackage.Embedding{
 			Model: "qwen3-embedding:0.6b", HuggingFaceModel: "Qwen/Qwen3-Embedding-0.6B", Revision: "abc123",
-			Tag: loadFixtureModelTag, Dim: 1024, Recipe: queryvectors.QueryRecipe, Pooling: "last_token", Normalized: true,
+			Tag: "qwen3-embedding:0.6b@1024", Dim: 1024, Recipe: queryvectors.QueryRecipe, Pooling: "last_token", Normalized: true,
 			MaxTokens: 512, BatchSize: 1, DType: "float32",
 		},
 		Suite:     &datapackage.Suite{ID: fixtureSuiteID},
@@ -256,7 +256,6 @@ func TestEmbedTruncate_PublishesUnderTheVersionGiven(t *testing.T) {
 	assert.Equal(t, "go-test", openEmbeddings(t, filepath.Join(c.tagDir(), "go-test")).Version)
 }
 
-// The engines' vector columns are 1024 wide, so this stops where load hands the corpus to one.
 func TestEmbedTruncate_LoadTakesTheCutPackageWithItsCanonical(t *testing.T) {
 	c := newCorpusTruncation(t)
 	require.NoError(t, execDatapipe(t, "", "embed", "--embeddings", c.source.location, "--truncate-to", "512"))

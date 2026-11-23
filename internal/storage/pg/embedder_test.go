@@ -64,9 +64,9 @@ func TestEmbedder_SaveBulk_UpsertAndSkipOrphans(t *testing.T) {
 
 	const model = "qwen3-embedding:0.6b"
 	batch := []*embedding.Vec{
-		{ID: a1, Model: model, Embedding: vec(1024, 0.1)},
-		{ID: a2, Model: model, Embedding: vec(1024, 0.2)},
-		{ID: orphan, Model: model, Embedding: vec(1024, 0.3)},
+		{ID: a1, Model: model, Embedding: vec(embedding.DefaultDim, 0.1)},
+		{ID: a2, Model: model, Embedding: vec(embedding.DefaultDim, 0.2)},
+		{ID: orphan, Model: model, Embedding: vec(embedding.DefaultDim, 0.3)},
 	}
 
 	res, err := embedder.SaveBulk(testCtx, batch)
@@ -83,7 +83,7 @@ func TestEmbedder_SaveBulk_UpsertAndSkipOrphans(t *testing.T) {
 	}
 
 	// Re-run with a changed vector for a1 → upsert, no duplicate.
-	batch[0].Embedding = vec(1024, 0.9)
+	batch[0].Embedding = vec(embedding.DefaultDim, 0.9)
 	if _, err := embedder.SaveBulk(testCtx, batch); err != nil {
 		t.Fatalf("SaveBulk re-run: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestEmbedder_SaveBulk_UpsertAndSkipOrphans(t *testing.T) {
 	var dist float64
 	err = pool.Pool().QueryRow(testCtx, `
 		SELECT embedding <-> $1 FROM article_embeddings WHERE article_id = $2
-	`, pgvector.NewVector(vec(1024, 0.9)), a1).Scan(&dist)
+	`, pgvector.NewVector(vec(embedding.DefaultDim, 0.9)), a1).Scan(&dist)
 	if err != nil {
 		t.Fatalf("failed to read updated embedding: %v", err)
 	}
@@ -112,8 +112,8 @@ func TestEmbedder_SaveBulk_DuplicateIDsInBatch(t *testing.T) {
 
 	// Same (article_id, model_name) twice in one batch must not abort the upsert.
 	batch := []*embedding.Vec{
-		{ID: a1, Model: model, Embedding: vec(1024, 0.1)},
-		{ID: a1, Model: model, Embedding: vec(1024, 0.2)},
+		{ID: a1, Model: model, Embedding: vec(embedding.DefaultDim, 0.1)},
+		{ID: a1, Model: model, Embedding: vec(embedding.DefaultDim, 0.2)},
 	}
 
 	if _, err := embedder.SaveBulk(testCtx, batch); err != nil {

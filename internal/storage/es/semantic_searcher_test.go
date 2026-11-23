@@ -10,7 +10,7 @@ import (
 	dquery "github.com/tadjov/sengi/internal/types/query"
 )
 
-const storedTag = "qwen3-embedding:0.6b@1024"
+var storedTag = embedding.Tag(embedding.DefaultModel, embedding.DefaultDim)
 
 // staticEmbedder is an embedding.Client returning a fixed vector.
 type staticEmbedder struct {
@@ -41,8 +41,8 @@ func TestSemanticSearcher_SearchSemantic_ReturnsNearest(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	near := vec(EmbeddingDims, 0.9)
-	far := vec(EmbeddingDims, -0.9)
+	near := vec(embedding.DefaultDim, 0.9)
+	far := vec(embedding.DefaultDim, -0.9)
 
 	cfg, searcher := newSemanticTestEnv(t, near)
 
@@ -71,8 +71,8 @@ func TestSemanticSearcher_SearchSemantic_OnlySeesTheQueryModel(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	queryVec := vec(EmbeddingDims, 0.9)
-	nearQuery := vec(EmbeddingDims, 0.9)
+	queryVec := vec(embedding.DefaultDim, 0.9)
+	nearQuery := vec(embedding.DefaultDim, 0.9)
 	for i := len(nearQuery) / 2; i < len(nearQuery); i++ {
 		nearQuery[i] = 0.5
 	}

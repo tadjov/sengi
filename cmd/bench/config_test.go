@@ -72,7 +72,7 @@ func TestForEachTrack_InterruptStopsGlob(t *testing.T) {
 	assert.Len(t, ran, 1)
 }
 
-const queryVectorsFixtureTag = "qwen3-embedding:0.6b@1024"
+const queryVectorsFixtureTag = "qwen3-embedding:0.6b@512"
 
 // queryVectorsTrack copies the query-vectors fixture track and gives it a spec
 // whose postgres engine declares the package's model.

@@ -195,7 +195,7 @@ func validateOne(ctx context.Context, in validateInput) validateRow {
 				row.detail = "query has no text to look its vector up by"
 				return row
 			}
-			// Embed the real query so dimensionality (a 1-dim stub vs VECTOR(1024))
+			// Embed the real query so dimensionality (a 1-dim stub vs the column's width)
 			// is exercised here, not deferred to pool/run.
 			vec, err := in.store.QueryVector(ctx, q.Text)
 			if err != nil {
