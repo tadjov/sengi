@@ -16,6 +16,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -497,6 +498,38 @@ func TestCorpusLoader_LoadCorpus(t *testing.T) {
 		assertNoIndex(t, container.Address, index)
 	})
 
+	t.Run("refuses vectors of another width than the index maps before writing anything, and the index then loads", func(t *testing.T) {
+		index := "articles_width_test"
+		address, writes := writeRecordingProxy(t, container.Address)
+		articles := testArticles(3)
+		vectors := testVectors(articles)
+		const otherWidth = 256
+		narrow := make([]embedding.Vec, len(vectors))
+		for i, v := range vectors {
+			narrow[i] = embedding.Vec{ID: v.ID, Model: v.Model, Embedding: v.Embedding[:otherWidth]}
+		}
+		c := corpusOf(articles, narrow)
+		c.Dim = otherWidth
+
+		_, err := loadCorpus(t, address, index, c, 100)
+
+		if err == nil {
+			t.Fatal("LoadCorpus stored 256-wide vectors in a 512-wide index")
+		}
+		for _, width := range []int{otherWidth, embedding.DefaultDim} {
+			if !strings.Contains(err.Error(), fmt.Sprint(width)) {
+				t.Errorf("error %q does not name width %d", err, width)
+			}
+		}
+		if len(*writes) > 0 {
+			t.Errorf("the refused load sent %v", *writes)
+		}
+		assertNoIndex(t, container.Address, index)
+		if _, err := loadCorpus(t, container.Address, index, corpusOf(articles, vectors), 100); err != nil {
+			t.Fatalf("LoadCorpus of the right width after the refusal: %v", err)
+		}
+	})
+
 	t.Run("refuses an existing index and leaves its documents alone", func(t *testing.T) {
 		index := "articles_existing_test"
 		var created map[string]any
@@ -629,6 +662,30 @@ func recordingProxy(t *testing.T, address string) (string, *[]map[string]any) {
 	return server.URL, &sources
 }
 
+// writeRecordingProxy forwards to address and records every request that is not a GET or HEAD.
+func writeRecordingProxy(t *testing.T, address string) (string, *[]string) {
+	t.Helper()
+	target, err := url.Parse(address)
+	if err != nil {
+		t.Fatalf("parse %s: %v", address, err)
+	}
+	var mu sync.Mutex
+	var writes []string
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	forward := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		if req.Method != http.MethodGet && req.Method != http.MethodHead {
+			mu.Lock()
+			writes = append(writes, req.Method+" "+req.URL.Path)
+			mu.Unlock()
+		}
+		forward(req)
+	}
+	server := httptest.NewServer(proxy)
+	t.Cleanup(server.Close)
+	return server.URL, &writes
+}
+
 func assertNoIndex(t *testing.T, address, index string) {
 	t.Helper()
 	res, err := http.Head(address + "/" + index)
@@ -697,6 +754,7 @@ func corpusOf(articles []document.Article, vecs []embedding.Vec) storage.Corpus 
 	if vecs != nil {
 		c.Vectors = seqOf(vecs)
 		c.ModelTag = loadTestModelTag
+		c.Dim = embedding.DefaultDim
 		c.Embeddings = &storage.PackageRef{Name: "cc-news-embeddings", Version: "lead-v1-0000test", ResourceHash: "sha256:" + fmt.Sprintf("%064d", 1)}
 	}
 	return c

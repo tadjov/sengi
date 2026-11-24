@@ -166,6 +166,9 @@ func checkCorpus(c storage.Corpus, opts storage.LoadOptions) error {
 	if c.Vectors != nil && c.ModelTag == "" {
 		return errors.New("vectors given without the model tag that labels them")
 	}
+	if mapped := *NewIndexBuilder().denseVectorProperty().Dims; c.Vectors != nil && c.Dim != mapped {
+		return fmt.Errorf("the embeddings package declares %d dimensions, the index maps %d", c.Dim, mapped)
+	}
 	return nil
 }
 

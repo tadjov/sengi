@@ -1,12 +1,14 @@
 package embedding
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"os"
 	"strconv"
 )
 
+// Config is the embedding setup the environment states; Model and Dim are zero when unset.
 type Config struct {
 	Enabled bool
 	// Model is the Ollama model name, without the @dim tag.
@@ -28,7 +30,7 @@ func LoadConfigFromEnv() (*Config, error) {
 	if _, set := os.LookupEnv("EMBEDDING_MAX_LENGTH"); set {
 		return nil, errors.New("EMBEDDING_MAX_LENGTH is renamed EMBEDDING_DIM")
 	}
-	dim, err := DimFromEnv()
+	dim, err := parseDim(os.Getenv("EMBEDDING_DIM"))
 	if err != nil {
 		return nil, err
 	}
@@ -41,14 +43,18 @@ func LoadConfigFromEnv() (*Config, error) {
 	}, nil
 }
 
-// DimFromEnv reads EMBEDDING_DIM, the width vectors are sliced to and tagged with.
+// DimFromEnv reads EMBEDDING_DIM, the width vectors are sliced to and tagged with, DefaultDim when unset.
 func DimFromEnv() (int, error) {
-	return parseDim(os.Getenv("EMBEDDING_DIM"))
+	dim, err := parseDim(os.Getenv("EMBEDDING_DIM"))
+	if err != nil {
+		return 0, err
+	}
+	return cmp.Or(dim, DefaultDim), nil
 }
 
 func parseDim(raw string) (int, error) {
 	if raw == "" {
-		return DefaultDim, nil
+		return 0, nil
 	}
 	dim, err := strconv.Atoi(raw)
 	if err != nil || dim <= 0 {

@@ -14,7 +14,7 @@ func TestLoadConfigFromEnv_Dim(t *testing.T) {
 		want    int
 		wantErr bool
 	}{
-		{name: "unset is the width the engines store", raw: "", want: DefaultDim},
+		{name: "unset leaves the width to the caller", raw: "", want: 0},
 		{name: "positive width", raw: "256", want: 256},
 		{name: "zero would store empty vectors", raw: "0", wantErr: true},
 		{name: "negative would panic mid-load", raw: "-1", wantErr: true},
@@ -44,4 +44,13 @@ func TestLoadConfigFromEnv_RefusesTheRenamedMaxLength(t *testing.T) {
 	_, err := LoadConfigFromEnv()
 
 	require.ErrorContains(t, err, "EMBEDDING_DIM")
+}
+
+func TestDimFromEnv_UnsetIsTheWidthTheEnginesStore(t *testing.T) {
+	t.Setenv("EMBEDDING_DIM", "")
+
+	dim, err := DimFromEnv()
+
+	require.NoError(t, err)
+	assert.Equal(t, DefaultDim, dim)
 }

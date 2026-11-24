@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -83,6 +84,19 @@ func (e *Embedder) Model() string {
 // Tag names a model's vectors at a width, e.g. qwen3-embedding:0.6b@1024.
 func Tag(model string, dim int) string {
 	return fmt.Sprintf("%s@%d", model, dim)
+}
+
+// ParseTag splits a tag Tag wrote back into its model and width.
+func ParseTag(tag string) (model string, dim int, err error) {
+	at := strings.LastIndex(tag, "@")
+	if at <= 0 {
+		return "", 0, fmt.Errorf("model tag %q is not model@dim", tag)
+	}
+	dim, err = strconv.Atoi(tag[at+1:])
+	if err != nil || dim <= 0 {
+		return "", 0, fmt.Errorf("model tag %q does not end in a positive width", tag)
+	}
+	return tag[:at], dim, nil
 }
 
 func (e *Embedder) fit(raw []float32) ([]float32, error) {

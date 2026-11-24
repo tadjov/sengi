@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -29,7 +30,7 @@ func openSearchBackend(ctx context.Context, cfg *NewsSearchConfig) (*searchBacke
 	case storage.PG:
 		return openPostgresBackend(ctx, cfg)
 	case storage.ES:
-		return openElasticsearchBackend(cfg)
+		return openElasticsearchBackend(ctx, cfg)
 	default:
 		return nil, fmt.Errorf("no search backend for storage type %q", cfg.StorageConfig.Type)
 	}
@@ -48,7 +49,9 @@ func openPostgresBackend(ctx context.Context, cfg *NewsSearchConfig) (*searchBac
 		close:  pool.Close,
 	}
 
-	embedder, err := openQueryEmbedder(cfg.EmbeddingConfig)
+	embedder, err := openQueryEmbedder(ctx, cfg.EmbeddingConfig, func(ctx context.Context) (*storage.LoadRecord, error) {
+		return pg.LatestLoad(ctx, pool)
+	})
 	if err != nil {
 		pool.Close()
 		return nil, err
@@ -60,7 +63,7 @@ func openPostgresBackend(ctx context.Context, cfg *NewsSearchConfig) (*searchBac
 	return backend, nil
 }
 
-func openElasticsearchBackend(cfg *NewsSearchConfig) (*searchBackend, error) {
+func openElasticsearchBackend(ctx context.Context, cfg *NewsSearchConfig) (*searchBackend, error) {
 	client, err := es.NewClient(*cfg.StorageConfig.Es)
 	if err != nil {
 		return nil, fmt.Errorf("create Elasticsearch client: %w", err)
@@ -71,7 +74,7 @@ func openElasticsearchBackend(cfg *NewsSearchConfig) (*searchBackend, error) {
 		close:  client.Close,
 	}
 
-	embedder, err := openQueryEmbedder(cfg.EmbeddingConfig)
+	embedder, err := openQueryEmbedder(ctx, cfg.EmbeddingConfig, client.LoadRecord)
 	if err != nil {
 		client.Close()
 		return nil, err
@@ -83,10 +86,17 @@ func openElasticsearchBackend(cfg *NewsSearchConfig) (*searchBackend, error) {
 	return backend, nil
 }
 
-// openQueryEmbedder returns nil when embeddings are disabled.
-func openQueryEmbedder(cfg embedding.Config) (*embedding.Embedder, error) {
+// openQueryEmbedder returns nil when embeddings are disabled, else an embedder for the model the corpus was loaded with.
+func openQueryEmbedder(ctx context.Context, cfg embedding.Config, readLoad func(context.Context) (*storage.LoadRecord, error)) (*embedding.Embedder, error) {
 	if !cfg.Enabled {
 		return nil, nil
+	}
+	load, err := readLoad(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("read the corpus load record: %w", err)
+	}
+	if cfg, err = loadedModel(cfg, load); err != nil {
+		return nil, err
 	}
 	client, err := embedding.NewOllamaClient(cfg.BaseURL)
 	if err != nil {
@@ -95,4 +105,27 @@ func openQueryEmbedder(cfg embedding.Config) (*embedding.Embedder, error) {
 	embedder := newQueryEmbedder(client, cfg)
 	slog.Info("Embedding queries", "model", embedder.Model())
 	return embedder, nil
+}
+
+// loadedModel takes the model and width from load, refusing an EMBEDDING_MODEL or EMBEDDING_DIM that names others.
+func loadedModel(cfg embedding.Config, load *storage.LoadRecord) (embedding.Config, error) {
+	if load == nil {
+		slog.Warn("No load record names the corpus's embedding model, so queries are embedded as configured")
+		return cfg, nil
+	}
+	if load.ModelTag == "" {
+		return embedding.Config{}, errors.New("the corpus was loaded without embeddings; load them or set EMBEDDING_ENABLED=false")
+	}
+	model, dim, err := embedding.ParseTag(load.ModelTag)
+	if err != nil {
+		return embedding.Config{}, fmt.Errorf("corpus load record: %w", err)
+	}
+	if cfg.Model != "" && cfg.Model != model {
+		return embedding.Config{}, fmt.Errorf("EMBEDDING_MODEL is %s, the corpus was loaded with %s", cfg.Model, model)
+	}
+	if cfg.Dim != 0 && cfg.Dim != dim {
+		return embedding.Config{}, fmt.Errorf("EMBEDDING_DIM is %d, the corpus was loaded at %d", cfg.Dim, dim)
+	}
+	cfg.Model, cfg.Dim = model, dim
+	return cfg, nil
 }

@@ -298,3 +298,23 @@ func TestEmbedDocuments_RefusesABatchSizeBelowOne(t *testing.T) {
 		t.Errorf("sent %d requests, want none", len(*requests))
 	}
 }
+
+func TestParseTag_ReadsBackWhatTagWrote(t *testing.T) {
+	model, dim, err := ParseTag(Tag("hf.co/org/model:q8", 256))
+	if err != nil {
+		t.Fatalf("ParseTag: %v", err)
+	}
+	if model != "hf.co/org/model:q8" || dim != 256 {
+		t.Errorf("ParseTag = %q, %d, want %q, %d", model, dim, "hf.co/org/model:q8", 256)
+	}
+}
+
+func TestParseTag_RefusesATagWithoutModelAndPositiveWidth(t *testing.T) {
+	for _, tag := range []string{"", "qwen3-embedding:0.6b", "qwen3-embedding:0.6b@", "@512", "qwen3-embedding:0.6b@0", "qwen3-embedding:0.6b@wide"} {
+		t.Run(tag, func(t *testing.T) {
+			if model, dim, err := ParseTag(tag); err == nil {
+				t.Errorf("ParseTag(%q) = %q, %d, want an error", tag, model, dim)
+			}
+		})
+	}
+}
