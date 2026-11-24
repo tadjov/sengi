@@ -1,12 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -19,6 +25,8 @@ import (
 	"github.com/tadjov/sengi/internal/storage/es"
 	"github.com/tadjov/sengi/internal/storage/factory"
 	"github.com/tadjov/sengi/internal/storage/pg"
+	"github.com/tadjov/sengi/internal/storage/pg/pgtest"
+	"github.com/tadjov/sengi/internal/storage/storagetest"
 	"github.com/tadjov/sengi/internal/testcontainer"
 	dquery "github.com/tadjov/sengi/internal/types/query"
 )
@@ -168,51 +176,282 @@ func unusedAddress(t *testing.T) string {
 	return address
 }
 
-// fakeElasticsearch answers every request as an Elasticsearch cluster with no
-// matching documents, and reports how many connections it has accepted.
-func fakeElasticsearch(t *testing.T) (url string, connections func() int64) {
+// fakeCluster answers as Elasticsearch with no hits, its articles index loaded under load.
+type fakeCluster struct {
+	url      string
+	accepted atomic.Int64
+	mu       sync.Mutex
+	searches []json.RawMessage
+}
+
+func fakeElasticsearch(t *testing.T, load *storage.LoadRecord) *fakeCluster {
 	t.Helper()
-	var accepted atomic.Int64
+	meta := map[string]any{}
+	if load != nil {
+		meta["load"] = load
+	}
+	mapping, err := json.Marshal(map[string]any{"articles": map[string]any{"mappings": map[string]any{"_meta": meta}}})
+	if err != nil {
+		t.Fatalf("encode mapping: %v", err)
+	}
+	cluster := &fakeCluster{}
 	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Elastic-Product", "Elasticsearch")
 		w.Header().Set("Content-Type", "application/json")
-		if r.Method == http.MethodHead {
+		switch {
+		case r.Method == http.MethodHead:
 			w.WriteHeader(http.StatusOK)
-			return
+		case strings.HasSuffix(r.URL.Path, "/_mapping"):
+			_, _ = w.Write(mapping)
+		default:
+			body, _ := io.ReadAll(r.Body)
+			cluster.mu.Lock()
+			cluster.searches = append(cluster.searches, body)
+			cluster.mu.Unlock()
+			_, _ = io.WriteString(w, `{"took":1,"timed_out":false,"_shards":{"total":1,"successful":1,"skipped":0,"failed":0},"hits":{"total":{"value":0,"relation":"eq"},"max_score":null,"hits":[]}}`)
 		}
-		_, _ = io.WriteString(w, `{"took":1,"timed_out":false,"_shards":{"total":1,"successful":1,"skipped":0,"failed":0},"hits":{"total":{"value":0,"relation":"eq"},"max_score":null,"hits":[]}}`)
 	}))
 	srv.Config.ConnState = func(_ net.Conn, state http.ConnState) {
 		if state == http.StateNew {
-			accepted.Add(1)
+			cluster.accepted.Add(1)
 		}
 	}
 	srv.Start()
 	t.Cleanup(srv.Close)
-	return srv.URL, accepted.Load
+	cluster.url = srv.URL
+	return cluster
 }
 
-func fakeOllama(t *testing.T) string {
+func (c *fakeCluster) knnSearches(t *testing.T) []knnSearch {
 	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		unit := make([]float32, embedding.DefaultDim)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var searches []knnSearch
+	for _, body := range c.searches {
+		var request struct {
+			Knn []knnSearch `json:"knn"`
+		}
+		if err := json.Unmarshal(body, &request); err != nil {
+			t.Fatalf("decode search %s: %v", body, err)
+		}
+		searches = append(searches, request.Knn...)
+	}
+	return searches
+}
+
+type knnSearch struct {
+	QueryVector []float32 `json:"query_vector"`
+	Filter      []struct {
+		Term map[string]struct {
+			Value string `json:"value"`
+		} `json:"term"`
+	} `json:"filter"`
+}
+
+func (k knnSearch) modelFilter() string {
+	for _, filter := range k.Filter {
+		if term, ok := filter.Term["embedding_model"]; ok {
+			return term.Value
+		}
+	}
+	return ""
+}
+
+// fakeOllama answers every embedding request with a 1024-wide vector and records the model each one names.
+func fakeOllama(t *testing.T) (url string, models func() []string) {
+	t.Helper()
+	var mu sync.Mutex
+	var asked []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request embedding.OllamaRequest
+		_ = json.NewDecoder(r.Body).Decode(&request)
+		mu.Lock()
+		asked = append(asked, request.Model)
+		mu.Unlock()
+		unit := make([]float32, 1024)
 		unit[0] = 1
 		_ = json.NewEncoder(w).Encode(embedding.Response{Embedding: unit})
 	}))
 	t.Cleanup(srv.Close)
-	return srv.URL
+	return srv.URL, func() []string {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.Clone(asked)
+	}
+}
+
+func esSearchConfig(cluster *fakeCluster, ollama string, configured embedding.Config) *NewsSearchConfig {
+	configured.Enabled, configured.BaseURL = true, ollama
+	return &NewsSearchConfig{
+		StorageConfig: factory.StorageConfig{
+			Type: storage.ES,
+			Es:   &es.ClientConfig{Addresses: []string{cluster.url}, IndexName: "articles"},
+		},
+		EmbeddingConfig: configured,
+	}
+}
+
+func loadedWith(tag string) *storage.LoadRecord {
+	return &storage.LoadRecord{Engine: string(storage.ES), ModelTag: tag}
+}
+
+func captureWarnings(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var logs bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	return &logs
+}
+
+func TestOpenSearchBackend_EmbedsQueriesWithTheLoadedModel(t *testing.T) {
+	defaultTag := embedding.Tag(embedding.DefaultModel, embedding.DefaultDim)
+	tests := []struct {
+		name       string
+		load       *storage.LoadRecord
+		configured embedding.Config
+		wantModel  string
+		wantTag    string
+		wantWidth  int
+		wantWarn   bool
+	}{
+		{
+			name:      "nothing configured takes the load record's model and width",
+			load:      loadedWith("bge-m3@256"),
+			wantModel: "bge-m3", wantTag: "bge-m3@256", wantWidth: 256,
+		},
+		{
+			name:       "the example env's plain model agrees with its load at 512",
+			load:       loadedWith(defaultTag),
+			configured: embedding.Config{Model: embedding.DefaultModel},
+			wantModel:  embedding.DefaultModel, wantTag: defaultTag, wantWidth: embedding.DefaultDim,
+		},
+		{
+			name:       "a configured width the load agrees with",
+			load:       loadedWith("bge-m3@256"),
+			configured: embedding.Config{Dim: 256},
+			wantModel:  "bge-m3", wantTag: "bge-m3@256", wantWidth: 256,
+		},
+		{
+			name:       "no load record keeps the configured model and width, and warns",
+			configured: embedding.Config{Model: "bge-m3", Dim: 256},
+			wantModel:  "bge-m3", wantTag: "bge-m3@256", wantWidth: 256, wantWarn: true,
+		},
+		{
+			name:      "no load record and nothing configured takes the defaults, and warns",
+			wantModel: embedding.DefaultModel, wantTag: defaultTag, wantWidth: embedding.DefaultDim, wantWarn: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			warnings := captureWarnings(t)
+			cluster := fakeElasticsearch(t, tt.load)
+			ollama, models := fakeOllama(t)
+			ctx := context.Background()
+
+			backend, err := openSearchBackend(ctx, esSearchConfig(cluster, ollama, tt.configured))
+			if err != nil {
+				t.Fatalf("openSearchBackend: %v", err)
+			}
+			t.Cleanup(backend.close)
+			if _, err := backend.semantic.SearchSemantic(ctx, dquery.NewSemantic("climate"), &dquery.BaseOptions{Size: 10}); err != nil {
+				t.Fatalf("semantic search: %v", err)
+			}
+
+			if got := models(); !slices.Equal(got, []string{tt.wantModel}) {
+				t.Errorf("Ollama asked for %v, want [%s]", got, tt.wantModel)
+			}
+			searches := cluster.knnSearches(t)
+			if len(searches) != 1 {
+				t.Fatalf("cluster received %d kNN searches, want 1", len(searches))
+			}
+			if got := searches[0].modelFilter(); got != tt.wantTag {
+				t.Errorf("kNN filtered on model %q, want %q", got, tt.wantTag)
+			}
+			if got := len(searches[0].QueryVector); got != tt.wantWidth {
+				t.Errorf("query vector has %d dimensions, want %d", got, tt.wantWidth)
+			}
+			if warned := strings.Contains(warnings.String(), "level=WARN"); warned != tt.wantWarn {
+				t.Errorf("warned = %v, want %v; log: %s", warned, tt.wantWarn, warnings)
+			}
+		})
+	}
+}
+
+func TestOpenSearchBackend_RefusesToStartAgainstALoadItCannotServe(t *testing.T) {
+	defaultTag := embedding.Tag(embedding.DefaultModel, embedding.DefaultDim)
+	tests := []struct {
+		name       string
+		load       *storage.LoadRecord
+		configured embedding.Config
+		want       []string
+	}{
+		{
+			name:       "EMBEDDING_MODEL names another model",
+			load:       loadedWith(defaultTag),
+			configured: embedding.Config{Model: "bge-m3"},
+			want:       []string{"EMBEDDING_MODEL", "bge-m3", embedding.DefaultModel},
+		},
+		{
+			name:       "EMBEDDING_DIM names another width",
+			load:       loadedWith(defaultTag),
+			configured: embedding.Config{Dim: 1024},
+			want:       []string{"EMBEDDING_DIM", "1024", fmt.Sprint(embedding.DefaultDim)},
+		},
+		{
+			name: "the corpus was loaded without embeddings",
+			load: loadedWith(""),
+			want: []string{"without embeddings"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ollama, _ := fakeOllama(t)
+
+			_, err := openSearchBackend(context.Background(), esSearchConfig(fakeElasticsearch(t, tt.load), ollama, tt.configured))
+
+			if err == nil {
+				t.Fatal("openSearchBackend started")
+			}
+			for _, want := range tt.want {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("error %q does not name %q", err, want)
+				}
+			}
+		})
+	}
+}
+
+func TestOpenSearchBackend_PostgresRefusesAModelItsLoadDisagreesWith(t *testing.T) {
+	ctx := context.Background()
+	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
+	articles := storagetest.ParityCorpus()
+	vectors := make([]embedding.Vec, len(articles))
+	for i, a := range articles {
+		values := make([]float32, embedding.DefaultDim)
+		values[i%embedding.DefaultDim] = 1
+		vectors[i] = embedding.Vec{ID: a.ID, Model: "bge-m3@512", Embedding: values}
+	}
+	connString := pgtest.Load(t, container.ConnString, pgtest.Corpus{Articles: articles, Vectors: vectors, ModelTag: "bge-m3@512"})
+	cfg := pgSearchConfig(connString)
+	cfg.EmbeddingConfig.Model = embedding.DefaultModel
+
+	_, err := openSearchBackend(ctx, cfg)
+
+	if err == nil {
+		t.Fatal("openSearchBackend started against a corpus loaded with another model")
+	}
+	for _, want := range []string{"bge-m3", embedding.DefaultModel} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not name %q", err, want)
+		}
+	}
 }
 
 func TestOpenSearchBackend_ElasticsearchSearchersShareOneClient(t *testing.T) {
-	esURL, connections := fakeElasticsearch(t)
-	cfg := &NewsSearchConfig{
-		StorageConfig: factory.StorageConfig{
-			Type: storage.ES,
-			Es:   &es.ClientConfig{Addresses: []string{esURL}, IndexName: "articles"},
-		},
-		EmbeddingConfig: embedding.Config{Enabled: true, BaseURL: fakeOllama(t)},
-	}
-	backend, err := openSearchBackend(context.Background(), cfg)
+	cluster := fakeElasticsearch(t, loadedWith(embedding.Tag(embedding.DefaultModel, embedding.DefaultDim)))
+	ollama, _ := fakeOllama(t)
+	backend, err := openSearchBackend(context.Background(), esSearchConfig(cluster, ollama, embedding.Config{}))
 	if err != nil {
 		t.Fatalf("openSearchBackend: %v", err)
 	}
@@ -236,7 +475,7 @@ func TestOpenSearchBackend_ElasticsearchSearchersShareOneClient(t *testing.T) {
 		t.Fatalf("hybrid search: %v", err)
 	}
 
-	if got := connections(); got > 1 {
+	if got := cluster.accepted.Load(); got > 1 {
 		t.Errorf("serial requests opened %d connections to Elasticsearch; searchers do not share one client", got)
 	}
 }

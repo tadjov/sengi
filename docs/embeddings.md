@@ -238,8 +238,8 @@ EMBEDDING_BASE_URL=http://<ollama-host>:11434 go run ./cmd/datapipe embed datase
 ```
 
 - Ollama comes from `EMBEDDING_BASE_URL`, `EMBEDDING_MODEL` (default `qwen3-embedding:0.6b`)
-  and `EMBEDDING_DIM` (default 512), as the search API reads them. Vectors are sliced to
-  the width and L2-normalised, like queries.
+  and `EMBEDDING_DIM` (default 512). Vectors are sliced to the width and L2-normalised,
+  like queries.
 - `--batch-size` (default 64) is the leads per request. `--max-tokens` (default 512) is
   sent as Ollama's `num_ctx`, which cuts a longer lead.
 - A version folder that already exists is refused before anything is embedded; pass a
@@ -370,7 +370,9 @@ ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load datasets/cc-news/canoni
 The engines store 512-wide vectors: `vector(512)` in each Postgres schema and
 `embedding.DefaultDim` for the Elasticsearch mapping. Load the `@512` package
 that `--truncate-to 512` cuts from the GPU run; a package of another width is
-refused before anything is written.
+refused before anything is written. The search API embeds queries with the model
+and width in the engine's load record, and refuses to start when `EMBEDDING_MODEL`
+or `EMBEDDING_DIM` names others.
 
 The target must be empty: `load` refuses a database that already holds a corpus
 or its indexes, so drop the schema first (`make migrate-down-native`). An

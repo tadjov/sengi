@@ -125,6 +125,16 @@ func readCgroupLimits(ctx context.Context, conn *pgx.Conn) (*CgroupLimits, error
 	return &limits, nil
 }
 
+// LatestLoad returns the record of the latest corpus load, nil when corpus_load holds none.
+func LatestLoad(ctx context.Context, pool *ConnectionPool) (*storage.LoadRecord, error) {
+	conn, err := pool.conn.Acquire(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("acquire connection: %w", err)
+	}
+	defer conn.Release()
+	return readLatestLoad(ctx, conn.Conn())
+}
+
 func readLatestLoad(ctx context.Context, conn *pgx.Conn) (*storage.LoadRecord, error) {
 	var raw []byte
 	err := conn.QueryRow(ctx, "SELECT record FROM corpus_load ORDER BY finished_at DESC LIMIT 1").Scan(&raw)

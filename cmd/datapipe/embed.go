@@ -253,7 +253,7 @@ func embeddingAPIFromEnv() (embeddingAPI, error) {
 	if err != nil {
 		return embeddingAPI{}, fmt.Errorf("embedding client for %s: %w", cfg.BaseURL, err)
 	}
-	return embeddingAPI{client: client, describer: client, model: cmp.Or(cfg.Model, embedding.DefaultModel), dim: cfg.Dim}, nil
+	return embeddingAPI{client: client, describer: client, model: cmp.Or(cfg.Model, embedding.DefaultModel), dim: cmp.Or(cfg.Dim, embedding.DefaultDim)}, nil
 }
 
 func huggingFaceModelOf(model, flagValue string) (string, error) {

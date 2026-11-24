@@ -152,6 +152,25 @@ func decodeBody(res *http.Response, into any) error {
 	return json.Unmarshal(body, into)
 }
 
+// LoadRecord returns the record of the load that built the client's index, nil when its mapping holds none.
+func (c *Client) LoadRecord(ctx context.Context) (*storage.LoadRecord, error) {
+	mappings, err := c.typed.Indices.GetMapping().Index(c.indexName).Do(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("read mapping of %s: %w", c.indexName, err)
+	}
+	if len(mappings) != 1 {
+		return nil, fmt.Errorf("read mapping of %s: resolves to %d indices, want 1", c.indexName, len(mappings))
+	}
+	for index, mapping := range mappings {
+		load, err := decodeLoadRecord(mapping.Mappings.Meta_)
+		if err != nil {
+			return nil, fmt.Errorf("read load record of %s: %w", index, err)
+		}
+		return load, nil
+	}
+	return nil, nil
+}
+
 func decodeLoadRecord(meta types.Metadata) (*storage.LoadRecord, error) {
 	raw, ok := meta[loadMetaKey]
 	if !ok {
