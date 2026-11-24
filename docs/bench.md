@@ -36,6 +36,30 @@ load-time warning.
 (`EMBEDDING_BASE_URL` + a postgres engine). Without one, **`bench validate` fails up front**
 for these kinds instead of stubbing a fake vector and reporting a misleading OK.
 
+### Judging input
+
+`judging.content_runes` in `spec.yaml` is how many runes of an article's content every grader
+reads, then `...`: the LLM judge's prompt, Jev's `state` and the `bench grade` screen cut at the
+same rune, so `bench diff judgments` compares graders on the same text. Title and description
+are always shown whole, and without the key so is the content.
+
+```yaml
+judging:
+  content_runes: 12000
+```
+
+The LLM and Jev judge blocks record it as `content_runes`, so `--resume` and `--carry-over`
+refuse a file graded at another cut, and `bench grade` refuses an llm or jev `--against` judge
+or existing hand grades read at another cut. The cc-news tracks set the p99 body length of their
+canonical package, so 99% of bodies reach the grader whole.
+
+### Corpus
+
+A suite's `corpus` block (`name`) is a label for the reader; nothing checks it. The corpus
+record is the pool's `meta.canonical`, the canonical package its engines had loaded, and each
+engine's load record. Packages are compared by `resource_hash`, never by version, since a
+package can be republished under its version.
+
 ### Query categories
 
 A suite query may carry `category:`, one of `keyword`, `phrase`, `boolean`, `multi-field`,
@@ -272,9 +296,13 @@ engines:
 The value is the tag stored vectors carry: the model with its width. `article_embeddings` is
 keyed `(article_id, model_name)`, so vectors from two models coexist in it by design, and the
 vector templates take `embedding_model` as an arg and filter on it (`WHERE model_name = $1`)
-rather than ranking across both spaces. The declared value is checked against the tag of the
-query vectors before `validate`, `pool` or `run` touches an engine, and a disagreement fails:
-comparing vectors from two models is arithmetic that succeeds and ranks nothing.
+rather than ranking across both spaces. Before `validate`, `pool` or `run` sends a query, the
+declared value is checked against the tag of the query vectors and against the `ModelTag` of
+the engine's latest load record. A disagreement fails, naming the engine, the declared tag and
+the loaded one, and so does an engine that declares a model but records no load or whose index
+could not be read, the read error named: comparing
+vectors from two models is arithmetic that succeeds and ranks nothing. A fusion engine, which
+holds no index of its own, and an engine that cannot describe its index are skipped.
 
 #### Query vectors
 
@@ -327,7 +355,7 @@ Every command takes the track as its one positional arg (`bench run tracks/cc-ne
 |--------------|-----------|----------|----------------------------------------------------------|
 | `keyword`    | Heuristic | ✅        | Token-overlap baseline — fast, deterministic, no network |
 | `bm25`       | Heuristic | ✅        | Pool-local Okapi BM25 over its score bound → grade       |
-| `vector`     | Heuristic | ✅        | The pool's 10 docs nearest the query grade 3, the rest 0 |
+| `vector`     | Heuristic | ✅        | The pool's N docs nearest the query grade 3, N the largest K |
 | `hybrid`     | Heuristic | ✅        | Weighted BM25 + vector fusion → grade                    |
 | `claude-cli` | LLM       | ✅        | `claude -p` subprocess, one doc per request              |
 | `claude-api` | LLM       | ✅        | Anthropic Messages API, one doc per request              |
@@ -337,8 +365,8 @@ Every command takes the track as its one positional arg (`bench run tracks/cc-ne
 The LLM judge (`--strategy llm`, filed as `claude-cli` or `claude-api`) is the primary
 relevance judge on every cc-news track. `keyword`, `bm25`, `vector` and `hybrid` are
 cross-checks. The semantic track reports both the LLM judge's relevance and the `vector`
-judge's recall@10 against exact search. Self-agreement and a second model on a stratified
-sample validate the LLM judge; `bench grade` remains for a hand-graded check.
+judge's recall at the largest K against exact search. Self-agreement and a second model on a
+stratified sample validate the LLM judge; `bench grade` remains for a hand-graded check.
 
 ```bash
 bench judge <track> --strategy llm --provider claude-cli
@@ -356,10 +384,9 @@ bench judge <track> --strategy llm --provider claude-cli
   never on pool order or on which engine found the doc. On `claude-api` the request is
   byte-identical; `claude-cli` adds its own blocks, below.
 - Every request carries one rubric and shows the doc's title and description in full and
-  its content up to 1,744 characters, the length of the median cc-news article.
-- `--model` defaults to `claude-sonnet-5-5`, the model of the final cc-news judgments, and
-  takes a lowercase `claude-` model id or `haiku`, `sonnet`, `opus` or `fable` for the
-  current generation; `--model haiku` is the cheap option for trial runs. An explicit empty
+  its content up to the spec's `judging.content_runes` (see [Judging input](#judging-input)).
+- `--model` defaults to `claude-sonnet-5-5` and takes a lowercase `claude-` model id or
+  `haiku`, `sonnet`, `opus` or `fable` for the current generation; `--model haiku` is the cheap option for trial runs. An explicit empty
   `--model ""` fails naming the flag. Ids the CLI would answer under another name
   (`sonnet[1m]`, `opusplan`, `Claude-Sonnet-5-5`) are refused. `--effort` sets how much the model
   thinks before it grades (`low` by default). The judge block records the resolved model,
@@ -476,13 +503,14 @@ filters into the pool entry, and `keyword` and `bm25` grade an article that viol
 the same gate as the category's. `vector` and `hybrid` do not read them.
 
 `vector` grades the semantic track as recall against exact search. Every vector engine
-searches the same model's vectors, so the question is how much of exact search's top 10 each
-engine finds. The judge grades the 10 pooled documents nearest the query by cosine 3, ties
-broken by the lower id, and every other pooled document 0; it reads the whole pool of a query
-at once. The semantic track pools the exact pgvector arm at depth ≥ 10,
-so the pool's top 10 is the exact top 10, and `R@10` in the report is recall@10 against exact
-search. A pooled document without a stored vector stays unjudged. `hybrid` keeps its graded
-fusion.
+searches the same model's vectors, so the question is how much of exact search's top N each
+engine finds, N the spec's largest `metrics.k_values` (the loader's default when it sets none).
+The judge grades the N pooled documents nearest the query by cosine 3, ties broken by the
+lower id, and every other pooled document 0; it reads the whole pool of a query at once, and
+its judge block records N as `relevant_depth`, so `--resume` refuses a file graded at another
+depth and `bench run` refuses to score it at a K deeper than N. The semantic track pools the exact pgvector arm at depth ≥ N, so the pool's top N is
+the exact top N, and `R@N` in the report is recall@N against exact search. A pooled document
+without a stored vector stays unjudged. `hybrid` keeps its graded fusion.
 
 `bm25` divides a document's score by Σ (k1 + 1)·idf(t) over the query's scoring terms, the
 bound each term's contribution stays under, so the norm lies in [0, 1) and a grade depends on
@@ -563,7 +591,7 @@ Key flags:
 
 - `bench` loads `cmd/bench/.env` at startup, a path relative to the working directory, so run it from the repo root or name the file in `ENV_PATHS` (copy `cmd/bench/.env.example`; a variable already set wins). Each vendor reads its own key from the environment, `TYPESAFE_API_KEY` for jev and `ANTHROPIC_API_KEY` for `claude-api`; without it the run fails before anything is graded. The file holds no `ANTHROPIC_API_KEY`: `claude -p` inherits the environment and would bill the API instead of the claude.ai login.
 - The model is pinned: `jev-1.14.0` unless `--model` names another `jev-<major>.<minor>.<patch>`. `jev-latest`, `jev-preview` and claude ids are refused. A reply naming any other model leaves the doc unjudged, since the judge block names the pin.
-- Jev sees what the LLM judge sees. The phrase, boolean and filter gates run first, and a doc they refuse grades 0 without a request. The request's `state` is the article as the LLM prompt shows it, content cut at 1,744 characters, and its one `score` question carries the query text, the constraint note and the four levels 0 to 3.
+- Jev sees what the LLM judge sees. The phrase, boolean and filter gates run first, and a doc they refuse grades 0 without a request. The request's `state` is the article as the LLM prompt shows it, content cut at `judging.content_runes`, and its one `score` question carries the query text, the constraint note and the four levels 0 to 3.
 - The grade is the most probable level, a tie going to the lower grade, as the instructions ask; never the rounded `score`. Probabilities that are not one per level 0 to 3, each between 0 and 1 and summing to 1 within 0.05, leave the doc unjudged.
 - The judge block records `model`, `rubric_version` (the question's wording and the grade rule), `gate_version` and, in `invocation`, the endpoint and model.
 - A 408, 429 or 5xx, or a request that got no response, is retried through `pkg/resilience`: 5 attempts, waiting what `Retry-After` asks (seconds or an HTTP date), else 0.5 s doubling up to 5 s less up to 25% jitter. Each attempt times out after 30 s. Any other status fails the doc with its status, body and `x-typesafe-request-id`, and `--resume` retries it.
@@ -573,7 +601,7 @@ Key flags:
 
 Grades pool pairs by hand into `trec/annotations.manual.yaml`, sampled from the `--against` judge's grades. It creates or merges the manual file as `bench judge --strategy manual` does, so hand grades are kept per (query, doc) across re-pools, and it refuses an `--against` file graded against another pool.
 
-Each screen shows progress, the query from the pool, and the article's title, publisher, date, description and first 800 characters of content (from Postgres, `--pg` / `PG_CONNECTION_STRING`). The judge's grade and the engines that retrieved the doc are not shown. Answer `0`–`3`, `s` to skip, `u` to undo the last grade, `q` to quit. Each grade is saved before the next pair shows, so rerunning the command resumes.
+Each screen shows progress, the query from the pool, and the article's title, publisher, date, description and content up to `judging.content_runes` (whole when the spec sets none), cut where the judges cut it and shown on one line (from Postgres, `--pg` / `PG_CONNECTION_STRING`). The manual file records that cut as `content_runes`, and the command refuses an llm or jev `--against` judge, or hand grades already in the file, read at another cut. The judge's grade and the engines that retrieved the doc are not shown. Answer `0`–`3`, `s` to skip, `u` to undo the last grade, `q` to quit. Each grade is saved before the next pair shows, so rerunning the command resumes.
 
 - `--sample N` — walk N pairs drawn from the pairs the judge graded, an equal share per judge grade; a grade with fewer pairs than its share gives the shortfall to the others. Without it, every ungraded pool pair is walked
 - `--seed S` — fixes the sample and the order of docs within each query (default 1). The same pool, judge file and seed give the same walk every session; pairs already graded by hand are skipped
@@ -604,7 +632,7 @@ Judgments resolution order:
 
 A suite query without `text` fails the run before measuring, as it fails `bench pool`; the
 run reads the suites once, before measuring, so editing one mid-run changes nothing. A
-judgments file that does not exist fails the run the same way, as do judgments whose `pool_run_id` is not the current pool's `run_id`. `--latency-only` measures latency without judgments; its report is marked `settings.latency_only` and never becomes `latest.json`. A report's `provenance.unjudged_count` is the number of pooled docs the run found ungraded, not the judge's own count. `provenance.pool_run_id` and `provenance.judgments_run_id` name the pool and the judgments it scored against. When the judgments reused grades through `bench judge --carry-over`, `provenance.carried_over` names the judgments and pool they came from and how many there were.
+judgments file that does not exist fails the run the same way, as do judgments whose `pool_run_id` is not the current pool's `run_id`, and an engine whose load record names another canonical `resource_hash` than the pool's `meta.canonical`; the error lists each such engine and its package. When the pool or an engine records no canonical package, or an engine's index could not be read, the run warns and goes on, as carry-over does. Judgments from the `vector` judge fail the run when it would score at a K deeper than their `relevant_depth`. `--latency-only` skips that check: it measures latency without judgments; its report is marked `settings.latency_only` and never becomes `latest.json`. A report's `provenance.unjudged_count` is the number of pooled docs the run found ungraded, not the judge's own count. `provenance.pool_run_id` and `provenance.judgments_run_id` name the pool and the judgments it scored against. When the judgments reused grades through `bench judge --carry-over`, `provenance.carried_over` names the judgments and pool they came from and how many there were.
 
 Flags:
 - `--jobs pg,es` — run only the named job(s) from the spec (useful during development)
@@ -665,7 +693,9 @@ Before the first query, `bench run` reads from each live engine how it indexed t
 | elasticsearch | the version from `GET /`; the concrete index the spec's `index` resolves to; its `settings.index.analysis`; analyzer, `index_options`, dims and similarity of every text and `dense_vector` field                                                      |
 | fusion        | `fusion.legs`: the leg engines it fuses, in leg order; a fusion engine has no index of its own                                                                                                                                                         |
 
-Provenance is metadata, so a failed read never fails the run: it prints a warning and the block carries `error` instead. An `api` engine cannot describe its index, so its block carries only that error. Reports written before provenance was recorded have no `index` block and still load.
+Both families also record the engine's latest corpus load record, and `bench diff runs` names a change in its canonical version or `resource_hash`, embeddings version or model tag.
+
+Provenance is metadata, so a failed read does not fail the run by itself: it prints a warning and the block carries `error` instead. An engine that declares `embedding_model` still fails the model check, since what it loaded is unknown. An `api` engine cannot describe its index, so its block carries only that error. Reports written before provenance was recorded have no `index` block and still load.
 
 #### Engine environment
 
