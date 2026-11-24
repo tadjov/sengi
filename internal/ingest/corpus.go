@@ -124,6 +124,9 @@ func checkEmbeddings(pkg datapackage.Package, canonicalHash string, trial bool) 
 	if pkg.Embedding == nil || pkg.Embedding.Tag == "" {
 		return fmt.Errorf("embeddings package %s does not record its model tag", pkg.Name)
 	}
+	if pkg.Embedding.Dim <= 0 {
+		return fmt.Errorf("embeddings package %s does not record its vector width in embedding.dim", pkg.Name)
+	}
 	if pkg.Canonical == nil {
 		return fmt.Errorf("embeddings package %s does not name its canonical package", pkg.Name)
 	}
@@ -173,7 +176,8 @@ func (c *PackagedCorpus) Corpus(ctx context.Context) storage.Corpus {
 	}
 	if c.embeddings != nil {
 		corpus.ModelTag = c.embeddings.Embedding.Tag
-		corpus.Vectors = readVectors(ctx, c.vectors, corpus.ModelTag)
+		corpus.Dim = c.embeddings.Embedding.Dim
+		corpus.Vectors = readVectors(ctx, c.vectors, corpus.ModelTag, corpus.Dim)
 		corpus.VectorCount = c.vectorCount
 		corpus.Embeddings = &storage.PackageRef{Name: c.embeddings.Name, Version: c.embeddings.Version, ResourceHash: c.vectorsHash}
 	}
@@ -222,7 +226,7 @@ type EmbeddingRow struct {
 
 const vectorReadBatch = 256
 
-func readVectors(ctx context.Context, file *datapackage.ResourceFile, tag string) iter.Seq2[embedding.Vec, error] {
+func readVectors(ctx context.Context, file *datapackage.ResourceFile, tag string, dim int) iter.Seq2[embedding.Vec, error] {
 	return func(yield func(embedding.Vec, error) bool) {
 		rows := parquet.NewGenericReader[EmbeddingRow](file)
 		defer rows.Close()
@@ -239,6 +243,11 @@ func readVectors(ctx context.Context, file *datapackage.ResourceFile, tag string
 				id, err := uuid.Parse(row.ID)
 				if err != nil {
 					yield(embedding.Vec{}, fmt.Errorf("embeddings row %d: %w", position, err))
+					return
+				}
+				if len(row.Embedding) != dim {
+					yield(embedding.Vec{}, fmt.Errorf("embeddings row %d: article %s has %d dimensions, the package declares %d",
+						position, id, len(row.Embedding), dim))
 					return
 				}
 				if !yield(embedding.Vec{ID: id, Model: tag, Embedding: row.Embedding}, nil) {

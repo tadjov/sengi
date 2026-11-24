@@ -142,6 +142,28 @@ func TestLoad(t *testing.T) {
 				}
 			})
 
+			t.Run("refuses a vector whose width differs from its package's, naming the article", func(t *testing.T) {
+				for name, width := range map[string]int{"shorter": embedding.DefaultDim - 1, "longer": embedding.DefaultDim + 1} {
+					t.Run(name, func(t *testing.T) {
+						db := newLoadDatabase(t, server.ConnString)
+						root := t.TempDir()
+						articles := loadFixtureArticles(20)
+						canonical := writeCanonicalPackage(t, root, articles)
+						rows := fixtureEmbeddingRows(articles)
+						rows[7].Embedding = make([]float32, width)
+						rows[7].Embedding[0] = 1
+						embeddings := writeEmbeddingRows(t, root, canonical, rows, nil)
+
+						err := execDatapipe(t, db, "load", "--engine", string(engine),
+							canonical.location, "--embeddings", embeddings.location)
+
+						require.ErrorContains(t, err, articles[7].ID.String())
+						require.ErrorContains(t, err, fmt.Sprintf("%d dimensions", width))
+						require.ErrorContains(t, err, fmt.Sprintf("declares %d", embedding.DefaultDim))
+					})
+				}
+			})
+
 			t.Run("finds an article by its title once preprocess cleared its body", func(t *testing.T) {
 				db := newLoadDatabase(t, server.ConnString)
 				root := t.TempDir()
@@ -209,6 +231,20 @@ func TestLoad_RefusesBeforeReachingAnEngine(t *testing.T) {
 		err := execDatapipe(t, "", "load", "--engine", "es", canonical.location, "--embeddings", short.location)
 
 		require.ErrorContains(t, err, "5 vectors for 20 articles")
+	})
+
+	t.Run("an embeddings package that does not record its width", func(t *testing.T) {
+		root := t.TempDir()
+		articles := loadFixtureArticles(20)
+		canonical := writeCanonicalPackage(t, root, articles)
+		embeddings := writeEmbeddingsPackage(t, root, canonical, articles, nil)
+		editDescriptor(t, embeddings.location, func(doc map[string]any) {
+			delete(doc["embedding"].(map[string]any), "dim")
+		})
+
+		err := execDatapipe(t, "", "load", "--engine", "es", canonical.location, "--embeddings", embeddings.location)
+
+		require.ErrorContains(t, err, "embedding.dim")
 	})
 
 	t.Run("a canonical package in a language no engine analyses", func(t *testing.T) {
@@ -282,13 +318,17 @@ func writeCanonicalPackageAs(t *testing.T, root string, articles []document.Arti
 
 func writeEmbeddingsPackage(t *testing.T, root string, canonical fixturePackage, articles []document.Article, limit *int) fixturePackage {
 	t.Helper()
+	return writeEmbeddingRows(t, root, canonical, fixtureEmbeddingRows(articles), limit)
+}
+
+func fixtureEmbeddingRows(articles []document.Article) []producerRow {
 	rows := make([]producerRow, len(articles))
 	for i, a := range articles {
 		values := make([]float32, embedding.DefaultDim)
 		values[i%embedding.DefaultDim] = 1
 		rows[i] = producerRow{ID: a.ID.String(), Embedding: values}
 	}
-	return writeEmbeddingRows(t, root, canonical, rows, limit)
+	return rows
 }
 
 func writeEmbeddingRows(t *testing.T, root string, canonical fixturePackage, rows []producerRow, limit *int) fixturePackage {
@@ -335,11 +375,16 @@ func corruptByte(t *testing.T, path string) {
 
 func setDescriptorLanguage(t *testing.T, descriptor, code string) {
 	t.Helper()
+	editDescriptor(t, descriptor, func(doc map[string]any) { doc["language"] = code })
+}
+
+func editDescriptor(t *testing.T, descriptor string, edit func(doc map[string]any)) {
+	t.Helper()
 	data, err := os.ReadFile(descriptor)
 	require.NoError(t, err)
 	var doc map[string]any
 	require.NoError(t, json.Unmarshal(data, &doc))
-	doc["language"] = code
+	edit(doc)
 	data, err = json.MarshalIndent(doc, "", "  ")
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(descriptor, data, 0o644))

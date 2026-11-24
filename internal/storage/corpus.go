@@ -25,8 +25,10 @@ type Corpus struct {
 	VectorCount  int64
 	Language     language.Code
 	ModelTag     string
-	Canonical    PackageRef
-	Embeddings   *PackageRef
+	// Dim is how many dimensions each of Vectors has.
+	Dim        int
+	Canonical  PackageRef
+	Embeddings *PackageRef
 }
 
 type PackageRef struct {
