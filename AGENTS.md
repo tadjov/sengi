@@ -73,7 +73,7 @@ The project follows a layered architecture pattern:
 
 - **tracks/**: Benchmark tracks — each a self-contained folder with `spec.yaml`, `suite.yaml`, `trec/` (pool + judgments), and `reports/`
 - **db/**: Database-related files
-    - `migrations/`: SQL migrations per Postgres engine, `<engine>/schema/` (golang-migrate) and `<engine>/indexes.sql` (the search indexes, and on native and tiger the `corpus_words` table fuzzy search expands query words against, built after the load as timed stages), embedded by the `migrations` Go package. On native and tiger, `schema/002_fuzzy_functions` holds the `fuzzy_*` functions the fuzzy templates call: `fuzzy_expansions` (each word's corpus words within Elasticsearch's AUTO budget, at most 50), `fuzzy_tsquery` on native and `fuzzy_words` on tiger
+    - `migrations/`: SQL migrations per Postgres engine, `<engine>/schema/` (golang-migrate) and `<engine>/indexes.sql` (the search indexes, and on native and tiger the `corpus_words` table fuzzy search expands query words against, built after the load as timed stages), embedded by the `migrations` Go package. One migration per concern: `001_schema` (extensions, `articles`, `article_embeddings`), `002_corpus_load`, and on native and tiger `003_corpus_words` and `004_fuzzy_functions`, the `fuzzy_*` functions the fuzzy templates call: `fuzzy_expansions` (each word's corpus words within Elasticsearch's AUTO budget, at most 50), `fuzzy_tsquery` on native and `fuzzy_words` on tiger. The functions come last, so their down never drops the filled word list
     - `query/`: SQL query files for database operations
 - **datasets/**: Per-dataset mappings, canonical packages, embeddings and load records
 - **scripts/**: Utility scripts for setup and maintenance

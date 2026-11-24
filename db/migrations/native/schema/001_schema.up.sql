@@ -30,17 +30,3 @@ CREATE TABLE article_embeddings
     embedding  vector(512)  NOT NULL,
     PRIMARY KEY (article_id, model_name)
 );
-
--- The fuzzy track expands each query word to the corpus words within its edit
--- budget; indexes.sql fills this after the load.
-CREATE TABLE corpus_words
-(
-    word text    NOT NULL PRIMARY KEY,
-    ndoc integer NOT NULL
-);
-
-CREATE TABLE corpus_load
-(
-    finished_at timestamptz NOT NULL PRIMARY KEY,
-    record      jsonb       NOT NULL
-);
