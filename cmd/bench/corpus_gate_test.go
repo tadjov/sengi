@@ -75,7 +75,18 @@ func TestRun_WarnsWhenTheCorpusCannotBeChecked(t *testing.T) {
 
 		require.NoError(t, err, out)
 		assert.Contains(t, out, "corpus not checked")
-		assert.Contains(t, out, "engines b record no corpus load")
+		assert.Contains(t, out, "no corpus load recorded by b")
+	})
+
+	t.Run("an engine's index cannot be read", func(t *testing.T) {
+		tr, b := loadedTrack(t)
+		b.unreadableMapping = true
+
+		out, err := execute(t, newRunCmd(), tr.dir)
+
+		require.NoError(t, err, out)
+		assert.Contains(t, out, "index not read for b")
+		assert.NotContains(t, out, "no corpus load")
 	})
 }
 

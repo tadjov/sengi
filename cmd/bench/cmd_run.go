@@ -181,7 +181,8 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 		return err
 	}
 	readings := readIndexes(cmd.Context(), cmd.OutOrStdout(), executors)
-	unchecked, err := judgments.CheckCorpus(loadRecords(readings))
+	runCfg.Loads = loadRecords(readings)
+	unchecked, err := judgments.CheckCorpus(runCfg.Loads)
 	if err != nil {
 		return err
 	}

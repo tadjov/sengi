@@ -1,12 +1,14 @@
 package rungate
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/bench/meta"
 	"github.com/tadjov/sengi/internal/bench/pool"
+	"github.com/tadjov/sengi/internal/bench/runner"
 	"github.com/tadjov/sengi/internal/storage"
 )
 
@@ -24,10 +26,10 @@ func loaded(canonical storage.PackageRef) *storage.LoadRecord {
 }
 
 func TestCheckCorpus_RefusesAnEngineHoldingAnotherCanonicalPackage(t *testing.T) {
-	unchecked, err := judgedOnPool(&graded).CheckCorpus(map[string]*storage.LoadRecord{
+	unchecked, err := judgedOnPool(&graded).CheckCorpus(runner.EngineLoads{Records: map[string]*storage.LoadRecord{
 		"pg":            loaded(graded),
 		"elasticsearch": loaded(republished),
-	})
+	}})
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "sha256:graded")
@@ -37,10 +39,10 @@ func TestCheckCorpus_RefusesAnEngineHoldingAnotherCanonicalPackage(t *testing.T)
 }
 
 func TestCheckCorpus_PassesEnginesHoldingThePoolsCanonicalPackage(t *testing.T) {
-	unchecked, err := judgedOnPool(&graded).CheckCorpus(map[string]*storage.LoadRecord{
+	unchecked, err := judgedOnPool(&graded).CheckCorpus(runner.EngineLoads{Records: map[string]*storage.LoadRecord{
 		"pg":            loaded(graded),
 		"elasticsearch": loaded(graded),
-	})
+	}})
 
 	require.NoError(t, err)
 	assert.Empty(t, unchecked)
@@ -48,7 +50,7 @@ func TestCheckCorpus_PassesEnginesHoldingThePoolsCanonicalPackage(t *testing.T) 
 
 func TestCheckCorpus_GoesOnWhenASideRecordsNoCanonicalPackage(t *testing.T) {
 	t.Run("the pool", func(t *testing.T) {
-		unchecked, err := judgedOnPool(nil).CheckCorpus(map[string]*storage.LoadRecord{"pg": loaded(republished)})
+		unchecked, err := judgedOnPool(nil).CheckCorpus(runner.EngineLoads{Records: map[string]*storage.LoadRecord{"pg": loaded(republished)}})
 
 		require.NoError(t, err)
 		require.NotEmpty(t, unchecked)
@@ -56,21 +58,33 @@ func TestCheckCorpus_GoesOnWhenASideRecordsNoCanonicalPackage(t *testing.T) {
 	})
 
 	t.Run("an engine", func(t *testing.T) {
-		unchecked, err := judgedOnPool(&graded).CheckCorpus(map[string]*storage.LoadRecord{
+		unchecked, err := judgedOnPool(&graded).CheckCorpus(runner.EngineLoads{Records: map[string]*storage.LoadRecord{
 			"pg":            loaded(graded),
 			"elasticsearch": nil,
+		}})
+
+		require.NoError(t, err)
+		require.NotEmpty(t, unchecked)
+		assert.Contains(t, unchecked[0], "no corpus load recorded by elasticsearch")
+	})
+
+	t.Run("an engine whose index was not read", func(t *testing.T) {
+		unchecked, err := judgedOnPool(&graded).CheckCorpus(runner.EngineLoads{
+			Records: map[string]*storage.LoadRecord{"pg": loaded(graded)},
+			Unread:  map[string]error{"elasticsearch": errors.New("context deadline exceeded")},
 		})
 
 		require.NoError(t, err)
 		require.NotEmpty(t, unchecked)
-		assert.Contains(t, unchecked[0], "elasticsearch")
+		assert.Contains(t, unchecked[0], "index not read for elasticsearch")
+		assert.NotContains(t, unchecked[0], "no corpus load")
 	})
 
 	t.Run("an engine, while another holds another package", func(t *testing.T) {
-		_, err := judgedOnPool(&graded).CheckCorpus(map[string]*storage.LoadRecord{
+		_, err := judgedOnPool(&graded).CheckCorpus(runner.EngineLoads{Records: map[string]*storage.LoadRecord{
 			"pg":            loaded(republished),
 			"elasticsearch": nil,
-		})
+		}})
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "pg has")
@@ -78,7 +92,10 @@ func TestCheckCorpus_GoesOnWhenASideRecordsNoCanonicalPackage(t *testing.T) {
 }
 
 func TestCheckCorpus_LeavesALatencyOnlyRunAlone(t *testing.T) {
-	unchecked, err := LatencyOnly().CheckCorpus(map[string]*storage.LoadRecord{"pg": loaded(republished), "es": nil})
+	unchecked, err := LatencyOnly().CheckCorpus(runner.EngineLoads{
+		Records: map[string]*storage.LoadRecord{"pg": loaded(republished), "es": nil},
+		Unread:  map[string]error{"api": errors.New("timeout")},
+	})
 
 	require.NoError(t, err)
 	assert.Empty(t, unchecked)

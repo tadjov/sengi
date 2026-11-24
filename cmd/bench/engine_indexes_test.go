@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"maps"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,5 +23,6 @@ func TestLoadRecords_MapsEachEngineHoldingAnIndex(t *testing.T) {
 		"pg-fused": {description: &engine.IndexDescription{Fusion: &engine.FusionDescription{Legs: []string{"pg", "es"}}}},
 	})
 
-	assert.Equal(t, map[string]*storage.LoadRecord{"pg": record, "es": nil, "unread": nil}, loads)
+	assert.Equal(t, map[string]*storage.LoadRecord{"pg": record, "es": nil}, loads.Records)
+	assert.Equal(t, []string{"unread"}, slices.Collect(maps.Keys(loads.Unread)))
 }

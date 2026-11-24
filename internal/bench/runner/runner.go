@@ -29,7 +29,7 @@ func (r *Runner) RunAll(
 	if err := r.config.validate(); err != nil {
 		return nil, err
 	}
-	if err := VerifyEmbeddingModel(bs.Engines, r.config.VectorStore); err != nil {
+	if err := VerifyEmbeddingModel(bs.Engines, EmbeddingModels{Queries: r.config.VectorStore, Loads: r.config.Loads}); err != nil {
 		return nil, err
 	}
 

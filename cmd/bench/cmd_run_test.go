@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 func TestLoadRunJudgments_NoneConfiguredNeedsLatencyOnly(t *testing.T) {
@@ -73,7 +74,11 @@ func TestNewRunConfig_SpecKValuesLoseToAnExplicitFlag(t *testing.T) {
 // spec to that suite's job must run.
 func TestRun_JobsFilterNarrowsTheQueryVectorsSuite(t *testing.T) {
 	t.Setenv("EMBEDDING_BASE_URL", "")
-	cluster := fakeCluster(t, map[string]*fakeIndex{"a": {count: 1, ranked: map[string][]uuid.UUID{"q1": {uuid.New()}}}})
+	cluster := fakeCluster(t, map[string]*fakeIndex{"a": {
+		count:  1,
+		ranked: map[string][]uuid.UUID{"q1": {uuid.New()}},
+		load:   &storage.LoadRecord{ModelTag: queryVectorsFixtureTag},
+	}})
 	track := copyQueryVectorsTrack(t)
 	require.NoError(t, os.WriteFile(filepath.Join(track, "spec.yaml"), fmt.Appendf(nil, `schema_version: 1
 id: two-suites

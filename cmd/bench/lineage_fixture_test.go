@@ -33,6 +33,8 @@ type fakeIndex struct {
 	took    *int
 	// load is the corpus load record its mapping carries; nil records none.
 	load *storage.LoadRecord
+	// unreadableMapping answers 500 to a mapping read, so the index cannot be described.
+	unreadableMapping bool
 	// A query in drifted switches ranking after driftAfter searches of it in log.
 	log        *searchLog
 	drifted    map[string][]uuid.UUID
@@ -112,6 +114,10 @@ func fakeCluster(t *testing.T, indexes map[string]*fakeIndex) string {
 		case "_settings":
 			_, _ = fmt.Fprintf(w, `{%q: {"settings": {"index": {}}}}`, parts[0])
 		case "_mapping":
+			if index.unreadableMapping {
+				http.Error(w, "mapping unavailable", http.StatusInternalServerError)
+				return
+			}
 			writeMapping(t, w, parts[0], index.load)
 		case "_search", "_search/template":
 			body, _ := io.ReadAll(r.Body)

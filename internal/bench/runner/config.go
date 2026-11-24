@@ -35,6 +35,8 @@ type Config struct {
 	Judgments map[string]map[string]int
 	// VectorStore supplies the vector of a query that takes one; nil for lexical tracks.
 	VectorStore storage.VectorStore
+	// Loads is what each engine recorded of its corpus load; RunAll checks declared embedding models against it.
+	Loads EngineLoads
 	// Progress counts each job's queries as they finish; nil counts nothing.
 	Progress progress.Counter
 }

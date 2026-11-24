@@ -116,8 +116,8 @@ func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
 		return fmt.Errorf("create executors: %w", err)
 	}
 	defer cleanup()
-	loads := loadRecords(readIndexes(cmd.Context(), cmd.OutOrStdout(), executors))
-	canonical, err := sharedCanonical(loads)
+	runCfg.Loads = loadRecords(readIndexes(cmd.Context(), cmd.OutOrStdout(), executors))
+	canonical, err := sharedCanonical(runCfg.Loads.Records)
 	if err != nil {
 		return err
 	}

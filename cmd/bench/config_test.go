@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tadjov/sengi/internal/bench/runner"
@@ -93,7 +95,21 @@ jobs:
     suite: suite.yaml
     engines: [pg]
 `, pgConn, queryVectorsFixtureTag), 0o644))
+	recordLoad(t, pgConn, storage.LoadRecord{ModelTag: queryVectorsFixtureTag})
 	return track
+}
+
+// recordLoad stands in for datapipe load's record of a corpus loaded into the database at pgConn.
+func recordLoad(t *testing.T, pgConn string, record storage.LoadRecord) {
+	t.Helper()
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, pgConn)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = conn.Close(ctx) })
+	raw, err := json.Marshal(record)
+	require.NoError(t, err)
+	_, err = conn.Exec(ctx, "INSERT INTO corpus_load (finished_at, record) VALUES (now(), $1)", raw)
+	require.NoError(t, err)
 }
 
 func copyQueryVectorsTrack(t *testing.T) string {
@@ -122,7 +138,7 @@ func TestBuildQueryVectorStore_OllamaStoreTagsTheConfiguredWidth(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(closeStore)
 
-	require.NoError(t, runner.VerifyEmbeddingModel(bs.Engines, store))
+	require.NoError(t, runner.VerifyEmbeddingModel(bs.Engines, runner.EmbeddingModels{Queries: store}))
 }
 
 func TestBuildQueryVectorStore_RefusesAPackageItCannotCheck(t *testing.T) {

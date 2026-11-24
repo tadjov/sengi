@@ -8,6 +8,7 @@ import (
 
 	"github.com/tadjov/sengi/internal/bench/engine"
 	"github.com/tadjov/sengi/internal/bench/report"
+	"github.com/tadjov/sengi/internal/bench/runner"
 	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/storage"
 )
@@ -45,16 +46,16 @@ func describeIndex(ctx context.Context, describer engine.IndexDescriber) (*engin
 	return describer.DescribeIndex(ctx)
 }
 
-// loadRecords maps each engine holding an index to its latest load record, nil
-// when it records none or could not be read; a fusion engine holds no index.
-func loadRecords(readings map[string]indexReading) map[string]*storage.LoadRecord {
-	loads := make(map[string]*storage.LoadRecord, len(readings))
+// loadRecords collects what each engine holding an index recorded of its
+// corpus load; a fusion engine holds no index.
+func loadRecords(readings map[string]indexReading) runner.EngineLoads {
+	loads := runner.EngineLoads{Records: map[string]*storage.LoadRecord{}, Unread: map[string]error{}}
 	for name, reading := range readings {
 		switch {
 		case reading.err != nil:
-			loads[name] = nil
+			loads.Unread[name] = reading.err
 		case reading.description.Fusion == nil:
-			loads[name] = reading.description.Load()
+			loads.Records[name] = reading.description.Load()
 		}
 	}
 	return loads
