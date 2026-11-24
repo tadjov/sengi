@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -57,9 +58,10 @@ func newJudgeCmdWithReader(openReader articleReaderOpener) *cobra.Command {
 
   keyword     — deterministic token-overlap baseline (no network, no LLM)
   bm25        — pool-local Okapi BM25 (no network; rewards rare terms)
-  vector      — the pool's ten docs nearest the query by cosine grade 3, the
-                rest 0; doc vectors from PG (--pg), query vectors from
-                trec/query-vectors, else Ollama (EMBEDDING_BASE_URL)
+  vector      — the pool's docs nearest the query by cosine grade 3, as many
+                as the spec's largest metrics.k_values, the rest 0; doc
+                vectors from PG (--pg), query vectors from trec/query-vectors,
+                else Ollama (EMBEDDING_BASE_URL)
   hybrid      — BM25 + vector fusion, vectors as for vector
   llm         — LLM-as-judge, one doc per request; pick the endpoint with
                 --provider
@@ -319,6 +321,7 @@ func strategyOptions(cmd *cobra.Command, tr *trackctx.Track, sel judgeSelection)
 	}
 	opts.VectorStore = store
 	opts.EmbeddingModel = model
+	opts.RelevantDepth = slices.Max(bs.Metrics.KValues)
 	return opts, closeStore, nil
 }
 

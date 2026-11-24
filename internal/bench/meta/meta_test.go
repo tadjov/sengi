@@ -47,6 +47,10 @@ func TestJudgeDifferences(t *testing.T) {
 			name: "content cut", was: with(sonnet, func(j *Judge) { j.ContentRunes = 400 }), now: with(sonnet, func(j *Judge) { j.ContentRunes = 600 }),
 			want: []string{`content_runes: was 400, now 600`},
 		},
+		{
+			name: "relevant depth", was: Judge{Strategy: "vector", RelevantDepth: 10}, now: Judge{Strategy: "vector", RelevantDepth: 20},
+			want: []string{`relevant_depth: was 10, now 20`},
+		},
 		{name: "a file that names no judge", was: Judge{}, now: bm25, want: []string{
 			`strategy: was "", now "bm25"`, `gate_version: was "", now "v2"`, `rubric_version: was "", now "v2"`,
 		}},

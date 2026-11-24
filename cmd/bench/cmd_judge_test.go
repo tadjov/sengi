@@ -386,11 +386,12 @@ func TestJudge_ForceOutsideManualIsRejected(t *testing.T) {
 }
 
 // The Ollama here answers with the opposite vector, so only the package's vector
-// puts the one doc stored at it among the ten nearest.
+// puts the one doc stored at it among the nearest.
 func TestJudge_VectorGradesWithTheTracksQueryVectors(t *testing.T) {
 	ctx := context.Background()
 	container := testcontainer.NewPGContainerWithCleanup(ctx, t)
 	track := queryVectorsTrack(t, container.ConnString)
+	appendToSpec(t, track, "metrics:\n  k_values: [2, 4]\n")
 	const queryText = "central bank interest rates"
 	queryVector := packageQueryVector(t, track, queryText)
 	opposite := make([]float32, len(queryVector))
@@ -435,8 +436,17 @@ func TestJudge_VectorGradesWithTheTracksQueryVectors(t *testing.T) {
 	t.Run("grades with the package vector", func(t *testing.T) {
 		require.NoError(t, fx.judge(t, "--strategy", "vector", "--pg", container.ConnString))
 
-		assert.Equal(t, judgment.GradeHighly, gradesByQuery(fx.annotations(t, "vector"))["q2"][docID])
+		annotations := fx.annotations(t, "vector")
+		assert.Equal(t, judgment.GradeHighly, gradesByQuery(annotations)["q2"][docID])
 		assert.Zero(t, ollamaCalls.Load())
+		assert.Equal(t, 4, annotations.Judge().RelevantDepth, "the spec's largest K")
+		relevant := 0
+		for _, grade := range gradesByQuery(annotations)["q2"] {
+			if grade == judgment.GradeHighly {
+				relevant++
+			}
+		}
+		assert.Equal(t, 4, relevant)
 	})
 
 	t.Run("refuses a package the suite has moved past", func(t *testing.T) {
@@ -452,6 +462,14 @@ func TestJudge_VectorGradesWithTheTracksQueryVectors(t *testing.T) {
 		require.ErrorAs(t, err, &stale)
 		assert.Equal(t, "q1", stale.QueryID)
 	})
+}
+
+func appendToSpec(t *testing.T, track, yaml string) {
+	t.Helper()
+	path := filepath.Join(track, "spec.yaml")
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, append(raw, yaml...), 0o644))
 }
 
 func packageQueryVector(t *testing.T, track, text string) []float32 {

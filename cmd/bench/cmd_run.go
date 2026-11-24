@@ -139,6 +139,9 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 	if err := spec.CheckKValues(runCfg.KValues, judgments.Pool.Meta.PoolDepth); err != nil {
 		return fmt.Errorf("k values %v: %w", runCfg.KValues, err)
 	}
+	if err := judgments.CheckRelevantDepth(runCfg.KValues); err != nil {
+		return err
+	}
 
 	printSpecWarnings(cmd.OutOrStdout(), bs)
 

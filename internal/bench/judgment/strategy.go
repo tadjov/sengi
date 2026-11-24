@@ -137,6 +137,8 @@ type StrategyOptions struct {
 	VectorStore storage.VectorStore
 	// EmbeddingModel labels the judge block's model for vector/hybrid.
 	EmbeddingModel string
+	// RelevantDepth is how many of the docs nearest the query the vector judge grades relevant.
+	RelevantDepth int
 }
 
 func NewStrategy(kind StrategyKind, opts StrategyOptions) (Strategy, error) {
