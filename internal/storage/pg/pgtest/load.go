@@ -47,6 +47,10 @@ func Load(tb testing.TB, serverConnString string, c Corpus) string {
 	if c.Vectors != nil {
 		corpus.Vectors = seq(c.Vectors)
 		corpus.ModelTag = c.ModelTag
+		corpus.Dim = embedding.DefaultDim
+		if len(c.Vectors) > 0 {
+			corpus.Dim = len(c.Vectors[0].Embedding)
+		}
 		corpus.Embeddings = &storage.PackageRef{Name: "test-embeddings"}
 	}
 	opts := storage.LoadOptions{BatchSize: max(len(c.Articles), 1), Concurrency: 1}

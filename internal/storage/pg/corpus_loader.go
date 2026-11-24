@@ -80,6 +80,11 @@ func (l *CorpusLoader) LoadCorpus(ctx context.Context, c storage.Corpus, opts st
 	if err := l.refuseLoaded(ctx, conn); err != nil {
 		return storage.LoadRecord{}, err
 	}
+	if c.Vectors != nil {
+		if err := refuseOtherWidth(ctx, conn, c.Dim); err != nil {
+			return storage.LoadRecord{}, err
+		}
+	}
 	if err := pauseAutovacuum(ctx, conn); err != nil {
 		return storage.LoadRecord{}, err
 	}
@@ -179,6 +184,8 @@ func validateCorpus(c storage.Corpus, opts storage.LoadOptions) error {
 		return errors.New("corpus vectors and their embeddings package must come together")
 	case c.Vectors != nil && c.ModelTag == "":
 		return errors.New("corpus vectors carry no model tag")
+	case c.Vectors != nil && c.Dim <= 0:
+		return errors.New("corpus vectors carry no width")
 	case opts.BatchSize <= 0:
 		return fmt.Errorf("batch size %d: want at least 1", opts.BatchSize)
 	case opts.Concurrency <= 0:
@@ -223,6 +230,20 @@ func (l *CorpusLoader) refuseLoaded(ctx context.Context, conn *pgx.Conn) error {
 	}
 	if loaded {
 		return errors.New("the database already holds a corpus; drop its schema before loading another")
+	}
+	return nil
+}
+
+// refuseOtherWidth compares dim with the width article_embeddings.embedding is declared with, which pgvector keeps as its typmod.
+func refuseOtherWidth(ctx context.Context, conn *pgx.Conn, dim int) error {
+	var stored int
+	err := conn.QueryRow(ctx, `SELECT atttypmod FROM pg_attribute
+		WHERE attrelid = to_regclass('article_embeddings') AND attname = 'embedding' AND NOT attisdropped`).Scan(&stored)
+	if err != nil {
+		return fmt.Errorf("read the width of article_embeddings.embedding: %w", err)
+	}
+	if dim != stored {
+		return fmt.Errorf("the embeddings package declares %d dimensions, article_embeddings.embedding stores %d", dim, stored)
 	}
 	return nil
 }

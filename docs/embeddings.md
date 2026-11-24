@@ -368,9 +368,9 @@ ENV_PATHS=cmd/datapipe/pg.env go run ./cmd/datapipe load datasets/cc-news/canoni
 ```
 
 The engines store 512-wide vectors: `vector(512)` in each Postgres schema and
-`embedding.DefaultDim` for the Elasticsearch mapping and live queries. Load the
-`@512` package that `--truncate-to 512` cuts from the GPU run; a package of
-another width fails the load.
+`embedding.DefaultDim` for the Elasticsearch mapping. Load the `@512` package
+that `--truncate-to 512` cuts from the GPU run; a package of another width is
+refused before anything is written.
 
 The target must be empty: `load` refuses a database that already holds a corpus
 or its indexes, so drop the schema first (`make migrate-down-native`). An

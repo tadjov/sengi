@@ -208,6 +208,14 @@ func TestCorpusLoader(t *testing.T) {
 						},
 						opts: storage.LoadOptions{BatchSize: 500, Concurrency: 1},
 					},
+					"vectors without a width": {
+						corpus: func() storage.Corpus {
+							c := corpusOf(articles, vectors)
+							c.Dim = 0
+							return c
+						},
+						opts: storage.LoadOptions{BatchSize: 500, Concurrency: 1},
+					},
 					"no batch size": {
 						corpus: func() storage.Corpus { return corpusOf(articles, vectors) },
 						opts:   storage.LoadOptions{Concurrency: 1},
@@ -246,6 +254,27 @@ func TestCorpusLoader(t *testing.T) {
 				}
 
 				articles, vectors := fixture(10)
+				_, err = load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
+				require.NoError(t, err)
+			})
+
+			t.Run("refuses vectors of another width than the schema stores before writing, and leaves the database loadable", func(t *testing.T) {
+				db := newDatabase(t, server.ConnString)
+				articles, vectors := fixture(10)
+				const otherWidth = 256
+				narrow := make([]embedding.Vec, len(vectors))
+				for i, v := range vectors {
+					narrow[i] = embedding.Vec{ID: v.ID, Model: v.Model, Embedding: v.Embedding[:otherWidth]}
+				}
+				c := corpusOf(articles, narrow)
+				c.Dim = otherWidth
+
+				_, err := load(t, db, engine, c, storage.LoadOptions{BatchSize: 500, Concurrency: 1})
+
+				require.ErrorContains(t, err, fmt.Sprint(otherWidth))
+				require.ErrorContains(t, err, fmt.Sprint(embedding.DefaultDim))
+				assert.Empty(t, storedIDs(t, db, "SELECT id FROM articles"), "the refused load wrote articles")
+				assert.False(t, loadRecorded(t, db), "the refused load was recorded in corpus_load")
 				_, err = load(t, db, engine, corpusOf(articles, vectors), storage.LoadOptions{BatchSize: 500, Concurrency: 1})
 				require.NoError(t, err)
 			})
@@ -603,6 +632,7 @@ func corpusOf(articles []document.Article, vectors []embedding.Vec) storage.Corp
 	if vectors != nil {
 		c.Vectors = seq(vectors)
 		c.ModelTag = modelTag
+		c.Dim = embedding.DefaultDim
 		c.Embeddings = &storage.PackageRef{Name: "fixture-embeddings", Version: "lead-v1-00000000", ResourceHash: "sha256:" + zeros(64)}
 	}
 	return c
