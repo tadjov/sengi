@@ -36,7 +36,8 @@ type TestSuite struct {
 	Queries       []Query          `yaml:"queries"`
 }
 
-// Corpus names the dataset the suite was written for; nothing reads it.
+// Corpus names the dataset the suite was written for, a label nothing checks:
+// the pool and the engines' load records are the corpus record.
 type Corpus struct {
 	Name       string `yaml:"name"`
 	Source     string `yaml:"source,omitempty"`

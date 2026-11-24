@@ -7,6 +7,10 @@ defaults:
   pool_depth: 50
   judgments: claude-cli
 
+judging:
+  # p99 body length of cc-news-canonical@v1 (sha256:671b29fd…): 99% of bodies reach the grader whole, so an article retrieved for a late match is graded on that match
+  content_runes: 12000
+
 engines:
   # rank_norm is ts_rank's normalisation bitmask: 0 ignores document length, 1
   # divides by 1 + log(length), the length normalisation BM25 applies.

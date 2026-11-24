@@ -228,6 +228,35 @@ jobs:
 	assert.Equal(t, "keyword", s.Defaults.Judgments)
 }
 
+func TestParse_JudgingContentRunes(t *testing.T) {
+	const body = `engines:
+  pg:
+    type: postgres
+    connection: "postgresql://localhost/test"
+jobs:
+  - name: test
+    suite: suite.yaml
+    engines: [pg]
+`
+	t.Run("set", func(t *testing.T) {
+		s, err := Parse([]byte(validSpecHeader + "judging:\n  content_runes: 640\n" + body))
+		require.NoError(t, err)
+		assert.Equal(t, 640, s.Judging.ContentRunes)
+	})
+
+	t.Run("absent means no cut", func(t *testing.T) {
+		s, err := Parse([]byte(validSpecHeader + body))
+		require.NoError(t, err)
+		assert.Zero(t, s.Judging.ContentRunes)
+	})
+
+	t.Run("negative", func(t *testing.T) {
+		_, err := Parse([]byte(validSpecHeader + "judging:\n  content_runes: -1\n" + body))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "judging.content_runes")
+	})
+}
+
 func TestParse_RejectsUnknownDefaultsJudgments(t *testing.T) {
 	prev := KnownStrategies
 	KnownStrategies = func() []string { return []string{"keyword", "claude-api"} }

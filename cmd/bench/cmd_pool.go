@@ -1,9 +1,7 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"io"
 	"slices"
 	"strings"
 
@@ -118,7 +116,8 @@ func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
 		return fmt.Errorf("create executors: %w", err)
 	}
 	defer cleanup()
-	canonical, err := loadedCanonical(cmd.Context(), cmd.OutOrStdout(), executors)
+	runCfg.Loads = loadRecords(readIndexes(cmd.Context(), cmd.OutOrStdout(), executors))
+	canonical, err := sharedCanonical(runCfg.Loads.Records)
 	if err != nil {
 		return err
 	}
@@ -166,24 +165,15 @@ func poolTrack(cmd *cobra.Command, f poolFlags, tr *trackctx.Track) error {
 	return nil
 }
 
-// loadedCanonical reads which canonical package the engines had loaded.
-func loadedCanonical(ctx context.Context, w io.Writer, executors map[string]engine.Executor) (*storage.PackageRef, error) {
-	loads := make(map[string]storage.PackageRef, len(executors))
-	for name, exec := range executors {
-		describer, ok := exec.(engine.IndexDescriber)
-		if !ok {
-			continue
-		}
-		description, err := describeIndex(ctx, describer)
-		if err != nil {
-			cli.Warn(w, fmt.Sprintf("canonical package of %q not recorded: %v", name, err))
-			continue
-		}
-		if load := description.Load(); load != nil {
-			loads[name] = load.Canonical
+// sharedCanonical is the canonical package every engine that records a load holds.
+func sharedCanonical(loads map[string]*storage.LoadRecord) (*storage.PackageRef, error) {
+	canonical := make(map[string]storage.PackageRef, len(loads))
+	for name, load := range loads {
+		if load != nil {
+			canonical[name] = load.Canonical
 		}
 	}
-	return pool.SharedCanonical(loads)
+	return pool.SharedCanonical(canonical)
 }
 
 // specEngines lists the engines the spec's jobs run, in spec order.

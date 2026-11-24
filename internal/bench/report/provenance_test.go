@@ -68,7 +68,7 @@ func reportWithLoads(pgEmbeddings, esEmbeddings string) *Report {
 	load := func(engineName, embeddingsVersion string) *storage.LoadRecord {
 		return &storage.LoadRecord{
 			Engine:     engineName,
-			Canonical:  storage.PackageRef{Name: "cc-news", Version: "article-v2-601d5476"},
+			Canonical:  storage.PackageRef{Name: "cc-news", Version: "article-v2-601d5476", ResourceHash: "sha256:original"},
 			Embeddings: &storage.PackageRef{Name: "cc-news-embeddings", Version: embeddingsVersion},
 			ModelTag:   "qwen3-embedding:0.6b@1024",
 		}
@@ -102,6 +102,23 @@ func TestDiffProvenance_NamesALoadOfOtherEmbeddings(t *testing.T) {
 	}
 	if same := DiffProvenance(before, before); len(same) != 0 {
 		t.Errorf("identical loads differ: %+v", same)
+	}
+}
+
+// A canonical package republished under its version is another corpus, so the
+// diff names its hash.
+func TestDiffProvenance_NamesACanonicalRepublishedUnderItsVersion(t *testing.T) {
+	before := reportWithLoads("lead-v1-1024-938b2254", "lead-v1-1024-938b2254")
+	after := reportWithLoads("lead-v1-1024-938b2254", "lead-v1-1024-938b2254")
+	pgAfter := *after.Environment.Engines["pg"].Index.Postgres.Load
+	pgAfter.Canonical.ResourceHash = "sha256:republished"
+	after.Environment.Engines["pg"].Index.Postgres.Load = &pgAfter
+
+	changes := DiffProvenance(before, after)
+
+	want := []ProvenanceChange{{Engine: "pg", Field: "load.canonical.resource_hash", Before: "sha256:original", After: "sha256:republished"}}
+	if !reflect.DeepEqual(changes, want) {
+		t.Errorf("changes = %+v, want %+v", changes, want)
 	}
 }
 

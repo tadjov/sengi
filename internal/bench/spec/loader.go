@@ -136,6 +136,9 @@ func validate(s *BenchSpec) error {
 	if err := validateDefaults(s); err != nil {
 		return err
 	}
+	if s.Judging.ContentRunes < 0 {
+		return fmt.Errorf("judging.content_runes %d is negative", s.Judging.ContentRunes)
+	}
 	if len(s.Metrics.KValues) == 0 {
 		s.Metrics.KValues = []int{3, 5, 10}
 	}

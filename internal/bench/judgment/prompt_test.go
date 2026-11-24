@@ -62,7 +62,7 @@ func TestGradingPrompt_IsThePromptOfItsVersion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(string(tt.category), func(t *testing.T) {
-			got := buildGradingPrompt(GradingQuery{ID: "q1", Text: "stock market crash", Category: tt.category}, doc)
+			got := buildGradingPrompt(GradingQuery{ID: "q1", Text: "stock market crash", Category: tt.category}, doc, testContentRunes)
 
 			assert.Equal(t, tt.want, got)
 		})

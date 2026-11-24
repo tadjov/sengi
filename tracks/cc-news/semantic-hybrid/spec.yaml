@@ -7,6 +7,10 @@ defaults:
   pool_depth: 50
   judgments: claude-cli
 
+judging:
+  # p99 body length of cc-news-canonical@v1 (sha256:671b29fd…): 99% of bodies reach the grader whole, so an article retrieved for a late match is graded on that match
+  content_runes: 12000
+
 # One policy on every engine: each leg returns its top 100, HNSW searches 200
 # candidates (hnsw.ef_search on Postgres, num_candidates on Elasticsearch), and
 # hybrid is Reciprocal Rank Fusion with k = 60 over the two legs' top 100.

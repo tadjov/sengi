@@ -130,11 +130,15 @@ type StrategyOptions struct {
 	Effort     Effort
 	APIBaseURL string
 	CLIBinary  string
+	// ContentRunes is how many runes of an article's content llm and jev read, 0 for all of it.
+	ContentRunes int
 
 	// VectorStore holds the doc vectors and embeds the query for vector and hybrid.
 	VectorStore storage.VectorStore
 	// EmbeddingModel labels the judge block's model for vector/hybrid.
 	EmbeddingModel string
+	// RelevantDepth is how many of the docs nearest the query the vector judge grades relevant.
+	RelevantDepth int
 }
 
 func NewStrategy(kind StrategyKind, opts StrategyOptions) (Strategy, error) {

@@ -195,6 +195,7 @@ func addLoadFields(add func(name, value string), load *storage.LoadRecord) {
 		return
 	}
 	add("load.canonical.version", load.Canonical.Version)
+	add("load.canonical.resource_hash", load.Canonical.ResourceHash)
 	add("load.embeddings.version", embeddingsVersion(load))
 	add("load.model_tag", load.ModelTag)
 }

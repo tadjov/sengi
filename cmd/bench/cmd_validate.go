@@ -32,6 +32,8 @@ func newValidateCmd() *cobra.Command {
 		Long: `Validates spec + suite ahead of a real pool/run:
 
   - every query is given the args its statement takes
+  - an engine that declares embedding_model holds a corpus loaded with that
+    model, as its load record names it (pool and run refuse it too)
   - postgres queries pass EXPLAIN with their args (syntax, columns, operators)
   - elasticsearch search templates are stored, rendered with their params, and
     the rendered body passes _validate/query (JSON, fields, types), as do
@@ -84,12 +86,6 @@ func validateTrack(cmd *cobra.Command, f validateFlags, tr *trackctx.Track) erro
 	if err := requireEmbedder(bs, vectorStore); err != nil {
 		return err
 	}
-	// The declared model reaches the SQL as a literal; the store embeds the
-	// query. A dry run that renders them apart would report OK on queries that
-	// rank across two vector spaces.
-	if err := runner.VerifyEmbeddingModel(bs.Engines, vectorStore); err != nil {
-		return err
-	}
 
 	executors, cleanup, err := engine.CreateFromSpec(cmd.Context(), bs.Engines)
 	if err != nil {
@@ -99,6 +95,15 @@ func validateTrack(cmd *cobra.Command, f validateFlags, tr *trackctx.Track) erro
 
 	suites, err := runner.LoadSuites(bs)
 	if err != nil {
+		return err
+	}
+	// The declared model reaches the SQL as a literal, while the store embeds
+	// the query and the engine holds what it loaded. A dry run that renders
+	// them apart would report OK on queries that rank across two vector spaces.
+	if err := runner.VerifyEmbeddingModel(bs.Engines, runner.EmbeddingModels{
+		Queries: vectorStore,
+		Loads:   loadRecords(readIndexes(cmd.Context(), cmd.OutOrStdout(), executors)),
+	}); err != nil {
 		return err
 	}
 	bindings := runner.QueryBindings(bs)

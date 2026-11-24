@@ -4,16 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/tadjov/sengi/internal/bench/suite"
 )
 
 const (
-	// contentCutRunes is the median cc-news article's length, so half the
-	// corpus reaches the judge whole.
-	contentCutRunes = 1744
-
 	phraseSatisfied = `This is a phrase query, and the article contains the phrase. ` +
 		`Grade how well it answers the query.`
 
@@ -38,11 +33,11 @@ Rules:
 
 Output ONLY the JSON the request asks for. Never wrap it in markdown, never add prose.`
 
-func buildGradingPrompt(q GradingQuery, doc GradingDoc) string {
+func buildGradingPrompt(q GradingQuery, doc GradingDoc, contentRunes int) string {
 	var sb strings.Builder
 	writeQuery(&sb, q)
 	fmt.Fprintf(&sb, "Article (doc_id: %s):\n", doc.ID)
-	writeArticle(&sb, doc)
+	writeArticle(&sb, doc, contentRunes)
 	fmt.Fprintf(&sb, "\nRespond with ONLY this JSON: {\"doc_id\":\"%s\",\"grade\":<0|1|2|3>}", doc.ID)
 	return sb.String()
 }
@@ -55,13 +50,13 @@ func writeQuery(sb *strings.Builder, q GradingQuery) {
 	fmt.Fprintf(sb, "Query: %s\n\n", q.Text)
 }
 
-func writeArticle(sb *strings.Builder, doc GradingDoc) {
+func writeArticle(sb *strings.Builder, doc GradingDoc, contentRunes int) {
 	fmt.Fprintf(sb, "Title: %s\n", doc.Title)
 	if doc.Description != "" {
 		fmt.Fprintf(sb, "Description: %s\n", doc.Description)
 	}
 	if doc.Content != "" {
-		fmt.Fprintf(sb, "Content: %s\n", truncateRunes(doc.Content, contentCutRunes))
+		fmt.Fprintf(sb, "Content: %s\n", ContentExcerpt(doc.Content, contentRunes))
 	}
 }
 
@@ -112,14 +107,6 @@ func isolateJSON(s string) string {
 		return s
 	}
 	return s[start : end+1]
-}
-
-func truncateRunes(s string, max int) string {
-	if utf8.RuneCountInString(s) <= max {
-		return s
-	}
-	runes := []rune(s)
-	return string(runes[:max]) + "..."
 }
 
 // PromptVersion names the rubric in the judge block: bump it whenever the

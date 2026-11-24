@@ -15,33 +15,35 @@ import (
 )
 
 // VectorStrategy grades the pool docs nearest the query by cosine as exact
-// search's top ten, so R@10 against its grades is recall@10 against exact
-// search, provided the pool holds exact search's own top ten.
+// search's top N, N the track's largest K, so R@N against its grades is
+// recall@N against exact search, provided the pool holds exact search's own top N.
 type VectorStrategy struct {
-	store storage.VectorStore
-	model string
+	store         storage.VectorStore
+	model         string
+	relevantDepth int
 }
 
 func NewVectorStrategy(opts StrategyOptions) (*VectorStrategy, error) {
 	if opts.VectorStore == nil {
 		return nil, errNoVectorStore
 	}
-	return &VectorStrategy{store: opts.VectorStore, model: opts.EmbeddingModel}, nil
+	return &VectorStrategy{store: opts.VectorStore, model: opts.EmbeddingModel, relevantDepth: opts.RelevantDepth}, nil
 }
 
 func (s VectorStrategy) Describe() meta.Judge {
-	return meta.Judge{Strategy: string(StrategyVector), Model: s.model, RubricVersion: vectorRubricVersion}
+	return meta.Judge{
+		Strategy:      string(StrategyVector),
+		Model:         s.model,
+		RubricVersion: vectorRubricVersion,
+		RelevantDepth: s.relevantDepth,
+	}
 }
 
 const vectorRubricVersion = "v2"
 
-// vectorRelevantDepth is the depth of exact search the semantic track measures
-// recall at.
-const vectorRelevantDepth = 10
-
-// GradePool grades the vectorRelevantDepth docs nearest the query 3, ties
-// broken by the lower id, and every other doc 0. A doc without a stored vector
-// is left out, so the runner records it unjudged.
+// GradePool grades the relevantDepth docs nearest the query 3, ties broken by
+// the lower id, and every other doc 0. A doc without a stored vector is left
+// out, so the runner records it unjudged.
 func (s VectorStrategy) GradePool(ctx context.Context, q GradingQuery, docs []GradingDoc) ([]GradedDoc, error) {
 	if len(docs) == 0 {
 		return nil, nil
@@ -66,7 +68,7 @@ func (s VectorStrategy) GradePool(ctx context.Context, q GradingQuery, docs []Gr
 	out := make([]GradedDoc, len(ranked))
 	for i, r := range ranked {
 		grade := GradeNotRelev
-		if i < vectorRelevantDepth {
+		if i < s.relevantDepth {
 			grade = GradeHighly
 		}
 		out[i] = GradedDoc{DocID: r.id, Grade: grade}

@@ -69,9 +69,10 @@ func vectorGrades(t *testing.T, store fakeVectorStore, docs []GradingDoc) map[uu
 	return byID
 }
 
-// The semantic track measures recall against exact search: the pool's ten
-// docs nearest the query are relevant, every other pooled doc is not.
-func TestVectorGradePool_GradesTheTenNearestDocsRelevantAndTheRestNot(t *testing.T) {
+// The semantic track measures recall against exact search: the pool's docs
+// nearest the query, as many as the track's largest K, are relevant, every
+// other pooled doc is not.
+func TestVectorGradePool_GradesTheDepthNearestDocsRelevantAndTheRestNot(t *testing.T) {
 	docs, store := angledDocs(15)
 	shuffled := slices.Clone(docs)
 	rand.New(rand.NewPCG(1, 2)).Shuffle(len(shuffled), func(i, j int) { shuffled[i], shuffled[j] = shuffled[j], shuffled[i] })
@@ -81,29 +82,30 @@ func TestVectorGradePool_GradesTheTenNearestDocsRelevantAndTheRestNot(t *testing
 	require.Len(t, got, 15)
 	for i, d := range docs {
 		want := GradeNotRelev
-		if i < 10 {
+		if i < testRelevantDepth {
 			want = GradeHighly
 		}
 		assert.Equal(t, want, got[d.ID], "doc %d at %d°", i, i*5)
 	}
 
-	nearest := make([]uuid.UUID, 10)
+	nearest := make([]uuid.UUID, testRelevantDepth)
 	for i := range nearest {
-		nearest[i] = docs[9-i].ID
+		nearest[i] = docs[testRelevantDepth-1-i].ID
 	}
-	assert.Equal(t, 1.0, irmetrics.RecallAtK(nearest, got, 10, 1), "the exact top ten in reverse order")
-	nineAndAFar := append(slices.Clone(nearest[:9]), docs[14].ID)
-	assert.InDelta(t, 0.9, irmetrics.RecallAtK(nineAndAFar, got, 10, 1), 1e-12)
+	assert.Equal(t, 1.0, irmetrics.RecallAtK(nearest, got, testRelevantDepth, 1), "the exact top in reverse order")
+	allButOneAndAFar := append(slices.Clone(nearest[:testRelevantDepth-1]), docs[14].ID)
+	assert.InDelta(t, 0.75, irmetrics.RecallAtK(allButOneAndAFar, got, testRelevantDepth, 1), 1e-12)
 }
 
-func TestVectorGradePool_BreaksATieAtTheTenthDocByID(t *testing.T) {
-	docs, store := angledDocs(11)
-	store.docs[docs[10].ID] = store.docs[docs[9].ID]
+func TestVectorGradePool_BreaksATieAtTheLastRelevantDocByID(t *testing.T) {
+	docs, store := angledDocs(testRelevantDepth + 1)
+	last := testRelevantDepth - 1
+	store.docs[docs[last+1].ID] = store.docs[docs[last].ID]
 
 	got := vectorGrades(t, store, docs)
 
-	assert.Equal(t, GradeHighly, got[docs[9].ID], "the lower id of the tied pair")
-	assert.Equal(t, GradeNotRelev, got[docs[10].ID])
+	assert.Equal(t, GradeHighly, got[docs[last].ID], "the lower id of the tied pair")
+	assert.Equal(t, GradeNotRelev, got[docs[last+1].ID])
 }
 
 func TestVectorGradePool_LeavesDocsWithoutAVectorUnjudged(t *testing.T) {
@@ -121,6 +123,9 @@ func TestVectorDescribe(t *testing.T) {
 	s := vectorStrategy(t, fakeVectorStore{}, "qwen3")
 
 	got := s.Describe()
+	if got.RelevantDepth != testRelevantDepth {
+		t.Errorf("RelevantDepth = %d, want %d", got.RelevantDepth, testRelevantDepth)
+	}
 	if got.Strategy != string(StrategyVector) {
 		t.Errorf("Strategy = %q, want %q", got.Strategy, StrategyVector)
 	}
@@ -151,9 +156,12 @@ func TestCosine(t *testing.T) {
 	}
 }
 
+// testRelevantDepth is not the spec loader's default largest K, so a judge that ignores it fails.
+const testRelevantDepth = 4
+
 func vectorStrategy(t *testing.T, store storage.VectorStore, model string) *VectorStrategy {
 	t.Helper()
-	s, err := NewVectorStrategy(StrategyOptions{VectorStore: store, EmbeddingModel: model})
+	s, err := NewVectorStrategy(StrategyOptions{VectorStore: store, EmbeddingModel: model, RelevantDepth: testRelevantDepth})
 	require.NoError(t, err)
 	return s
 }

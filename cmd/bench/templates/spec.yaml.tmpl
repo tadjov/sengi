@@ -8,6 +8,9 @@ defaults:
   pool_depth: 100
   judgments: keyword   # short name → trec/annotations.keyword.yaml
 
+# judging:
+#   content_runes: 8000  # runes of article content llm, jev and bench grade show; unset shows it whole
+
 engines:
   pg:
     type: postgres

@@ -30,6 +30,15 @@ The set name is what `--judgments`, `spec.defaults.judgments` and the annotation
 
 The LLM judge is the primary judge on every cc-news track. The others are cross-checks: compare them with `bench diff judgments`.
 
+## What a grader reads
+
+`llm`, `jev` and `bench grade` show an article's title and description in full and its content up to `judging.content_runes` runes in `spec.yaml`, then `...`, or the whole content when the spec sets none. They cut at the same rune, so a hand grade and a model grade compared by `bench diff judgments` judged the same text; `bench grade` refuses an llm or jev `--against` judge, or hand grades already in the file, read at another cut.
+
+```yaml
+judging:
+  content_runes: 12000
+```
+
 ## The gate
 
 `llm`, `jev`, `keyword` and `bm25` share one gate, decided in code before any grading. A doc that breaks the query's phrase, its boolean expression or a declared filter grades 0. `vector` and `hybrid` apply no gate.
@@ -38,9 +47,9 @@ Every judge grades the query's `text`. A query whose text leaves no usable terms
 
 ## How each judge grades
 
-**`llm`** sends the query text and the article (title and description in full, content up to 1,744 characters) with one rubric: grade what the article is about, pick the lower grade when in doubt, a passing mention is 1 at most. The default model is `claude-sonnet-5-5` at effort `low`. A reply without a usable grade leaves the doc unjudged.
+**`llm`** sends the query text and the article (title and description in full, content up to the spec's `judging.content_runes`, then `...`) with one rubric: grade what the article is about, pick the lower grade when in doubt, a passing mention is 1 at most. The default model is `claude-sonnet-5-5` at effort `low`. A reply without a usable grade leaves the doc unjudged.
 
-**`jev`** asks one question with the four grade levels as criteria and takes the most probable level, the lower one on a tie. The model is pinned (`jev-1.14.0` by default) and a reply from another model is an error.
+**`jev`** reads the article as `llm` does, asks one question with the four grade levels as criteria and takes the most probable level, the lower one on a tie. The model is pinned (`jev-1.14.0` by default) and a reply from another model is an error.
 
 **`keyword`** counts how many query terms the doc holds:
 
@@ -60,7 +69,7 @@ Every judge grades the query's `text`. A query whose text leaves no usable terms
 | 0.15 and above | 1 | half of the terms once |
 | below | 0 | |
 
-**`vector`** grades the pool's 10 docs nearest the query by cosine 3 and the rest 0. On the semantic track this measures recall@10 against exact search, not topical relevance.
+**`vector`** grades the pool's N docs nearest the query by cosine 3 and the rest 0, N the spec's largest `metrics.k_values`. On the semantic track this measures recall@N against exact search, not topical relevance, so `bench run` refuses to score these grades at a K deeper than N.
 
 **`hybrid`** adds half the doc's BM25 score, divided by the pool's best, to half its cosine (a negative cosine counts as 0):
 
@@ -87,9 +96,10 @@ meta:
     effort: low
     max_output_tokens: 16000
     gate_version: v1
+    content_runes: 12000
 ```
 
-The deterministic judges record a `rubric_version`, bumped when their thresholds change, and the gated ones the `gate_version`. Bump `PromptVersion` (`internal/bench/judgment/prompt.go`) whenever the rubric or the prompt changes in a way that can move a grade; a golden test pins the current prompt.
+The deterministic judges record a `rubric_version`, bumped when their thresholds change, and the gated ones the `gate_version`. `llm` and `jev` record the `content_runes` they read and `vector` its `relevant_depth`, so `--resume` refuses a file graded at another cut or depth, and `--carry-over` one graded at another cut. Bump `PromptVersion` (`internal/bench/judgment/prompt.go`) whenever the rubric or the prompt changes in a way that can move a grade; a golden test pins the current prompt.
 
 ## Circularity
 

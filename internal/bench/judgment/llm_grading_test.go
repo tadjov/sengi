@@ -96,31 +96,31 @@ func TestLLMJudge_LeavesAQueryWithAnUnparsableBooleanUnjudged(t *testing.T) {
 }
 
 // A doc is shown with its title and description in full and its content up to
-// a cut that sends a median cc-news article (1,744 characters) whole.
+// the spec's cut, counted in runes.
 func TestLLMJudge_ShowsTitleAndDescriptionInFullAndContentUpToTheCut(t *testing.T) {
-	const medianArticleChars = 1744
-	median := GradingDoc{
+	const cut = 40
+	whole := GradingDoc{
 		ID:          uuid.New(),
 		Title:       "Sava floods reach Belgrade",
 		Description: strings.Repeat("Rijeka Sava se izlila. ", 40),
-		Content:     strings.Repeat("Ž", medianArticleChars),
+		Content:     strings.Repeat("Ž", cut),
 	}
-	long := GradingDoc{ID: uuid.New(), Title: "Danube floods", Content: strings.Repeat("Đ", 3*medianArticleChars)}
+	long := GradingDoc{ID: uuid.New(), Title: "Danube floods", Content: strings.Repeat("Đ", 3*cut)}
 	q := GradingQuery{ID: "q1", Text: "floods"}
 	provider := &fakeLLMProvider{grade: func(uuid.UUID) int { return GradeRelevant }}
-	s := &LLMStrategy{provider: provider}
+	s := &LLMStrategy{provider: provider, contentRunes: cut}
 
-	for _, doc := range []GradingDoc{median, long} {
+	for _, doc := range []GradingDoc{whole, long} {
 		_, err := s.Grade(context.Background(), q, doc)
 		require.NoError(t, err)
 	}
 
 	reqs := provider.requests()
 	require.Len(t, reqs, 2)
-	assert.Contains(t, reqs[0].User, median.Title)
-	assert.Contains(t, reqs[0].User, median.Description)
-	assert.Equal(t, median.Content, contentShown(t, reqs[0].User, median))
-	assert.Equal(t, strings.Repeat("Đ", medianArticleChars), contentShown(t, reqs[1].User, long))
+	assert.Contains(t, reqs[0].User, whole.Title)
+	assert.Contains(t, reqs[0].User, whole.Description)
+	assert.Equal(t, whole.Content, contentShown(t, reqs[0].User, whole))
+	assert.Equal(t, strings.Repeat("Đ", cut)+"...", contentShown(t, reqs[1].User, long))
 }
 
 // contentShown is the content line a prompt shows for doc, the doc's block
@@ -132,7 +132,7 @@ func contentShown(t *testing.T, prompt string, doc GradingDoc) string {
 	_, content, found := strings.Cut(block, "Content: ")
 	require.True(t, found, "prompt shows doc %s's content", doc.ID)
 	content, _, _ = strings.Cut(content, "\n")
-	return strings.TrimSuffix(content, "...")
+	return content
 }
 
 // Each request holds one query and one doc, so its bytes are the

@@ -11,24 +11,49 @@ import (
 	"github.com/tadjov/sengi/internal/storage"
 )
 
-// VerifyEmbeddingModel rejects an engine that declares a different embedding
-// model from the one the store embeds queries with. A vector template filters
-// document vectors by the declared model while the query is embedded by the
-// store, so a disagreement means every cosine distance is computed across two
-// vector spaces — arithmetic that succeeds and ranks nothing. Engines that
-// declare no model, and tracks with no store at all, are left alone.
-func VerifyEmbeddingModel(engines map[string]spec.Engine, store storage.VectorStore) error {
-	if store == nil {
-		return nil
-	}
+// EngineLoads is what each engine holding an index recorded of its latest corpus load.
+type EngineLoads struct {
+	// Records holds each read engine's latest load record, nil when it records none.
+	Records map[string]*storage.LoadRecord
+	// Unread is why each engine whose index could not be read is missing from Records.
+	Unread map[string]error
+}
+
+// EmbeddingModels are what an engine's declared embedding_model must agree with.
+type EmbeddingModels struct {
+	// Queries embeds the query vectors; nil when nothing embeds a query.
+	Queries storage.VectorStore
+	Loads   EngineLoads
+}
+
+// VerifyEmbeddingModel rejects an engine that declares another embedding model
+// than queries are embedded with or its corpus was loaded with, since cosine
+// across two models' vectors is arithmetic that succeeds and ranks nothing.
+func VerifyEmbeddingModel(engines map[string]spec.Engine, models EmbeddingModels) error {
 	for _, name := range slices.Sorted(maps.Keys(engines)) {
 		declared, _ := engines[name].Params[suite.EmbeddingModelParam].(string)
-		if declared == "" || declared == store.Model() {
+		if declared == "" {
 			continue
 		}
-		return fmt.Errorf(
-			"engine %q declares %s %q but queries are embedded with %q: set EMBEDDING_MODEL to the declared model without its @<dim> and EMBEDDING_DIM to that width, or fix the spec",
-			name, suite.EmbeddingModelParam, declared, store.Model())
+		if models.Queries != nil && declared != models.Queries.Model() {
+			return fmt.Errorf(
+				"engine %q declares %s %q but queries are embedded with %q: set EMBEDDING_MODEL to the declared model without its @<dim> and EMBEDDING_DIM to that width, or fix the spec",
+				name, suite.EmbeddingModelParam, declared, models.Queries.Model())
+		}
+		if err, unread := models.Loads.Unread[name]; unread {
+			return fmt.Errorf("engine %q declares %s %q but its index could not be read, so the vectors it holds are unknown: %w",
+				name, suite.EmbeddingModelParam, declared, err)
+		}
+		load, describesIndex := models.Loads.Records[name]
+		switch {
+		case !describesIndex:
+		case load == nil:
+			return fmt.Errorf("engine %q declares %s %q but records no corpus load, so the vectors it holds are unknown: load it with datapipe load",
+				name, suite.EmbeddingModelParam, declared)
+		case load.ModelTag != declared:
+			return fmt.Errorf("engine %q declares %s %q but its corpus was loaded with %q: reload it with the declared model's embeddings, or fix the spec",
+				name, suite.EmbeddingModelParam, declared, load.ModelTag)
+		}
 	}
 	return nil
 }

@@ -75,6 +75,10 @@ type Judge struct {
 	GateVersion string `yaml:"gate_version,omitempty" json:"gate_version,omitempty"`
 	// RubricVersion names the grading rules of a judge without a prompt.
 	RubricVersion string `yaml:"rubric_version,omitempty" json:"rubric_version,omitempty"`
+	// ContentRunes is how many runes of an article's content the judge read, 0 for all of it.
+	ContentRunes int `yaml:"content_runes,omitempty" json:"content_runes,omitempty"`
+	// RelevantDepth is how many of the docs nearest the query the vector judge graded relevant.
+	RelevantDepth int `yaml:"relevant_depth,omitempty" json:"relevant_depth,omitempty"`
 }
 
 // Equal reports whether two judges grade alike; the resume guard refuses a mismatch.

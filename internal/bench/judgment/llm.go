@@ -15,7 +15,8 @@ const llmMaxOutputTokens = 16000
 // LLMStrategy owns the rubric and the reply parsing, so grades are comparable
 // whichever LLMProvider reaches the model.
 type LLMStrategy struct {
-	provider LLMProvider
+	provider     LLMProvider
+	contentRunes int
 }
 
 func NewLLMStrategy(opts StrategyOptions) (*LLMStrategy, error) {
@@ -23,7 +24,7 @@ func NewLLMStrategy(opts StrategyOptions) (*LLMStrategy, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &LLMStrategy{provider: p}, nil
+	return &LLMStrategy{provider: p, contentRunes: opts.ContentRunes}, nil
 }
 
 // Describe names the provider's resolved model id, never an alias.
@@ -37,6 +38,7 @@ func (s *LLMStrategy) Describe() meta.Judge {
 		Effort:          string(s.provider.Effort()),
 		MaxOutputTokens: llmMaxOutputTokens,
 		Invocation:      s.provider.Invocation(),
+		ContentRunes:    s.contentRunes,
 	}
 }
 
@@ -52,7 +54,7 @@ func (s *LLMStrategy) Grade(ctx context.Context, q GradingQuery, doc GradingDoc)
 	}
 	text, err := s.provider.Complete(ctx, CompletionRequest{
 		System:    systemPrompt,
-		User:      buildGradingPrompt(q, doc),
+		User:      buildGradingPrompt(q, doc, s.contentRunes),
 		MaxTokens: llmMaxOutputTokens,
 	})
 	if err != nil {

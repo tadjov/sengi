@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -57,9 +58,10 @@ func newJudgeCmdWithReader(openReader articleReaderOpener) *cobra.Command {
 
   keyword     — deterministic token-overlap baseline (no network, no LLM)
   bm25        — pool-local Okapi BM25 (no network; rewards rare terms)
-  vector      — the pool's ten docs nearest the query by cosine grade 3, the
-                rest 0; doc vectors from PG (--pg), query vectors from
-                trec/query-vectors, else Ollama (EMBEDDING_BASE_URL)
+  vector      — the pool's docs nearest the query by cosine grade 3, as many
+                as the spec's largest metrics.k_values, the rest 0; doc
+                vectors from PG (--pg), query vectors from trec/query-vectors,
+                else Ollama (EMBEDDING_BASE_URL)
   hybrid      — BM25 + vector fusion, vectors as for vector
   llm         — LLM-as-judge, one doc per request; pick the endpoint with
                 --provider
@@ -70,17 +72,20 @@ func newJudgeCmdWithReader(openReader articleReaderOpener) *cobra.Command {
                 existing hand grades and adds placeholders for new pool docs
                 (--force starts over)
 
+llm and jev read an article's title and description in full and its content
+up to the spec's judging.content_runes, then "...", or all of it when the spec
+sets none.
+
 The llm strategy is vendor-neutral: --provider names the endpoint
 (` + strings.Join(judgment.KnownProviders(), ", ") + `), and registering a new
 provider is all it takes to add Codex or ChatGPT.
 
 --model takes a full model id or a shorthand for the current generation
-(` + strings.Join(judgment.ClaudeModelAliases(), ", ") + `) and defaults to ` + judgment.DefaultJudgeModel + `,
-the model of the final cc-news judgments; --model haiku is the cheap option for
-trial runs. --effort sets how much the model may think before it grades
-(default low). The resolved id, the effort, the provider and the prompt version
-are recorded in the artifact's judge block, so qrels always name the grader
-that produced them.
+(` + strings.Join(judgment.ClaudeModelAliases(), ", ") + `) and defaults to ` + judgment.DefaultJudgeModel + `;
+--model haiku is the cheap option for trial runs. --effort sets how much the
+model may think before it grades (default low). The resolved id, the effort,
+the provider, the prompt version and the content cut are recorded in the
+artifact's judge block, so qrels always name the grader that produced them.
 
 Output goes to <track>/trec/annotations.<strategy>.yaml, where <strategy> is the
 strategy for heuristic and jev judges and the provider for llm judges.
@@ -257,6 +262,9 @@ func writeManualTemplate(out io.Writer, m judgment.ManualFile, force bool) error
 			return fmt.Errorf("%s was graded by %q, not by hand: merging would relabel its grades as manual; pass --force to replace it",
 				m.Path, existing.Judge())
 		}
+		if existing != nil {
+			m.ContentRunes = existing.Judge().ContentRunes
+		}
 	}
 	jf, err := m.Write(existing)
 	if err != nil {
@@ -272,7 +280,8 @@ type judgeSelection struct {
 	provider judgment.Provider
 }
 
-// strategyOptions opens the vector store vector and hybrid read; the caller closes it.
+// strategyOptions reads what llm, jev, vector and hybrid take from the spec, and
+// opens the vector store vector and hybrid read; the caller closes it.
 func strategyOptions(cmd *cobra.Command, tr *trackctx.Track, sel judgeSelection) (judgment.StrategyOptions, func(), error) {
 	f := sel.flags
 	noop := func() {}
@@ -293,15 +302,26 @@ func strategyOptions(cmd *cobra.Command, tr *trackctx.Track, sel judgeSelection)
 		}
 		opts.Effort = effort
 	}
-	if sel.kind != judgment.StrategyVector && sel.kind != judgment.StrategyHybrid {
+	switch sel.kind {
+	case judgment.StrategyLLM, judgment.StrategyJev, judgment.StrategyVector, judgment.StrategyHybrid:
+	default:
 		return opts, noop, nil
 	}
-	store, model, closeStore, err := buildVectorStore(cmd.Context(), f, tr)
+	bs, err := spec.LoadFromFile(tr.Spec)
+	if err != nil {
+		return judgment.StrategyOptions{}, noop, fmt.Errorf("load spec: %w", err)
+	}
+	if sel.kind == judgment.StrategyLLM || sel.kind == judgment.StrategyJev {
+		opts.ContentRunes = bs.Judging.ContentRunes
+		return opts, noop, nil
+	}
+	store, model, closeStore, err := buildVectorStore(cmd.Context(), f, tr, bs)
 	if err != nil {
 		return judgment.StrategyOptions{}, noop, err
 	}
 	opts.VectorStore = store
 	opts.EmbeddingModel = model
+	opts.RelevantDepth = slices.Max(bs.Metrics.KValues)
 	return opts, closeStore, nil
 }
 
@@ -420,15 +440,11 @@ func checkResumeCompat(prior *judgment.File, now meta.Judge) error {
 
 // buildVectorStore reads query vectors from the track's package, else Ollama,
 // and doc vectors from Postgres.
-func buildVectorStore(ctx context.Context, f judgeFlags, tr *trackctx.Track) (storage.VectorStore, string, func(), error) {
+func buildVectorStore(ctx context.Context, f judgeFlags, tr *trackctx.Track, bs *spec.BenchSpec) (storage.VectorStore, string, func(), error) {
 	noop := func() {}
 	pgConn := envOrFlag("PG_CONNECTION_STRING", f.pg)
 	if pgConn == "" {
 		return nil, "", noop, fmt.Errorf("vector/hybrid judging requires --pg or PG_CONNECTION_STRING")
-	}
-	bs, err := spec.LoadFromFile(tr.Spec)
-	if err != nil {
-		return nil, "", noop, fmt.Errorf("load spec to check query vectors: %w", err)
 	}
 	store, closeStore, err := openVectorStore(ctx, vectorStoreSource{
 		track:          tr,
