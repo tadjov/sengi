@@ -22,6 +22,7 @@ import (
 	"github.com/tadjov/sengi/internal/bench/meta"
 	"github.com/tadjov/sengi/internal/bench/pool"
 	"github.com/tadjov/sengi/internal/bench/report"
+	"github.com/tadjov/sengi/internal/storage"
 )
 
 // fakeIndex answers 500 to a query in failing, and reports took, in ms, as every search's server time.
@@ -30,6 +31,8 @@ type fakeIndex struct {
 	ranked  map[string][]uuid.UUID
 	failing map[string]bool
 	took    *int
+	// load is the corpus load record its mapping carries; nil records none.
+	load *storage.LoadRecord
 	// A query in drifted switches ranking after driftAfter searches of it in log.
 	log        *searchLog
 	drifted    map[string][]uuid.UUID
@@ -84,6 +87,11 @@ func (i *fakeIndex) ranking(name, queryID string) []uuid.UUID {
 func fakeCluster(t *testing.T, indexes map[string]*fakeIndex) string {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Elastic-Product", "Elasticsearch")
+		if r.URL.Path == "/" {
+			_, _ = io.WriteString(w, `{"name": "fake", "cluster_name": "fake", "version": {"number": "9.5.5"}, "tagline": "You Know, for Search"}`)
+			return
+		}
 		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 		if len(parts) < 2 {
 			http.NotFound(w, r)
@@ -101,6 +109,10 @@ func fakeCluster(t *testing.T, indexes map[string]*fakeIndex) string {
 		switch strings.Join(parts[1:], "/") {
 		case "_count":
 			_, _ = fmt.Fprintf(w, `{"count": %d}`, index.count)
+		case "_settings":
+			_, _ = fmt.Fprintf(w, `{%q: {"settings": {"index": {}}}}`, parts[0])
+		case "_mapping":
+			writeMapping(t, w, parts[0], index.load)
 		case "_search", "_search/template":
 			body, _ := io.ReadAll(r.Body)
 			for queryID := range index.ranked {
@@ -121,6 +133,16 @@ func fakeCluster(t *testing.T, indexes map[string]*fakeIndex) string {
 	}))
 	t.Cleanup(srv.Close)
 	return srv.URL
+}
+
+func writeMapping(t *testing.T, w io.Writer, index string, load *storage.LoadRecord) {
+	mappings := map[string]any{}
+	if load != nil {
+		mappings["_meta"] = map[string]any{"load": load}
+	}
+	if err := json.NewEncoder(w).Encode(map[string]any{index: map[string]any{"mappings": mappings}}); err != nil {
+		t.Errorf("write mapping of %s: %v", index, err)
+	}
 }
 
 func writeHits(w io.Writer, ids []uuid.UUID, took *int) {

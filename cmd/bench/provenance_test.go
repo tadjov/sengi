@@ -85,11 +85,11 @@ func TestShowReport_ReportWithoutProvenanceStillShows(t *testing.T) {
 	assert.Regexp(t, `(?m)^\s+pg-native\s+postgres\s+index provenance not recorded`, out.String())
 }
 
-func TestCollectIndexProvenance_AFusionEngineRecordsTheLegsItFuses(t *testing.T) {
+func TestIndexProvenance_AFusionEngineRecordsTheLegsItFuses(t *testing.T) {
 	executors := map[string]engine.Executor{"lexical": undescribedExecutor{}, "vector": undescribedExecutor{}}
 	executors["hybrid"] = engine.NewFusionExecutor("hybrid", []string{"lexical", "vector"}, executors)
 
-	provenance := collectIndexProvenance(context.Background(), io.Discard, executors)
+	provenance := indexProvenance(executors, readIndexes(context.Background(), io.Discard, executors))
 
 	require.Contains(t, provenance, "hybrid")
 	assert.Empty(t, provenance["hybrid"].Error)
@@ -120,15 +120,16 @@ func (undescribedExecutor) Execute(context.Context, engine.Request) (*engine.Exe
 func (undescribedExecutor) Name() string { return "undescribed" }
 func (undescribedExecutor) Close() error { return nil }
 
-func TestCollectIndexProvenance_RecordsFailuresWithoutFailing(t *testing.T) {
+func TestIndexProvenance_RecordsFailuresWithoutFailing(t *testing.T) {
 	var warnings bytes.Buffer
-	provenance := collectIndexProvenance(context.Background(), &warnings, map[string]engine.Executor{
+	executors := map[string]engine.Executor{
 		"pg-native": describedExecutor{description: &engine.IndexDescription{
 			Postgres: &pg.IndexDescription{ServerVersion: "18.0"},
 		}},
 		"es":  describedExecutor{err: errors.New("connection refused")},
 		"api": undescribedExecutor{},
-	})
+	}
+	provenance := indexProvenance(executors, readIndexes(context.Background(), &warnings, executors))
 
 	require.Contains(t, provenance, "pg-native")
 	assert.Equal(t, "18.0", provenance["pg-native"].Version())

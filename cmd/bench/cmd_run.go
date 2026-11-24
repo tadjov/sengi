@@ -51,8 +51,10 @@ The judgments file used for scoring resolves in this order:
   3. none → the run fails before measuring anything
 
 A missing judgments file fails the run the same way, as do judgments graded
-against another pool. --latency-only measures latency without judgments; its
-report is marked latency_only and never becomes latest.json.
+against another pool, and engines whose load record names another canonical
+package than the pool was built on, compared by resource hash; a pool or engine
+that records none is warned about. --latency-only measures latency without
+judgments; its report is marked latency_only and never becomes latest.json.
 
 The report is always written. bench run then exits non-zero and leaves
 latest.json alone when the run failed:
@@ -178,7 +180,15 @@ func runTrack(cmd *cobra.Command, f runFlags, ks []int, tr *trackctx.Track) erro
 	if err != nil {
 		return err
 	}
-	indexes := collectIndexProvenance(cmd.Context(), cmd.OutOrStdout(), executors)
+	readings := readIndexes(cmd.Context(), cmd.OutOrStdout(), executors)
+	unchecked, err := judgments.CheckCorpus(loadRecords(readings))
+	if err != nil {
+		return err
+	}
+	if len(unchecked) > 0 {
+		cli.Warn(cmd.OutOrStdout(), "corpus not checked against the pool: "+strings.Join(unchecked, "; "))
+	}
+	indexes := indexProvenance(executors, readings)
 
 	var result *runner.BenchmarkResult
 	var elapsed time.Duration
@@ -426,37 +436,6 @@ func collectCorpusInfo(ctx context.Context, executors map[string]engine.Executor
 		}
 	}
 	return report.CorpusInfo{PerEngine: counts, DocCount: first}, nil
-}
-
-// indexDescribeTimeout bounds each engine's provenance read, so an engine that
-// does not answer delays the run by this much rather than stalling it.
-const indexDescribeTimeout = 15 * time.Second
-
-// collectIndexProvenance records, for every engine, how it indexed the corpus.
-// A failed read is warned about and kept in the engine's block as its error.
-func collectIndexProvenance(ctx context.Context, w io.Writer, executors map[string]engine.Executor) map[string]report.IndexProvenance {
-	provenance := make(map[string]report.IndexProvenance, len(executors))
-	for name, exec := range executors {
-		describer, ok := exec.(engine.IndexDescriber)
-		if !ok {
-			provenance[name] = report.IndexProvenance{Error: "engine cannot describe its index"}
-			continue
-		}
-		description, err := describeIndex(ctx, describer)
-		if err != nil {
-			cli.Warn(w, fmt.Sprintf("index provenance for %q not recorded: %v", name, err))
-			provenance[name] = report.IndexProvenance{Error: err.Error()}
-			continue
-		}
-		provenance[name] = report.IndexProvenance{IndexDescription: *description}
-	}
-	return provenance
-}
-
-func describeIndex(ctx context.Context, describer engine.IndexDescriber) (*engine.IndexDescription, error) {
-	ctx, cancel := context.WithTimeout(ctx, indexDescribeTimeout)
-	defer cancel()
-	return describer.DescribeIndex(ctx)
 }
 
 func firstNonZero(a, b int) int {
