@@ -126,7 +126,6 @@ version: "1.2.0"
 
 corpus:
   name: cc-news-canonical@v1
-  source: "sha256:7cdf4c719dc70cd013a1eb76fa33688564dc99af03ddf8cc57d20952cd4c89a3 (datasets/cc-news/canonical/v1/datapackage.json)"
 
 """
 
