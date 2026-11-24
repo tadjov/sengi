@@ -103,12 +103,17 @@ func TestLLMDescribeNamesTheModelItWasGiven(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	for _, provider := range []Provider{ProviderClaudeCLI, ProviderClaudeAPI} {
 		t.Run(string(provider), func(t *testing.T) {
-			s, err := NewLLMStrategy(StrategyOptions{Provider: provider, CLIBinary: versionOnlyClaudeCLI(t), Model: "claude-haiku-5-5", Effort: EffortLow})
+			s, err := NewLLMStrategy(StrategyOptions{
+				Provider: provider, CLIBinary: versionOnlyClaudeCLI(t), Model: "claude-haiku-5-5", Effort: EffortLow, ContentRunes: 640,
+			})
 			if err != nil {
 				t.Fatalf("NewLLMStrategy: %v", err)
 			}
 
 			got := s.Describe()
+			if got.ContentRunes != 640 {
+				t.Errorf("ContentRunes = %d, want 640", got.ContentRunes)
+			}
 			if got.Strategy != string(StrategyLLM) {
 				t.Errorf("Strategy = %q, want %q", got.Strategy, StrategyLLM)
 			}

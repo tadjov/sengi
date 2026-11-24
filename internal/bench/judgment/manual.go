@@ -19,13 +19,24 @@ type ManualFile struct {
 	// PoolRef is relative to the track.
 	PoolRef string
 	Path    string
+	// ContentRunes is the content cut hand grades are read at, 0 for the whole content.
+	ContentRunes int
 }
 
 // Write keeps every grade in existing (nil starts over), adds a -1 placeholder
-// for each pooled doc without one and writes the file.
+// for each pooled doc without one and writes the file. It refuses hand grades
+// read at another content cut.
 func (m ManualFile) Write(existing *File) (*File, error) {
+	if existing != nil {
+		if graded, _ := existing.GradeCounts(); graded > 0 {
+			if err := CheckContentCut(existing.Judge(), m.ContentRunes); err != nil {
+				return nil, fmt.Errorf("hand grades in %s were %w", m.Path, err)
+			}
+		}
+	}
 	jf := m.placeholders(existing)
 	judge := ManualJudge()
+	judge.ContentRunes = m.ContentRunes
 	jf.Meta = meta.New("judge")
 	jf.Meta.Judge = &judge
 	jf.Meta.PoolRef = m.PoolRef

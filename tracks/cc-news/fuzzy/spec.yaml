@@ -7,6 +7,10 @@ defaults:
   pool_depth: 50
   judgments: claude-cli
 
+judging:
+  # p99 body length of cc-news-canonical@v1 (sha256:671b29fd…): 99% of bodies reach the grader whole, so an article retrieved for a late match is graded on that match
+  content_runes: 12000
+
 # One edit policy on every engine: Elasticsearch's fuzziness AUTO per query word
 # (no edit up to 2 letters, one up to 5, two above), at most 50 expansions a word.
 engines:

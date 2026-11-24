@@ -52,11 +52,12 @@ var jevRelease = regexp.MustCompile(`^jev-\d+\.\d+\.\d+$`)
 
 // JevStrategy grades one doc per request with TypeSafe's Jev.
 type JevStrategy struct {
-	apiKey   string
-	model    string
-	endpoint string
-	client   *http.Client
-	retry    resilience.Policy
+	apiKey       string
+	model        string
+	endpoint     string
+	contentRunes int
+	client       *http.Client
+	retry        resilience.Policy
 }
 
 func NewJevStrategy(opts StrategyOptions) (*JevStrategy, error) {
@@ -72,11 +73,12 @@ func NewJevStrategy(opts StrategyOptions) (*JevStrategy, error) {
 		base = jevDefaultBaseURL
 	}
 	return &JevStrategy{
-		apiKey:   key,
-		model:    opts.Model,
-		endpoint: strings.TrimSuffix(base, "/") + jevPath,
-		client:   &http.Client{Timeout: jevAttemptTimeout},
-		retry:    resilience.DefaultPolicy(),
+		apiKey:       key,
+		model:        opts.Model,
+		endpoint:     strings.TrimSuffix(base, "/") + jevPath,
+		contentRunes: opts.ContentRunes,
+		client:       &http.Client{Timeout: jevAttemptTimeout},
+		retry:        resilience.DefaultPolicy(),
 	}, nil
 }
 
@@ -87,6 +89,7 @@ func (s *JevStrategy) Describe() meta.Judge {
 		RubricVersion: jevRubricVersion,
 		GateVersion:   gateVersion,
 		Invocation:    "POST " + s.endpoint + ", model " + s.model,
+		ContentRunes:  s.contentRunes,
 	}
 }
 
@@ -156,7 +159,7 @@ func (s *JevStrategy) request(q GradingQuery, doc GradingDoc) jevRequest {
 	var instructions, state strings.Builder
 	writeQuery(&instructions, q)
 	instructions.WriteString(jevGuidance)
-	writeArticle(&state, doc)
+	writeArticle(&state, doc, s.contentRunes)
 	return jevRequest{
 		Model: s.model,
 		State: state.String(),

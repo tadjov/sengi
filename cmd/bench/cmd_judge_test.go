@@ -129,11 +129,36 @@ type judgeFixture struct {
 	reader storage.Reader
 }
 
+// fixtureContentRunes is the judging.content_runes of a fixture track's spec.
+const fixtureContentRunes = 48
+
+// writeJudgingSpec writes a spec that loads, its judging.content_runes set to
+// contentRunes, or left out when it is 0.
+func writeJudgingSpec(t *testing.T, track string, contentRunes int) {
+	t.Helper()
+	judging := ""
+	if contentRunes != 0 {
+		judging = fmt.Sprintf("judging:\n  content_runes: %d\n", contentRunes)
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(track, "spec.yaml"), []byte(`schema_version: 1
+id: fixture
+`+judging+`engines:
+  e:
+    type: elasticsearch
+    connection: "http://127.0.0.1:1"
+    index: e
+jobs:
+  - name: j
+    suite: suite.yaml
+    engines: [e]
+`), 0o644))
+}
+
 func newJudgeFixture(t *testing.T, queryText string, titles ...string) *judgeFixture {
 	t.Helper()
 	track := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(track, "trec"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(track, "spec.yaml"), []byte("schema_version: 1\nid: judge\n"), 0o644))
+	writeJudgingSpec(t, track, fixtureContentRunes)
 	require.NoError(t, os.WriteFile(filepath.Join(track, "suite.yaml"), []byte("schema_version: 1\nid: judge\n"), 0o644))
 
 	fx := &judgeFixture{track: track, articles: articleStore{}}
@@ -905,4 +930,75 @@ func TestJudge_JevResumeAsksOnlyAboutUngradedDocs(t *testing.T) {
 	require.Len(t, resumed, 1)
 	assert.Contains(t, resumed[0].State, article.Title)
 	assert.Equal(t, judgment.GradeRelevant, gradesByQuery(fx.annotations(t, "jev"))["q1"][missing])
+}
+
+func TestJudge_JevReadsTheWholeContentWithoutACut(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+	api := newJevAPI(t)
+	fx := newJudgeFixture(t, "climate change", "climate change summit")
+	writeJudgingSpec(t, fx.track, 0)
+	long := fx.pool.Queries[0].Docs[0].DocID
+	article := fx.articles[long]
+	article.Content = strings.Repeat("ž", 4*fixtureContentRunes) + "TAIL"
+	fx.articles[long] = article
+
+	require.NoError(t, fx.judge(t, "--strategy", "jev", "--api-base", api.URL))
+
+	require.Len(t, api.requests(), 1)
+	assert.Contains(t, api.requests()[0].State, "Content: "+article.Content+"\n")
+	assert.Zero(t, fx.annotations(t, "jev").Judge().ContentRunes)
+}
+
+func TestJudge_ManualRerunKeepsTheCutItsHandGradesWereReadAt(t *testing.T) {
+	fx := newJudgeFixture(t, "climate change", "climate change summit")
+	judge := judgment.ManualJudge()
+	judge.ContentRunes = fixtureContentRunes
+	require.NoError(t, judgment.WriteFile(&judgment.File{
+		Meta:    meta.Meta{Judge: &judge, PoolRunID: fx.pool.Meta.RunID},
+		Queries: []judgment.Entry{{QueryID: "q1", Docs: []judgment.GradedDoc{{DocID: fx.pool.Queries[0].Docs[0].DocID, Grade: judgment.GradeRelevant}}}},
+	}, filepath.Join(fx.track, "trec", "annotations.manual.yaml")))
+
+	require.NoError(t, fx.judge(t, "--strategy", "manual"))
+
+	assert.Equal(t, fixtureContentRunes, fx.annotations(t, "manual").Judge().ContentRunes)
+}
+
+func TestJudge_JevReadsContentUpToTheSpecsCut(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+	api := newJevAPI(t)
+	fx := newJudgeFixture(t, "climate change", "climate change summit", "climate report")
+	long, short := fx.pool.Queries[0].Docs[0].DocID, fx.pool.Queries[0].Docs[1].DocID
+	setContent := func(id uuid.UUID, content string) {
+		a := fx.articles[id]
+		a.Content = content
+		fx.articles[id] = a
+	}
+	setContent(long, strings.Repeat("ž", fixtureContentRunes)+"TAIL")
+	setContent(short, "Delegates agreed a deal.")
+
+	require.NoError(t, fx.judge(t, "--strategy", "jev", "--api-base", api.URL))
+
+	states := make([]string, 0, 2)
+	for _, req := range api.requests() {
+		states = append(states, req.State)
+	}
+	assert.Contains(t, strings.Join(states, "\n"), "Content: "+strings.Repeat("ž", fixtureContentRunes)+"...\n")
+	assert.Contains(t, strings.Join(states, "\n"), "Content: Delegates agreed a deal.\n")
+	assert.NotContains(t, strings.Join(states, "\n"), "TAIL")
+	assert.Equal(t, fixtureContentRunes, fx.annotations(t, "jev").Judge().ContentRunes)
+}
+
+func TestJudge_ResumeRefusesAFileGradedAtAnotherContentCut(t *testing.T) {
+	t.Setenv("TYPESAFE_API_KEY", "ts-cli-test-key")
+	api := newJevAPI(t)
+	fx := newJudgeFixture(t, "climate change", "climate change summit")
+	require.NoError(t, fx.judge(t, "--strategy", "jev", "--api-base", api.URL))
+	writeJudgingSpec(t, fx.track, 2*fixtureContentRunes)
+	askedBefore := len(api.requests())
+
+	err := fx.judge(t, "--strategy", "jev", "--api-base", api.URL, "--resume")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), fmt.Sprintf("content_runes: was %d, now %d", fixtureContentRunes, 2*fixtureContentRunes))
+	assert.Len(t, api.requests(), askedBefore)
 }

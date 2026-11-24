@@ -21,8 +21,7 @@ import (
 	"time"
 )
 
-// DefaultJudgeModel grades when --model is omitted: the model chosen for the
-// final cc-news judgments.
+// DefaultJudgeModel grades when --model is omitted.
 const DefaultJudgeModel = "claude-sonnet-5-5"
 
 // claudeModelAliases lets --model take a short name for the current

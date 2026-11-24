@@ -12,6 +12,7 @@ type BenchSpec struct {
 	Kind          Kind              `yaml:"kind,omitempty"`
 	Description   string            `yaml:"description,omitempty"`
 	Defaults      Defaults          `yaml:"defaults,omitempty"`
+	Judging       Judging           `yaml:"judging,omitempty"`
 	Engines       map[string]Engine `yaml:"engines"`
 	Metrics       MetricsConfig     `yaml:"metrics"`
 	Runs          RunsConfig        `yaml:"runs"`
@@ -58,6 +59,13 @@ func (k Kind) RequiresEmbedder() bool {
 type Defaults struct {
 	PoolDepth int    `yaml:"pool_depth,omitempty"`
 	Judgments string `yaml:"judgments,omitempty"` // strategy name OR path
+}
+
+// Judging is what every grader of the track's pool reads of an article.
+type Judging struct {
+	// ContentRunes is how many runes of an article's content a grader reads,
+	// then "..."; 0 shows the whole content.
+	ContentRunes int `yaml:"content_runes,omitempty"`
 }
 
 type Job struct {

@@ -75,6 +75,8 @@ type Judge struct {
 	GateVersion string `yaml:"gate_version,omitempty" json:"gate_version,omitempty"`
 	// RubricVersion names the grading rules of a judge without a prompt.
 	RubricVersion string `yaml:"rubric_version,omitempty" json:"rubric_version,omitempty"`
+	// ContentRunes is how many runes of an article's content the judge read.
+	ContentRunes int `yaml:"content_runes,omitempty" json:"content_runes,omitempty"`
 }
 
 // Equal reports whether two judges grade alike; the resume guard refuses a mismatch.

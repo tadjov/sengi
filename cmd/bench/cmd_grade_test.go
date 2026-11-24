@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -41,7 +43,7 @@ func newGradeFixture(t *testing.T, queries, docsPerQuery int) *gradeFixture {
 	t.Helper()
 	track := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(track, "trec"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(track, "spec.yaml"), []byte("schema_version: 1\nid: grade\n"), 0o644))
+	writeJudgingSpec(t, track, fixtureContentRunes)
 	require.NoError(t, os.WriteFile(filepath.Join(track, "suite.yaml"), []byte("schema_version: 1\nid: grade\n"), 0o644))
 
 	fx := &gradeFixture{track: track, articles: articleStore{}, byTitle: map[string]pairKey{}}
@@ -249,7 +251,7 @@ func TestGrade_ScreenShowsTheQueryAndTheArticle(t *testing.T) {
 		a.PublishedAt = time.Date(2024, 3, 5, 9, 0, 0, 0, time.UTC)
 		a.PublisherDomain = "example.org"
 		a.Metadata.PublisherName = "Example Times"
-		a.Content = strings.Repeat("a", contentPreviewRunes) + "TAIL"
+		a.Content = strings.Repeat("a", fixtureContentRunes) + "TAIL"
 		fx.articles[id] = a
 	}
 
@@ -266,13 +268,111 @@ func TestGrade_ScreenShowsTheQueryAndTheArticle(t *testing.T) {
 		"Example Times (example.org)",
 		"2024-03-05",
 		"Ministers met in Geneva.",
-		strings.Repeat("a", contentPreviewRunes),
+		strings.Repeat("a", fixtureContentRunes),
 	} {
 		assert.Contains(t, out, want)
 	}
 	assert.NotContains(t, out, "TAIL")
 	assert.Less(t, strings.Index(out, "query text 00"), strings.Index(out, "query intent 00"),
 		"the hand grader reads the query the judge grades before its description")
+}
+
+// The cut counts the same runes the LLM and jev judges read, whitespace
+// included, and only then joins the excerpt onto one line.
+func TestGrade_ScreenShowsTheContentTheJudgesRead(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		shown   string
+	}{
+		{name: "longer than the cut", content: "one  two\n\nthree four five", shown: " one two th...\n"},
+		{name: "no longer than the cut", content: "one  two\nsix", shown: " one two six\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fx := newGradeFixture(t, 1, 1)
+			writeJudgingSpec(t, fx.track, 12)
+			for id, a := range fx.articles {
+				a.Content = tt.content
+				fx.articles[id] = a
+			}
+
+			out, err := fx.grade(t, "q\n")
+
+			require.NoError(t, err)
+			assert.Contains(t, out, tt.shown)
+		})
+	}
+}
+
+func TestGrade_ShowsTheWholeContentWithoutACut(t *testing.T) {
+	fx := newGradeFixture(t, 1, 1)
+	writeJudgingSpec(t, fx.track, 0)
+	content := strings.Repeat("a", 4*fixtureContentRunes) + "TAIL"
+	for id, a := range fx.articles {
+		a.Content = content
+		fx.articles[id] = a
+	}
+
+	out, err := fx.grade(t, "q\n")
+
+	require.NoError(t, err)
+	assert.Contains(t, out, " "+content+"\n")
+}
+
+// writeLLMJudge grades every pooled pair 2 as an llm judge that read content cut at contentRunes.
+func (fx *gradeFixture) writeLLMJudge(t *testing.T, contentRunes int) string {
+	t.Helper()
+	judge := meta.Judge{Strategy: string(judgment.StrategyLLM), Provider: "claude-cli", ContentRunes: contentRunes}
+	jf := &judgment.File{Meta: meta.Meta{Judge: &judge, PoolRunID: fx.pool.Meta.RunID}}
+	for _, entry := range fx.pool.Queries {
+		graded := judgment.Entry{QueryID: entry.QueryID}
+		for _, doc := range entry.Docs {
+			graded.Docs = append(graded.Docs, judgment.GradedDoc{DocID: doc.DocID, Grade: judgment.GradeRelevant})
+		}
+		jf.Queries = append(jf.Queries, graded)
+	}
+	path := filepath.Join(fx.track, "trec", "annotations.claude-cli.yaml")
+	require.NoError(t, judgment.WriteFile(jf, path))
+	return path
+}
+
+func TestGrade_ComparesWithAnLLMJudgeOnlyAtItsCut(t *testing.T) {
+	t.Run("the same cut", func(t *testing.T) {
+		fx := newGradeFixture(t, 1, 1)
+		against := fx.writeLLMJudge(t, fixtureContentRunes)
+
+		_, err := fx.grade(t, "q\n", "--against", against)
+
+		require.NoError(t, err)
+	})
+
+	t.Run("another cut", func(t *testing.T) {
+		fx := newGradeFixture(t, 1, 1)
+		against := fx.writeLLMJudge(t, 2*fixtureContentRunes)
+
+		_, err := fx.grade(t, "2\n", "--against", against)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), strconv.Itoa(2*fixtureContentRunes))
+		assert.NoFileExists(t, filepath.Join(fx.track, "trec", "annotations.manual.yaml"))
+	})
+}
+
+func TestGrade_RefusesToMixHandGradesReadAtAnotherCut(t *testing.T) {
+	fx := newGradeFixture(t, 1, 2)
+	_, err := fx.grade(t, "2\nq\n")
+	require.NoError(t, err)
+	manual, err := judgment.ReadFile(filepath.Join(fx.track, "trec", "annotations.manual.yaml"))
+	require.NoError(t, err)
+	require.Equal(t, fixtureContentRunes, manual.Judge().ContentRunes, "the manual file records the cut its grades were read at")
+	writeJudgingSpec(t, fx.track, 2*fixtureContentRunes)
+
+	_, err = fx.grade(t, "1\n")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), strconv.Itoa(fixtureContentRunes))
+	assert.Contains(t, slices.Collect(maps.Values(fx.handGrades(t))), judgment.GradeRelevant, "the earlier hand grade is kept")
 }
 
 // The judge compares instants, so a bound in another zone shows as its UTC date.

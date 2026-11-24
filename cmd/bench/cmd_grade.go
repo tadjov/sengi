@@ -16,14 +16,13 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tadjov/sengi/internal/bench/judgment"
 	"github.com/tadjov/sengi/internal/bench/pool"
+	"github.com/tadjov/sengi/internal/bench/spec"
 	"github.com/tadjov/sengi/internal/bench/suite"
 	"github.com/tadjov/sengi/internal/bench/trackctx"
 	"github.com/tadjov/sengi/internal/cli"
 	"github.com/tadjov/sengi/internal/storage"
 	"github.com/tadjov/sengi/internal/types/document"
 )
-
-const contentPreviewRunes = 800
 
 type gradeFlags struct {
 	against string
@@ -48,10 +47,13 @@ func newGradeCmdWithReader(openReader articleReaderOpener) *cobra.Command {
 grade to trec/annotations.manual.yaml, the file bench judge --strategy manual
 creates. The file is created or merged first, so hand grades survive a re-pool.
 
-Each screen shows the query and the article. The --against judge's grade and
-the engines that retrieved the doc stay hidden. Answer with one line:
-0-3 grades, s skips, u undoes the last grade, q quits. Every grade is saved
-before the next pair shows, so a rerun resumes where the last session stopped.
+Each screen shows the query and the article, its content cut where the LLM
+and jev judges cut it, at the spec's judging.content_runes, or whole when the
+spec sets none. An llm or jev --against judge, and hand grades already in the
+file, must have read the same cut. The --against judge's grade and the engines
+that retrieved the doc stay hidden. Answer with one line: 0-3 grades, s skips,
+u undoes the last grade, q quits. Every grade is saved before the next pair
+shows, so a rerun resumes where the last session stopped.
 
 --sample N walks N pairs drawn from the pairs the --against judge graded, an
 equal share per grade (a grade with fewer pairs gives the rest to the others).
@@ -84,6 +86,11 @@ func (g gradeCommand) execute(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	bs, err := spec.LoadFromFile(tr.Spec)
+	if err != nil {
+		return fmt.Errorf("load spec: %w", err)
+	}
+	contentRunes := bs.Judging.ContentRunes
 	pf, err := pool.ReadPoolFile(tr.Pool)
 	if err != nil {
 		return fmt.Errorf("read pool: %w", err)
@@ -96,18 +103,22 @@ func (g gradeCommand) execute(cmd *cobra.Command, args []string) error {
 	if err := pf.CheckJudgedAgainst(against.Meta.PoolRunID); err != nil {
 		return fmt.Errorf("--against %s: %w", againstPath, err)
 	}
+	if err := judgment.CheckContentCut(against.Judge(), contentRunes); err != nil {
+		return fmt.Errorf("--against %s was %w", againstPath, err)
+	}
 
 	manualPath := tr.JudgmentsPath(judgment.JudgmentSetName(judgment.StrategyManual, ""))
-	manual, err := mergeManualJudgments(judgment.ManualFile{Pool: pf, PoolRef: tr.Relative(tr.Pool), Path: manualPath})
+	manual, err := mergeManualJudgments(judgment.ManualFile{Pool: pf, PoolRef: tr.Relative(tr.Pool), Path: manualPath, ContentRunes: contentRunes})
 	if err != nil {
 		return err
 	}
 	session := &gradingSession{
-		out:        cmd.OutOrStdout(),
-		answers:    readLines(cmd.InOrStdin()),
-		manual:     manual,
-		manualPath: manualPath,
-		hand:       indexGrades(manual),
+		out:          cmd.OutOrStdout(),
+		answers:      readLines(cmd.InOrStdin()),
+		manual:       manual,
+		manualPath:   manualPath,
+		hand:         indexGrades(manual),
+		contentRunes: contentRunes,
 	}
 	session.walk = gradingWalk(pf, indexGrades(against), g.flags.sample, g.flags.seed)
 	if session.remaining() > 0 {
@@ -237,13 +248,14 @@ const (
 )
 
 type gradingSession struct {
-	out        io.Writer
-	answers    <-chan string
-	reader     storage.Reader
-	walk       []gradingPair
-	manual     *judgment.File
-	manualPath string
-	hand       map[pairKey]*judgment.GradedDoc
+	out          io.Writer
+	answers      <-chan string
+	reader       storage.Reader
+	walk         []gradingPair
+	manual       *judgment.File
+	manualPath   string
+	hand         map[pairKey]*judgment.GradedDoc
+	contentRunes int
 }
 
 func (s *gradingSession) ungraded(p gradingPair) bool {
@@ -376,7 +388,7 @@ func (s *gradingSession) show(ctx context.Context, position int) error {
 		printField(w, "published", a.PublishedAt.UTC().Format(time.DateOnly))
 	}
 	printField(w, "description", a.Description)
-	printField(w, "content", contentPreview(a.Content))
+	printField(w, "content", contentPreview(a.Content, s.contentRunes))
 	return nil
 }
 
@@ -421,10 +433,7 @@ func formatFilterTime(t time.Time) string {
 	return t.Format(time.RFC3339)
 }
 
-func contentPreview(content string) string {
-	runes := []rune(strings.Join(strings.Fields(content), " "))
-	if len(runes) <= contentPreviewRunes {
-		return string(runes)
-	}
-	return string(runes[:contentPreviewRunes]) + "…"
+// contentPreview puts the excerpt the judges read on one line.
+func contentPreview(content string, runes int) string {
+	return strings.Join(strings.Fields(judgment.ContentExcerpt(content, runes)), " ")
 }

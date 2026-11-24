@@ -52,13 +52,14 @@ func TestNewJev_RefusesToStartWithoutTypeSafeAPIKey(t *testing.T) {
 
 func TestJev_DescribeNamesTheReleaseTheRubricAndTheEndpoint(t *testing.T) {
 	t.Setenv("TYPESAFE_API_KEY", testJevKey)
-	s, err := NewStrategy(StrategyJev, StrategyOptions{Model: "jev-1.14.0"})
+	s, err := NewStrategy(StrategyJev, StrategyOptions{Model: "jev-1.14.0", ContentRunes: 640})
 	require.NoError(t, err)
 
 	got := s.Describe()
 
 	assert.Equal(t, "jev", got.Strategy)
 	assert.Equal(t, "jev-1.14.0", got.Model)
+	assert.Equal(t, 640, got.ContentRunes)
 	assert.NotEmpty(t, got.RubricVersion)
 	assert.Equal(t, gateVersion, got.GateVersion)
 	assert.Contains(t, got.Invocation, "https://api.typesafe.ai/v1/systemone")
@@ -74,7 +75,7 @@ func TestJev_AsksAboutTheArticleTheLLMJudgeSees(t *testing.T) {
 		ID:          uuid.New(),
 		Title:       "Sava floods reach Belgrade",
 		Description: "The river broke its banks overnight.",
-		Content:     strings.Repeat("Ž", 1800),
+		Content:     strings.Repeat("Ž", 2*testContentRunes),
 	}
 	const guidance = "Grade what the article is about, not whether the query words appear. A passing mention is the marginal level at most. When in doubt between two levels, pick the lower one."
 	tests := []struct {
@@ -109,7 +110,7 @@ func TestJev_AsksAboutTheArticleTheLLMJudgeSees(t *testing.T) {
 			require.NoError(t, err)
 			req := fake.request(t, 0)
 			assert.Equal(t, "jev-1.14.0", req.Model)
-			assert.Equal(t, "Title: Sava floods reach Belgrade\nDescription: The river broke its banks overnight.\nContent: "+strings.Repeat("Ž", 1744)+"...\n", req.State)
+			assert.Equal(t, "Title: Sava floods reach Belgrade\nDescription: The river broke its banks overnight.\nContent: "+strings.Repeat("Ž", testContentRunes)+"...\n", req.State)
 			assert.Equal(t, map[string]jevQuestionSent{"grade": {
 				Type:         "score",
 				Instructions: tt.instructions,
@@ -297,10 +298,12 @@ func floodsDoc() GradingDoc {
 	return GradingDoc{ID: uuid.New(), Title: "Sava floods reach Belgrade", Description: "The river broke its banks.", Content: "Water rose overnight."}
 }
 
+const testContentRunes = 50
+
 func newTestJev(t *testing.T, baseURL string) *JevStrategy {
 	t.Helper()
 	t.Setenv("TYPESAFE_API_KEY", testJevKey)
-	s, err := NewJevStrategy(StrategyOptions{Model: "jev-1.14.0", APIBaseURL: baseURL})
+	s, err := NewJevStrategy(StrategyOptions{Model: "jev-1.14.0", APIBaseURL: baseURL, ContentRunes: testContentRunes})
 	require.NoError(t, err)
 	return s
 }
