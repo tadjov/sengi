@@ -56,6 +56,20 @@ pgvectorscale ships in the tiger image (0.9.1) but is not installed; the cc-news
 HNSW on every Postgres engine. A DiskANN arm on tiger would be compared at matched recall, on the
 measurement host.
 
+### 7. Query rewriting — NOT BUILT
+Description and question queries name a topic in words the articles don't use: "workers paid per
+task through apps without employee benefits" is the gig economy. In `experiments/embedding-width`
+that query has the lowest cosines of the 30 semantic queries (its top 10 between 0.57 and 0.50) and
+the least stable top 10 when the vectors are cut from 1024 to 512 dimensions (3 of 10 kept).
+Rewriting the query before any engine sees it targets that gap:
+- an LLM rewrites the query into the terms news writing uses, as one or a few keyword queries, for
+  the lexical engines
+- HyDE (Gao et al., 2022) and query2doc (Wang et al., 2023): the model writes a hypothetical article
+  lead and that text is embedded, matching the documents' `lead-v1` recipe
+
+Rewriting is query-side, so every engine gets the same rewritten query and the engine comparison
+stays fair. Judging keeps the original query, since relevance is to what the user typed. The model
+call adds latency, which would be reported apart from the engines' own.
 ---
 
 ## Technical Debt
