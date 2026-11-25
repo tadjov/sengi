@@ -1,0 +1,73 @@
+{
+  "engine": "tiger",
+  "engineVersion": "PostgreSQL 18.7 (Ubuntu 18.7-1.pgdg22.04+5), fuzzystrmatch 1.2, pg_textsearch 1.5.1, pg_trgm 1.6, vector 0.8.7",
+  "startedAt": "2026-11-24T02:37:27.837678Z",
+  "finishedAt": "2026-11-24T02:44:13.315326Z",
+  "totalSeconds": 405.475308459,
+  "canonical": {
+    "name": "cc-news-canonical",
+    "version": "v1",
+    "resourceHash": "sha256:671b29fdc8aa0f76fc20f858d1c6e3e321c94dac46ced44f66263c37e3176567"
+  },
+  "embeddings": {
+    "name": "cc-news-canonical-embeddings",
+    "version": "v1",
+    "resourceHash": "sha256:e191d7aaa9280ceb98072ebe9e8739c1e29842a7ee7c92792f9dbc45baa5d591"
+  },
+  "modelTag": "qwen3-embedding:0.6b@512",
+  "articles": 666245,
+  "vectors": 666245,
+  "batchSize": 1000,
+  "concurrency": 4,
+  "stages": [
+    {
+      "name": "schema",
+      "seconds": 0.061177125
+    },
+    {
+      "name": "copy_articles",
+      "seconds": 21.655876416
+    },
+    {
+      "name": "copy_embeddings",
+      "seconds": 19.188713083
+    },
+    {
+      "name": "idx_articles_bm25",
+      "seconds": 67.474684416
+    },
+    {
+      "name": "idx_articles_title_bm25",
+      "seconds": 3.444313917
+    },
+    {
+      "name": "idx_article_embedding",
+      "seconds": 132.194149417
+    },
+    {
+      "name": "fill_corpus_words",
+      "seconds": 141.87298375
+    },
+    {
+      "name": "idx_corpus_words_trgm",
+      "seconds": 0.600394208
+    },
+    {
+      "name": "vacuum_analyze",
+      "seconds": 18.879307208
+    }
+  ],
+  "settings": {
+    "autovacuum": "on",
+    "checkpoint_timeout": "30min",
+    "effective_cache_size": "4608MB",
+    "idx_articles_bm25.segments": "1",
+    "idx_articles_title_bm25.segments": "1",
+    "maintenance_work_mem": "4GB",
+    "max_parallel_maintenance_workers": "3",
+    "max_wal_size": "16GB",
+    "pg_textsearch.memory_limit": "2GB",
+    "pg_textsearch.segments_per_level": "8",
+    "shared_buffers": "1536MB"
+  }
+}

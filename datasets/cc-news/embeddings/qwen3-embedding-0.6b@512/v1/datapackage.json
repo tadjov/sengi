@@ -1,0 +1,43 @@
+{
+  "$schema": "https://datapackage.org/profiles/2.0/datapackage.json",
+  "name": "cc-news-canonical-embeddings",
+  "version": "v1",
+  "language": "eng",
+  "producedBy": {
+    "tool": "datapipe embed"
+  },
+  "embedding": {
+    "model": "qwen3-embedding:0.6b",
+    "hfModel": "Qwen/Qwen3-Embedding-0.6B",
+    "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    "tag": "qwen3-embedding:0.6b@512",
+    "dim": 512,
+    "recipe": "lead-v1",
+    "pooling": "last_token",
+    "normalized": true,
+    "maxTokens": 512,
+    "batchSize": 64,
+    "dtype": "float16"
+  },
+  "canonical": {
+    "name": "cc-news-canonical",
+    "version": "v1",
+    "resourceHash": "sha256:671b29fdc8aa0f76fc20f858d1c6e3e321c94dac46ced44f66263c37e3176567"
+  },
+  "derivedFrom": {
+    "name": "cc-news-canonical-embeddings",
+    "version": "v1",
+    "tag": "qwen3-embedding:0.6b@1024",
+    "resourceHash": "sha256:293c4fb7baa74f42202ff5084450b2f594f68ac0fe077fa53b575cd92f75d0c0"
+  },
+  "resources": [
+    {
+      "name": "embeddings",
+      "path": "embeddings.parquet",
+      "format": "parquet",
+      "mediatype": "application/vnd.apache.parquet",
+      "bytes": 1393122618,
+      "hash": "sha256:e191d7aaa9280ceb98072ebe9e8739c1e29842a7ee7c92792f9dbc45baa5d591"
+    }
+  ]
+}
