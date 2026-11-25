@@ -1,0 +1,28 @@
+{
+  "inputs": {
+    "source": {
+      "path": "datasets/cc-news/embeddings/qwen3-embedding-0.6b@1024/v1/embeddings.parquet",
+      "sha256": "sha256:293c4fb7baa74f42202ff5084450b2f594f68ac0fe077fa53b575cd92f75d0c0"
+    },
+    "cut": {
+      "path": "datasets/cc-news/embeddings/qwen3-embedding-0.6b@512/v1/embeddings.parquet",
+      "sha256": "sha256:e191d7aaa9280ceb98072ebe9e8739c1e29842a7ee7c92792f9dbc45baa5d591"
+    },
+    "source_queries": {
+      "path": "/tmp/qv-1024.parquet",
+      "sha256": "sha256:60c50f8e6b3f266f9e1649dd792daa27966da7f01c5696c5f1c879d6d2f3bef2"
+    },
+    "cut_queries": {
+      "path": "tracks/cc-news/semantic-hybrid/trec/query-vectors/query-vectors.parquet",
+      "sha256": "sha256:046a7a6643e848e7dff8b202e6fe12eaa6c46feaeb8344a0ce5cbe8b61630f58"
+    },
+    "script": {
+      "path": "experiments/embedding-width/scripts/compare_widths.py",
+      "sha256": "sha256:32d042d3d826acace7d8be9650462a0a1e414bfb2b122f53df80b8743e21e061"
+    }
+  },
+  "outputs": {
+    "summary.txt": "sha256:d948c9c76a3c88bbd133bf939c655126276b5a93d45075bf1600148f224d7061",
+    "per-query.tsv": "sha256:e0d56581322a7f79fabe964baca241d60c8e6b86474c7b76c14092f2291872b6"
+  }
+}
