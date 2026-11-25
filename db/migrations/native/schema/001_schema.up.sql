@@ -1,5 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
--- levenshtein for the fuzzy track's edit-distance engine.
+-- levenshtein_less_equal, the fuzzy functions' gate before their edit distance.
 CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
 CREATE EXTENSION IF NOT EXISTS vector;
 
