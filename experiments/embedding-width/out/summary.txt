@@ -1,0 +1,7 @@
+articles: 666,245 at 1024 dims, 666,245 at 512
+same ids in the same order: True
+largest |cut - source's first 512 dims renormalised|: 2.98e-08
+norms: 0.9999999 to 1.0000000
+non-finite values: 0
+top-10 shared by both widths over 30 queries: mean 0.803, median 0.800, min 0.300
+top-100 shared by both widths over 30 queries: mean 0.839, median 0.830, min 0.640

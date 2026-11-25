@@ -1,0 +1,31 @@
+query_id	shared_top10	shared_top100	top10_cosine_max	top10_cosine_min	text
+desc-gig-economy	3	64	0.5714	0.4980	workers paid per task through apps without employee benefits
+desc-arctic-ice	7	85	0.6487	0.5815	ice melting at the north pole
+desc-tech-taxes-europe	7	86	0.6994	0.5844	big american technology companies paying too little tax in europe
+desc-wildfire-evacuations	7	81	0.7074	0.6504	forest fires forcing thousands to flee their homes
+kw-rohingya-refugees	7	89	0.7394	0.6550	rohingya refugees
+kw-tax-reform-bill	7	80	0.6310	0.6066	republican tax bill
+kw-trump-kim-summit	7	83	0.7422	0.6886	trump kim summit
+q-bees-dying	7	83	0.6608	0.6085	why are honeybees dying
+q-tariffs-farmers	7	83	0.7527	0.5747	how do tariffs hurt american farmers
+desc-flint-water	8	78	0.6717	0.6141	a city whose drinking water was contaminated with lead from old pipes
+desc-superbugs	8	83	0.6313	0.5873	bacteria that medicines no longer kill
+kw-hawaii-missile-alert	8	96	0.7810	0.7477	hawaii missile alert
+kw-parkland-shooting	8	89	0.7039	0.6461	parkland school shooting
+kw-royal-wedding	8	83	0.6640	0.5884	royal wedding
+kw-weinstein-allegations	8	69	0.7079	0.6834	harvey weinstein allegations
+q-electric-cars	8	80	0.6384	0.5402	can electric cars replace petrol cars
+q-government-shutdown	8	73	0.6634	0.5752	why did the us government shut down
+q-thai-cave-boys	8	83	0.8493	0.8121	how were the boys trapped in the thai cave rescued
+q-toys-r-us	8	95	0.7794	0.6992	why did toys r us go out of business
+desc-automation	9	81	0.6646	0.6021	machines taking over work that people used to do
+desc-cord-cutting	9	79	0.6898	0.6358	people cancelling their cable subscriptions for online streaming
+desc-fake-news	9	94	0.6454	0.6316	false stories spread online to influence voters
+kw-amazon-hq2	9	91	0.7579	0.6444	amazon second headquarters
+kw-catalonia-referendum	9	93	0.8063	0.7386	catalonia independence referendum
+kw-world-cup-russia	9	87	0.7433	0.7226	world cup russia
+q-crispr-embryos	9	86	0.7264	0.6306	is gene editing of human embryos safe
+q-vaping-teens	9	76	0.7582	0.6522	is vaping dangerous for teenagers
+desc-plastic-oceans	10	86	0.7456	0.6411	plastic waste ending up in the sea and harming marine life
+q-irish-border	10	91	0.8071	0.7273	how will brexit affect the irish border
+q-venezuela-economy	10	89	0.7233	0.6425	why is venezuela's economy collapsing

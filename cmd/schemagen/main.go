@@ -3,12 +3,21 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
+
+	"github.com/tadjov/sengi/internal/cli"
 )
 
 func main() {
+	if err := run(); err != nil {
+		slog.Error("schemagen failed", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	var (
 		outputDir       = flag.String("output", "api/mapping-spec", "Output directory for the mapping schema")
 		preprocessDir   = flag.String("preprocess-output", "", "Output directory for the preprocess schema; written only when set")
@@ -21,9 +30,9 @@ func main() {
 	if *dataPackageDir != "" {
 		dataPackageFile, err := writeDataPackageSchema(*dataPackageDir)
 		if err != nil {
-			log.Fatalf("Failed to generate data package schema: %v", err)
+			return fmt.Errorf("generate data package schema: %w", err)
 		}
-		fmt.Printf("✅ Generated JSON schema: %s\n", dataPackageFile)
+		cli.Done(os.Stdout, "JSON schema written: "+dataPackageFile)
 	}
 
 	specs := []struct {
@@ -39,22 +48,23 @@ func main() {
 		}
 		generated, err := spec.generate(*strictMode)
 		if err != nil {
-			log.Fatalf("Failed to generate %s: %v", spec.file, err)
+			return fmt.Errorf("generate %s: %w", spec.file, err)
 		}
 		written, err := writeFile(spec.dir, spec.file, generated)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
-		fmt.Printf("✅ Generated JSON schema: %s\n", written)
+		cli.Done(os.Stdout, "JSON schema written: "+written)
 		if !*includeExamples {
 			continue
 		}
 		written, err = writeFile(filepath.Join(spec.dir, "example"), spec.exampleFile, []byte(spec.example))
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
-		fmt.Printf("✅ Generated YAML example: %s\n", written)
+		cli.Done(os.Stdout, "YAML example written: "+written)
 	}
+	return nil
 }
 
 func writeFile(dir, name string, content []byte) (string, error) {
