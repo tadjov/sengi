@@ -22,9 +22,3 @@ CREATE TABLE article_embeddings
     embedding  vector(512)  NOT NULL,
     PRIMARY KEY (article_id, model_name)
 );
-
-CREATE TABLE corpus_load
-(
-    finished_at timestamptz NOT NULL PRIMARY KEY,
-    record      jsonb       NOT NULL
-);

@@ -2,6 +2,7 @@ package pg
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -58,27 +59,54 @@ func TestFuzzyExpansion(t *testing.T) {
 				})
 			}
 
-			t.Run("keeps the 50 nearest corpus words of a word", func(t *testing.T) {
-				var nearest, further []string
-				for letter := 'a'; letter <= 'z'; letter++ {
-					nearest = append(nearest, "hurricane"+string(letter))
-					further = append(further, "hurricane"+string(letter)+string(letter))
+			t.Run("recovers a one-edit typo in a short word, a swap of two letters included", func(t *testing.T) {
+				conn := fuzzyCorpus(t, engine, map[string]int{"price": 10, "court": 10, "vote": 10, "the": 10})
+				for typed, want := range map[string]string{"pirce": "price", "cuort": "court", "vite": "vote", "teh": "the"} {
+					assert.Equal(t, []string{want}, expansions(t, conn, typed), "expansions of %q", typed)
 				}
-				addWords(t, conn, append(nearest, further...), 1)
+			})
 
-				got := expansions(t, conn, "hurricane")
-				assert.Len(t, got, 50)
-				assert.Subset(t, got, nearest)
+			t.Run("counts a swap in a long word as one edit", func(t *testing.T) {
+				conn := fuzzyCorpus(t, engine, map[string]int{"government": 10, "governments": 10})
+
+				assert.Equal(t, []string{"government"}, expansions(t, conn, "govrenmnt"))
+			})
+
+			t.Run("returns no word past the edit budget", func(t *testing.T) {
+				conn := fuzzyCorpus(t, engine, map[string]int{"prize": 10, "so": 10, "to": 10, "sow": 10, "hurricanexyz": 10})
+				for typed, want := range map[string][]string{
+					"pirce":     {},
+					"so":        {"so"},
+					"xo":        {},
+					"hurricane": {},
+				} {
+					assert.Equal(t, want, expansions(t, conn, typed), "expansions of %q", typed)
+				}
+			})
+
+			t.Run("keeps the 50 words with the fewest edits, then the most frequent, then by word", func(t *testing.T) {
+				conn := fuzzyCorpus(t, engine, map[string]int{"hurricanezz": 1000})
+				var oneEdit, twoEdits []string
+				for letter := 'a'; letter <= 'z'; letter++ {
+					oneEdit = append(oneEdit, "hurricane"+string(letter))
+					twoEdits = append(twoEdits, "hurricane"+string(letter)+string(letter))
+				}
+				addWords(t, conn, slices.Concat(oneEdit, twoEdits[:25]), 1)
+
+				want := slices.Concat(oneEdit, []string{"hurricanezz"}, twoEdits[:23])
+				assert.Equal(t, want, expansions(t, conn, "hurricane"))
 			})
 		})
 	}
 }
 
+// expansions returns the words in the order fuzzy_expansions yields them.
 func expansions(t *testing.T, conn *pgx.Conn, typed string) []string {
 	t.Helper()
 	var words []string
-	err := conn.QueryRow(context.Background(),
-		"SELECT coalesce(array_agg(word), '{}') FROM fuzzy_expansions($1)", typed).Scan(&words)
+	err := conn.QueryRow(context.Background(), `
+		SELECT coalesce(array_agg(word ORDER BY yielded), '{}')
+		FROM fuzzy_expansions($1) WITH ORDINALITY AS e (query_position, word, yielded)`, typed).Scan(&words)
 	require.NoError(t, err)
 	return words
 }
